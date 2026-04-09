@@ -1,0 +1,203 @@
+.page {
+  padding: 32px 0;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.backLink:hover {
+  color: var(--color-text);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Image ────────────────────────────────────────────────────────────── */
+
+.imageContainer {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  background: #000;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.cardTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+}
+
+.caption {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+/* ─── Metadata ─────────────────────────────────────────────────────────── */
+
+.metaList {
+  list-style: none;
+}
+
+.metaItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.metaItem:last-child {
+  border-bottom: none;
+}
+
+.metaLabel {
+  color: var(--color-text-muted);
+}
+
+.metaValue {
+  font-weight: 500;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metaFollow button {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+/* ─── User ─────────────────────────────────────────────────────────────── */
+
+.userRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.userDetails {
+  flex: 1;
+}
+
+.displayName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.username {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* ─── Stats ────────────────────────────────────────────────────────────── */
+
+.stats {
+  display: flex;
+  gap: 16px;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Tags ─────────────────────────────────────────────────────────────── */
+
+.tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ─── Loading / Error ──────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--color-text-muted);
+}
+
+.notFound {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--color-text-muted);
+}
+
+.notFoundIcon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}

@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL 16 + PostGIS ──────────────────────────────────────────────
+  postgres:
+    image: postgis/postgis:16-3.4
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: spotterhub
+      POSTGRES_PASSWORD: spotterhub_dev
+      POSTGRES_DB: spotterhub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/02-init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spotterhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis 7 ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── LocalStack (S3 emulation) ────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.8
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3
+      DEFAULT_REGION: us-east-1
+      EXTRA_CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./localstack-init:/etc/localstack/init/ready.d:ro
+
+volumes:
+  pgdata:
+  localstack_data:

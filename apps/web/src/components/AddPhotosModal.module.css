@@ -1,0 +1,154 @@
+/* ─── Add Photos Modal ───────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 80vh;
+  margin: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* ─── Photo Picker Grid ──────────────────────────────────────────────────── */
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.pickerItem {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+
+.pickerItem:hover {
+  opacity: 0.85;
+}
+
+.pickerItemSelected {
+  border-color: var(--color-accent);
+}
+
+.pickerImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pickerPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-input);
+  color: var(--color-text-muted);
+  font-size: 1.5rem;
+}
+
+.checkMark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.pickerCaption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 6px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  color: #fff;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selectedCount {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.footerActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ─── States ─────────────────────────────────────────────────────────────── */
+
+.loading,
+.empty {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.error {
+  padding: 12px 0;
+  text-align: center;
+  color: var(--color-error);
+  font-size: 0.875rem;
+}
+
+.loadMoreRow {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}

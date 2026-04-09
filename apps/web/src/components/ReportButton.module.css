@@ -1,0 +1,149 @@
+.trigger {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  transition: color 0.15s;
+}
+
+.trigger:hover {
+  color: var(--color-danger);
+}
+
+/* ─── Modal Overlay ──────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-elevated);
+}
+
+.modalTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* ─── Reason Options ─────────────────────────────────────────────────────── */
+
+.reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.reasonLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  transition: background 0.15s;
+}
+
+.reasonLabel:hover {
+  background: var(--color-bg-hover);
+}
+
+.reasonLabel input[type='radio'] {
+  accent-color: var(--color-accent);
+}
+
+/* ─── Description ────────────────────────────────────────────────────────── */
+
+.description {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-text);
+  resize: vertical;
+  margin-bottom: 16px;
+}
+
+.description:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.description::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ─── Actions ────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cancelBtn:hover {
+  background: var(--color-bg-hover);
+}
+
+.submitBtn {
+  padding: 8px 16px;
+  background: var(--color-danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Success ────────────────────────────────────────────────────────────── */
+
+.success {
+  text-align: center;
+  color: var(--color-success);
+  font-size: 0.875rem;
+  padding: 12px 0;
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: 0.8125rem;
+  margin-bottom: 12px;
+}

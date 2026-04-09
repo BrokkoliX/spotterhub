@@ -1,0 +1,457 @@
+// ─── SpotterHub Database Schema ──────────────────────────────────────────────
+// PostgreSQL 16 + PostGIS extension
+// Phase 1a tables are fully defined; Phase 1b tables are schema-only placeholders.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pg_trgm]
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  user
+  moderator
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  banned
+}
+
+enum ExperienceLevel {
+  beginner
+  intermediate
+  advanced
+  professional
+}
+
+enum LocationPrivacyMode {
+  exact
+  approximate
+  hidden
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+  review
+}
+
+enum PhotoVariantType {
+  thumbnail
+  display
+  full_res
+  watermarked
+}
+
+enum NotificationType {
+  like
+  comment
+  follow
+  mention
+  moderation
+  system
+}
+
+enum ReportTargetType {
+  photo
+  comment
+  profile
+  album
+}
+
+enum ReportReason {
+  inappropriate
+  spam
+  harassment
+  copyright
+  other
+}
+
+enum ReportStatus {
+  open
+  reviewed
+  resolved
+  dismissed
+}
+
+enum FollowTargetType {
+  user
+  airport
+  aircraft_type
+  manufacturer
+}
+
+enum CommunityRole {
+  owner
+  admin
+  moderator
+  member
+}
+
+enum CommunityMemberStatus {
+  active
+  pending
+  banned
+}
+
+enum CommunityVisibility {
+  public
+  invite_only
+}
+
+enum CommunityTier {
+  free
+  standard
+  large
+  enterprise
+}
+
+// ─── Phase 1a: Core Tables ───────────────────────────────────────────────────
+
+model User {
+  id         String     @id @default(uuid()) @db.Uuid
+  cognitoSub String     @unique @map("cognito_sub")
+  email      String     @unique
+  username   String     @unique
+  role       UserRole   @default(user)
+  status     UserStatus @default(active)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  profile            Profile?
+  photos             Photo[]
+  albums             Album[]
+  comments           Comment[]
+  likes              Like[]
+  followers          Follow[]           @relation("Following")
+  following          Follow[]           @relation("Follower")
+  reports            Report[]           @relation("Reporter")
+  reviewedReports    Report[]           @relation("Reviewer")
+  notifications      Notification[]
+  spottingLocations  SpottingLocation[]
+  communityMembers   CommunityMember[]
+  ownedCommunities   Community[]        @relation("CommunityOwner")
+
+  @@map("users")
+}
+
+model Profile {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @unique @map("user_id") @db.Uuid
+  displayName     String?          @map("display_name")
+  bio             String?
+  avatarUrl       String?          @map("avatar_url")
+  locationRegion  String?          @map("location_region")
+  experienceLevel ExperienceLevel? @map("experience_level")
+  gear            String?
+  interests       String[]         @default([])
+  favoriteAircraft String[]        @default([]) @map("favorite_aircraft")
+  favoriteAirports String[]        @default([]) @map("favorite_airports")
+  isPublic        Boolean          @default(true) @map("is_public")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Follow {
+  id          String           @id @default(uuid()) @db.Uuid
+  followerId  String           @map("follower_id") @db.Uuid
+  targetType  FollowTargetType @map("target_type")
+  followingId String?          @map("following_id") @db.Uuid
+  airportId   String?          @map("airport_id") @db.Uuid
+  targetValue String?          @map("target_value")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  follower  User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User?    @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  airport   Airport? @relation(fields: [airportId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, targetType, followingId])
+  @@unique([followerId, targetType, airportId])
+  @@unique([followerId, targetType, targetValue])
+  @@index([targetType, followingId])
+  @@index([targetType, airportId])
+  @@index([targetType, targetValue])
+  @@map("follows")
+}
+
+model Album {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  communityId  String?  @map("community_id") @db.Uuid
+  title        String
+  description  String?
+  coverPhotoId String?  @map("cover_photo_id") @db.Uuid
+  isPublic     Boolean  @default(true) @map("is_public")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community  Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  coverPhoto Photo?     @relation("AlbumCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
+  photos     Photo[]    @relation("AlbumPhotos")
+  comments   Comment[]
+  likes      Like[]
+
+  @@map("albums")
+}
+
+model Photo {
+  id                   String           @id @default(uuid()) @db.Uuid
+  userId               String           @map("user_id") @db.Uuid
+  albumId              String?          @map("album_id") @db.Uuid
+  caption              String?
+  aircraftType         String?          @map("aircraft_type")
+  airline              String?
+  airportCode          String?          @map("airport_code")
+  takenAt              DateTime?        @map("taken_at")
+  originalUrl          String           @map("original_url")
+  originalWidth        Int?             @map("original_width")
+  originalHeight       Int?             @map("original_height")
+  fileSizeBytes        Int?             @map("file_size_bytes")
+  mimeType             String?          @map("mime_type")
+  moderationStatus     ModerationStatus @default(pending) @map("moderation_status")
+  moderationLabels     Json?            @map("moderation_labels")
+  moderationConfidence Float?           @map("moderation_confidence")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album        Album?         @relation("AlbumPhotos", fields: [albumId], references: [id], onDelete: SetNull)
+  variants     PhotoVariant[]
+  tags         PhotoTag[]
+  location     PhotoLocation?
+  comments     Comment[]
+  likes        Like[]
+  coverOfAlbum Album[]        @relation("AlbumCover")
+
+  @@map("photos")
+}
+
+model PhotoVariant {
+  id            String           @id @default(uuid()) @db.Uuid
+  photoId       String           @map("photo_id") @db.Uuid
+  variantType   PhotoVariantType @map("variant_type")
+  url           String
+  width         Int
+  height        Int
+  fileSizeBytes Int?             @map("file_size_bytes")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@map("photo_variants")
+}
+
+model PhotoTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  photoId   String   @map("photo_id") @db.Uuid
+  tag       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@index([tag])
+  @@map("photo_tags")
+}
+
+/// Photo location with raw and privacy-filtered coordinates.
+/// The `geom` column uses PostGIS for spatial indexing — managed via raw SQL migration.
+model PhotoLocation {
+  id                 String              @id @default(uuid()) @db.Uuid
+  photoId            String              @unique @map("photo_id") @db.Uuid
+  rawLatitude        Float               @map("raw_latitude")
+  rawLongitude       Float               @map("raw_longitude")
+  displayLatitude    Float               @map("display_latitude")
+  displayLongitude   Float               @map("display_longitude")
+  privacyMode        LocationPrivacyMode @default(exact) @map("privacy_mode")
+  airportId          String?             @map("airport_id") @db.Uuid
+  spottingLocationId String?             @map("spotting_location_id") @db.Uuid
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  photo            Photo             @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  airport          Airport?          @relation(fields: [airportId], references: [id], onDelete: SetNull)
+  spottingLocation SpottingLocation? @relation(fields: [spottingLocationId], references: [id], onDelete: SetNull)
+
+  // Note: PostGIS geometry column and spatial index added via raw SQL migration
+  @@map("photo_locations")
+}
+
+model Airport {
+  id        String   @id @default(uuid()) @db.Uuid
+  icaoCode  String   @unique @map("icao_code")
+  iataCode  String?  @unique @map("iata_code")
+  name      String
+  city      String?
+  country   String?
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  photoLocations    PhotoLocation[]
+  spottingLocations SpottingLocation[]
+  follows           Follow[]
+
+  // Note: PostGIS geometry column and spatial index added via raw SQL migration
+  @@map("airports")
+}
+
+model SpottingLocation {
+  id          String   @id @default(uuid()) @db.Uuid
+  airportId   String?  @map("airport_id") @db.Uuid
+  name        String
+  description String?
+  accessNotes String?  @map("access_notes")
+  latitude    Float
+  longitude   Float
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  airport        Airport?        @relation(fields: [airportId], references: [id], onDelete: SetNull)
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  photoLocations PhotoLocation[]
+
+  // Note: PostGIS geometry column and spatial index added via raw SQL migration
+  @@map("spotting_locations")
+}
+
+model Comment {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  photoId         String?  @map("photo_id") @db.Uuid
+  albumId         String?  @map("album_id") @db.Uuid
+  parentCommentId String?  @map("parent_comment_id") @db.Uuid
+  body            String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photo         Photo?    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  album         Album?    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  parentComment Comment?  @relation("CommentThread", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       Comment[] @relation("CommentThread")
+  likes         Like[]
+
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  photoId   String?  @map("photo_id") @db.Uuid
+  albumId   String?  @map("album_id") @db.Uuid
+  commentId String?  @map("comment_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photo   Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  album   Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, photoId])
+  @@unique([userId, albumId])
+  @@unique([userId, commentId])
+  @@map("likes")
+}
+
+model Report {
+  id          String           @id @default(uuid()) @db.Uuid
+  reporterId  String           @map("reporter_id") @db.Uuid
+  targetType  ReportTargetType @map("target_type")
+  targetId    String           @map("target_id") @db.Uuid
+  reason      ReportReason
+  description String?
+  status      ReportStatus     @default(open)
+  reviewedBy  String?          @map("reviewed_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at")
+  resolvedAt  DateTime?        @map("resolved_at")
+
+  reporter User  @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("Reviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@map("reports")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String
+  body      String?
+  data      Json?
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Phase 1b: Community Tables (schema-only, not exposed in API yet) ────────
+
+model Community {
+  id          String              @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  bannerUrl   String?             @map("banner_url")
+  avatarUrl   String?             @map("avatar_url")
+  category    String?
+  visibility  CommunityVisibility @default(public)
+  location    String?
+  ownerId     String              @map("owner_id") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  owner        User                    @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      CommunityMember[]
+  subscription CommunitySubscription?
+  albums       Album[]
+
+  @@map("communities")
+}
+
+model CommunityMember {
+  id          String                @id @default(uuid()) @db.Uuid
+  communityId String                @map("community_id") @db.Uuid
+  userId      String                @map("user_id") @db.Uuid
+  role        CommunityRole         @default(member)
+  status      CommunityMemberStatus @default(active)
+  joinedAt    DateTime              @default(now()) @map("joined_at")
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@map("community_members")
+}
+
+model CommunitySubscription {
+  id               String        @id @default(uuid()) @db.Uuid
+  communityId      String        @unique @map("community_id") @db.Uuid
+  stripeSubId      String?       @map("stripe_sub_id")
+  tier             CommunityTier @default(free)
+  billingStatus    String?       @map("billing_status")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@map("community_subscriptions")
+}

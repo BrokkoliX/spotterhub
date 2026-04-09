@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint → Typecheck → Test → Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: spotterhub
+          POSTGRES_PASSWORD: spotterhub_dev
+          POSTGRES_DB: spotterhub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U spotterhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://spotterhub:spotterhub_dev@localhost:5432/spotterhub
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx turbo run generate --filter=@spotterhub/db
+
+      - name: Lint
+        run: npx turbo run lint
+
+      - name: Type check
+        run: npx turbo run typecheck
+
+      - name: Test
+        run: npx turbo run test
+
+      - name: Build
+        run: npx turbo run build

@@ -1,0 +1,83 @@
+.page {
+  padding: 32px 0;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* ─── Feed Tabs ──────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: var(--color-text-secondary);
+}
+
+.tabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+/* ─── Sign-in Prompt ─────────────────────────────────────────────────────── */
+
+.signInPrompt {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+.signInPrompt a {
+  color: var(--color-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.signInPrompt a:hover {
+  text-decoration: underline;
+}
+
+/* ─── Loading / Error ────────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.error {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--color-danger);
+}

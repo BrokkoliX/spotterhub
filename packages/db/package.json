@@ -1,0 +1,29 @@
+{
+  "name": "@spotterhub/db",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "echo 'No tests yet'",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed-images": "tsx prisma/seed-images.ts",
+    "db:seed-all": "tsx prisma/seed.ts && tsx prisma/seed-images.ts",
+    "db:reset": "prisma migrate reset --force",
+    "generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.0"
+  },
+  "devDependencies": {
+    "@spotterhub/eslint-config": "*",
+    "eslint": "^8.57.0",
+    "prisma": "^6.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

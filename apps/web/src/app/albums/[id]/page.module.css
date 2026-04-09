@@ -1,0 +1,188 @@
+.page {
+  padding: 32px 0;
+  min-height: calc(100vh - 64px);
+}
+
+.backLink {
+  display: inline-block;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.backLink:hover {
+  color: var(--color-accent);
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+
+.header {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.albumTitle {
+  font-size: 1.375rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.privateIcon {
+  font-size: 0.875rem;
+  opacity: 0.5;
+}
+
+.albumDesc {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.albumMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.ownerActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── Edit Modal ─────────────────────────────────────────────────────────── */
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  margin: 16px;
+}
+
+.modalTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.field textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}
+
+.checkboxRow input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ─── Loading / Errors ───────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+}
+
+.notFound {
+  text-align: center;
+  padding: 64px 0;
+  color: var(--color-text-muted);
+}
+
+.notFound h2 {
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.error {
+  text-align: center;
+  padding: 24px;
+  color: var(--color-error);
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* ─── Confirm Delete ─────────────────────────────────────────────────────── */
+
+.dangerBtn {
+  background: var(--color-error, #ef4444) !important;
+  border-color: var(--color-error, #ef4444) !important;
+}
