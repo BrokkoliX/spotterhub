@@ -10,8 +10,9 @@ import {
   CREATE_FORUM_CATEGORY,
   DELETE_FORUM_CATEGORY,
   GET_COMMUNITY,
-  GET_FORUM_CATEGORIES,
 } from '@/lib/queries';
+import type { ForumCategoriesQuery } from '@/lib/generated/graphql';
+import { useForumCategoriesQuery } from '@/lib/generated/graphql';
 
 import styles from './page.module.css';
 
@@ -110,8 +111,7 @@ export default function ForumPage() {
     requestPolicy: 'cache-and-network',
   });
 
-  const [{ data, fetching }, reexecuteQuery] = useQuery({
-    query: GET_FORUM_CATEGORIES,
+  const [{ data, fetching }, reexecuteQuery] = useForumCategoriesQuery({
     variables: { communityId: communityData?.community?.id ?? '' },
     pause: !communityData?.community?.id,
     requestPolicy: 'cache-and-network',
@@ -120,7 +120,7 @@ export default function ForumPage() {
   const [, deleteCategory] = useMutation(DELETE_FORUM_CATEGORY);
 
   const community = communityData?.community;
-  const categories: any[] = data?.forumCategories ?? [];
+  const categories: ForumCategoriesQuery['forumCategories'] = data?.forumCategories ?? [];
 
   const myRole = community?.myMembership?.role ?? null;
   const isAdmin = myRole === 'owner' || myRole === 'admin';

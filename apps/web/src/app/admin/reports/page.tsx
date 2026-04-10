@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'urql';
+import { useMutation } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { ADMIN_REPORTS, ADMIN_RESOLVE_REPORT } from '@/lib/queries';
+import { ADMIN_RESOLVE_REPORT } from '@/lib/queries';
+import { useAdminReportsQuery } from '@/lib/generated/graphql';
 
 import styles from '../page.module.css';
 
@@ -21,8 +22,7 @@ export default function AdminReportsPage() {
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator');
   const [statusFilter, setStatusFilter] = useState('open');
 
-  const [{ data, fetching }, reexecute] = useQuery({
-    query: ADMIN_REPORTS,
+  const [{ data, fetching }, reexecute] = useAdminReportsQuery({
     variables: { status: statusFilter || undefined, first: PAGE_SIZE },
     pause: !isAdmin,
   });
@@ -76,7 +76,7 @@ export default function AdminReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {reports.edges.map(({ node }: { node: any }) => (
+            {reports.edges.map(({ node }) => (
               <tr key={node.id}>
                 <td>{node.targetType}</td>
                 <td>{node.reason}</td>

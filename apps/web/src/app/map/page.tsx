@@ -64,6 +64,17 @@ export default function MapPage() {
     pause: !bounds,
   });
 
+  const updateBounds = (map: mapboxgl.Map) => {
+    const b = map.getBounds();
+    if (!b) return;
+    setBounds({
+      swLat: b.getSouthWest().lat,
+      swLng: b.getSouthWest().lng,
+      neLat: b.getNorthEast().lat,
+      neLng: b.getNorthEast().lng,
+    });
+  };
+
   // ─── Initialize Map ─────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -97,17 +108,6 @@ export default function MapPage() {
       mapRef.current = null;
     };
   }, []);
-
-  const updateBounds = (map: mapboxgl.Map) => {
-    const b = map.getBounds();
-    if (!b) return;
-    setBounds({
-      swLat: b.getSouthWest().lat,
-      swLng: b.getSouthWest().lng,
-      neLat: b.getNorthEast().lat,
-      neLng: b.getNorthEast().lng,
-    });
-  };
 
   // ─── Add Airport Markers ────────────────────────────────────────────────
 
@@ -175,7 +175,7 @@ export default function MapPage() {
 
     for (const feature of clusters) {
       const [lng, lat] = feature.geometry.coordinates;
-      const props = feature.properties as any;
+      const props = feature.properties as Record<string, unknown>;
 
       if (props.cluster) {
         // Cluster marker
@@ -188,7 +188,7 @@ export default function MapPage() {
 
         el.addEventListener('click', () => {
           const clusterId = props.cluster_id;
-          const expansionZoom = clusterRef.current!.getClusterExpansionZoom(clusterId);
+          const expansionZoom = clusterRef.current!.getClusterExpansionZoom(clusterId as number);
           map.flyTo({ center: [lng, lat], zoom: expansionZoom });
         });
 
@@ -203,9 +203,9 @@ export default function MapPage() {
           el.style.cssText =
             'width:36px;height:36px;border-radius:4px;border:2px solid #f59e0b;cursor:pointer;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
           const img = document.createElement('img');
-          img.src = props.thumbnailUrl;
+          img.src = props.thumbnailUrl as string;
           img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-          img.alt = props.caption ?? 'Photo';
+          img.alt = (props.caption as string) ?? 'Photo';
           el.appendChild(img);
         } else {
           el.style.cssText =

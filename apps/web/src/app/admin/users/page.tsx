@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'urql';
+import { useMutation } from 'urql';
 
 import { useAuth } from '@/lib/auth';
 import {
   ADMIN_UPDATE_USER_ROLE,
   ADMIN_UPDATE_USER_STATUS,
-  ADMIN_USERS,
 } from '@/lib/queries';
+import { useAdminUsersQuery } from '@/lib/generated/graphql';
 
 import styles from '../page.module.css';
 
@@ -35,8 +35,7 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
-  const [{ data, fetching }, reexecute] = useQuery({
-    query: ADMIN_USERS,
+  const [{ data, fetching }, reexecute] = useAdminUsersQuery({
     variables: {
       role: roleFilter || undefined,
       status: statusFilter || undefined,
@@ -118,7 +117,7 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.edges.map(({ node }: { node: any }) => (
+            {users.edges.map(({ node }) => (
               <tr key={node.id}>
                 <td>{node.username}</td>
                 <td>{node.email}</td>

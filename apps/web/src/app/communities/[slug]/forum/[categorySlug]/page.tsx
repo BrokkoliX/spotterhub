@@ -10,11 +10,11 @@ import {
   CREATE_FORUM_THREAD,
   DELETE_FORUM_THREAD,
   GET_COMMUNITY,
-  GET_FORUM_CATEGORIES,
-  GET_FORUM_THREADS,
   LOCK_FORUM_THREAD,
   PIN_FORUM_THREAD,
 } from '@/lib/queries';
+import type { ForumThreadsQuery } from '@/lib/generated/graphql';
+import { useForumCategoriesQuery, useForumThreadsQuery } from '@/lib/generated/graphql';
 
 import styles from '../page.module.css';
 
@@ -121,18 +121,16 @@ export default function CategoryPage() {
     requestPolicy: 'cache-and-network',
   });
 
-  const [{ data: catData }] = useQuery({
-    query: GET_FORUM_CATEGORIES,
+  const [{ data: catData }] = useForumCategoriesQuery({
     variables: { communityId: communityData?.community?.id ?? '' },
     pause: !communityData?.community?.id,
     requestPolicy: 'cache-and-network',
   });
 
   const community = communityData?.community;
-  const category = catData?.forumCategories?.find((c: any) => c.slug === categorySlug);
+  const category = catData?.forumCategories?.find((c) => c.slug === categorySlug);
 
-  const [{ data, fetching }, reexecuteQuery] = useQuery({
-    query: GET_FORUM_THREADS,
+  const [{ data, fetching }, reexecuteQuery] = useForumThreadsQuery({
     variables: { categoryId: category?.id ?? '', first: 30 },
     pause: !category?.id,
     requestPolicy: 'cache-and-network',
@@ -142,7 +140,7 @@ export default function CategoryPage() {
   const [, pinThread] = useMutation(PIN_FORUM_THREAD);
   const [, lockThread] = useMutation(LOCK_FORUM_THREAD);
 
-  const threads: any[] = data?.forumThreads?.edges?.map((e: any) => e.node) ?? [];
+  const threads: ForumThreadsQuery['forumThreads']['edges'][number]['node'][] = data?.forumThreads?.edges?.map((e) => e.node) ?? [];
   const totalCount = data?.forumThreads?.totalCount ?? 0;
 
   const myRole = community?.myMembership?.role ?? null;

@@ -1,0 +1,11 @@
+schema: http://localhost:4000/graphql
+documents: src/lib/queries.ts
+generates:
+  src/lib/generated/graphql.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-urql
+    config:
+      urqlImportFrom: urql
+      skipTypename: false

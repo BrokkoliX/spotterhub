@@ -9,10 +9,11 @@ import { useAuth } from '@/lib/auth';
 import {
   CANCEL_RSVP,
   DELETE_COMMUNITY_EVENT,
-  GET_COMMUNITY_EVENT,
   RSVP_EVENT,
   UPDATE_COMMUNITY_EVENT,
 } from '@/lib/queries';
+import type { GetCommunityEventQuery, UpdateCommunityEventInput } from '@/lib/generated/graphql';
+import { useGetCommunityEventQuery } from '@/lib/generated/graphql';
 
 import styles from '../../forum/page.module.css';
 
@@ -36,7 +37,7 @@ function RsvpSection({
   onRsvp,
   onCancel,
 }: {
-  event: any;
+  event: NonNullable<GetCommunityEventQuery['communityEvent']>;
   onRsvp: (status: string) => void;
   onCancel: () => void;
 }) {
@@ -134,8 +135,8 @@ function EditEventForm({
   onSave,
   onCancel,
 }: {
-  event: any;
-  onSave: (input: any) => void;
+  event: NonNullable<GetCommunityEventQuery['communityEvent']>;
+  onSave: (input: UpdateCommunityEventInput) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(event.title);
@@ -160,8 +161,8 @@ function EditEventForm({
         endsAt: endsAt ? new Date(endsAt).toISOString() : null,
         maxAttendees: maxAttendees ? parseInt(maxAttendees, 10) : null,
       });
-    } catch (err: any) {
-      setError(err.message ?? 'Something went wrong');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     }
     setSaving(false);
   };
@@ -211,8 +212,7 @@ export default function EventDetailPage() {
   const [editing, setEditing] = useState(false);
   const [rsvpError, setRsvpError] = useState('');
 
-  const [{ data, fetching }, reexecute] = useQuery({
-    query: GET_COMMUNITY_EVENT,
+  const [{ data, fetching }, reexecute] = useGetCommunityEventQuery({
     variables: { id: eventId },
     requestPolicy: 'cache-and-network',
   });
@@ -249,7 +249,7 @@ export default function EventDetailPage() {
     refresh();
   };
 
-  const handleSave = async (input: any) => {
+  const handleSave = async (input: UpdateCommunityEventInput) => {
     const result = await updateEvent({ id: event.id, input });
     if (result.error) {
       throw new Error(result.error.graphQLErrors?.[0]?.message ?? result.error.message);

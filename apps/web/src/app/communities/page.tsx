@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { GET_COMMUNITIES } from '@/lib/queries';
+import { useCommunitiesQuery } from '@/lib/generated/graphql';
 
 import styles from './page.module.css';
 
@@ -25,8 +24,7 @@ export default function CommunitiesPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
 
-  const [{ data, fetching }] = useQuery({
-    query: GET_COMMUNITIES,
+  const [{ data, fetching }] = useCommunitiesQuery({
     variables: {
       search: search || undefined,
       category: category || undefined,
@@ -69,7 +67,7 @@ export default function CommunitiesPage() {
 
       {communities && communities.edges.length > 0 && (
         <div className={styles.grid}>
-          {communities.edges.map(({ node }: { node: any }) => (
+          {communities.edges.map(({ node }) => (
             <Link href={`/communities/${node.slug}`} key={node.id} className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.cardAvatar}>

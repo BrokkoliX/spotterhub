@@ -10,12 +10,20 @@ import {
   CREATE_FORUM_POST,
   DELETE_FORUM_POST,
   GET_COMMUNITY,
-  GET_FORUM_POSTS,
-  GET_FORUM_THREAD,
   LOCK_FORUM_THREAD,
   PIN_FORUM_THREAD,
   UPDATE_FORUM_POST,
 } from '@/lib/queries';
+import type { ForumPostsQuery } from '@/lib/generated/graphql';
+import { useForumPostsQuery, useForumThreadQuery } from '@/lib/generated/graphql';
+
+type ForumPostNode = ForumPostsQuery['forumPosts']['edges'][number]['node'];
+type ForumPostAuthor = ForumPostNode['author'];
+// Replies are simpler posts without nested replies or updatedAt
+type ForumPostReply = ForumPostNode['replies'][number];
+
+// Union type for posts and replies (replies don't have updatedAt or nested replies)
+type ForumPost = ForumPostNode | ForumPostReply;
 
 import styles from '../../page.module.css';
 
@@ -29,11 +37,11 @@ function formatDate(iso: string) {
   });
 }
 
-function authorLabel(author: any) {
+function authorLabel(author: ForumPostAuthor) {
   return author?.profile?.displayName || author?.username || 'Unknown';
 }
 
-function authorInitial(author: any) {
+function authorInitial(author: ForumPostAuthor) {
   return (authorLabel(author)).charAt(0).toUpperCase();
 }
 
@@ -50,8 +58,8 @@ function PostItem({
   onEdit,
   indent = false,
 }: {
-  post: any;
-  me: any;
+  post: ForumPost;
+  me: { username: string; role: string } | null;
   isModerator: boolean;
   isMember: boolean;
   isLocked: boolean;
@@ -145,14 +153,12 @@ export default function ThreadPage() {
     requestPolicy: 'cache-and-network',
   });
 
-  const [{ data: threadData, fetching: threadFetching }] = useQuery({
-    query: GET_FORUM_THREAD,
+  const [{ data: threadData, fetching: threadFetching }] = useForumThreadQuery({
     variables: { id: threadId },
     requestPolicy: 'cache-and-network',
   });
 
-  const [{ data: postsData, fetching: postsFetching }, reexecutePosts] = useQuery({
-    query: GET_FORUM_POSTS,
+  const [{ data: postsData, fetching: postsFetching }, reexecutePosts] = useForumPostsQuery({
     variables: { threadId, first: 50 },
     requestPolicy: 'cache-and-network',
   });
@@ -166,7 +172,7 @@ export default function ThreadPage() {
 
   const community = communityData?.community;
   const thread = threadData?.forumThread;
-  const posts: any[] = postsData?.forumPosts?.edges?.map((e: any) => e.node) ?? [];
+  const posts: ForumPostNode[] = postsData?.forumPosts?.edges?.map((e) => e.node) ?? [];
   const totalPosts = postsData?.forumPosts?.totalCount ?? 0;
 
   const myRole = community?.myMembership?.role ?? null;
@@ -350,7 +356,7 @@ export default function ThreadPage() {
             {/* Nested replies */}
             {post.replies && post.replies.length > 0 && (
               <div className={styles.replies}>
-                {post.replies.map((reply: any) => (
+                {post.replies.map((reply: ForumPostNode['replies'][number]) => (
                   editingPostId === reply.id ? (
                     <div key={reply.id} className={styles.reply}>
                       <div className={styles.postHeader}>

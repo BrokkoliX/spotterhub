@@ -10,8 +10,9 @@ import {
   CREATE_COMMUNITY_EVENT,
   DELETE_COMMUNITY_EVENT,
   GET_COMMUNITY,
-  GET_COMMUNITY_EVENTS,
 } from '@/lib/queries';
+import type { GetCommunityEventsQuery } from '@/lib/generated/graphql';
+import { useGetCommunityEventsQuery } from '@/lib/generated/graphql';
 
 import styles from '../forum/page.module.css';
 
@@ -175,8 +176,7 @@ export default function EventsPage() {
   const myRole = community?.myMembership?.role;
   const isAdmin = myRole === 'owner' || myRole === 'admin';
 
-  const [{ data, fetching }, reexecute] = useQuery({
-    query: GET_COMMUNITY_EVENTS,
+  const [{ data, fetching }, reexecute] = useGetCommunityEventsQuery({
     variables: { communityId: community?.id ?? '', first: 50, includePast },
     pause: !community?.id,
     requestPolicy: 'cache-and-network',
@@ -184,7 +184,7 @@ export default function EventsPage() {
 
   const [, deleteEvent] = useMutation(DELETE_COMMUNITY_EVENT);
 
-  const events = data?.communityEvents?.edges?.map((e: any) => e.node) ?? [];
+  const events: GetCommunityEventsQuery['communityEvents']['edges'][number]['node'][] = data?.communityEvents?.edges?.map((e) => e.node) ?? [];
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this event? This cannot be undone.')) return;
@@ -235,7 +235,7 @@ export default function EventsPage() {
       )}
 
       <div className={styles.categoryList}>
-        {events.map((event: any) => (
+        {events.map((event) => (
           <div
             key={event.id}
             className={styles.categoryCard}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'urql';
+import { useMutation } from 'urql';
 
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth';
@@ -13,15 +13,14 @@ import {
   CREATE_COMMUNITY_ALBUM,
   DELETE_COMMUNITY,
   GENERATE_INVITE_CODE,
-  GET_COMMUNITY,
-  GET_COMMUNITY_EVENTS,
-  GET_COMMUNITY_MODERATION_LOGS,
   JOIN_COMMUNITY,
   LEAVE_COMMUNITY,
   REMOVE_COMMUNITY_MEMBER,
   UNBAN_COMMUNITY_MEMBER,
   UPDATE_COMMUNITY,
 } from '@/lib/queries';
+import type { CommunityQuery, UpdateCommunityInput, UpdateCommunityMutation } from '@/lib/generated/graphql';
+import { useCommunityQuery, useGetCommunityEventsQuery, useCommunityModerationLogsQuery } from '@/lib/generated/graphql';
 
 import styles from '../page.module.css';
 
@@ -50,8 +49,7 @@ export default function CommunityPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('photos');
 
-  const [{ data, fetching }, reexecuteQuery] = useQuery({
-    query: GET_COMMUNITY,
+  const [{ data, fetching }, reexecuteQuery] = useCommunityQuery({
     variables: { slug },
     requestPolicy: 'cache-and-network',
   });
@@ -91,7 +89,7 @@ export default function CommunityPage() {
   };
 
   // Extract photos for PhotoGrid
-  const photos = community.photos?.edges?.map((e: any) => e.node) ?? [];
+  const photos = community.photos?.edges?.map((e) => e.node) ?? [];
   const photosHasNextPage = community.photos?.pageInfo?.hasNextPage ?? false;
 
   return (
@@ -221,7 +219,7 @@ export default function CommunityPage() {
       )}
       {activeTab === 'members' && (
         <MembersTab
-          members={community.members.edges}
+          members={community.members.edges.map((e) => e.node)}
           totalCount={community.members.totalCount}
           communityId={community.id}
           isAdmin={isAdmin}
@@ -240,7 +238,7 @@ export default function CommunityPage() {
       {activeTab === 'settings' && isAdmin && (
         <SettingsTab
           community={community}
-          onUpdate={async (input: any) => {
+          onUpdate={async (input: UpdateCommunityInput) => {
             const result = await updateCommunity({ id: community.id, input });
             if (!result.error) refresh();
             return result;
@@ -287,13 +285,12 @@ function EventsTab({
   communityId: string;
   isAdmin: boolean;
 }) {
-  const [{ data, fetching }] = useQuery({
-    query: GET_COMMUNITY_EVENTS,
+  const [{ data, fetching }] = useGetCommunityEventsQuery({
     variables: { communityId, first: 5 },
     requestPolicy: 'cache-and-network',
   });
 
-  const events = data?.communityEvents?.edges?.map((e: any) => e.node) ?? [];
+  const events = data?.communityEvents?.edges?.map((e) => e.node) ?? [];
 
   return (
     <div style={{ padding: '24px 0' }}>
@@ -321,7 +318,7 @@ function EventsTab({
         </div>
       )}
 
-      {events.map((event: any) => (
+      {events.map((event) => (
         <Link
           key={event.id}
           href={`/communities/${slug}/events/${event.id}`}
@@ -388,7 +385,7 @@ function AlbumsTab({
   isAdmin,
   onCreated,
 }: {
-  albums: any;
+  albums: NonNullable<NonNullable<CommunityQuery['community']>['albums']>;
   communityId: string;
   isAdmin: boolean;
   onCreated: () => void;
@@ -479,7 +476,7 @@ function AlbumsTab({
       )}
 
       <div className={styles.albumGrid}>
-        {albumEdges.map(({ node }: { node: any }) => (
+        {albumEdges.map(({ node }) => (
           <Link
             key={node.id}
             href={`/albums/${node.id}`}
@@ -488,7 +485,7 @@ function AlbumsTab({
             <div className={styles.albumCover}>
               {node.coverPhoto ? (
                 <img
-                  src={node.coverPhoto.variants?.find((v: any) => v.variantType === 'thumbnail')?.url ?? node.coverPhoto.variants?.[0]?.url}
+                  src={node.coverPhoto.variants?.find((v) => v.variantType === 'thumbnail')?.url ?? node.coverPhoto.variants?.[0]?.url}
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -511,7 +508,7 @@ function PhotosTab({
   photos,
   hasNextPage,
 }: {
-  photos: any[];
+  photos: NonNullable<NonNullable<CommunityQuery['community']>['photos']>['edges'][number]['node'][];
   hasNextPage: boolean;
 }) {
   return (
@@ -546,7 +543,7 @@ function MembersTab({
   isAdmin,
   myRole,
 }: {
-  members: any[];
+  members: NonNullable<NonNullable<CommunityQuery['community']>['members']>['edges'][number]['node'][];
   totalCount: number;
   communityId: string;
   isAdmin: boolean;
@@ -582,34 +579,34 @@ function MembersTab({
         </div>
       )}
       <div className={styles.memberGrid}>
-        {members.map(({ node }: { node: any }) => {
-          const targetWeight = roleWeight(node.role);
+        {members.map((member) => {
+          const targetWeight = roleWeight(member.role);
           const canModify = isAdmin && targetWeight < myRoleWeight;
 
           return (
-            <div key={node.id} className={styles.memberCard}>
+            <div key={member.id} className={styles.memberCard}>
               <Link
-                href={`/u/${node.user.username}/photos`}
+                href={`/u/${member.user.username}/photos`}
                 className={styles.memberInfo}
               >
                 <div className={styles.memberAvatar}>
-                  {node.user.username.charAt(0).toUpperCase()}
+                  {member.user.username.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className={styles.memberName}>
-                    {node.user.profile?.displayName || node.user.username}
-                    <RoleBadge role={node.role} />
-                    {node.status === 'banned' && <StatusBadge status="banned" />}
+                    {member.user.profile?.displayName || member.user.username}
+                    <RoleBadge role={member.role} />
+                    {member.status === 'banned' && <StatusBadge status="banned" />}
                   </div>
                 </div>
               </Link>
               {canModify && (
                 <div className={styles.memberActions}>
-                  {node.status !== 'banned' ? (
+                  {member.status !== 'banned' ? (
                     <button
                       className={styles.actionBtn}
                       style={{ color: '#f87171' }}
-                      onClick={() => handleBan(node.user.id)}
+                      onClick={() => handleBan(member.user.id)}
                     >
                       Ban
                     </button>
@@ -617,14 +614,14 @@ function MembersTab({
                     <button
                       className={styles.actionBtn}
                       style={{ color: '#22c55e' }}
-                      onClick={() => handleUnban(node.user.id)}
+                      onClick={() => handleUnban(member.user.id)}
                     >
                       Unban
                     </button>
                   )}
                   <button
                     className={styles.actionBtn}
-                    onClick={() => handleKick(node.user.id)}
+                    onClick={() => handleKick(member.user.id)}
                   >
                     Kick
                   </button>
@@ -641,13 +638,12 @@ function MembersTab({
 // ─── Moderation Tab ──────────────────────────────────────────────────────────
 
 function ModerationTab({ communityId, slug }: { communityId: string; slug: string }) {
-  const [{ data, fetching }] = useQuery({
-    query: GET_COMMUNITY_MODERATION_LOGS,
+  const [{ data, fetching }] = useCommunityModerationLogsQuery({
     variables: { communityId, first: 50 },
     requestPolicy: 'cache-and-network',
   });
 
-  const logs = data?.communityModerationLogs?.edges?.map((e: any) => e.node) ?? [];
+  const logs = data?.communityModerationLogs?.edges?.map((e) => e.node) ?? [];
 
   const actionVerb: Record<string, string> = {
     ban: 'banned',
@@ -672,7 +668,7 @@ function ModerationTab({ communityId, slug }: { communityId: string; slug: strin
         </div>
       )}
 
-      {logs.map((log: any) => (
+      {logs.map((log) => (
         <div key={log.id} className={styles.logEntry}>
           <div className={styles.logAction}>
             <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
@@ -708,8 +704,8 @@ function SettingsTab({
   onDelete,
   onGenerateInvite,
 }: {
-  community: any;
-  onUpdate: (input: any) => Promise<any>;
+  community: NonNullable<CommunityQuery['community']>;
+  onUpdate: (input: UpdateCommunityInput) => Promise<unknown>;
   onDelete: () => void;
   onGenerateInvite: () => void;
 }) {
@@ -738,9 +734,10 @@ function SettingsTab({
     });
 
     setSaving(false);
-    if (result.error) {
+    const err = result as { error?: { message: string; graphQLErrors?: Array<{ message: string }> } };
+    if (err.error) {
       setError(
-        result.error.graphQLErrors?.[0]?.message || result.error.message,
+        err.error.graphQLErrors?.[0]?.message || err.error.message,
       );
     } else {
       setSuccess('Community updated successfully.');

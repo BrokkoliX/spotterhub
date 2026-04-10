@@ -3,10 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { useMutation, useQuery } from 'urql';
+import { useMutation } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { ADMIN_PHOTOS, ADMIN_UPDATE_PHOTO_MODERATION } from '@/lib/queries';
+import { ADMIN_UPDATE_PHOTO_MODERATION } from '@/lib/queries';
+import type { AdminPhotosQuery } from '@/lib/generated/graphql';
+import { useAdminPhotosQuery } from '@/lib/generated/graphql';
 
 import styles from '../page.module.css';
 
@@ -18,8 +20,10 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: styles.badgeRejected,
 };
 
-function thumbUrl(photo: any): string {
-  const variant = photo.variants?.find((v: any) => v.variantType === 'thumbnail');
+type PhotoNode = AdminPhotosQuery['adminPhotos']['edges'][number]['node'];
+
+function thumbUrl(photo: PhotoNode): string {
+  const variant = photo.variants?.find((v) => v.variantType === 'thumbnail');
   return variant?.url ?? photo.originalUrl;
 }
 
@@ -28,8 +32,7 @@ export default function AdminPhotosPage() {
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator');
   const [statusFilter, setStatusFilter] = useState('pending');
 
-  const [{ data, fetching }, reexecute] = useQuery({
-    query: ADMIN_PHOTOS,
+  const [{ data, fetching }, reexecute] = useAdminPhotosQuery({
     variables: {
       moderationStatus: statusFilter || undefined,
       first: PAGE_SIZE,
@@ -86,7 +89,7 @@ export default function AdminPhotosPage() {
             </tr>
           </thead>
           <tbody>
-            {photos.edges.map(({ node }: { node: any }) => (
+            {photos.edges.map(({ node }) => (
               <tr key={node.id}>
                 <td>
                   <Link href={`/photos/${node.id}`}>
