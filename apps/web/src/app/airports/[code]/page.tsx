@@ -1,13 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useCallback, useState } from 'react';
-import { useQuery } from 'urql';
+import { type FormEvent, use, useCallback, useState } from 'react';
+import { useMutation, useQuery } from 'urql';
 
 import { AirportFollowButton } from '@/components/AirportFollowButton';
 import type { PhotoData } from '@/components/PhotoCard';
 import { PhotoGrid } from '@/components/PhotoGrid';
-import { GET_AIRPORT, GET_PHOTOS } from '@/lib/queries';
+import { useAuth } from '@/lib/auth';
+import {
+  CREATE_SPOTTING_LOCATION,
+  DELETE_SPOTTING_LOCATION,
+  GET_AIRPORT,
+  GET_PHOTOS,
+} from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -32,10 +38,23 @@ export default function AirportPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = use(params);
+  const { user } = useAuth();
   const [cursor, setCursor] = useState<string | null>(null);
   const [allPhotos, setAllPhotos] = useState<PhotoData[]>([]);
 
-  const [airportResult] = useQuery({
+  // Spotting location form state
+  const [showSpotForm, setShowSpotForm] = useState(false);
+  const [spotName, setSpotName] = useState('');
+  const [spotDesc, setSpotDesc] = useState('');
+  const [spotAccess, setSpotAccess] = useState('');
+  const [spotLat, setSpotLat] = useState('');
+  const [spotLng, setSpotLng] = useState('');
+  const [spotError, setSpotError] = useState<string | null>(null);
+
+  const [, createSpottingLocation] = useMutation(CREATE_SPOTTING_LOCATION);
+  const [, deleteSpottingLocation] = useMutation(DELETE_SPOTTING_LOCATION);
+
+  const [airportResult, reexecuteAirport] = useQuery({
     query: GET_AIRPORT,
     variables: { code: code.toUpperCase() },
   });
@@ -67,6 +86,46 @@ export default function AirportPage({
       setCursor(connection.pageInfo.endCursor);
     }
   }, [connection, photos]);
+
+  // ─── Spotting Location handlers ──────────────────────────────────────────
+
+  const handleCreateSpot = async (e: FormEvent) => {
+    e.preventDefault();
+    setSpotError(null);
+    if (!airport) return;
+
+    const result = await createSpottingLocation({
+      input: {
+        name: spotName,
+        description: spotDesc || undefined,
+        accessNotes: spotAccess || undefined,
+        latitude: spotLat ? parseFloat(spotLat) : 0,
+        longitude: spotLng ? parseFloat(spotLng) : 0,
+        airportId: airport.id,
+      },
+    });
+
+    if (result.error) {
+      setSpotError(result.error.graphQLErrors[0]?.message ?? 'Failed to create spotting location');
+      return;
+    }
+
+    // Reset form and refresh
+    setSpotName('');
+    setSpotDesc('');
+    setSpotAccess('');
+    setSpotLat('');
+    setSpotLng('');
+    setShowSpotForm(false);
+    reexecuteAirport({ requestPolicy: 'network-only' });
+  };
+
+  const handleDeleteSpot = async (spotId: string) => {
+    const result = await deleteSpottingLocation({ id: spotId });
+    if (!result.error) {
+      reexecuteAirport({ requestPolicy: 'network-only' });
+    }
+  };
 
   // ─── Loading ────────────────────────────────────────────────────────────
 
@@ -146,13 +205,24 @@ export default function AirportPage({
         </div>
 
         {/* Spotting Locations */}
-        {airport.spottingLocations.length > 0 && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Spotting Locations</h2>
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Spotting Locations</h2>
+          {airport.spottingLocations.length > 0 ? (
             <div className={styles.spotList}>
               {airport.spottingLocations.map((spot: SpottingLocation) => (
                 <div key={spot.id} className={styles.spotCard}>
-                  <div className={styles.spotName}>📍 {spot.name}</div>
+                  <div className={styles.spotCardHeader}>
+                    <div className={styles.spotName}>📍 {spot.name}</div>
+                    {user && (
+                      <button
+                        className={styles.spotDelete}
+                        onClick={() => handleDeleteSpot(spot.id)}
+                        title="Delete spotting location"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                   {spot.description && (
                     <div className={styles.spotDesc}>{spot.description}</div>
                   )}
@@ -164,8 +234,102 @@ export default function AirportPage({
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p style={{ color: 'var(--color-text-muted)', marginBottom: 16 }}>
+              No spotting locations yet. Be the first to add one!
+            </p>
+          )}
+
+          {user && !showSpotForm && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowSpotForm(true)}
+            >
+              + Add Spotting Location
+            </button>
+          )}
+
+          {showSpotForm && (
+            <form onSubmit={handleCreateSpot} className={styles.spotForm}>
+              <div className="field">
+                <label htmlFor="spotName" className="label">Name *</label>
+                <input
+                  id="spotName"
+                  type="text"
+                  className="input"
+                  value={spotName}
+                  onChange={(e) => setSpotName(e.target.value)}
+                  placeholder="e.g. South Viewpoint"
+                  required
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="spotDesc" className="label">Description</label>
+                <textarea
+                  id="spotDesc"
+                  className="input"
+                  value={spotDesc}
+                  onChange={(e) => setSpotDesc(e.target.value)}
+                  placeholder="What can you see from here?"
+                  rows={2}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="spotAccess" className="label">Access Notes</label>
+                <input
+                  id="spotAccess"
+                  type="text"
+                  className="input"
+                  value={spotAccess}
+                  onChange={(e) => setSpotAccess(e.target.value)}
+                  placeholder="e.g. Free parking, walk 5 min"
+                />
+              </div>
+              <div className={styles.spotCoords}>
+                <div className="field">
+                  <label htmlFor="spotLat" className="label">Latitude</label>
+                  <input
+                    id="spotLat"
+                    type="number"
+                    className="input"
+                    value={spotLat}
+                    onChange={(e) => setSpotLat(e.target.value)}
+                    placeholder="Latitude"
+                    step="any"
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="spotLng" className="label">Longitude</label>
+                  <input
+                    id="spotLng"
+                    type="number"
+                    className="input"
+                    value={spotLng}
+                    onChange={(e) => setSpotLng(e.target.value)}
+                    placeholder="Longitude"
+                    step="any"
+                  />
+                </div>
+              </div>
+              {spotError && <p className="error-text">{spotError}</p>}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button type="submit" className="btn btn-primary">
+                  Save Location
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowSpotForm(false);
+                    setSpotError(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
 
         {/* Photos at this airport */}
         <div className={styles.section}>

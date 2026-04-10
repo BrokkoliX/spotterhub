@@ -67,6 +67,22 @@ export const PHOTO_FIELDS = gql`
       width
       height
     }
+    location {
+      id
+      latitude
+      longitude
+      privacyMode
+      airport {
+        id
+        icaoCode
+        iataCode
+        name
+      }
+      spottingLocation {
+        id
+        name
+      }
+    }
   }
 `;
 
@@ -431,6 +447,56 @@ export const GET_AIRPORT = gql`
   }
 `;
 
+export const PHOTOS_IN_BOUNDS = gql`
+  query PhotosInBounds($swLat: Float!, $swLng: Float!, $neLat: Float!, $neLng: Float!, $first: Int) {
+    photosInBounds(swLat: $swLat, swLng: $swLng, neLat: $neLat, neLng: $neLng, first: $first) {
+      id
+      latitude
+      longitude
+      thumbnailUrl
+      caption
+    }
+  }
+`;
+
+export const PHOTOS_NEARBY = gql`
+  query PhotosNearby($latitude: Float!, $longitude: Float!, $radiusMeters: Float, $first: Int) {
+    photosNearby(latitude: $latitude, longitude: $longitude, radiusMeters: $radiusMeters, first: $first) {
+      id
+      latitude
+      longitude
+      thumbnailUrl
+      caption
+    }
+  }
+`;
+
+export const CREATE_SPOTTING_LOCATION = gql`
+  mutation CreateSpottingLocation($input: CreateSpottingLocationInput!) {
+    createSpottingLocation(input: $input) {
+      id
+      name
+      description
+      accessNotes
+      latitude
+      longitude
+      createdBy {
+        id
+        username
+        profile {
+          displayName
+        }
+      }
+    }
+  }
+`;
+
+export const DELETE_SPOTTING_LOCATION = gql`
+  mutation DeleteSpottingLocation($id: ID!) {
+    deleteSpottingLocation(id: $id)
+  }
+`;
+
 // ─── Albums ─────────────────────────────────────────────────────────────────
 
 export const ALBUM_FIELDS = gql`
@@ -442,6 +508,8 @@ export const ALBUM_FIELDS = gql`
     photoCount
     createdAt
     updatedAt
+    communityId
+    community { id name slug }
     user {
       id
       username
@@ -526,6 +594,34 @@ export const ADD_PHOTOS_TO_ALBUM = gql`
 export const REMOVE_PHOTOS_FROM_ALBUM = gql`
   mutation RemovePhotosFromAlbum($albumId: ID!, $photoIds: [ID!]!) {
     removePhotosFromAlbum(albumId: $albumId, photoIds: $photoIds) {
+      ...AlbumFields
+    }
+  }
+  ${ALBUM_FIELDS}
+`;
+
+export const CREATE_COMMUNITY_ALBUM = gql`
+  mutation CreateCommunityAlbum($communityId: ID!, $input: CreateAlbumInput!) {
+    createCommunityAlbum(communityId: $communityId, input: $input) {
+      ...AlbumFields
+      community { id name slug }
+    }
+  }
+  ${ALBUM_FIELDS}
+`;
+
+export const ADD_PHOTOS_TO_COMMUNITY_ALBUM = gql`
+  mutation AddPhotosToCommunityAlbum($albumId: ID!, $photoIds: [ID!]!) {
+    addPhotosToCommunityAlbum(albumId: $albumId, photoIds: $photoIds) {
+      ...AlbumFields
+    }
+  }
+  ${ALBUM_FIELDS}
+`;
+
+export const REMOVE_PHOTOS_FROM_COMMUNITY_ALBUM = gql`
+  mutation RemovePhotosFromCommunityAlbum($albumId: ID!, $photoIds: [ID!]!) {
+    removePhotosFromCommunityAlbum(albumId: $albumId, photoIds: $photoIds) {
       ...AlbumFields
     }
   }
@@ -623,4 +719,542 @@ export const GET_FOLLOWING_FEED = gql`
     }
   }
   ${PHOTO_FIELDS}
+`;
+
+// ─── Admin ──────────────────────────────────────────────────────────────────
+
+export const ADMIN_STATS = gql`
+  query AdminStats {
+    adminStats {
+      totalUsers
+      totalPhotos
+      pendingPhotos
+      openReports
+      totalAirports
+      totalSpottingLocations
+    }
+  }
+`;
+
+export const ADMIN_REPORTS = gql`
+  query AdminReports($status: String, $first: Int, $after: String) {
+    adminReports(status: $status, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          targetType
+          targetId
+          reason
+          description
+          status
+          reporter { id username }
+          reviewer { id username }
+          createdAt
+          resolvedAt
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const ADMIN_USERS = gql`
+  query AdminUsers($role: String, $status: String, $search: String, $first: Int, $after: String) {
+    adminUsers(role: $role, status: $status, search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          username
+          email
+          role
+          status
+          createdAt
+          profile { displayName avatarUrl }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const ADMIN_PHOTOS = gql`
+  query AdminPhotos($moderationStatus: String, $first: Int, $after: String) {
+    adminPhotos(moderationStatus: $moderationStatus, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          ...PhotoFields
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+  ${PHOTO_FIELDS}
+`;
+
+export const ADMIN_RESOLVE_REPORT = gql`
+  mutation AdminResolveReport($id: ID!, $action: String!) {
+    adminResolveReport(id: $id, action: $action) {
+      id
+      status
+      resolvedAt
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_USER_STATUS = gql`
+  mutation AdminUpdateUserStatus($userId: ID!, $status: String!) {
+    adminUpdateUserStatus(userId: $userId, status: $status) {
+      id
+      status
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_USER_ROLE = gql`
+  mutation AdminUpdateUserRole($userId: ID!, $role: String!) {
+    adminUpdateUserRole(userId: $userId, role: $role) {
+      id
+      role
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_PHOTO_MODERATION = gql`
+  mutation AdminUpdatePhotoModeration($photoId: ID!, $status: String!) {
+    adminUpdatePhotoModeration(photoId: $photoId, status: $status) {
+      id
+      moderationStatus
+    }
+  }
+`;
+
+// ─── Communities ─────────────────────────────────────────────────────────
+
+export const GET_COMMUNITY = gql`
+  query Community($slug: String!) {
+    community(slug: $slug) {
+      id name slug description bannerUrl avatarUrl category visibility location
+      inviteCode
+      createdAt
+      owner { id username profile { displayName avatarUrl } }
+      memberCount
+      myMembership { id role status }
+      members(first: 20) {
+        edges { node { id role status joinedAt user { id username profile { displayName avatarUrl } } } }
+        totalCount
+        pageInfo { hasNextPage endCursor }
+      }
+      photos(first: 12) {
+        edges {
+          cursor
+          node { ...PhotoFields }
+        }
+        pageInfo { hasNextPage endCursor }
+        totalCount
+      }
+      albums(first: 20) {
+        edges { node { ...AlbumFields } }
+        totalCount
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+  ${ALBUM_FIELDS}
+  ${PHOTO_FIELDS}
+`;
+
+export const GET_COMMUNITIES = gql`
+  query Communities($search: String, $category: String, $first: Int, $after: String) {
+    communities(search: $search, category: $category, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id name slug description category avatarUrl location
+          memberCount
+          owner { username }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const MY_COMMUNITIES = gql`
+  query MyCommunities { myCommunities { id name slug avatarUrl memberCount } }
+`;
+
+export const CREATE_COMMUNITY = gql`
+  mutation CreateCommunity($input: CreateCommunityInput!) {
+    createCommunity(input: $input) { id slug }
+  }
+`;
+
+export const JOIN_COMMUNITY = gql`
+  mutation JoinCommunity($communityId: ID!, $inviteCode: String) {
+    joinCommunity(communityId: $communityId, inviteCode: $inviteCode) { id role }
+  }
+`;
+
+export const LEAVE_COMMUNITY = gql`
+  mutation LeaveCommunity($communityId: ID!) { leaveCommunity(communityId: $communityId) }
+`;
+
+export const UPDATE_COMMUNITY = gql`
+  mutation UpdateCommunity($id: ID!, $input: UpdateCommunityInput!) {
+    updateCommunity(id: $id, input: $input) {
+      id name slug description category visibility location
+    }
+  }
+`;
+
+export const DELETE_COMMUNITY = gql`
+  mutation DeleteCommunity($id: ID!) { deleteCommunity(id: $id) }
+`;
+
+export const GENERATE_INVITE_CODE = gql`
+  mutation GenerateInviteCode($communityId: ID!) {
+    generateInviteCode(communityId: $communityId) { id inviteCode }
+  }
+`;
+
+export const BAN_COMMUNITY_MEMBER = gql`
+  mutation BanCommunityMember($communityId: ID!, $userId: ID!, $reason: String) {
+    banCommunityMember(communityId: $communityId, userId: $userId, reason: $reason) {
+      id
+      status
+      role
+    }
+  }
+`;
+
+export const UNBAN_COMMUNITY_MEMBER = gql`
+  mutation UnbanCommunityMember($communityId: ID!, $userId: ID!) {
+    unbanCommunityMember(communityId: $communityId, userId: $userId) {
+      id
+      status
+      role
+    }
+  }
+`;
+
+export const REMOVE_COMMUNITY_MEMBER = gql`
+  mutation RemoveCommunityMember($communityId: ID!, $userId: ID!) {
+    removeCommunityMember(communityId: $communityId, userId: $userId)
+  }
+`;
+
+export const GET_COMMUNITY_MODERATION_LOGS = gql`
+  query CommunityModerationLogs($communityId: ID!, $action: String, $first: Int, $after: String) {
+    communityModerationLogs(communityId: $communityId, action: $action, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          action
+          reason
+          metadata
+          createdAt
+          moderator { id username profile { displayName avatarUrl } }
+          targetUser { id username profile { displayName avatarUrl } }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+// ─── Forum ───────────────────────────────────────────────────────────────────
+
+export const GET_FORUM_CATEGORIES = gql`
+  query ForumCategories($communityId: ID!) {
+    forumCategories(communityId: $communityId) {
+      id
+      name
+      description
+      slug
+      position
+      threadCount
+      latestThread {
+        id
+        title
+        lastPostAt
+        author { username }
+      }
+    }
+  }
+`;
+
+export const GET_FORUM_THREADS = gql`
+  query ForumThreads($categoryId: ID!, $first: Int, $after: String) {
+    forumThreads(categoryId: $categoryId, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          title
+          isPinned
+          isLocked
+          postCount
+          lastPostAt
+          createdAt
+          author { username profile { displayName avatarUrl } }
+          firstPost { body }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const GET_FORUM_THREAD = gql`
+  query ForumThread($id: ID!) {
+    forumThread(id: $id) {
+      id
+      title
+      isPinned
+      isLocked
+      postCount
+      lastPostAt
+      createdAt
+      author { username profile { displayName avatarUrl } }
+      category { id name slug communityId }
+    }
+  }
+`;
+
+export const GET_FORUM_POSTS = gql`
+  query ForumPosts($threadId: ID!, $first: Int, $after: String) {
+    forumPosts(threadId: $threadId, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          body
+          isDeleted
+          createdAt
+          updatedAt
+          author { username profile { displayName avatarUrl } }
+          replies {
+            id
+            body
+            isDeleted
+            createdAt
+            author { username profile { displayName avatarUrl } }
+          }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_FORUM_CATEGORY = gql`
+  mutation CreateForumCategory($communityId: ID!, $name: String!, $description: String, $slug: String) {
+    createForumCategory(communityId: $communityId, name: $name, description: $description, slug: $slug) {
+      id name slug description position threadCount
+    }
+  }
+`;
+
+export const UPDATE_FORUM_CATEGORY = gql`
+  mutation UpdateForumCategory($id: ID!, $name: String, $description: String, $position: Int) {
+    updateForumCategory(id: $id, name: $name, description: $description, position: $position) {
+      id name description position
+    }
+  }
+`;
+
+export const DELETE_FORUM_CATEGORY = gql`
+  mutation DeleteForumCategory($id: ID!) { deleteForumCategory(id: $id) }
+`;
+
+export const CREATE_FORUM_THREAD = gql`
+  mutation CreateForumThread($categoryId: ID!, $title: String!, $body: String!) {
+    createForumThread(categoryId: $categoryId, title: $title, body: $body) {
+      id title isPinned isLocked postCount createdAt
+      author { username }
+    }
+  }
+`;
+
+export const DELETE_FORUM_THREAD = gql`
+  mutation DeleteForumThread($id: ID!) { deleteForumThread(id: $id) }
+`;
+
+export const PIN_FORUM_THREAD = gql`
+  mutation PinForumThread($id: ID!, $pinned: Boolean!) {
+    pinForumThread(id: $id, pinned: $pinned) { id isPinned }
+  }
+`;
+
+export const LOCK_FORUM_THREAD = gql`
+  mutation LockForumThread($id: ID!, $locked: Boolean!) {
+    lockForumThread(id: $id, locked: $locked) { id isLocked }
+  }
+`;
+
+export const CREATE_FORUM_POST = gql`
+  mutation CreateForumPost($threadId: ID!, $body: String!, $parentPostId: ID) {
+    createForumPost(threadId: $threadId, body: $body, parentPostId: $parentPostId) {
+      id body isDeleted createdAt
+      author { username profile { displayName avatarUrl } }
+      replies { id body isDeleted createdAt author { username profile { displayName avatarUrl } } }
+    }
+  }
+`;
+
+export const UPDATE_FORUM_POST = gql`
+  mutation UpdateForumPost($id: ID!, $body: String!) {
+    updateForumPost(id: $id, body: $body) { id body }
+  }
+`;
+
+export const DELETE_FORUM_POST = gql`
+  mutation DeleteForumPost($id: ID!) { deleteForumPost(id: $id) }
+`;
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+
+export const GET_COMMUNITY_EVENTS = gql`
+  query GetCommunityEvents($communityId: ID!, $first: Int, $after: String, $includePast: Boolean) {
+    communityEvents(communityId: $communityId, first: $first, after: $after, includePast: $includePast) {
+      edges {
+        cursor
+        node {
+          id
+          title
+          description
+          location
+          startsAt
+          endsAt
+          maxAttendees
+          attendeeCount
+          isFull
+          myRsvp { id status }
+          organizer {
+            id
+            username
+            profile { displayName avatarUrl }
+          }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const GET_COMMUNITY_EVENT = gql`
+  query GetCommunityEvent($id: ID!) {
+    communityEvent(id: $id) {
+      id
+      communityId
+      title
+      description
+      location
+      startsAt
+      endsAt
+      maxAttendees
+      attendeeCount
+      isFull
+      myRsvp { id status }
+      organizer {
+        id
+        username
+        profile { displayName avatarUrl }
+      }
+    }
+  }
+`;
+
+export const CREATE_COMMUNITY_EVENT = gql`
+  mutation CreateCommunityEvent($communityId: ID!, $input: CreateCommunityEventInput!) {
+    createCommunityEvent(communityId: $communityId, input: $input) {
+      id title startsAt endsAt
+    }
+  }
+`;
+
+export const UPDATE_COMMUNITY_EVENT = gql`
+  mutation UpdateCommunityEvent($id: ID!, $input: UpdateCommunityEventInput!) {
+    updateCommunityEvent(id: $id, input: $input) {
+      id title description location startsAt endsAt maxAttendees
+    }
+  }
+`;
+
+export const DELETE_COMMUNITY_EVENT = gql`
+  mutation DeleteCommunityEvent($id: ID!) { deleteCommunityEvent(id: $id) }
+`;
+
+export const RSVP_EVENT = gql`
+  mutation RsvpEvent($eventId: ID!, $status: String!) {
+    rsvpEvent(eventId: $eventId, status: $status) { id status joinedAt }
+  }
+`;
+
+export const CANCEL_RSVP = gql`
+  mutation CancelRsvp($eventId: ID!) { cancelRsvp(eventId: $eventId) }
+`;
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const GET_NOTIFICATIONS = gql`
+  query GetNotifications($first: Int, $after: String, $unreadOnly: Boolean) {
+    notifications(first: $first, after: $after, unreadOnly: $unreadOnly) {
+      edges {
+        cursor
+        node {
+          id
+          type
+          title
+          body
+          data
+          isRead
+          createdAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const GET_UNREAD_COUNT = gql`
+  query GetUnreadCount {
+    unreadNotificationCount
+  }
+`;
+
+export const MARK_NOTIFICATION_READ = gql`
+  mutation MarkNotificationRead($id: ID!) {
+    markNotificationRead(id: $id) {
+      id
+      isRead
+    }
+  }
+`;
+
+export const MARK_ALL_NOTIFICATIONS_READ = gql`
+  mutation MarkAllNotificationsRead {
+    markAllNotificationsRead
+  }
+`;
+
+export const DELETE_NOTIFICATION = gql`
+  mutation DeleteNotification($id: ID!) {
+    deleteNotification(id: $id)
+  }
 `;

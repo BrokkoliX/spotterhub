@@ -606,6 +606,48 @@ export const communityFieldResolvers = {
     };
   },
 
+  // Community albums
+  albums: async (
+    parent: CommunityParent,
+    args: { first?: number; after?: string },
+    ctx: Context,
+  ) => {
+    const take = Math.min(args.first ?? 20, 50);
+    const where: Record<string, unknown> = { communityId: parent.id };
+
+    if (args.after) {
+      where.createdAt = { lt: decodeCursor(args.after) };
+    }
+
+    const [items, totalCount] = await Promise.all([
+      ctx.prisma.album.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: take + 1,
+        include: {
+          user: { include: { profile: true } },
+          coverPhoto: { include: { variants: true } },
+        },
+      }),
+      ctx.prisma.album.count({ where }),
+    ]);
+
+    const hasNextPage = items.length > take;
+    const edges = items.slice(0, take).map((album) => ({
+      cursor: encodeCursor(album.createdAt),
+      node: album,
+    }));
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      },
+      totalCount,
+    };
+  },
+
   // Hide invite code from non-admins
   inviteCode: async (parent: CommunityParent, _args: unknown, ctx: Context) => {
     if (!ctx.user) return null;

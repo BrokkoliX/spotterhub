@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { ADD_PHOTOS_TO_ALBUM, GET_PHOTOS } from '@/lib/queries';
+import { ADD_PHOTOS_TO_ALBUM, ADD_PHOTOS_TO_COMMUNITY_ALBUM, GET_PHOTOS } from '@/lib/queries';
 import type { PhotoData } from './PhotoCard';
 
 import styles from './AddPhotosModal.module.css';
@@ -17,6 +17,8 @@ interface AddPhotosModalProps {
   existingPhotoIds: Set<string>;
   onClose: () => void;
   onAdded: () => void;
+  /** If true, uses addPhotosToCommunityAlbum mutation and adjusts UI text. */
+  isCommunityAlbum?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ export function AddPhotosModal({
   existingPhotoIds,
   onClose,
   onAdded,
+  isCommunityAlbum = false,
 }: AddPhotosModalProps) {
   const { user } = useAuth();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -41,7 +44,9 @@ export function AddPhotosModal({
     pause: !user,
   });
 
-  const [addResult, addPhotos] = useMutation(ADD_PHOTOS_TO_ALBUM);
+  const [addResult, addPhotos] = useMutation(
+    isCommunityAlbum ? ADD_PHOTOS_TO_COMMUNITY_ALBUM : ADD_PHOTOS_TO_ALBUM,
+  );
 
   const connection = photosResult.data?.photos;
   const fetchedPhotos: PhotoData[] =
@@ -106,7 +111,9 @@ export function AddPhotosModal({
       }}
     >
       <div className={styles.modal}>
-        <h2 className={styles.title}>Add Photos to Album</h2>
+        <h2 className={styles.title}>
+          {isCommunityAlbum ? 'Add your photos to this album' : 'Add Photos to Album'}
+        </h2>
 
         {/* Loading */}
         {photosResult.fetching && allPhotos.length === 0 && (

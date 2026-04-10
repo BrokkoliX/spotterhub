@@ -1,6 +1,8 @@
 import gql from 'graphql-tag';
 
 export const typeDefs = gql`
+  scalar JSON
+
   type Query {
     """
     Health check — verifies the API is running and the database is reachable.
@@ -87,9 +89,113 @@ export const typeDefs = gql`
     airport(code: String!): Airport
 
     """
+    Fetch photos within a geographic bounding box.
+    Uses PostGIS for spatial query.
+    """
+    photosInBounds(
+      swLat: Float!
+      swLng: Float!
+      neLat: Float!
+      neLng: Float!
+      first: Int = 100
+    ): [PhotoMapMarker!]!
+
+    """
+    Fetch photos near a point within a radius (in meters).
+    Uses PostGIS ST_DWithin for spatial query.
+    """
+    photosNearby(
+      latitude: Float!
+      longitude: Float!
+      radiusMeters: Float = 5000
+      first: Int = 50
+    ): [PhotoMapMarker!]!
+
+    """
     Paginated comments for a photo. Returns top-level comments with nested replies.
     """
     comments(photoId: ID!, first: Int = 20, after: String): CommentConnection!
+
+    # ─── Admin Queries ─────────────────────────────────────────────────────
+
+    """
+    Dashboard statistics for admins. Requires admin or moderator role.
+    """
+    adminStats: AdminStats!
+
+    """
+    Paginated list of reports, optionally filtered by status.
+    Requires admin or moderator role.
+    """
+    adminReports(status: String, first: Int = 20, after: String): ReportConnection!
+
+    """
+    Paginated list of users for admin management.
+    Optionally filter by role or status, and search by username/email.
+    Requires admin or moderator role.
+    """
+    adminUsers(role: String, status: String, search: String, first: Int = 20, after: String): UserConnection!
+
+    """
+    Paginated list of photos filtered by moderation status.
+    Requires admin or moderator role.
+    """
+    adminPhotos(moderationStatus: String = "pending", first: Int = 20, after: String): PhotoConnection!
+
+    # ─── Community Queries ──────────────────────────────────────────────────
+
+    """
+    Find a community by its URL slug.
+    """
+    community(slug: String!): Community
+
+    """
+    Browse/discover communities with optional search, category filter, and pagination.
+    """
+    communities(search: String, category: String, first: Int = 20, after: String): CommunityConnection!
+
+    """
+    List communities the current user is a member of.
+    """
+    myCommunities: [Community!]!
+
+    """
+    Paginated moderation log for a community. Requires owner or admin role.
+    """
+    communityModerationLogs(communityId: ID!, action: String, first: Int = 20, after: String): CommunityModerationLogConnection!
+
+    # ─── Forum Queries ───────────────────────────────────────────────────────
+
+    """List all forum categories for a community, ordered by position."""
+    forumCategories(communityId: ID!): [ForumCategory!]!
+
+    """Fetch a single forum category by ID."""
+    forumCategory(id: ID!): ForumCategory
+
+    """Paginated list of threads in a category. Pinned threads appear first."""
+    forumThreads(categoryId: ID!, first: Int, after: String): ForumThreadConnection!
+
+    """Fetch a single forum thread by ID."""
+    forumThread(id: ID!): ForumThread
+
+    """Paginated top-level posts in a thread, oldest first."""
+    forumPosts(threadId: ID!, first: Int, after: String): ForumPostConnection!
+
+    # ─── Event Queries ───────────────────────────────────────────────────────
+
+    """List events for a community, ordered by startsAt asc. Defaults to upcoming only."""
+    communityEvents(communityId: ID!, first: Int = 20, after: String, includePast: Boolean): CommunityEventConnection!
+
+    """Fetch a single event by ID."""
+    communityEvent(id: ID!): CommunityEvent
+
+    # ─── Notification Queries ─────────────────────────────────────────────
+
+    """Paginated list of the current user's notifications, newest first."""
+    notifications(first: Int, after: String, unreadOnly: Boolean): NotificationConnection!
+
+    """Count of unread notifications for the current user. Returns 0 if unauthenticated."""
+    unreadNotificationCount: Int!
   }
 
   type Mutation {
@@ -230,10 +336,180 @@ export const typeDefs = gql`
     removePhotosFromAlbum(albumId: ID!, photoIds: [ID!]!): Album!
 
     """
+    Create a community-scoped album. Requires community owner or admin role.
+    """
+    createCommunityAlbum(communityId: ID!, input: CreateAlbumInput!): Album!
+
+    """
+    Add photos to a community album. Any active community member can add
+    their own previously-uploaded photos.
+    """
+    addPhotosToCommunityAlbum(albumId: ID!, photoIds: [ID!]!): Album!
+
+    """
+    Remove photos from a community album. The member who added the photo
+    or a community admin can remove it.
+    """
+    removePhotosFromCommunityAlbum(albumId: ID!, photoIds: [ID!]!): Album!
+
+    """
     Report content (photo, comment, profile, or album) for moderation review.
     Duplicate reports on the same target are prevented.
     """
     createReport(input: CreateReportInput!): Report!
+
+    """
+    Create a spotting location near an airport. Requires authentication.
+    """
+    createSpottingLocation(input: CreateSpottingLocationInput!): SpottingLocation!
+
+    """
+    Delete a spotting location. Only the creator can delete.
+    """
+    deleteSpottingLocation(id: ID!): Boolean!
+
+    # ─── Admin Mutations ───────────────────────────────────────────────────
+
+    """
+    Resolve or dismiss a report. Requires admin or moderator role.
+    """
+    adminResolveReport(id: ID!, action: String!): Report!
+
+    """
+    Update a user's account status (active, suspended, banned).
+    Requires admin role.
+    """
+    adminUpdateUserStatus(userId: ID!, status: String!): User!
+
+    """
+    Update a user's role (user, moderator, admin).
+    Requires admin role.
+    """
+    adminUpdateUserRole(userId: ID!, role: String!): User!
+
+    """
+    Update a photo's moderation status (approved, rejected, pending, review).
+    Requires admin or moderator role.
+    """
+    adminUpdatePhotoModeration(photoId: ID!, status: String!): Photo!
+
+    # ─── Community Mutations ────────────────────────────────────────────────
+
+    """
+    Create a new community. The creator automatically becomes the owner.
+    """
+    createCommunity(input: CreateCommunityInput!): Community!
+
+    """
+    Update a community's details. Requires owner or community admin role.
+    """
+    updateCommunity(id: ID!, input: UpdateCommunityInput!): Community!
+
+    """
+    Delete a community. Requires owner role.
+    """
+    deleteCommunity(id: ID!): Boolean!
+
+    """
+    Join a public community, or join an invite-only community with a valid invite code.
+    """
+    joinCommunity(communityId: ID!, inviteCode: String): CommunityMember!
+
+    """
+    Leave a community. Owners cannot leave (must transfer ownership or delete).
+    """
+    leaveCommunity(communityId: ID!): Boolean!
+
+    """
+    Remove a member from a community. Requires owner, admin, or moderator role.
+    Cannot remove members with equal or higher roles.
+    """
+    removeCommunityMember(communityId: ID!, userId: ID!): Boolean!
+
+    """
+    Update a member's role within a community.
+    Requires owner or admin role. Cannot promote above own role.
+    """
+    updateCommunityMemberRole(communityId: ID!, userId: ID!, role: String!): CommunityMember!
+
+    """
+    Generate or regenerate the invite code for an invite-only community.
+    Requires owner or admin role.
+    """
+    generateInviteCode(communityId: ID!): Community!
+
+    """
+    Ban a member from the community. Sets their status to banned.
+    They cannot rejoin until unbanned. Requires owner or admin role.
+    Cannot ban members with equal or higher role.
+    """
+    banCommunityMember(communityId: ID!, userId: ID!, reason: String): CommunityMember!
+
+    """
+    Unban a previously banned member. Resets status to active.
+    Requires owner or admin role.
+    """
+    unbanCommunityMember(communityId: ID!, userId: ID!): CommunityMember!
+
+    # ─── Forum Mutations ────────────────────────────────────────────────────
+
+    """Create a forum category in a community. Requires owner or admin role."""
+    createForumCategory(communityId: ID!, name: String!, description: String, slug: String): ForumCategory!
+
+    """Update a forum category. Requires owner or admin role."""
+    updateForumCategory(id: ID!, name: String, description: String, position: Int): ForumCategory!
+
+    """Delete a forum category and all its threads. Requires owner or admin role."""
+    deleteForumCategory(id: ID!): Boolean!
+
+    """Create a new thread in a forum category. Any active community member."""
+    createForumThread(categoryId: ID!, title: String!, body: String!): ForumThread!
+
+    """Delete a forum thread. Requires thread authorship or moderator+ role."""
+    deleteForumThread(id: ID!): Boolean!
+
+    """Pin or unpin a thread. Requires moderator+ role."""
+    pinForumThread(id: ID!, pinned: Boolean!): ForumThread!
+
+    """Lock or unlock a thread. Requires moderator+ role."""
+    lockForumThread(id: ID!, locked: Boolean!): ForumThread!
+
+    """Post a reply in a thread. Any active community member."""
+    createForumPost(threadId: ID!, body: String!, parentPostId: ID): ForumPost!
+
+    """Edit a post body. Author only, within 24 hours of creation."""
+    updateForumPost(id: ID!, body: String!): ForumPost!
+
+    """Soft-delete a post. Author or moderator+."""
+    deleteForumPost(id: ID!): Boolean!
+
+    # ─── Event Mutations ──────────────────────────────────────────────────
+
+    """Create an event in a community. Requires owner or admin role."""
+    createCommunityEvent(communityId: ID!, input: CreateCommunityEventInput!): CommunityEvent!
+
+    """Update an event. Requires owner/admin or the event organizer."""
+    updateCommunityEvent(id: ID!, input: UpdateCommunityEventInput!): CommunityEvent!
+
+    """Delete an event. Requires owner/admin or the event organizer."""
+    deleteCommunityEvent(id: ID!): Boolean!
+
+    """RSVP to an event. status: going | maybe | not_going."""
+    rsvpEvent(eventId: ID!, status: String!): EventAttendee!
+
+    """Cancel your RSVP (remove the attendance record)."""
+    cancelRsvp(eventId: ID!): Boolean!
+
+    # ─── Notification Mutations ───────────────────────────────────────────
+
+    """Mark a single notification as read. Must be the notification owner."""
+    markNotificationRead(id: ID!): Notification!
+
+    """Mark all of the current user's notifications as read."""
+    markAllNotificationsRead: Boolean!
+
+    """Delete a notification. Must be the notification owner."""
+    deleteNotification(id: ID!): Boolean!
   }
 
   # ─── Auth Types ──────────────────────────────────────────────────────────
@@ -364,6 +640,8 @@ export const typeDefs = gql`
     variants: [PhotoVariant!]!
     """User-applied tags."""
     tags: [String!]!
+    """Photo location with privacy-filtered coordinates."""
+    location: PhotoLocation
     """Number of likes on this photo."""
     likeCount: Int!
     """Number of comments on this photo."""
@@ -423,6 +701,12 @@ export const typeDefs = gql`
     takenAt: String
     """Tags to apply to the photo."""
     tags: [String!]
+    """Latitude of where the photo was taken."""
+    latitude: Float
+    """Longitude of where the photo was taken."""
+    longitude: Float
+    """Location privacy mode: exact (default), approximate, or hidden."""
+    locationPrivacy: String
   }
 
   input UpdatePhotoInput {
@@ -432,6 +716,9 @@ export const typeDefs = gql`
     airportCode: String
     takenAt: String
     tags: [String!]
+    latitude: Float
+    longitude: Float
+    locationPrivacy: String
   }
 
   # ─── Pagination ──────────────────────────────────────────────────────────
@@ -516,7 +803,36 @@ export const typeDefs = gql`
     description: String
     """Current status of the report."""
     status: String!
+    """The user who submitted the report."""
+    reporter: User!
+    """The admin/moderator who reviewed the report."""
+    reviewer: User
     createdAt: String!
+    """When the report was resolved."""
+    resolvedAt: String
+  }
+
+  type ReportEdge {
+    cursor: String!
+    node: Report!
+  }
+
+  type ReportConnection {
+    edges: [ReportEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  # ─── Admin Types ──────────────────────────────────────────────────────
+
+  """Dashboard statistics for the admin panel."""
+  type AdminStats {
+    totalUsers: Int!
+    totalPhotos: Int!
+    pendingPhotos: Int!
+    openReports: Int!
+    totalAirports: Int!
+    totalSpottingLocations: Int!
   }
 
   input CreateReportInput {
@@ -561,10 +877,15 @@ export const typeDefs = gql`
     isPublic: Boolean!
     """The user who created this album."""
     user: User!
+    """Community this album belongs to, if any."""
+    communityId: ID
+    community: Community
     """Optional cover photo for the album."""
     coverPhoto: Photo
     """Total number of photos in this album."""
     photoCount: Int!
+    """Photos in this album (junction-table based for community albums)."""
+    photos(first: Int = 20, after: String): PhotoConnection!
     createdAt: String!
     updatedAt: String!
   }
@@ -631,6 +952,335 @@ export const typeDefs = gql`
     latitude: Float!
     longitude: Float!
     createdBy: User!
+  }
+
+  """Location data for a photo, with privacy-filtered coordinates."""
+  type PhotoLocation {
+    id: ID!
+    """Display latitude (may be jittered based on privacy mode)."""
+    latitude: Float!
+    """Display longitude (may be jittered based on privacy mode)."""
+    longitude: Float!
+    """Privacy mode: exact, approximate, or hidden."""
+    privacyMode: String!
+    """Associated airport, if any."""
+    airport: Airport
+    """Associated spotting location, if any."""
+    spottingLocation: SpottingLocation
+  }
+
+  """Lightweight photo data for map markers."""
+  type PhotoMapMarker {
+    id: ID!
+    latitude: Float!
+    longitude: Float!
+    thumbnailUrl: String
+    caption: String
+  }
+
+  input CreateSpottingLocationInput {
+    """Name of the spotting location."""
+    name: String!
+    """Description of the location."""
+    description: String
+    """Access notes (parking, public transit, etc.)."""
+    accessNotes: String
+    """Latitude of the spotting location."""
+    latitude: Float!
+    """Longitude of the spotting location."""
+    longitude: Float!
+    """Airport ID this location is near."""
+    airportId: ID!
+  }
+
+  # ─── Community Types ──────────────────────────────────────────────────────
+
+  """A spotting community that users can join and participate in."""
+  type Community {
+    id: ID!
+    name: String!
+    slug: String!
+    description: String
+    bannerUrl: String
+    avatarUrl: String
+    category: String
+    visibility: String!
+    inviteCode: String
+    location: String
+    createdAt: String!
+    updatedAt: String!
+
+    """The community owner."""
+    owner: User!
+
+    """Total number of members."""
+    memberCount: Int!
+
+    """Current user's membership, if any."""
+    myMembership: CommunityMember
+
+    """Paginated list of community members."""
+    members(first: Int = 20, after: String): CommunityMemberConnection!
+
+    """Recent photos from community members."""
+    photos(first: Int = 20, after: String): PhotoConnection!
+
+    """Community albums. Only present for community-scoped albums."""
+    albums(first: Int = 20, after: String): AlbumConnection!
+  }
+
+  """A member of a community with their role and status."""
+  type CommunityMember {
+    id: ID!
+    role: String!
+    status: String!
+    joinedAt: String!
+    user: User!
+    community: Community!
+  }
+
+  type CommunityEdge {
+    cursor: String!
+    node: Community!
+  }
+
+  type CommunityConnection {
+    edges: [CommunityEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type CommunityMemberEdge {
+    cursor: String!
+    node: CommunityMember!
+  }
+
+  type CommunityMemberConnection {
+    edges: [CommunityMemberEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  """A record of a moderation action taken in a community."""
+  type CommunityModerationLog {
+    id: ID!
+    """The community where the action was taken."""
+    community: Community!
+    """The moderator who performed the action."""
+    moderator: User!
+    """The user who was targeted by the action."""
+    targetUser: User!
+    """The action taken: ban | unban | kick | pin_thread | unpin_thread | lock_thread | unlock_thread | delete_post"""
+    action: String!
+    """Optional reason for the action."""
+    reason: String
+    """JSON metadata (e.g. threadId for forum actions)."""
+    metadata: JSON
+    createdAt: String!
+  }
+
+  type CommunityModerationLogEdge {
+    cursor: String!
+    node: CommunityModerationLog!
+  }
+
+  type CommunityModerationLogConnection {
+    edges: [CommunityModerationLogEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  input CreateCommunityInput {
+    """Community name (3–100 characters)."""
+    name: String!
+    """URL-friendly slug (3–50 characters, lowercase alphanumeric + hyphens)."""
+    slug: String!
+    """Description of the community."""
+    description: String
+    """Community category (e.g. 'military', 'airliners', 'general-aviation')."""
+    category: String
+    """Visibility: 'public' or 'invite_only'."""
+    visibility: String
+    """Geographic location or region."""
+    location: String
+  }
+
+  input UpdateCommunityInput {
+    name: String
+    slug: String
+    description: String
+    category: String
+    visibility: String
+    location: String
+    bannerUrl: String
+    avatarUrl: String
+  }
+
+  # ─── Forum Types ─────────────────────────────────────────────────────────
+
+  """A discussion category within a community forum."""
+  type ForumCategory {
+    id: ID!
+    communityId: ID!
+    name: String!
+    description: String
+    slug: String!
+    position: Int!
+    createdAt: String!
+    updatedAt: String!
+    """Number of threads in this category."""
+    threadCount: Int!
+    """Most recently active thread."""
+    latestThread: ForumThread
+  }
+
+  """A discussion thread within a forum category."""
+  type ForumThread {
+    id: ID!
+    categoryId: ID!
+    title: String!
+    isPinned: Boolean!
+    isLocked: Boolean!
+    postCount: Int!
+    createdAt: String!
+    updatedAt: String!
+    lastPostAt: String!
+    author: User!
+    category: ForumCategory!
+    """The opening post of the thread."""
+    firstPost: ForumPost
+  }
+
+  """A post (reply) within a forum thread."""
+  type ForumPost {
+    id: ID!
+    threadId: ID!
+    parentPostId: ID
+    body: String!
+    isDeleted: Boolean!
+    createdAt: String!
+    updatedAt: String!
+    author: User!
+    """Direct replies to this post (max 50)."""
+    replies: [ForumPost!]!
+  }
+
+  type ForumThreadEdge {
+    cursor: String!
+    node: ForumThread!
+  }
+
+  type ForumThreadConnection {
+    edges: [ForumThreadEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type ForumPostEdge {
+    cursor: String!
+    node: ForumPost!
+  }
+
+  type ForumPostConnection {
+    edges: [ForumPostEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  # ─── Event Types ─────────────────────────────────────────────────────────
+
+  """A community-scoped event with optional RSVP and capacity limit."""
+  type CommunityEvent {
+    id: ID!
+    communityId: ID!
+    """The user who created the event."""
+    organizer: User!
+    title: String!
+    description: String
+    location: String
+    """ISO datetime string."""
+    startsAt: String!
+    """ISO datetime string, optional end time."""
+    endsAt: String
+    """Maximum number of attendees. Null means unlimited."""
+    maxAttendees: Int
+    coverUrl: String
+    """Number of attendees with status 'going'."""
+    attendeeCount: Int!
+    """The current user's RSVP, if any."""
+    myRsvp: EventAttendee
+    """Whether the event is at capacity."""
+    isFull: Boolean!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  """An RSVP record linking a user to an event."""
+  type EventAttendee {
+    id: ID!
+    eventId: ID!
+    user: User!
+    """going | maybe | not_going"""
+    status: String!
+    joinedAt: String!
+  }
+
+  type CommunityEventEdge {
+    cursor: String!
+    node: CommunityEvent!
+  }
+
+  type CommunityEventConnection {
+    edges: [CommunityEventEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  input CreateCommunityEventInput {
+    title: String!
+    description: String
+    location: String
+    """ISO datetime string."""
+    startsAt: String!
+    """ISO datetime string, optional."""
+    endsAt: String
+    maxAttendees: Int
+    coverUrl: String
+  }
+
+  input UpdateCommunityEventInput {
+    title: String
+    description: String
+    location: String
+    startsAt: String
+    endsAt: String
+    maxAttendees: Int
+    coverUrl: String
+  }
+
+  # ─── Notifications ───────────────────────────────────────────────────────
+
+  """An in-app notification for a user."""
+  type Notification {
+    id: ID!
+    """Notification type: like | comment | follow | mention | moderation | system | community_join | community_event"""
+    type: String!
+    title: String!
+    body: String
+    """JSON payload with context-specific data (e.g. photoId, communityId)."""
+    data: JSON
+    isRead: Boolean!
+    createdAt: String!
+  }
+
+  type NotificationEdge {
+    cursor: String!
+    node: Notification!
+  }
+
+  type NotificationConnection {
+    edges: [NotificationEdge!]!
+    pageInfo: PageInfo!
   }
 
   # ─── Health ──────────────────────────────────────────────────────────────

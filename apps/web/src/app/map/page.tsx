@@ -5,8 +5,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from 'urql';
+import Supercluster from 'supercluster';
 
-import { GET_AIRPORTS } from '@/lib/queries';
+import { GET_AIRPORTS, PHOTOS_IN_BOUNDS } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -24,6 +25,20 @@ interface AirportData {
   photoCount: number;
 }
 
+interface PhotoMarkerData {
+  id: string;
+  latitude: number;
+  longitude: number;
+  thumbnailUrl?: string | null;
+  caption?: string | null;
+}
+
+type PhotoPointProps = {
+  photoId: string;
+  thumbnailUrl?: string | null;
+  caption?: string | null;
+};
+
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -31,9 +46,23 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 export default function MapPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const clusterRef = useRef<Supercluster<PhotoPointProps> | null>(null);
+  const photoMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
+  const [bounds, setBounds] = useState<{
+    swLat: number;
+    swLng: number;
+    neLat: number;
+    neLng: number;
+  } | null>(null);
 
   const [airportsResult] = useQuery({ query: GET_AIRPORTS });
+
+  const [photosResult] = useQuery({
+    query: PHOTOS_IN_BOUNDS,
+    variables: bounds ? { ...bounds, first: 200 } : undefined,
+    pause: !bounds,
+  });
 
   // ─── Initialize Map ─────────────────────────────────────────────────────
 
@@ -54,6 +83,11 @@ export default function MapPage() {
 
     map.on('load', () => {
       setMapReady(true);
+      updateBounds(map);
+    });
+
+    map.on('moveend', () => {
+      updateBounds(map);
     });
 
     mapRef.current = map;
@@ -64,9 +98,20 @@ export default function MapPage() {
     };
   }, []);
 
+  const updateBounds = (map: mapboxgl.Map) => {
+    const b = map.getBounds();
+    if (!b) return;
+    setBounds({
+      swLat: b.getSouthWest().lat,
+      swLng: b.getSouthWest().lng,
+      neLat: b.getNorthEast().lat,
+      neLng: b.getNorthEast().lng,
+    });
+  };
+
   // ─── Add Airport Markers ────────────────────────────────────────────────
 
-  const addMarkers = useCallback(
+  const addAirportMarkers = useCallback(
     (airports: AirportData[]) => {
       const map = mapRef.current;
       if (!map) return;
@@ -104,9 +149,131 @@ export default function MapPage() {
 
   useEffect(() => {
     if (mapReady && airportsResult.data?.airports) {
-      addMarkers(airportsResult.data.airports);
+      addAirportMarkers(airportsResult.data.airports);
     }
-  }, [mapReady, airportsResult.data, addMarkers]);
+  }, [mapReady, airportsResult.data, addAirportMarkers]);
+
+  // ─── Photo Markers with Clustering ─────────────────────────────────────
+
+  const renderPhotoMarkers = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !clusterRef.current) return;
+
+    // Clear existing photo markers
+    for (const m of photoMarkersRef.current) {
+      m.remove();
+    }
+    photoMarkersRef.current = [];
+
+    const zoom = Math.floor(map.getZoom());
+    const b = map.getBounds();
+    if (!b) return;
+    const clusters = clusterRef.current.getClusters(
+      [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
+      zoom,
+    );
+
+    for (const feature of clusters) {
+      const [lng, lat] = feature.geometry.coordinates;
+      const props = feature.properties as any;
+
+      if (props.cluster) {
+        // Cluster marker
+        const count = props.point_count as number;
+        const el = document.createElement('div');
+        const size = count < 10 ? 32 : count < 50 ? 40 : 48;
+        el.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:#f59e0b;border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:${size < 40 ? 12 : 14}px;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.3);`;
+        el.textContent = String(count);
+        el.title = `${count} photos`;
+
+        el.addEventListener('click', () => {
+          const clusterId = props.cluster_id;
+          const expansionZoom = clusterRef.current!.getClusterExpansionZoom(clusterId);
+          map.flyTo({ center: [lng, lat], zoom: expansionZoom });
+        });
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map);
+        photoMarkersRef.current.push(marker);
+      } else {
+        // Single photo marker
+        const el = document.createElement('div');
+        if (props.thumbnailUrl) {
+          el.style.cssText =
+            'width:36px;height:36px;border-radius:4px;border:2px solid #f59e0b;cursor:pointer;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+          const img = document.createElement('img');
+          img.src = props.thumbnailUrl;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+          img.alt = props.caption ?? 'Photo';
+          el.appendChild(img);
+        } else {
+          el.style.cssText =
+            'width:28px;height:28px;border-radius:50%;background:#f59e0b;border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+          el.textContent = '📷';
+        }
+
+        const popup = new mapboxgl.Popup({ offset: 20, maxWidth: '220px' }).setHTML(
+          `<div style="font-family:system-ui,sans-serif;">
+            ${props.thumbnailUrl ? `<img src="${props.thumbnailUrl}" style="width:100%;border-radius:4px;margin-bottom:6px;" alt="" />` : ''}
+            ${props.caption ? `<div style="font-size:12px;margin-bottom:6px;">${props.caption}</div>` : ''}
+            <a href="/photos/${props.photoId}" style="display:inline-block;padding:5px 12px;background:#f59e0b;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;font-weight:500;">View Photo</a>
+          </div>`,
+        );
+
+        const marker = new mapboxgl.Marker(el)
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+        photoMarkersRef.current.push(marker);
+      }
+    }
+  }, []);
+
+  // Load photo data into Supercluster when photos change
+  useEffect(() => {
+    const photos: PhotoMarkerData[] = photosResult.data?.photosInBounds ?? [];
+    if (photos.length === 0) {
+      // Clear markers if no photos
+      for (const m of photoMarkersRef.current) {
+        m.remove();
+      }
+      photoMarkersRef.current = [];
+      return;
+    }
+
+    const points: Supercluster.PointFeature<PhotoPointProps>[] = photos.map((p) => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [p.longitude, p.latitude] },
+      properties: {
+        photoId: p.id,
+        thumbnailUrl: p.thumbnailUrl,
+        caption: p.caption,
+      },
+    }));
+
+    const cluster = new Supercluster<PhotoPointProps>({
+      radius: 60,
+      maxZoom: 18,
+    });
+    cluster.load(points);
+    clusterRef.current = cluster;
+
+    renderPhotoMarkers();
+  }, [photosResult.data, renderPhotoMarkers]);
+
+  // Re-render photo markers on zoom/move
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const onZoomEnd = () => renderPhotoMarkers();
+    map.on('zoomend', onZoomEnd);
+
+    return () => {
+      map.off('zoomend', onZoomEnd);
+    };
+  }, [renderPhotoMarkers]);
 
   // ─── No Token Guard ────────────────────────────────────────────────────
 

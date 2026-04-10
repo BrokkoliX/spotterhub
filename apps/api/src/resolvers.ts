@@ -32,6 +32,11 @@ import {
   communityQueryResolvers,
 } from './resolvers/communityResolvers.js';
 import {
+  communityModerationLogFieldResolvers,
+  communityModerationMutationResolvers,
+  communityModerationQueryResolvers,
+} from './resolvers/communityModerationResolvers.js';
+import {
   forumCategoryFieldResolvers,
   forumMutationResolvers,
   forumPostFieldResolvers,
@@ -111,6 +116,7 @@ export const resolvers = {
     ...locationQueryResolvers,
     ...adminQueryResolvers,
     ...communityQueryResolvers,
+    ...communityModerationQueryResolvers,
     ...forumQueryResolvers,
     ...eventQueryResolvers,
     ...notificationQueryResolvers,
@@ -128,6 +134,7 @@ export const resolvers = {
     ...spottingLocationMutationResolvers,
     ...adminMutationResolvers,
     ...communityMutationResolvers,
+    ...communityModerationMutationResolvers,
     ...forumMutationResolvers,
     ...eventMutationResolvers,
     ...notificationMutationResolvers,
@@ -155,6 +162,8 @@ export const resolvers = {
   Community: communityFieldResolvers,
 
   CommunityMember: communityMemberFieldResolvers,
+
+  CommunityModerationLog: communityModerationLogFieldResolvers,
 
   ForumCategory: forumCategoryFieldResolvers,
 

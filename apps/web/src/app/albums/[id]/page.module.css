@@ -144,6 +144,61 @@
   gap: 8px;
 }
 
+/* ─── Cover Photo Picker ─────────────────────────────────────────────────── */
+
+.coverLabel {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.coverGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding: 2px;
+}
+
+.coverOption {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.coverOption:hover {
+  opacity: 0.85;
+}
+
+.coverOptionSelected {
+  border-color: var(--color-accent);
+}
+
+.coverOptionImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverOptionNone {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-input);
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+}
+
 /* ─── Loading / Errors ───────────────────────────────────────────────────── */
 
 .loading {

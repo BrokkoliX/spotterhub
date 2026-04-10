@@ -43,6 +43,9 @@ export default function UploadPage() {
   const [airportCode, setAirportCode] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [locationPrivacy, setLocationPrivacy] = useState('exact');
 
   // ── File Selection ──────────────────────────────────────────────────────
 
@@ -171,6 +174,9 @@ export default function UploadPage() {
         airline: airline || undefined,
         airportCode: airportCode || undefined,
         tags: tags.length > 0 ? tags : undefined,
+        latitude: latitude ? parseFloat(latitude) : undefined,
+        longitude: longitude ? parseFloat(longitude) : undefined,
+        locationPrivacy: locationPrivacy !== 'exact' ? locationPrivacy : undefined,
       },
     });
 
@@ -231,6 +237,9 @@ export default function UploadPage() {
                   setAirline('');
                   setAirportCode('');
                   setTags([]);
+                  setLatitude('');
+                  setLongitude('');
+                  setLocationPrivacy('exact');
                   setCreatedPhotoId(null);
                 }}
                 className="btn btn-secondary btn-lg"
@@ -378,6 +387,50 @@ export default function UploadPage() {
                     maxLength={4}
                   />
                 </div>
+
+                <div className="field">
+                  <label className="label">📍 Location</label>
+                  <div className={styles.locationRow}>
+                    <input
+                      type="number"
+                      className="input"
+                      value={latitude}
+                      onChange={(e) => setLatitude(e.target.value)}
+                      placeholder="Latitude"
+                      step="any"
+                      min={-90}
+                      max={90}
+                    />
+                    <input
+                      type="number"
+                      className="input"
+                      value={longitude}
+                      onChange={(e) => setLongitude(e.target.value)}
+                      placeholder="Longitude"
+                      step="any"
+                      min={-180}
+                      max={180}
+                    />
+                  </div>
+                </div>
+
+                {(latitude || longitude) && (
+                  <div className="field">
+                    <label htmlFor="locationPrivacy" className="label">
+                      Location Privacy
+                    </label>
+                    <select
+                      id="locationPrivacy"
+                      className="input"
+                      value={locationPrivacy}
+                      onChange={(e) => setLocationPrivacy(e.target.value)}
+                    >
+                      <option value="exact">Exact</option>
+                      <option value="approximate">Approximate (~1 km offset)</option>
+                      <option value="hidden">Hidden</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="field">
                   <label htmlFor="tags" className="label">

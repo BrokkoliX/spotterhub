@@ -37,6 +37,7 @@ export default function AlbumDetailPage({
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editPublic, setEditPublic] = useState(true);
+  const [editCoverPhotoId, setEditCoverPhotoId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [allPhotos, setAllPhotos] = useState<PhotoData[]>([]);
 
@@ -62,6 +63,13 @@ export default function AlbumDetailPage({
       : connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
 
   const isOwner = user?.username === album?.user?.username;
+  const isCommunityAlbum = !!album?.communityId;
+  const myCommunityRole = album?.myMembership?.role;
+  const isCommunityAdmin = myCommunityRole === 'owner' || myCommunityRole === 'admin';
+  const canAddPhotos = isCommunityAlbum
+    ? isCommunityAdmin || !!myCommunityRole // any active member
+    : isOwner;
+  const canManageAlbum = isCommunityAlbum ? isCommunityAdmin : isOwner;
 
   const handleLoadMore = useCallback(() => {
     if (connection?.pageInfo?.endCursor) {
@@ -83,6 +91,7 @@ export default function AlbumDetailPage({
     setEditTitle(album?.title ?? '');
     setEditDesc(album?.description ?? '');
     setEditPublic(album?.isPublic ?? true);
+    setEditCoverPhotoId(album?.coverPhoto?.id ?? null);
     setShowEdit(true);
   };
 
@@ -94,6 +103,7 @@ export default function AlbumDetailPage({
         title: editTitle.trim(),
         description: editDesc.trim() || null,
         isPublic: editPublic,
+        coverPhotoId: editCoverPhotoId,
       },
     });
     setShowEdit(false);
@@ -164,7 +174,7 @@ export default function AlbumDetailPage({
                 )}
               </h1>
             </div>
-            {isOwner && (
+            {canAddPhotos && (
               <div className={styles.ownerActions}>
                 <button
                   className="btn btn-primary"
@@ -172,6 +182,10 @@ export default function AlbumDetailPage({
                 >
                   + Add Photos
                 </button>
+              </div>
+            )}
+            {canManageAlbum && (
+              <div className={styles.ownerActions}>
                 <button className="btn btn-secondary" onClick={openEdit}>
                   Edit
                 </button>
@@ -190,12 +204,29 @@ export default function AlbumDetailPage({
           )}
 
           <div className={styles.albumMeta}>
-            <span>
-              by{' '}
-              <Link href={`/u/${album.user.username}/photos`}>
-                {displayName}
-              </Link>
-            </span>
+            {isCommunityAlbum && album.community ? (
+              <>
+                <span>
+                  Community:{' '}
+                  <Link href={`/communities/${album.community.slug}`}>
+                    {album.community.name}
+                  </Link>
+                </span>
+                <span>
+                  created by{' '}
+                  <Link href={`/u/${album.user.username}/photos`}>
+                    {displayName}
+                  </Link>
+                </span>
+              </>
+            ) : (
+              <span>
+                by{' '}
+                <Link href={`/u/${album.user.username}/photos`}>
+                  {displayName}
+                </Link>
+              </span>
+            )}
             <span>
               📷 {album.photoCount}{' '}
               {album.photoCount === 1 ? 'photo' : 'photos'}
@@ -244,6 +275,61 @@ export default function AlbumDetailPage({
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
                 />
+              </div>
+
+              {/* Cover Photo */}
+              <div style={{ marginBottom: 12 }}>
+                <span className={styles.coverLabel}>Cover Photo</span>
+                {photos.length > 0 ? (
+                  <div className={styles.coverGrid}>
+                    <div
+                      className={`${styles.coverOption} ${editCoverPhotoId === null ? styles.coverOptionSelected : ''}`}
+                      onClick={() => setEditCoverPhotoId(null)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setEditCoverPhotoId(null);
+                        }
+                      }}
+                    >
+                      <div className={styles.coverOptionNone}>None</div>
+                    </div>
+                    {photos.map((photo: PhotoData) => {
+                      const thumb = photo.variants?.find(
+                        (v: { variantType: string }) => v.variantType === 'thumbnail',
+                      );
+                      const imgUrl = thumb?.url ?? photo.originalUrl;
+                      return (
+                        <div
+                          key={photo.id}
+                          className={`${styles.coverOption} ${editCoverPhotoId === photo.id ? styles.coverOptionSelected : ''}`}
+                          onClick={() => setEditCoverPhotoId(photo.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setEditCoverPhotoId(photo.id);
+                            }
+                          }}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={photo.caption ?? ''}
+                            className={styles.coverOptionImage}
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                    Add photos to the album to select a cover
+                  </p>
+                )}
               </div>
 
               <label className={styles.checkboxRow}>
@@ -316,6 +402,7 @@ export default function AlbumDetailPage({
             }
             onClose={() => setShowAddPhotos(false)}
             onAdded={handlePhotosAdded}
+            isCommunityAlbum={isCommunityAlbum}
           />
         )}
       </div>

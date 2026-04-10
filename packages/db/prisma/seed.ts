@@ -127,15 +127,15 @@ async function main() {
   // ─── Sample Follow Relationships ───────────────────────────────────────
 
   await prisma.follow.upsert({
-    where: { followerId_followingId: { followerId: alice.id, followingId: bob.id } },
+    where: { followerId_targetType_followingId: { followerId: alice.id, targetType: 'user', followingId: bob.id } },
     update: {},
-    create: { followerId: alice.id, followingId: bob.id },
+    create: { followerId: alice.id, targetType: 'user', followingId: bob.id },
   });
 
   await prisma.follow.upsert({
-    where: { followerId_followingId: { followerId: bob.id, followingId: alice.id } },
+    where: { followerId_targetType_followingId: { followerId: bob.id, targetType: 'user', followingId: alice.id } },
     update: {},
-    create: { followerId: bob.id, followingId: alice.id },
+    create: { followerId: bob.id, targetType: 'user', followingId: alice.id },
   });
 
   console.log(`  ✅ Follows: alice ↔ bob`);

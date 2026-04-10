@@ -166,7 +166,20 @@ export default function UserPhotosPage({
           </div>
         </div>
 
-        <p className={styles.sectionTitle}>Photos</p>
+        <div className={styles.tabs}>
+          <Link
+            href={`/u/${username}/photos`}
+            className={`${styles.tab} ${styles.tabActive}`}
+          >
+            Photos
+          </Link>
+          <Link
+            href={`/u/${username}/albums`}
+            className={styles.tab}
+          >
+            Albums
+          </Link>
+        </div>
 
         <PhotoGrid
           photos={photos}

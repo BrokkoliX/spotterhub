@@ -173,3 +173,9 @@
   font-size: 1.125rem;
   margin-bottom: 16px;
 }
+
+.locationRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}

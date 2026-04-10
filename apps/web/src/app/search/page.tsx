@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useState } from 'react';
 import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
@@ -31,8 +32,18 @@ const PAGE_SIZE = 20;
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
-  const [inputValue, setInputValue] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  return (
+    <Suspense fallback={<div style={{ padding: '48px 0', textAlign: 'center' }}>Loading…</div>}>
+      <SearchPageInner />
+    </Suspense>
+  );
+}
+
+function SearchPageInner() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') ?? '';
+  const [inputValue, setInputValue] = useState(initialQuery);
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState<Tab>('photos');
   const [photosCursor, setPhotosCursor] = useState<string | null>(null);
   const [usersCursor, setUsersCursor] = useState<string | null>(null);

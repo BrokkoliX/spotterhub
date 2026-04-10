@@ -602,3 +602,382 @@ describe('generateInviteCode', () => {
     expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');
   });
 });
+
+// ─── Ban/Unban Tests ─────────────────────────────────────────────────────────
+
+const BAN_MEMBER = `
+  mutation BanMember($communityId: ID!, $userId: ID!, $reason: String) {
+    banCommunityMember(communityId: $communityId, userId: $userId, reason: $reason) {
+      id status role
+    }
+  }
+`;
+
+const UNBAN_MEMBER = `
+  mutation UnbanMember($communityId: ID!, $userId: ID!) {
+    unbanCommunityMember(communityId: $communityId, userId: $userId) {
+      id status role
+    }
+  }
+`;
+
+const GET_MOD_LOGS = `
+  query ModLogs($communityId: ID!, $first: Int) {
+    communityModerationLogs(communityId: $communityId, first: $first) {
+      totalCount
+      edges { node {
+        id action reason moderator { username } targetUser { username }
+        createdAt
+      }}
+    }
+  }
+`;
+
+describe('banCommunityMember', () => {
+  it('owner can ban a member', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const res = await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, reason: 'Spam behavior' } },
+      ctx(ALICE),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.banCommunityMember.status).toBe('banned');
+  });
+
+  it('owner can ban a moderator', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+    await server.executeOperation(
+      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, role: 'moderator' } },
+      ctx(ALICE),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    const res = await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    expect((res.body as any).singleResult.data.banCommunityMember.status).toBe('banned');
+  });
+
+  it('admin cannot ban another admin (equal role weight)', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    // Add bob as admin
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+    await server.executeOperation(
+      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, role: 'admin' } },
+      ctx(ALICE),
+    );
+    // Add charlie as admin too
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(CHARLIE),
+    );
+    await server.executeOperation(
+      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'charlie' } }))!.id, role: 'admin' } },
+      ctx(ALICE),
+    );
+
+    // Charlie (admin) tries to ban Bob (admin) - should fail (equal weight)
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    const charlieId = (await prisma.user.findUnique({ where: { username: 'charlie' } }))!.id;
+    const res = await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      { contextValue: createTestContext(CHARLIE) },
+    );
+
+    expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+
+  it('owner can ban an admin', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+    await server.executeOperation(
+      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, role: 'admin' } },
+      ctx(ALICE),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    const res = await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    // owner (4) > admin (3), so ban should succeed
+    expect((res.body as any).singleResult.data.banCommunityMember.status).toBe('banned');
+  });
+
+  it('cannot ban self', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    const aliceId = (await prisma.user.findUnique({ where: { username: 'alice' } }))!.id;
+    const res = await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: aliceId } },
+      ctx(ALICE),
+    );
+
+    expect((res.body as any).singleResult.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('rejects banned member again', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    const res = await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    expect((res.body as any).singleResult.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+    expect((res.body as any).singleResult.errors[0].message).toContain('already banned');
+  });
+
+  it('creates moderation log entry', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId, reason: 'Test reason' } },
+      ctx(ALICE),
+    );
+
+    const log = await prisma.communityModerationLog.findFirst({
+      where: { communityId, action: 'ban', targetUserId: bobId },
+    });
+    expect(log).not.toBeNull();
+    expect(log!.reason).toBe('Test reason');
+  });
+});
+
+describe('unbanCommunityMember', () => {
+  it('owner can unban a member', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    const res = await server.executeOperation(
+      { query: UNBAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    expect((res.body as any).singleResult.data.unbanCommunityMember.status).toBe('active');
+  });
+
+  it('cannot unban non-banned member', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    const res = await server.executeOperation(
+      { query: UNBAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    expect((res.body as any).singleResult.errors[0].extensions.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('creates moderation log entry for unban', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+    await server.executeOperation(
+      { query: UNBAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    const log = await prisma.communityModerationLog.findFirst({
+      where: { communityId, action: 'unban', targetUserId: bobId },
+    });
+    expect(log).not.toBeNull();
+  });
+
+  it('unbanned member can rejoin via joinCommunity', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+    await server.executeOperation(
+      { query: UNBAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    // Bob leaves
+    await server.executeOperation(
+      { query: LEAVE_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    // Bob rejoins
+    const res = await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    expect((res.body as any).singleResult.data.joinCommunity.status).toBe('active');
+  });
+});
+
+describe('communityModerationLogs', () => {
+  it('owner can query logs', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    const res = await server.executeOperation(
+      { query: GET_MOD_LOGS, variables: { communityId, first: 10 } },
+      ctx(ALICE),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.communityModerationLogs.totalCount).toBeGreaterThan(0);
+    expect(data.communityModerationLogs.edges[0].node.action).toBe('ban');
+  });
+
+  it('non-admin member cannot view logs', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const res = await server.executeOperation(
+      { query: GET_MOD_LOGS, variables: { communityId, first: 10 } },
+      ctx(BOB),
+    );
+
+    expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+
+  it('filters by action type', async () => {
+    await createUsers();
+    const created = await createCommunityViaApi();
+    const communityId = created.data.createCommunity.id;
+
+    await server.executeOperation(
+      { query: JOIN_COMMUNITY, variables: { communityId } },
+      ctx(BOB),
+    );
+
+    const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
+    await server.executeOperation(
+      { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+    await server.executeOperation(
+      { query: UNBAN_MEMBER, variables: { communityId, userId: bobId } },
+      ctx(ALICE),
+    );
+
+    const res = await server.executeOperation(
+      { query: GET_MOD_LOGS, variables: { communityId, first: 10 } },
+      ctx(ALICE),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    // should have at least ban and unban entries
+    const actions = data.communityModerationLogs.edges.map((e: any) => e.node.action);
+    expect(actions).toContain('ban');
+    expect(actions).toContain('unban');
+  });
+});

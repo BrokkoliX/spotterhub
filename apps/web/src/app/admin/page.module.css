@@ -1,0 +1,260 @@
+.page {
+  padding: 32px 0;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  text-align: center;
+}
+
+.statValue {
+  font-size: 2rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.quickLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s;
+}
+
+.quickLink:hover {
+  border-color: var(--color-accent);
+}
+
+.quickLinkIcon {
+  font-size: 1.5rem;
+}
+
+.quickLinkLabel {
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.quickLinkDesc {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Shared admin page styles ───────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+}
+
+.denied {
+  text-align: center;
+  padding: 64px 0;
+  color: var(--color-text-muted);
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filterSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+}
+
+.filterInput {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-input);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  flex: 1;
+  min-width: 180px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badgeOpen {
+  background: #fbbf24;
+  color: #000;
+}
+
+.badgeResolved {
+  background: #34d399;
+  color: #000;
+}
+
+.badgeDismissed {
+  background: #9ca3af;
+  color: #fff;
+}
+
+.badgePending {
+  background: #fbbf24;
+  color: #000;
+}
+
+.badgeApproved {
+  background: #34d399;
+  color: #000;
+}
+
+.badgeRejected {
+  background: #f87171;
+  color: #fff;
+}
+
+.badgeActive {
+  background: #34d399;
+  color: #000;
+}
+
+.badgeSuspended {
+  background: #fbbf24;
+  color: #000;
+}
+
+.badgeBanned {
+  background: #f87171;
+  color: #fff;
+}
+
+.badgeAdmin {
+  background: #8b5cf6;
+  color: #fff;
+}
+
+.badgeModerator {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.badgeUser {
+  background: #6b7280;
+  color: #fff;
+}
+
+.actionBtn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.actionBtn:hover {
+  border-color: var(--color-accent);
+}
+
+.actionBtnDanger {
+  composes: actionBtn;
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.actionBtnDanger:hover {
+  background: #f87171;
+  color: #fff;
+}
+
+.actionBtnSuccess {
+  composes: actionBtn;
+  border-color: #34d399;
+  color: #34d399;
+}
+
+.actionBtnSuccess:hover {
+  background: #34d399;
+  color: #000;
+}
+
+.photoThumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.loadMore {
+  display: block;
+  margin: 16px auto;
+}

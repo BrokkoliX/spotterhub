@@ -206,6 +206,50 @@ export default function PhotoDetailPage({
               </ul>
             </div>
 
+            {/* Location */}
+            {photo.location && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>📍 Location</h3>
+                {process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
+                  <img
+                    src={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-s+f59e0b(${photo.location.longitude},${photo.location.latitude})/${photo.location.longitude},${photo.location.latitude},12,0/300x200@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`}
+                    alt="Photo location"
+                    style={{
+                      width: '100%',
+                      borderRadius: 'var(--radius-sm)',
+                      marginBottom: 8,
+                    }}
+                  />
+                )}
+                <ul className={styles.metaList}>
+                  {photo.location.airport && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Airport</span>
+                      <span className={styles.metaValue}>
+                        <Link href={`/airports/${photo.location.airport.icaoCode}`}>
+                          {photo.location.airport.name} ({photo.location.airport.iataCode ?? photo.location.airport.icaoCode})
+                        </Link>
+                      </span>
+                    </li>
+                  )}
+                  {photo.location.spottingLocation && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Spot</span>
+                      <span className={styles.metaValue}>
+                        {photo.location.spottingLocation.name}
+                      </span>
+                    </li>
+                  )}
+                  {photo.location.privacyMode === 'approximate' && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Accuracy</span>
+                      <span className={styles.metaValue}>~1 km</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
             {/* Tags */}
             {photo.tags.length > 0 && (
               <div className={styles.card}>
