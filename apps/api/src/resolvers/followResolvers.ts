@@ -1,7 +1,8 @@
 import { GraphQLError } from 'graphql';
 
-import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -12,22 +13,6 @@ export interface UserParent {
 
 export interface AirportFollowParent {
   id: string;
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-async function resolveUserId(ctx: Context): Promise<string> {
-  const authUser = requireAuth(ctx);
-  const user = await ctx.prisma.user.findUnique({
-    where: { cognitoSub: authUser.sub },
-    select: { id: true },
-  });
-  if (!user) {
-    throw new GraphQLError('User not found', {
-      extensions: { code: 'NOT_FOUND' },
-    });
-  }
-  return user.id;
 }
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
@@ -75,8 +60,24 @@ export const followMutationResolvers = {
           followingId: args.userId,
         },
       });
+
+      // Notify the followed user
+      const follower = await ctx.prisma.user.findUnique({
+        where: { id: followerId },
+        select: { username: true },
+      });
+      if (follower) {
+        createNotification(ctx.prisma, {
+          userId: args.userId,
+          type: 'follow',
+          title: '👤 New follower',
+          body: `@${follower.username} started following you`,
+          data: { followerId },
+        }).catch(() => {});
+      }
     }
 
+    ctx.loaders.clearAll();
     return ctx.prisma.user.findUnique({
       where: { id: args.userId },
       include: { profile: true },
@@ -108,6 +109,7 @@ export const followMutationResolvers = {
       },
     });
 
+    ctx.loaders.clearAll();
     return ctx.prisma.user.findUnique({
       where: { id: args.userId },
       include: { profile: true },
@@ -253,16 +255,6 @@ export const followMutationResolvers = {
     return { targetType, value: value.trim() };
   },
 };
-
-// ─── Helpers (pagination) ───────────────────────────────────────────────────
-
-function encodeCursor(date: Date): string {
-  return Buffer.from(date.toISOString()).toString('base64');
-}
-
-function decodeCursor(cursor: string): Date {
-  return new Date(Buffer.from(cursor, 'base64').toString('utf-8'));
-}
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 

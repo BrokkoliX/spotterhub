@@ -1,7 +1,8 @@
 import { GraphQLError } from 'graphql';
 
-import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { resolveUserId } from '../utils/resolverHelpers.js';
+import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -13,24 +14,6 @@ export interface PhotoParent {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const photoIncludes = { user: true, variants: true, tags: true } as const;
-
-/**
- * Resolves the authenticated user's DB id from the context.
- * Throws NOT_FOUND if the user record doesn't exist.
- */
-async function resolveUserId(ctx: Context): Promise<string> {
-  const authUser = requireAuth(ctx);
-  const user = await ctx.prisma.user.findUnique({
-    where: { cognitoSub: authUser.sub },
-    select: { id: true },
-  });
-  if (!user) {
-    throw new GraphQLError('User not found', {
-      extensions: { code: 'NOT_FOUND' },
-    });
-  }
-  return user.id;
-}
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
@@ -61,6 +44,21 @@ export const likeMutationResolvers = {
       await ctx.prisma.like.create({
         data: { userId, photoId: args.photoId },
       });
+
+      // Notify the photo owner (skip self-likes)
+      const [photoOwner, liker] = await Promise.all([
+        ctx.prisma.photo.findUnique({ where: { id: args.photoId }, select: { userId: true } }),
+        ctx.prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
+      ]);
+      if (photoOwner && liker && photoOwner.userId !== userId) {
+        createNotification(ctx.prisma, {
+          userId: photoOwner.userId,
+          type: 'like',
+          title: '❤️ New like',
+          body: `@${liker.username} liked your photo`,
+          data: { photoId: args.photoId },
+        }).catch(() => {});
+      }
     }
 
     return ctx.prisma.photo.findUnique({

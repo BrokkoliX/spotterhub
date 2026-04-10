@@ -1,64 +1,30 @@
-import { ApolloServer } from '@apollo/server';
-import { prisma } from '@spotterhub/db';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
-import { resolvers } from '../resolvers.js';
-import { typeDefs } from '../schema.js';
+import {
+  createTestUser,
+  cleanDatabase,
+  createTestContext,
+  prisma,
+  setupTestServer,
+  teardownTestServer,
+} from './testHelpers.js';
 
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
-let server: ApolloServer<Context>;
+let server: Awaited<ReturnType<typeof setupTestServer>>;
 
-function createTestContext(user: Context['user'] = null): Context {
-  return { prisma, user };
-}
 
-/**
- * Creates a test user directly in the DB and returns the user record
- * and a Context with that user authenticated.
- */
-async function createTestUser(overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {}) {
-  const user = await prisma.user.create({
-    data: {
-      email: overrides.email ?? 'testphotographer@example.com',
-      username: overrides.username ?? 'testphotographer',
-      cognitoSub: overrides.cognitoSub ?? 'test-sub-photo-1',
-    },
-  });
-  const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
-  return { user, ctx };
-}
 
 beforeAll(async () => {
-  server = new ApolloServer<Context>({ typeDefs, resolvers });
-  await server.start();
+  server = await setupTestServer();
 });
 
 afterAll(async () => {
-  await server.stop();
-  await prisma.$disconnect();
+  await teardownTestServer(server);
 });
 
-beforeEach(async () => {
-  // Clean up in dependency order
-  await prisma.follow.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.report.deleteMany();
-  await prisma.like.deleteMany();
-  await prisma.comment.deleteMany();
-  await prisma.photoTag.deleteMany();
-  await prisma.photoLocation.deleteMany();
-  await prisma.photoVariant.deleteMany();
-  await prisma.photo.deleteMany();
-  await prisma.album.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.communityMember.deleteMany();
-  await prisma.communitySubscription.deleteMany();
-  await prisma.community.deleteMany();
-  await prisma.spottingLocation.deleteMany();
-  await prisma.user.deleteMany();
-});
+beforeEach(cleanDatabase);
 
 // ─── GraphQL Operations ─────────────────────────────────────────────────────
 

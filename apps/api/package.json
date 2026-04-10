@@ -18,6 +18,7 @@
     "@spotterhub/db": "*",
     "@spotterhub/shared": "*",
     "cors": "^2.8.5",
+    "dataloader": "^2.2.3",
     "graphql": "^16.9.0",
     "graphql-tag": "^2.12.6",
     "jsonwebtoken": "^9.0.2",

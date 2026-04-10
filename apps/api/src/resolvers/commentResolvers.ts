@@ -1,7 +1,8 @@
 import { GraphQLError } from 'graphql';
 
-import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -20,30 +21,6 @@ export interface AddCommentInput {
   photoId: string;
   body: string;
   parentCommentId?: string;
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function encodeCursor(date: Date): string {
-  return Buffer.from(date.toISOString()).toString('base64');
-}
-
-function decodeCursor(cursor: string): Date {
-  return new Date(Buffer.from(cursor, 'base64').toString('utf-8'));
-}
-
-async function resolveUserId(ctx: Context): Promise<string> {
-  const authUser = requireAuth(ctx);
-  const user = await ctx.prisma.user.findUnique({
-    where: { cognitoSub: authUser.sub },
-    select: { id: true },
-  });
-  if (!user) {
-    throw new GraphQLError('User not found', {
-      extensions: { code: 'NOT_FOUND' },
-    });
-  }
-  return user.id;
 }
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
@@ -123,7 +100,7 @@ export const commentMutationResolvers = {
     // Verify photo exists
     const photo = await ctx.prisma.photo.findUnique({
       where: { id: photoId },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
     if (!photo) {
       throw new GraphQLError('Photo not found', {
@@ -149,7 +126,7 @@ export const commentMutationResolvers = {
       }
     }
 
-    return ctx.prisma.comment.create({
+    const comment = await ctx.prisma.comment.create({
       data: {
         userId,
         photoId,
@@ -166,6 +143,25 @@ export const commentMutationResolvers = {
         },
       },
     });
+
+    // Notify the photo owner (skip self-comments)
+    if (photo.userId !== userId) {
+      const commenter = await ctx.prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+      if (commenter) {
+        createNotification(ctx.prisma, {
+          userId: photo.userId,
+          type: 'comment',
+          title: '💬 New comment',
+          body: `@${commenter.username} commented on your photo`,
+          data: { photoId, commentId: comment.id },
+        }).catch(() => {});
+      }
+    }
+
+    return comment;
   },
 
   updateComment: async (

@@ -2,6 +2,8 @@ import type { StandaloneServerContextFunctionArgument } from '@apollo/server/sta
 import { prisma } from '@spotterhub/db';
 import jwt from 'jsonwebtoken';
 
+import { createLoaders, type Loaders } from './loaders.js';
+
 
 export interface AuthUser {
   sub: string;
@@ -12,6 +14,7 @@ export interface AuthUser {
 export interface Context {
   prisma: typeof prisma;
   user: AuthUser | null;
+  loaders: Loaders;
 }
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-do-not-use-in-production';
@@ -42,5 +45,5 @@ export async function createContext({
     }
   }
 
-  return { prisma, user };
+  return { prisma, user, loaders: createLoaders(prisma) };
 }

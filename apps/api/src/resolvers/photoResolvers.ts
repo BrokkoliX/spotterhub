@@ -6,15 +6,29 @@ import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { generateVariants } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
+import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Privacy Helpers ────────────────────────────────────────────────────────
 
-function encodeCursor(date: Date): string {
-  return Buffer.from(date.toISOString()).toString('base64');
-}
-
-function decodeCursor(cursor: string): Date {
-  return new Date(Buffer.from(cursor, 'base64').toString('utf-8'));
+/**
+ * Apply privacy mode to coordinates.
+ * - exact: use raw coordinates as-is
+ * - approximate: jitter by ~500m random offset
+ * - hidden: set display coords to 0 (won't be returned by field resolver)
+ */
+function applyPrivacy(lat: number, lng: number, mode: string) {
+  switch (mode) {
+    case 'approximate': {
+      const jitterLat = (Math.random() - 0.5) * 0.01;
+      const jitterLng = (Math.random() - 0.5) * 0.01;
+      return { displayLat: lat + jitterLat, displayLng: lng + jitterLng };
+    }
+    case 'hidden':
+      return { displayLat: 0, displayLng: 0 };
+    case 'exact':
+    default:
+      return { displayLat: lat, displayLng: lng };
+  }
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -39,6 +53,9 @@ export interface CreatePhotoInput {
   airportCode?: string;
   takenAt?: string;
   tags?: string[];
+  latitude?: number;
+  longitude?: number;
+  locationPrivacy?: string;
 }
 
 export interface UpdatePhotoInput {
@@ -48,6 +65,9 @@ export interface UpdatePhotoInput {
   airportCode?: string;
   takenAt?: string;
   tags?: string[];
+  latitude?: number;
+  longitude?: number;
+  locationPrivacy?: string;
 }
 
 export interface PhotoParent {
@@ -214,7 +234,44 @@ export const photoMutationResolvers = {
       console.error('Variant generation failed:', err);
     }
 
-    return photo;
+    // Create location if coordinates provided
+    if (input.latitude != null && input.longitude != null) {
+      const privacyMode = input.locationPrivacy ?? 'exact';
+      const { displayLat, displayLng } = applyPrivacy(
+        input.latitude,
+        input.longitude,
+        privacyMode,
+      );
+
+      // Find associated airport by code if provided
+      let airportId: string | null = null;
+      if (input.airportCode) {
+        const code = input.airportCode.trim().toUpperCase();
+        const airport = await ctx.prisma.airport.findFirst({
+          where: { OR: [{ icaoCode: code }, { iataCode: code }] },
+          select: { id: true },
+        });
+        if (airport) airportId = airport.id;
+      }
+
+      await ctx.prisma.photoLocation.create({
+        data: {
+          photoId: photo.id,
+          rawLatitude: input.latitude,
+          rawLongitude: input.longitude,
+          displayLatitude: displayLat,
+          displayLongitude: displayLng,
+          privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
+          airportId,
+        },
+      });
+    }
+
+    // Re-fetch to include location data
+    return ctx.prisma.photo.findUnique({
+      where: { id: photo.id },
+      include: { user: true, variants: true, tags: true },
+    }) ?? photo;
   },
 
   updatePhoto: async (
@@ -244,7 +301,7 @@ export const photoMutationResolvers = {
       });
     }
 
-    const { tags, takenAt, ...rest } = args.input;
+    const { tags, takenAt, latitude, longitude, locationPrivacy, ...rest } = args.input;
 
     // Update tags if provided: delete existing, create new
     if (tags !== undefined) {
@@ -256,6 +313,36 @@ export const photoMutationResolvers = {
             tag: tag.toLowerCase().trim(),
           })),
         });
+      }
+    }
+
+    // Update location if coordinates provided
+    if (latitude !== undefined) {
+      if (latitude != null && longitude != null) {
+        const privacyMode = locationPrivacy ?? 'exact';
+        const { displayLat, displayLng } = applyPrivacy(latitude, longitude, privacyMode);
+
+        await ctx.prisma.photoLocation.upsert({
+          where: { photoId: args.id },
+          update: {
+            rawLatitude: latitude,
+            rawLongitude: longitude,
+            displayLatitude: displayLat,
+            displayLongitude: displayLng,
+            privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
+          },
+          create: {
+            photoId: args.id,
+            rawLatitude: latitude,
+            rawLongitude: longitude,
+            displayLatitude: displayLat,
+            displayLongitude: displayLng,
+            privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
+          },
+        });
+      } else {
+        // Remove location if latitude explicitly set to null
+        await ctx.prisma.photoLocation.deleteMany({ where: { photoId: args.id } });
       }
     }
 
@@ -336,5 +423,24 @@ export const photoFieldResolvers = {
 
   commentCount: (parent: PhotoParent, _args: unknown, ctx: Context) => {
     return ctx.prisma.comment.count({ where: { photoId: parent.id } });
+  },
+
+  location: async (parent: PhotoParent, _args: unknown, ctx: Context) => {
+    const loc = await ctx.prisma.photoLocation.findUnique({
+      where: { photoId: parent.id },
+      include: {
+        airport: true,
+        spottingLocation: { include: { createdBy: { include: { profile: true } } } },
+      },
+    });
+    if (!loc || loc.privacyMode === 'hidden') return null;
+    return {
+      id: loc.id,
+      latitude: loc.displayLatitude,
+      longitude: loc.displayLongitude,
+      privacyMode: loc.privacyMode,
+      airport: loc.airport,
+      spottingLocation: loc.spottingLocation,
+    };
   },
 };

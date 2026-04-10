@@ -1,28 +1,20 @@
-import { ApolloServer } from '@apollo/server';
-import { prisma } from '@spotterhub/db';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
-import { resolvers } from '../resolvers.js';
-import { typeDefs } from '../schema.js';
+import {
+  createTestUser,
+  cleanDatabase,
+  createTestContext,
+  prisma,
+  setupTestServer,
+  teardownTestServer,
+} from './testHelpers.js';
 
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
-let server: ApolloServer<Context>;
+let server: Awaited<ReturnType<typeof setupTestServer>>;
 
-function createTestContext(user: Context['user'] = null): Context {
-  return { prisma, user };
-}
 
-async function createTestUser(overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {}) {
-  return prisma.user.create({
-    data: {
-      email: overrides.email ?? 'searchuser@example.com',
-      username: overrides.username ?? 'searchuser',
-      cognitoSub: overrides.cognitoSub ?? 'test-sub-search-1',
-    },
-  });
-}
 
 async function createTestPhoto(userId: string, overrides: Partial<{
   caption: string;
@@ -54,33 +46,14 @@ async function createTestPhoto(userId: string, overrides: Partial<{
 }
 
 beforeAll(async () => {
-  server = new ApolloServer<Context>({ typeDefs, resolvers });
-  await server.start();
+  server = await setupTestServer();
 });
 
 afterAll(async () => {
-  await server.stop();
-  await prisma.$disconnect();
+  await teardownTestServer(server);
 });
 
-beforeEach(async () => {
-  await prisma.follow.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.report.deleteMany();
-  await prisma.like.deleteMany();
-  await prisma.comment.deleteMany();
-  await prisma.photoTag.deleteMany();
-  await prisma.photoLocation.deleteMany();
-  await prisma.photoVariant.deleteMany();
-  await prisma.photo.deleteMany();
-  await prisma.album.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.communityMember.deleteMany();
-  await prisma.communitySubscription.deleteMany();
-  await prisma.community.deleteMany();
-  await prisma.spottingLocation.deleteMany();
-  await prisma.user.deleteMany();
-});
+beforeEach(cleanDatabase);
 
 // ─── GraphQL Operations ─────────────────────────────────────────────────────
 
@@ -130,7 +103,7 @@ const SEARCH_USERS = `
 
 describe('searchPhotos', () => {
   it('finds photos by caption', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { caption: 'Beautiful landing at sunset' });
     await createTestPhoto(user.id, { caption: 'Takeoff in the morning' });
 
@@ -145,7 +118,7 @@ describe('searchPhotos', () => {
   });
 
   it('finds photos by aircraft type (case-insensitive)', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { aircraftType: 'Boeing 747-400' });
     await createTestPhoto(user.id, { aircraftType: 'Airbus A380' });
 
@@ -160,7 +133,7 @@ describe('searchPhotos', () => {
   });
 
   it('finds photos by airline', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { airline: 'Delta Air Lines' });
     await createTestPhoto(user.id, { airline: 'United Airlines' });
 
@@ -175,7 +148,7 @@ describe('searchPhotos', () => {
   });
 
   it('finds photos by airport code', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { airportCode: 'KSEA' });
     await createTestPhoto(user.id, { airportCode: 'KLAX' });
 
@@ -190,7 +163,7 @@ describe('searchPhotos', () => {
   });
 
   it('finds photos by tag', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { caption: 'Photo 1', tags: ['military', 'fighter'] });
     await createTestPhoto(user.id, { caption: 'Photo 2', tags: ['commercial'] });
 
@@ -205,7 +178,7 @@ describe('searchPhotos', () => {
   });
 
   it('returns empty results for no match', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { caption: 'A photo' });
 
     const res = await server.executeOperation(
@@ -219,7 +192,7 @@ describe('searchPhotos', () => {
   });
 
   it('returns empty results for empty query', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { caption: 'A photo' });
 
     const res = await server.executeOperation(
@@ -232,7 +205,7 @@ describe('searchPhotos', () => {
   });
 
   it('supports pagination', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     // Create 3 photos with matching caption
     for (let i = 0; i < 3; i++) {
       await createTestPhoto(user.id, { caption: `Boeing photo ${i}` });
@@ -260,7 +233,7 @@ describe('searchPhotos', () => {
   });
 
   it('excludes rejected photos', async () => {
-    const user = await createTestUser();
+    const { user } = await createTestUser();
     await createTestPhoto(user.id, { caption: 'Good Boeing shot' });
     // Create a rejected photo directly
     await prisma.photo.create({
@@ -300,7 +273,7 @@ describe('searchUsers', () => {
   });
 
   it('finds users by display name', async () => {
-    const user = await createTestUser({ username: 'jdoe', email: 'jd@example.com', cognitoSub: 'sub-dn' });
+    const { user } = await createTestUser({ username: 'jdoe', email: 'jd@example.com', cognitoSub: 'sub-dn' });
     await prisma.profile.create({
       data: { userId: user.id, displayName: 'John Doe Aviation' },
     });

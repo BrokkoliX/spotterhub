@@ -1,51 +1,34 @@
-import { ApolloServer } from '@apollo/server';
-import { prisma } from '@spotterhub/db';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
-import { resolvers } from '../resolvers.js';
-import { typeDefs } from '../schema.js';
+import {
+  cleanDatabase,
+  createTestContext,
+  prisma,
+  setupTestServer,
+  teardownTestServer,
+} from './testHelpers.js';
 
 // ─── Setup ──────────────────────────────────────────────────────────────────
 
-let server: ApolloServer<Context>;
+let server: Awaited<ReturnType<typeof setupTestServer>>;
 
 function ctx(user: Context['user'] = null): Context {
-  return { prisma, user };
+  return createTestContext(user);
 }
 
 const AUTH_USER = { sub: 'sub-album-owner', email: 'owner@test.com', username: 'owner' };
 const OTHER_USER = { sub: 'sub-album-other', email: 'other@test.com', username: 'other' };
 
 beforeAll(async () => {
-  server = new ApolloServer<Context>({ typeDefs, resolvers });
-  await server.start();
+  server = await setupTestServer();
 });
 
 afterAll(async () => {
-  await server.stop();
-  await prisma.$disconnect();
+  await teardownTestServer(server);
 });
 
-beforeEach(async () => {
-  await prisma.follow.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.report.deleteMany();
-  await prisma.like.deleteMany();
-  await prisma.comment.deleteMany();
-  await prisma.photoTag.deleteMany();
-  await prisma.photoLocation.deleteMany();
-  await prisma.photoVariant.deleteMany();
-  await prisma.photo.deleteMany();
-  await prisma.album.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.communityMember.deleteMany();
-  await prisma.communitySubscription.deleteMany();
-  await prisma.community.deleteMany();
-  await prisma.spottingLocation.deleteMany();
-  await prisma.airport.deleteMany();
-  await prisma.user.deleteMany();
-});
+beforeEach(cleanDatabase);
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
 
-import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,27 +25,6 @@ export interface UpdateAlbumInput {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function encodeCursor(date: Date): string {
-  return Buffer.from(date.toISOString()).toString('base64');
-}
-
-function decodeCursor(cursor: string): Date {
-  return new Date(Buffer.from(cursor, 'base64').toString('utf-8'));
-}
-
-async function getDbUser(ctx: Context) {
-  const authUser = requireAuth(ctx);
-  const dbUser = await ctx.prisma.user.findUnique({
-    where: { cognitoSub: authUser.sub },
-  });
-  if (!dbUser) {
-    throw new GraphQLError('User not found', {
-      extensions: { code: 'NOT_FOUND' },
-    });
-  }
-  return dbUser;
-}
 
 async function requireAlbumOwner(ctx: Context, albumId: string) {
   const dbUser = await getDbUser(ctx);

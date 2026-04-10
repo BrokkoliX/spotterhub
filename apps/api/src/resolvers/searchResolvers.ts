@@ -1,14 +1,5 @@
 import type { Context } from '../context.js';
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function encodeCursor(date: Date): string {
-  return Buffer.from(date.toISOString()).toString('base64');
-}
-
-function decodeCursor(cursor: string): Date {
-  return new Date(Buffer.from(cursor, 'base64').toString('utf-8'));
-}
+import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
