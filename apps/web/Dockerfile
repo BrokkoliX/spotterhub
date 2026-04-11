@@ -3,11 +3,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files
+# Copy root package files and configs
 COPY package.json package-lock.json* ./
+COPY tsconfig.base.json ./
 
 # Copy workspace package files
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/shared/src ./packages/shared/src/
 
 # Copy app source
 COPY apps/web ./apps/web
@@ -15,11 +17,9 @@ COPY apps/web ./apps/web
 # Install dependencies
 RUN npm install
 
-# Build Next.js standalone output
-RUN npm run build --workspace=@spotterhub/web
-
-# Prune devDependencies
-RUN npm prune --production --workspace=@spotterhub/web
+# Build @spotterhub/shared first (needed by web), then Next.js
+RUN cd packages/shared && npx tsc -p . && \
+    cd /app/apps/web && npx next build
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime

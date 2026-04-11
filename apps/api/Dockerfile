@@ -22,13 +22,12 @@ RUN npm install
 # Generate Prisma client
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
-# Build workspace packages in dependency order using npx tsc
-RUN cd packages/shared && npx tsc && \
-    cd /app/packages/db && npx tsc && \
-    cd /app/apps/api && npx tsc
+# Build workspace packages in dependency order using npx tsc -p
+RUN cd packages/shared && npx tsc -p . && \
+    cd /app/packages/db && npx tsc -p . && \
+    cd /app/apps/api && npx tsc -p .
 
-# Prune devDependencies
-RUN npm prune --production --workspace=@spotterhub/api
+# (devDependencies are excluded by runtime stage COPY, so no prune needed)
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
