@@ -22,10 +22,10 @@ RUN npm install
 # Generate Prisma client
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
-# Build workspace packages in dependency order (turbo can't discover nested workspaces)
-RUN npm run build --workspace=@spotterhub/shared && \
-    npm run build --workspace=@spotterhub/db && \
-    npm run build --workspace=@spotterhub/api
+# Build workspace packages in dependency order using path-based workspace
+RUN npm run build --workspace packages/shared && \
+    npm run build --workspace packages/db && \
+    npm run build --workspace apps/api
 
 # Prune devDependencies
 RUN npm prune --production --workspace=@spotterhub/api
