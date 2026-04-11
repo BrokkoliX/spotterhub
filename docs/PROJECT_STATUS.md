@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-09
+> **Last updated:** 2026-04-11
 > **Purpose:** Living document tracking implementation progress against the roadmap. Update after each session.
 
 ---
@@ -81,7 +81,7 @@
 
 ---
 
-## Phase 1b: Communities — 🟡 IN PROGRESS
+## Phase 1b: Communities — ✅ COMPLETE
 
 ### Session 8 — Community CRUD, Membership & Discovery ✅
 
@@ -157,11 +157,33 @@
   - Closes on outside click via `useEffect` + `document.addEventListener`
   - CSS added to `Header.module.css`
 
-### Remaining Phase 1b Work
+### Session 12 ✅: Global Forum, Site Settings, Superuser & UX Polish
 
-- [x] Community moderation tools (ban members, moderator action log) — ✅ COMPLETE
-- [ ] Community billing (Stripe integration for community tiers)
-- [ ] Follows/feed enhancements (community activity in feed)
+**Schema additions:**
+- `UserRole` enum: added `superuser` role
+- `ForumCategory.communityId` → optional (null = site-wide global category)
+- `SiteSettings` singleton model (id: "site_settings", bannerUrl, tagline)
+- `Photo.likeCount` Int field with default 0 (for efficient sort by popularity)
+
+**API:**
+- **Superuser role:** bypasses ALL role-based access controls across all resolvers
+  - `requireRole()` auto-bypasses for superuser (no JWT claim changes needed — always does DB lookup)
+  - Direct role checks updated: `siteSettingsResolvers`, `forumResolvers.requireAdmin`, `adminResolvers`, `communityResolvers` (update/remove/generate code/member role), `communityModerationResolvers` (ban/unban/view logs), `albumResolvers` (create/edit/delete community albums), `eventResolvers` (create/update/delete)
+  - Superuser protected from role/status changes by non-superusers via `adminUpdateUserRole`/`adminUpdateUserStatus`
+- **Global forum:** `globalForumCategories` query, `createGlobalForumCategory` mutation (superuser/admin only)
+- **Site settings:** `siteSettings` query (public), `updateSiteSettings` mutation (admin/superuser only) via `siteSettingsResolvers.ts`
+- **Superuser content bypass:** community photos field returns all approved photos for superuser without membership filter
+
+**Frontend:**
+- **Global forum pages:** `/forum` (category list with hero), `/forum/[slug]` (thread list), `/forum/[slug]/[threadId]` (thread detail with posts + reply composer)
+- **Site settings:** `/settings/site` — admin-only page with banner upload (S3) and tagline editor
+- **Homepage:** hero shows custom banner/tagline from `siteSettings` when set
+- **Communities page:** redesigned with magazine grid (hero banner, featured card, 3-col grid, search + category filter)
+- **Community page:** inline click-to-change banner overlay in hero section for admin/superuser
+- **`/communities/new`:** redesigned with centered card layout, breadcrumb, inline slug preview
+- **Header:** "Forum" nav link, "My Uploads" label (was "Upload"), 🛡️ badge for superuser, Admin link visible to superuser
+- **Album detail:** community album "Add Photos" → "Add from My Photos"; superuser sees Add Photos without membership
+- **`ImageUploader` component:** refactored to use S3 presigned URLs (not local FileReader data URLs); exposes `triggerUpload()` via `forwardRef`/`useImperativeHandle`
 
 ---
 
@@ -198,12 +220,12 @@
 
 ## Recommended Next Session Priority
 
-**Phase 1a is complete. Phase 1b community foundation (CRUD, membership, roles, discovery), forums, events, notifications, and moderation tools are done.**
+**Phase 1a and Phase 1b are complete. All core features are implemented.**
 
-**Next: Phase 1b continued** — remaining community features:
-
-1. Community billing (Stripe integration for community tiers)
-2. Follows/feed enhancements (community activity in following feed)
+**Next — Phase 2 Launch Prep:**
+1. SEO implementation (metadata, sitemaps, Open Graph)
+2. Performance tuning and load testing
+3. AWS production infrastructure setup
 
 ---
 
@@ -217,13 +239,24 @@
 | GraphQL schema   | `apps/api/src/schema.ts`                                          |
 | API resolvers    | `apps/api/src/resolvers/*.ts`                                     |
 | API tests        | `apps/api/src/__tests__/*.test.ts`                                |
-| Auth utilities   | `apps/api/src/auth/jwt.ts`, `apps/api/src/auth/requireAuth.ts`    |
+| Auth utilities   | `apps/api/src/auth/jwt.ts`, `apps/api/src/auth/requireAuth.ts`     |
 | Image processing | `apps/api/src/services/imageProcessing.ts`                        |
 | S3 service       | `apps/api/src/services/s3.ts`                                     |
 | Web app layout   | `apps/web/src/app/layout.tsx`                                     |
 | GraphQL client   | `apps/web/src/lib/graphql.ts`, `apps/web/src/lib/providers.tsx`   |
 | Shared queries   | `apps/web/src/lib/queries.ts`                                     |
-| UI components    | `apps/web/src/components/*.tsx`                                   |
+| UI components    | `apps/web/src/components/*.tsx`                                  |
 | Docker config    | `docker/docker-compose.yml`                                       |
 | LocalStack init  | `docker/localstack-init/create-bucket.sh`                         |
 | CI pipeline      | `.github/workflows/ci.yml`                                        |
+
+---
+
+## User Roles Reference
+
+| Role       | Description                                                      |
+| ---------- | ---------------------------------------------------------------- |
+| `user`     | Regular user — can follow, upload, join public communities       |
+| `moderator`| Can access `/admin` dashboard, review reports and photos        |
+| `admin`    | Full admin access; can manage users, photos, site settings      |
+| `superuser`| Bypasses ALL role checks — for security oversight; cannot be demoted/banned by non-superusers |
