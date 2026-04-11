@@ -14,7 +14,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY apps/api ./apps/api
 
 # Install all dependencies
-RUN npm ci --workspaces=false
+RUN npm install --workspaces=false
 
 # Generate Prisma client
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
