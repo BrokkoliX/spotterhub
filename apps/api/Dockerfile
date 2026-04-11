@@ -3,8 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files
+# Copy root package files and configs
 COPY package.json package-lock.json* ./
+COPY tsconfig.base.json ./
+COPY turbo.json ./
 
 # Copy workspace package files
 COPY packages/db/package.json ./packages/db/
