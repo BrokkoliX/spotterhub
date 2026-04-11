@@ -106,16 +106,35 @@ export class SpotterHubStack extends Stack {
         stage === 'prod' ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
 
-    // ─── IAM Execution Role for App Runner ───────────────────────────────
-    // App Runner automatically creates a service-linked role
-    // AWSServiceRoleForAppRunner when needed. Our custom execution role
-    // grants container code permission to read secrets and S3.
+    // ─── IAM Roles for App Runner ───────────────────────────────────────────
+    // Execution role: grants container code permission to read secrets and S3
     const appRunnerExecutionRole = new iam.Role(
       this,
       'AppRunnerExecutionRole',
       {
         assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
       },
+    );
+
+    // ECR access role: App Runner assumes this to pull images from ECR
+    const appRunnerECRAccessRole = new iam.Role(this, 'AppRunnerECRAccessRole', {
+      assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
+    });
+    appRunnerECRAccessRole.attachInlinePolicy(
+      new iam.Policy(this, 'AppRunnerECRAccessPolicy', {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ecr:GetAuthorizationToken'],
+            resources: ['*'],
+          }),
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ecr:PullImage'],
+            resources: [apiRepo.repositoryArn, webRepo.repositoryArn],
+          }),
+        ],
+      }),
     );
 
     // Inline policy: read secrets
@@ -171,6 +190,9 @@ export class SpotterHubStack extends Stack {
         instanceRoleArn: appRunnerExecutionRole.roleArn,
       },
       sourceConfiguration: {
+        authenticationConfiguration: {
+          accessRoleArn: appRunnerECRAccessRole.roleArn,
+        },
         imageRepository: {
           imageIdentifier: `${apiRepo.repositoryUri}:latest`,
           imageRepositoryType: 'ECR',
@@ -207,6 +229,9 @@ export class SpotterHubStack extends Stack {
         instanceRoleArn: appRunnerExecutionRole.roleArn,
       },
       sourceConfiguration: {
+        authenticationConfiguration: {
+          accessRoleArn: appRunnerECRAccessRole.roleArn,
+        },
         imageRepository: {
           imageIdentifier: `${webRepo.repositoryUri}:latest`,
           imageRepositoryType: 'ECR',
