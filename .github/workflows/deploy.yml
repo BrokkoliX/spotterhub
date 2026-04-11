@@ -124,7 +124,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ github.workspace }}
-          dockerfile: ${{ github.workspace }}/apps/api/Dockerfile
+          file: ${{ github.workspace }}/apps/api/Dockerfile
           push: true
           tags: |
             ${{ steps.ecr-api.outputs.repo-uri }}:latest
@@ -174,7 +174,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ github.workspace }}
-          dockerfile: ${{ github.workspace }}/apps/web/Dockerfile
+          file: ${{ github.workspace }}/apps/web/Dockerfile
           push: true
           tags: |
             ${{ steps.ecr-web.outputs.repo-uri }}:latest
