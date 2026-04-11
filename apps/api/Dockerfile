@@ -8,6 +8,7 @@ COPY package.json package-lock.json* ./
 
 # Copy workspace package files
 COPY packages/db/package.json ./packages/db/
+COPY packages/db/prisma ./packages/db/prisma/
 COPY packages/shared/package.json ./packages/shared/
 
 # Copy app source
