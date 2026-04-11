@@ -1,3 +1,4 @@
+// SpotterHub AWS Infrastructure — CDK v2
 import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import {
   aws_ec2 as ec2,
