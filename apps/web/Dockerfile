@@ -13,7 +13,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY apps/web ./apps/web
 
 # Install dependencies
-RUN npm install --workspaces=false
+RUN npm install
 
 # Build Next.js standalone output
 RUN npm run build --workspace=@spotterhub/web
