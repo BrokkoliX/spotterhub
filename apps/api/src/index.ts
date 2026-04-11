@@ -1,5 +1,7 @@
+import express from 'express';
+import cors from 'cors';
 import { ApolloServer } from '@apollo/server';
-import { startStandaloneServer } from '@apollo/server/standalone';
+import { expressMiddleware } from '@apollo/server/express';
 
 import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';
@@ -18,12 +20,27 @@ async function main() {
     introspection: process.env.NODE_ENV !== 'production',
   });
 
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: PORT },
-    context: createContext,
+  await server.start();
+
+  const app = express();
+
+  // Health check endpoint for App Runner
+  app.get('/health', (_, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  console.log(`🚀 SpotterHub API ready at ${url}`);
+  app.use(
+    '/graphql',
+    cors<cors.CorsRequest>(),
+    express.json(),
+    expressMiddleware(server, {
+      context: createContext,
+    }),
+  );
+
+  app.listen({ port: PORT }, () => {
+    console.log(`🚀 SpotterHub API ready at http://localhost:${PORT}/graphql`);
+  });
 }
 
 main().catch((err) => {

@@ -14,10 +14,12 @@
   "dependencies": {
     "@apollo/server": "^4.11.0",
     "@aws-sdk/client-s3": "^3.1024.0",
+    "@aws-sdk/client-secrets-manager": "^3.1024.0",
     "@aws-sdk/s3-request-presigner": "^3.1024.0",
     "@spotterhub/db": "*",
     "@spotterhub/shared": "*",
     "cors": "^2.8.5",
+    "express": "^4.21.0",
     "dataloader": "^2.2.3",
     "graphql": "^16.9.0",
     "graphql-tag": "^2.12.6",
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@spotterhub/eslint-config": "*",
     "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.14.0",
     "@types/sharp": "^0.31.1",

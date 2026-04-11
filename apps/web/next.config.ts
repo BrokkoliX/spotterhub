@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -8,6 +9,11 @@ const nextConfig: NextConfig = {
         hostname: "localhost",
         port: "4566",
         pathname: "/spotterhub-photos/**",
+      },
+      {
+        protocol: "https",
+        hostname: "spotterhub-photos.s3.us-east-1.amazonaws.com",
+        pathname: "/**",
       },
     ],
   },
