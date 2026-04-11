@@ -114,7 +114,7 @@ export class SpotterHubStack extends Stack {
         assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName(
-            'service-role/AppRunnerServiceRolePolicy',
+            'aws-service-role/AppRunnerServiceRolePolicy',
           ),
         ],
       },
