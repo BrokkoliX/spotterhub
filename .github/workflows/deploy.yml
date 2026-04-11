@@ -90,6 +90,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -121,8 +123,8 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          dockerfile: apps/api/Dockerfile
+          context: ${{ github.workspace }}
+          dockerfile: ${{ github.workspace }}/apps/api/Dockerfile
           push: true
           tags: |
             ${{ steps.ecr-api.outputs.repo-uri }}:latest
@@ -138,6 +140,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -169,8 +173,8 @@ jobs:
       - name: Build and push Web image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          dockerfile: apps/web/Dockerfile
+          context: ${{ github.workspace }}
+          dockerfile: ${{ github.workspace }}/apps/web/Dockerfile
           push: true
           tags: |
             ${{ steps.ecr-web.outputs.repo-uri }}:latest
