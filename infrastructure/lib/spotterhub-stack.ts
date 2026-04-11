@@ -31,7 +31,7 @@ export class SpotterHubStack extends Stack {
 
     // ─── VPC ──────────────────────────────────────────────────────────────
     const vpc = new ec2.Vpc(this, 'SpotterHubVPC', {
-      maxAzs: 1,
+      maxAzs: 2,
       natGateways: 0,
       subnetConfiguration: [
         {
