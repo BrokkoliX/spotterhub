@@ -160,7 +160,7 @@ export class SpotterHubStack extends Stack {
       healthCheckConfiguration: {
         protocol: 'HTTP',
         path: '/health',
-        interval: 30,
+        interval: 20,
         timeout: 5,
         healthyThreshold: 2,
         unhealthyThreshold: 3,
@@ -196,7 +196,7 @@ export class SpotterHubStack extends Stack {
       healthCheckConfiguration: {
         protocol: 'HTTP',
         path: '/',
-        interval: 30,
+        interval: 20,
         timeout: 5,
         healthyThreshold: 2,
         unhealthyThreshold: 3,
