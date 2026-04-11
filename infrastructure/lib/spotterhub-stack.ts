@@ -7,7 +7,6 @@ import {
   aws_secretsmanager as secretsmanager,
   aws_s3 as s3,
 } from 'aws-cdk-lib';
-import { CfnService } from 'aws-cdk-lib/aws-apprunner';
 import { Construct } from 'constructs';
 
 export interface SpotterHubStackProps extends StackProps {
@@ -88,7 +87,7 @@ export class SpotterHubStack extends Stack {
     });
 
     // JWT_SECRET — user-provided initial value
-    new secretsmanager.Secret(this, 'JWTSecret', {
+    const jwtSecret = new secretsmanager.Secret(this, 'JWTSecret', {
       secretName: `spotterhub/${stage}/JWT_SECRET`,
       secretStringValue: SecretValue.unsafePlainText(jwtSecretInitialValue),
     });
@@ -117,9 +116,13 @@ export class SpotterHubStack extends Stack {
     );
 
     // ECR access role: App Runner assumes this to pull images from ECR
-    const appRunnerECRAccessRole = new iam.Role(this, 'AppRunnerECRAccessRole', {
-      assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
-    });
+    const appRunnerECRAccessRole = new iam.Role(
+      this,
+      'AppRunnerECRAccessRole',
+      {
+        assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
+      },
+    );
     appRunnerECRAccessRole.attachInlinePolicy(
       new iam.Policy(this, 'AppRunnerECRAccessPolicy', {
         statements: [
@@ -144,10 +147,7 @@ export class SpotterHubStack extends Stack {
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ['secretsmanager:GetSecretValue'],
-            resources: [
-              dbUrlSecret.secretArn,
-              `arn:aws:secretsmanager:${this.region}:${this.account}:secret:spotterhub/${stage}/JWT_SECRET*`,
-            ],
+            resources: [dbUrlSecret.secretArn, jwtSecret.secretArn],
           }),
         ],
       }),
@@ -171,95 +171,7 @@ export class SpotterHubStack extends Stack {
       }),
     );
 
-    // ─── App Runner: API ─────────────────────────────────────────────────
-    // Note: executionRole is handled by App Runner's service-linked role (auto-created).
-    // The instanceRoleArn in InstanceConfiguration grants permissions to container code.
-    const apiService = new CfnService(this, 'SpotterHubApiService', {
-      serviceName: `spotterhub-${stage}-api`,
-      healthCheckConfiguration: {
-        protocol: 'HTTP',
-        path: '/health',
-        interval: 20,
-        timeout: 5,
-        healthyThreshold: 2,
-        unhealthyThreshold: 3,
-      },
-      instanceConfiguration: {
-        cpu: '1024',
-        memory: '2048',
-        instanceRoleArn: appRunnerExecutionRole.roleArn,
-      },
-      sourceConfiguration: {
-        authenticationConfiguration: {
-          accessRoleArn: appRunnerECRAccessRole.roleArn,
-        },
-        imageRepository: {
-          imageIdentifier: `${apiRepo.repositoryUri}:latest`,
-          imageRepositoryType: 'ECR',
-          imageConfiguration: {
-            port: '4000',
-            runtimeEnvironmentVariables: [
-              { name: 'NODE_ENV', value: 'production' },
-              { name: 'API_PORT', value: '4000' },
-              { name: 'AWS_REGION', value: this.region },
-              { name: 'S3_BUCKET', value: photosBucket.bucketName },
-              { name: 'S3_REGION', value: this.region },
-              { name: 'STAGE', value: stage },
-            ],
-          },
-        },
-        autoDeploymentsEnabled: true,
-      },
-    });
-
-    // ─── App Runner: Web ─────────────────────────────────────────────────
-    const webService = new CfnService(this, 'SpotterHubWebService', {
-      serviceName: `spotterhub-${stage}-web`,
-      healthCheckConfiguration: {
-        protocol: 'HTTP',
-        path: '/',
-        interval: 20,
-        timeout: 5,
-        healthyThreshold: 2,
-        unhealthyThreshold: 3,
-      },
-      instanceConfiguration: {
-        cpu: '1024',
-        memory: '2048',
-        instanceRoleArn: appRunnerExecutionRole.roleArn,
-      },
-      sourceConfiguration: {
-        authenticationConfiguration: {
-          accessRoleArn: appRunnerECRAccessRole.roleArn,
-        },
-        imageRepository: {
-          imageIdentifier: `${webRepo.repositoryUri}:latest`,
-          imageRepositoryType: 'ECR',
-          imageConfiguration: {
-            port: '3000',
-            runtimeEnvironmentVariables: [
-              { name: 'NODE_ENV', value: 'production' },
-              { name: 'PORT', value: '3000' },
-              { name: 'NEXT_PUBLIC_API_URL', value: `https://${apiService.attrServiceUrl}` },
-              { name: 'NEXT_PUBLIC_MAPBOX_TOKEN', value: process.env['NEXT_PUBLIC_MAPBOX_TOKEN'] ?? '' },
-            ],
-          },
-        },
-        autoDeploymentsEnabled: true,
-      },
-    });
-
     // ─── CloudFormation Outputs ──────────────────────────────────────────
-    new CfnOutput(this, 'ApiServiceUrl', {
-      value: `https://${apiService.attrServiceUrl}`,
-      exportName: `SpotterHub-${stage}-ApiUrl`,
-    });
-
-    new CfnOutput(this, 'WebServiceUrl', {
-      value: `https://${webService.attrServiceUrl}`,
-      exportName: `SpotterHub-${stage}-WebUrl`,
-    });
-
     new CfnOutput(this, 'ECRApiRepoUri', {
       value: apiRepo.repositoryUri,
     });
@@ -274,6 +186,30 @@ export class SpotterHubStack extends Stack {
 
     new CfnOutput(this, 'DBUrlSecretArn', {
       value: dbUrlSecret.secretArn,
+    });
+
+    new CfnOutput(this, 'JWTSecretArn', {
+      value: jwtSecret.secretArn,
+    });
+
+    new CfnOutput(this, 'AppRunnerExecutionRoleArn', {
+      value: appRunnerExecutionRole.roleArn,
+    });
+
+    new CfnOutput(this, 'AppRunnerECRAccessRoleArn', {
+      value: appRunnerECRAccessRole.roleArn,
+    });
+
+    new CfnOutput(this, 'AWSRegion', {
+      value: this.region,
+    });
+
+    new CfnOutput(this, 'PhotosBucketName', {
+      value: photosBucket.bucketName,
+    });
+
+    new CfnOutput(this, 'Stage', {
+      value: stage,
     });
   }
 }

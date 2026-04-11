@@ -69,7 +69,6 @@ jobs:
           STAGE="${{ inputs.stage || 'dev' }}" \
           JWT_SECRET_INITIAL_VALUE="${{ secrets.JWT_SECRET_INITIAL_VALUE }}" \
           S3_BUCKET_NAME="${{ vars.S3_BUCKET_NAME || 'spotterhub-photos' }}" \
-          NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
           cdk deploy SpotterHub-${{ inputs.stage || 'dev' }}-Stack \
             --require-approval never \
             --outputs-file cdks-outputs.json
@@ -158,7 +157,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract ECR repo URI
+      - name: Extract ECR repo URI and CDK outputs
         id: ecr-web
         run: |
           repo_uri=$(aws cloudformation describe-stacks \
@@ -179,12 +178,11 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-  # ─── Trigger App Runner Redeploy ──────────────────────────────────────────
-  redeploy:
-    name: Trigger App Runner Redeploy
+  # ─── Deploy App Runner Services ───────────────────────────────────────────
+  deploy-apprunner:
+    name: Deploy App Runner Services
     runs-on: ubuntu-latest
-    needs: [build-api, build-web]
-    if: ${{ inputs.stage != 'prod' }}
+    needs: [deploy-infra, build-api, build-web]
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -193,20 +191,108 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Trigger API redeploy
+      - name: Extract CDK outputs
+        id: cdk
         run: |
-          api_arn=$(aws apprunner list-services \
-            --query "ServiceSummaryList[?ServiceName=='spotterhub-${{ inputs.stage || 'dev' }}-api'].ServiceArn" \
-            --output text)
-          if [ -n "$api_arn" ]; then
-            aws apprunner start-deployment --service-arn "$api_arn"
-          fi
+          stack_name="SpotterHub-${{ inputs.stage || 'dev' }}-Stack"
+          echo "api-repo=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ECRApiRepoUri`].OutputValue' --output text)" >> $GITHUB_OUTPUT
+          echo "web-repo=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ECRWebRepoUri`].OutputValue' --output text)" >> $GITHUB_OUTPUT
+          echo "exec-role=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerExecutionRoleArn`].OutputValue' --output text)" >> $GITHUB_OUTPUT
+          echo "ecr-role=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`AppRunnerECRAccessRoleArn`].OutputValue' --output text)" >> $GITHUB_OUTPUT
+          echo "db-secret=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`DBUrlSecretArn`].OutputValue' --output text)" >> $GITHUB_OUTPUT
+          echo "jwt-secret=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`JWTSecretArn`].OutputValue' --output text)" >> $GITHUB_OUTPUT
+          echo "stage=${{ inputs.stage || 'dev' }}" >> $GITHUB_OUTPUT
 
-      - name: Trigger Web redeploy
+      - name: Create App Runner API Service
+        id: api-service
         run: |
-          web_arn=$(aws apprunner list-services \
-            --query "ServiceSummaryList[?ServiceName=='spotterhub-${{ inputs.stage || 'dev' }}-web'].ServiceArn" \
-            --output text)
-          if [ -n "$web_arn" ]; then
-            aws apprunner start-deployment --service-arn "$web_arn"
-          fi
+          api_service=$(aws apprunner create-service \
+            --service-name "spotterhub-${{ steps.cdk.outputs.stage }}-api" \
+            --source-configuration '{
+              "ImageRepository": {
+                "ImageIdentifier": "'${{ steps.cdk.outputs.api-repo }}':latest",
+                "ImageRepositoryType": "ECR",
+                "ImageConfiguration": {
+                  "Port": "4000",
+                  "RuntimeEnvironmentVariables": [
+                    {"Name": "NODE_ENV", "Value": "production"},
+                    {"Name": "API_PORT", "Value": "4000"},
+                    {"Name": "STAGE", "Value": "'${{ steps.cdk.outputs.stage }}'"}
+                  ]
+                }
+              },
+              "AutoDeploymentsEnabled": true,
+              "AuthenticationConfiguration": {
+                "AccessRoleArn": "'${{ steps.cdk.outputs.ecr-role }}'"
+              }
+            }' \
+            --instance-configuration '{
+              "Cpu": "1024",
+              "Memory": "2048",
+              "InstanceRoleArn": "'${{ steps.cdk.outputs.exec-role }}'"
+            }' \
+            --health-check-configuration '{
+              "Protocol": "HTTP",
+              "Path": "/health",
+              "Interval": 20,
+              "Timeout": 5,
+              "HealthyThreshold": 2,
+              "UnhealthyThreshold": 3
+            }' \
+            --query 'Service.{arn:ServiceArn,url:ServiceUrl}' \
+            --output json)
+          echo "api-url=$(echo $api_service | jq -r '.url')" >> $GITHUB_OUTPUT
+          echo "api-arn=$(echo $api_service | jq -r '.arn')" >> $GITHUB_OUTPUT
+          echo "api_service=$api_service" >> $GITHUB_OUTPUT
+
+      - name: Wait for API service to stabilize
+        run: |
+          echo "Waiting for API service to stabilize..."
+          aws apprunner wait service-stable \
+            --service-arn "${{ steps.api-service.outputs.api-arn }}"
+          echo "API service stabilized"
+
+      - name: Create App Runner Web Service
+        id: web-service
+        run: |
+          aws apprunner create-service \
+            --service-name "spotterhub-${{ steps.cdk.outputs.stage }}-web" \
+            --source-configuration '{
+              "ImageRepository": {
+                "ImageIdentifier": "'${{ steps.cdk.outputs.web-repo }}':latest",
+                "ImageRepositoryType": "ECR",
+                "ImageConfiguration": {
+                  "Port": "3000",
+                  "RuntimeEnvironmentVariables": [
+                    {"Name": "NODE_ENV", "Value": "production"},
+                    {"Name": "PORT", "Value": "3000"},
+                    {"Name": "NEXT_PUBLIC_API_URL", "Value": "${{ steps.api-service.outputs.api-url }}"},
+                    {"Name": "NEXT_PUBLIC_MAPBOX_TOKEN", "Value": "${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}"}
+                  ]
+                }
+              },
+              "AutoDeploymentsEnabled": true,
+              "AuthenticationConfiguration": {
+                "AccessRoleArn": "'${{ steps.cdk.outputs.ecr-role }}'"
+              }
+            }' \
+            --instance-configuration '{
+              "Cpu": "1024",
+              "Memory": "2048",
+              "InstanceRoleArn": "'${{ steps.cdk.outputs.exec-role }}'"
+            }' \
+            --health-check-configuration '{
+              "Protocol": "HTTP",
+              "Path": "/",
+              "Interval": 20,
+              "Timeout": 5,
+              "HealthyThreshold": 2,
+              "UnhealthyThreshold": 3
+            }' \
+            --query 'Service.{arn:ServiceArn,url:ServiceUrl}' \
+            --output json | jq -r '{arn:.arn,url:.url}'
+
+      - name: Print deployment URLs
+        run: |
+          echo "✅ API Service: ${{ steps.api-service.outputs.api-url }}"
+          echo "✅ Web Service: ${{ steps.web-service.outputs.url }}"
