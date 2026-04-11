@@ -8,10 +8,10 @@ COPY package.json package-lock.json* ./
 COPY tsconfig.base.json ./
 COPY turbo.json ./
 
-# Copy workspace package files
-COPY packages/db/package.json ./packages/db/
+# Copy workspace package source
+COPY packages/shared/src ./packages/shared/src/
+COPY packages/db/src ./packages/db/src/
 COPY packages/db/prisma ./packages/db/prisma/
-COPY packages/shared/package.json ./packages/shared/
 
 # Copy app source
 COPY apps/api ./apps/api
@@ -22,8 +22,8 @@ RUN npm install
 # Generate Prisma client
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
-# Compile TypeScript
-RUN npm run build --workspace=@spotterhub/api
+# Compile TypeScript (turbo builds dependencies first via ^build)
+RUN npm run build
 
 # Prune devDependencies
 RUN npm prune --production --workspace=@spotterhub/api
