@@ -45,6 +45,9 @@ jobs:
           npm install -g aws-cdk
           cd infrastructure && npm install
 
+      - name: Build infrastructure
+        run: cd infrastructure && npm run build
+
       - name: Authenticate to AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
