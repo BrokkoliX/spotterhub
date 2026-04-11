@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-11
+> **Last updated:** 2026-04-11 (Session 13)
 > **Purpose:** Living document tracking implementation progress against the roadmap. Update after each session.
 
 ---
@@ -157,6 +157,22 @@
   - Closes on outside click via `useEffect` + `document.addEventListener`
   - CSS added to `Header.module.css`
 
+### Session 13 ✅ (2026-04-11): AWS App Runner Deployment Infrastructure
+
+**Changes committed:** `62a8147`
+
+- **API container:** Express wrapper added to `apps/api/src/index.ts` (Apollo Server now runs behind Express with `GET /health` endpoint for App Runner health checks). Added `express` + `@types/express` dependencies.
+- **API Dockerfile** (`apps/api/Dockerfile`): Multi-stage Node 20 Alpine build — compiles TypeScript, runs `prisma generate`, prunes devDependencies, copies prisma schema for migrate deploy.
+- **API entrypoint** (`apps/api/docker-entrypoint.sh`): Fetches `DATABASE_URL` and `JWT_SECRET` from AWS Secrets Manager at startup, runs `prisma migrate deploy` (idempotent), starts Node server.
+- **Web Dockerfile** (`apps/web/Dockerfile`): Multi-stage Next.js standalone build — builds standalone output, copies static assets.
+- **Next.js config** (`apps/web/next.config.ts`): Added `output: 'standalone'` and S3 production `remotePatterns` for `spotterhub-photos.s3.us-east-1.amazonaws.com`.
+- **CDK infrastructure stack** (`infrastructure/`): VPC, RDS PostgreSQL 16 (t3.micro/t3.small), Secrets Manager for DATABASE_URL + JWT_SECRET, ECR repositories, App Runner services (API on port 4000, Web on port 3000 with NEXT_PUBLIC_API_URL wired to API URL).
+- **GitHub Actions deploy workflow** (`.github/workflows/deploy.yml`): Triggers on push to `main` — CDK deploy → Docker build/push API to ECR → Docker build/push Web to ECR → App Runner redeploy.
+
+**Not included** (deferred): Cognito auth wiring, CloudFront CDN, production S3 bucket creation, Lambda.
+
+---
+
 ### Session 12 ✅: Global Forum, Site Settings, Superuser & UX Polish
 
 **Schema additions:**
@@ -187,14 +203,14 @@
 
 ---
 
-## Phase 2: Launch Prep — ❌ NOT STARTED
+## Phase 2: Launch Prep — 🔄 IN PROGRESS
 
 - [ ] Individual premium subscriptions (Stripe)
 - [ ] Analytics and KPI instrumentation
 - [ ] SEO implementation (SSR metadata, sitemaps, structured data, Open Graph tags)
 - [ ] Accessibility audit (WCAG 2.1 AA, axe-core integration)
 - [ ] Performance tuning and load testing
-- [ ] AWS production infrastructure (CDK stacks: RDS, S3, CloudFront, Cognito, Lambda, ECS Fargate)
+- [x] ~~AWS production infrastructure (CDK stacks: RDS, S3, CloudFront, Cognito, Lambda, ECS Fargate)~~ — **Partially done** (Session 13): App Runner, VPC, RDS, Secrets Manager, ECR. Remaining: Cognito auth wiring, CloudFront CDN, production S3 bucket, monitoring/alerting
 - [ ] Monitoring, alerting, runbooks
 - [ ] Email system (SES: transactional, triggered, digest)
 
@@ -220,12 +236,16 @@
 
 ## Recommended Next Session Priority
 
-**Phase 1a and Phase 1b are complete. All core features are implemented.**
+**Phase 1a and Phase 1b are complete. AWS deployment scaffolding is in place.**
+
+**Session 13 done:** App Runner deployment infrastructure (Dockerfiles, CDK stack, GitHub Actions deploy workflow).
 
 **Next — Phase 2 Launch Prep:**
-1. SEO implementation (metadata, sitemaps, Open Graph)
-2. Performance tuning and load testing
-3. AWS production infrastructure setup
+1. **AWS setup** — configure GitHub repo vars/secrets (`AWS_ACCOUNT_ID`, `S3_BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `JWT_SECRET_INITIAL_VALUE`, `NEXT_PUBLIC_MAPBOX_TOKEN`), run `cdk bootstrap`, merge to main to trigger first deploy
+2. **Cognito auth** — wire `signUp`/`signIn` resolvers to AWS Cognito (currently mock JWT in dev)
+3. **CloudFront CDN** — add CloudFront distribution in CDK stack, wire S3 bucket behind CDN
+4. SEO implementation (metadata, sitemaps, Open Graph)
+5. Performance tuning and load testing
 
 ---
 
@@ -249,6 +269,12 @@
 | Docker config    | `docker/docker-compose.yml`                                       |
 | LocalStack init  | `docker/localstack-init/create-bucket.sh`                         |
 | CI pipeline      | `.github/workflows/ci.yml`                                        |
+| Deploy workflow  | `.github/workflows/deploy.yml`                                    |
+| API Dockerfile   | `apps/api/Dockerfile`                                            |
+| API entrypoint   | `apps/api/docker-entrypoint.sh`                                   |
+| Web Dockerfile   | `apps/web/Dockerfile`                                            |
+| CDK app          | `infrastructure/bin/spotterhub.ts`                                |
+| CDK stack        | `infrastructure/lib/spotterhub-stack.ts`                          |
 
 ---
 
