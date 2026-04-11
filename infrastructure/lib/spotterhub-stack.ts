@@ -107,16 +107,14 @@ export class SpotterHubStack extends Stack {
     });
 
     // ─── IAM Execution Role for App Runner ───────────────────────────────
+    // App Runner automatically creates a service-linked role
+    // AWSServiceRoleForAppRunner when needed. Our custom execution role
+    // grants container code permission to read secrets and S3.
     const appRunnerExecutionRole = new iam.Role(
       this,
       'AppRunnerExecutionRole',
       {
         assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName(
-            'aws-service-role/AppRunnerServiceRolePolicy',
-          ),
-        ],
       },
     );
 
