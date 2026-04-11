@@ -33,6 +33,8 @@ function applyPrivacy(lat: number, lng: number, mode: string) {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export type PhotoSortBy = 'recent' | 'popular_day' | 'popular_week' | 'popular_month' | 'popular_all';
+
 export interface PhotosArgs {
   first?: number;
   after?: string;
@@ -41,6 +43,8 @@ export interface PhotosArgs {
   aircraftType?: string;
   airportCode?: string;
   tags?: string[];
+  manufacturer?: string;
+  sortBy?: PhotoSortBy;
 }
 
 export interface CreatePhotoInput {
@@ -113,11 +117,38 @@ export const photoQueryResolvers = {
         some: { tag: { in: args.tags } },
       };
     }
+    if (args.manufacturer) {
+      // Manufacturer is derived: aircraftType starts with manufacturer name
+      // e.g. "Boeing 747" -> manufacturer "Boeing"
+      where.aircraftType = {
+        ...(where.aircraftType as object || {}),
+        startsWith: args.manufacturer,
+        mode: 'insensitive',
+      };
+    }
+
+    // Determine sort order
+    let orderBy: Record<string, unknown> = { createdAt: 'desc' };
+    if (args.sortBy === 'popular_all') {
+      orderBy = { likeCount: 'desc' };
+    } else if (args.sortBy === 'popular_day') {
+      const cutoff = new Date(Date.now() - 86_400_000);
+      where.createdAt = { ...(where.createdAt as object || {}), gte: cutoff };
+      orderBy = { likeCount: 'desc' };
+    } else if (args.sortBy === 'popular_week') {
+      const cutoff = new Date(Date.now() - 7 * 86_400_000);
+      where.createdAt = { ...(where.createdAt as object || {}), gte: cutoff };
+      orderBy = { likeCount: 'desc' };
+    } else if (args.sortBy === 'popular_month') {
+      const cutoff = new Date(Date.now() - 30 * 86_400_000);
+      where.createdAt = { ...(where.createdAt as object || {}), gte: cutoff };
+      orderBy = { likeCount: 'desc' };
+    }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.photo.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         take: take + 1,
         include: { user: true, variants: true, tags: true },
       }),

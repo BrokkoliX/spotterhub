@@ -198,10 +198,11 @@ export const albumMutationResolvers = {
 
     // Community albums — only owner/admin can edit
     if (album.communityId) {
+      const isSuperuser = dbUser.role === 'superuser';
       const membership = await ctx.prisma.communityMember.findUnique({
         where: { communityId_userId: { communityId: album.communityId, userId: dbUser.id } },
       });
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
+      if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
         throw new GraphQLError('Only community owners and admins can edit this album', {
           extensions: { code: 'FORBIDDEN' },
         });
@@ -294,10 +295,11 @@ export const albumMutationResolvers = {
     // Community albums — only owner/admin can delete
     if (album.communityId) {
       const dbUser = await getDbUser(ctx);
+      const isSuperuser = dbUser.role === 'superuser';
       const membership = await ctx.prisma.communityMember.findUnique({
         where: { communityId_userId: { communityId: album.communityId, userId: dbUser.id } },
       });
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
+      if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
         throw new GraphQLError('Only community owners and admins can delete this album', {
           extensions: { code: 'FORBIDDEN' },
         });
@@ -414,10 +416,11 @@ export const albumMutationResolvers = {
       });
     }
 
+    const isSuperuser = dbUser.role === 'superuser';
     const membership = await ctx.prisma.communityMember.findUnique({
       where: { communityId_userId: { communityId: args.communityId, userId: dbUser.id } },
     });
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
       throw new GraphQLError('Only community owners and admins can create albums', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -533,10 +536,11 @@ export const albumMutationResolvers = {
       });
     }
 
+    const isSuperuser = dbUser.role === 'superuser';
     const membership = await ctx.prisma.communityMember.findUnique({
       where: { communityId_userId: { communityId: album.communityId, userId: dbUser.id } },
     });
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
       // Non-admins can only remove photos they added themselves
       const entries = await ctx.prisma.albumPhoto.findMany({
         where: { albumId: args.albumId, photoId: { in: args.photoIds } },
@@ -601,6 +605,20 @@ export const albumFieldResolvers = {
   community: (parent: AlbumParent, _args: unknown, ctx: Context) => {
     if (!parent.communityId) return null;
     return ctx.prisma.community.findUnique({ where: { id: parent.communityId } });
+  },
+
+  myMembership: async (parent: AlbumParent, _args: unknown, ctx: Context) => {
+    if (!parent.communityId) return null;
+    const dbUser = await getDbUser(ctx);
+    if (!dbUser) return null;
+    return ctx.prisma.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: parent.communityId,
+          userId: dbUser.id,
+        },
+      },
+    });
   },
 
   photos: async (

@@ -32,6 +32,22 @@
   --header-height: 56px;
   --max-width: 1200px;
   --max-width-narrow: 640px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Mobile-first breakpoints (use @media (min-width) from mobile up) */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -81,15 +97,23 @@ select {
 /* ─── Utility Classes ────────────────────────────────────────────────────── */
 
 .container {
+  width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
+}
+
+@media (min-width: var(--bp-md)) {
+  .container {
+    padding: 0 var(--space-6);
+  }
 }
 
 .container-narrow {
+  width: 100%;
   max-width: var(--max-width-narrow);
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
 }
 
 .sr-only {
@@ -203,3 +227,76 @@ select {
   font-size: 0.75rem;
   font-weight: 500;
 }
+
+/* ─── Responsive Utilities ─────────────────────────────────────────────────── */
+
+/* Stack layout on mobile, row on desktop */
+.stack { display: flex; flex-direction: column; gap: var(--space-4); }
+@media (min-width: var(--bp-md)) { .stack { flex-direction: row; } }
+
+/* Hide on mobile / show on desktop */
+.hide-mobile { display: none; }
+@media (min-width: var(--bp-md)) { .hide-mobile { display: block; } }
+
+/* Show on mobile / hide on desktop */
+.hide-desktop { display: block; }
+@media (min-width: var(--bp-md)) { .hide-desktop { display: none; } }
+
+/* Card base */
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Section heading */
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+/* Avatar circle */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 20%, var(--color-bg-input));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.avatar-sm { width: 28px; height: 28px; font-size: 0.75rem; }
+.avatar-lg { width: 56px; height: 56px; font-size: 1.25rem; }
+.avatar-xl { width: 80px; height: 80px; font-size: 1.75rem; }
+
+/* Clickable card with hover effect */
+.clickable-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.clickable-card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+/* Horizontal scroll for tabs on mobile */
+.scroll-tabs {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-tabs::-webkit-scrollbar { display: none; }

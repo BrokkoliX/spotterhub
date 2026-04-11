@@ -184,6 +184,7 @@ export function Header() {
   const showUser = ready && user;
   const showGuest = ready && !user;
   const isAdmin = showUser && (user.role === 'admin' || user.role === 'moderator');
+  const isSuperuser = showUser && user.role === 'superuser';
 
   return (
     <header className={styles.header}>
@@ -205,6 +206,9 @@ export function Header() {
           <Link href="/map" className={styles.navLink}>
             Map
           </Link>
+          <Link href="/forum" className={styles.navLink}>
+            Forum
+          </Link>
           <Link href="/communities" className={styles.navLink}>
             Communities
           </Link>
@@ -215,10 +219,10 @@ export function Header() {
           )}
           {showUser && (
             <Link href="/upload" className={styles.navLink}>
-              Upload
+              My Uploads
             </Link>
           )}
-          {isAdmin && (
+          {(isAdmin || isSuperuser) && (
             <Link href="/admin" className={styles.navLink}>
               Admin
             </Link>
@@ -255,6 +259,7 @@ export function Header() {
                 href={`/u/${user.username}/photos`}
                 className={styles.username}
               >
+                {isSuperuser && <span title="Superuser" style={{ marginRight: 4 }}>🛡️</span>}
                 {user.username}
               </Link>
               <Link

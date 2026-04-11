@@ -35,74 +35,119 @@ export default function CommunitiesPage() {
 
   const communities = data?.communities;
 
-  return (
-    <div className={styles.page}>
-      <h1 className={styles.title}>Communities</h1>
+  // Featured community = the one with most members (first in sorted-by-members list)
+  const featuredCommunity = communities?.edges?.[0]?.node;
 
-      <div className={styles.topBar}>
-        <input
-          className={styles.searchInput}
-          type="text"
-          placeholder="Search communities…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className={styles.filterSelect}
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-        {ready && user && (
-          <Link href="/communities/new" className="btn btn-primary">
-            Create Community
-          </Link>
-        )}
+  return (
+    <div>
+      {/* Hero Banner */}
+      <div className={styles.hero}>
+        <div className={styles.heroGradient} />
+        <div className={styles.heroContent}>
+          <div className={styles.heroEmoji}>🌍</div>
+          <h1 className={styles.heroTitle}>Communities</h1>
+          <p className={styles.heroSubtitle}>
+            Join aviation spotting communities around the world
+          </p>
+        </div>
       </div>
 
-      {fetching && <div className={styles.loading}>Loading…</div>}
+      <div className="container">
+        {/* Filter bar */}
+        <div className={styles.filterBar}>
+          <div className={styles.filterRow}>
+            <input
+              className={styles.searchInput}
+              type="text"
+              placeholder="Search communities…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className={styles.filterSelect}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            {ready && user && (
+              <Link href="/communities/new" className="btn btn-primary">
+                + New
+              </Link>
+            )}
+          </div>
+        </div>
 
-      {communities && communities.edges.length > 0 && (
-        <div className={styles.grid}>
-          {communities.edges.map(({ node }) => (
-            <Link href={`/communities/${node.slug}`} key={node.id} className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardAvatar}>
-                  {node.name.charAt(0).toUpperCase()}
+        {/* Featured community */}
+        {featuredCommunity && !search && !category && (
+          <div className={styles.featuredWrap}>
+            <Link href={`/communities/${featuredCommunity.slug}`} className={styles.featuredCard}>
+              <div className={styles.featuredBanner} />
+              <div className={styles.featuredBody}>
+                <div className={styles.featuredBadge}>⭐ Featured</div>
+                <div className={styles.featuredAvatar}>
+                  {featuredCommunity.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <div className={styles.cardName}>{node.name}</div>
-                  <div className={styles.cardSlug}>/{node.slug}</div>
+                <div className={styles.featuredName}>{featuredCommunity.name}</div>
+                {featuredCommunity.description && (
+                  <div className={styles.featuredDesc}>{featuredCommunity.description}</div>
+                )}
+                <div className={styles.featuredMeta}>
+                  <span>👥 {featuredCommunity.memberCount} members</span>
+                  {featuredCommunity.category && <span>📂 {featuredCommunity.category}</span>}
+                  {featuredCommunity.location && <span>📍 {featuredCommunity.location}</span>}
                 </div>
-              </div>
-              {node.description && (
-                <div className={styles.cardDesc}>{node.description}</div>
-              )}
-              <div className={styles.cardMeta}>
-                <span>👥 {node.memberCount} member{node.memberCount !== 1 ? 's' : ''}</span>
-                {node.category && <span>📂 {node.category}</span>}
-                {node.location && <span>📍 {node.location}</span>}
-                <span>by {node.owner.username}</span>
               </div>
             </Link>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
 
-      {communities && communities.edges.length === 0 && !fetching && (
-        <div className={styles.empty}>
-          No communities found. {ready && user ? (
-            <Link href="/communities/new">Create the first one!</Link>
-          ) : 'Sign in to create one.'}
-        </div>
-      )}
+        {fetching && <div className={styles.loading}>Loading…</div>}
 
-      {communities?.pageInfo?.hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
-      )}
+        {communities && communities.edges.length > 0 && (
+          <div className={styles.grid}>
+            {(search || category
+              ? communities.edges
+              : communities.edges.slice(1) // skip featured (first)
+            ).map(({ node }) => (
+              <Link href={`/communities/${node.slug}`} key={node.id} className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardAvatar}>
+                    {node.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className={styles.cardName}>{node.name}</div>
+                    <div className={styles.cardSlug}>/{node.slug}</div>
+                  </div>
+                </div>
+                {node.description && (
+                  <div className={styles.cardDesc}>{node.description}</div>
+                )}
+                <div className={styles.cardMeta}>
+                  <span>👥 {node.memberCount} member{node.memberCount !== 1 ? 's' : ''}</span>
+                  {node.category && <span>📂 {node.category}</span>}
+                  <span>by {node.owner.username}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {communities && communities.edges.length === 0 && !fetching && (
+          <div className={styles.empty}>
+            No communities found.{' '}
+            {ready && user ? (
+              <Link href="/communities/new">Create the first one!</Link>
+            ) : 'Sign in to create one.'}
+          </div>
+        )}
+
+        {communities?.pageInfo?.hasNextPage && (
+          <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
+        )}
+      </div>
     </div>
   );
 }

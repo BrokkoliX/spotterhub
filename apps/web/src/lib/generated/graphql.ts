@@ -71,6 +71,8 @@ export type Album = {
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   isPublic: Scalars['Boolean']['output'];
+  /** Current user's membership in the community this album belongs to (null if not a community album). */
+  myMembership?: Maybe<CommunityMember>;
   /** Total number of photos in this album. */
   photoCount: Scalars['Int']['output'];
   /** Photos in this album (junction-table based for community albums). */
@@ -421,10 +423,10 @@ export type FollowedTopic = {
   value: Scalars['String']['output'];
 };
 
-/** A discussion category within a community forum. */
+/** A discussion category within a community forum or global forum. */
 export type ForumCategory = {
   __typename?: 'ForumCategory';
-  communityId: Scalars['ID']['output'];
+  communityId?: Maybe<Scalars['ID']['output']>;
   createdAt: Scalars['String']['output'];
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
@@ -558,12 +560,14 @@ export type Mutation = {
   createCommunityAlbum: Album;
   /** Create an event in a community. Requires owner or admin role. */
   createCommunityEvent: CommunityEvent;
-  /** Create a forum category in a community. Requires owner or admin role. */
+  /** Create a forum category in a community. Requires owner or admin role. Pass communityId: null for global categories (admin only). */
   createForumCategory: ForumCategory;
   /** Post a reply in a thread. Any active community member. */
   createForumPost: ForumPost;
   /** Create a new thread in a forum category. Any active community member. */
   createForumThread: ForumThread;
+  /** Create a global forum category (not tied to any community). Requires admin role. */
+  createGlobalForumCategory: ForumCategory;
   /**
    * Create a photo record after the file has been uploaded to S3.
    * Triggers server-side image processing (thumbnail + display variant generation).
@@ -796,7 +800,7 @@ export type MutationCreateCommunityEventArgs = {
 
 
 export type MutationCreateForumCategoryArgs = {
-  communityId: Scalars['ID']['input'];
+  communityId?: InputMaybe<Scalars['ID']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
   name: Scalars['String']['input'];
   slug?: InputMaybe<Scalars['String']['input']>;
@@ -814,6 +818,13 @@ export type MutationCreateForumThreadArgs = {
   body: Scalars['String']['input'];
   categoryId: Scalars['ID']['input'];
   title: Scalars['String']['input'];
+};
+
+
+export type MutationCreateGlobalForumCategoryArgs = {
+  description?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+  slug?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1180,6 +1191,14 @@ export type PhotoMapMarker = {
   thumbnailUrl?: Maybe<Scalars['String']['output']>;
 };
 
+export enum PhotoSortBy {
+  PopularAll = 'popular_all',
+  PopularDay = 'popular_day',
+  PopularMonth = 'popular_month',
+  PopularWeek = 'popular_week',
+  Recent = 'recent'
+}
+
 /** A processed image variant (thumbnail, display, etc.). */
 export type PhotoVariant = {
   __typename?: 'PhotoVariant';
@@ -1280,6 +1299,8 @@ export type Query = {
   forumThread?: Maybe<ForumThread>;
   /** Paginated list of threads in a category. Pinned threads appear first. */
   forumThreads: ForumThreadConnection;
+  /** List all global forum categories (not tied to any community), ordered by position. */
+  globalForumCategories: Array<ForumCategory>;
   /** Health check — verifies the API is running and the database is reachable. */
   health: HealthCheck;
   /**
@@ -1468,6 +1489,8 @@ export type QueryPhotosArgs = {
   airportCode?: InputMaybe<Scalars['String']['input']>;
   albumId?: InputMaybe<Scalars['ID']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  manufacturer?: InputMaybe<Scalars['String']['input']>;
+  sortBy?: InputMaybe<PhotoSortBy>;
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
   userId?: InputMaybe<Scalars['ID']['input']>;
 };
@@ -1707,6 +1730,8 @@ export type PhotosQueryVariables = Exact<{
   aircraftType?: InputMaybe<Scalars['String']['input']>;
   airportCode?: InputMaybe<Scalars['String']['input']>;
   tags?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+  manufacturer?: InputMaybe<Scalars['String']['input']>;
+  sortBy?: InputMaybe<PhotoSortBy>;
 }>;
 
 
@@ -1889,7 +1914,7 @@ export type AlbumQueryVariables = Exact<{
 }>;
 
 
-export type AlbumQuery = { __typename?: 'Query', album?: { __typename?: 'Album', id: string, title: string, description?: string | null, isPublic: boolean, photoCount: number, createdAt: string, updatedAt: string, communityId?: string | null, community?: { __typename?: 'Community', id: string, name: string, slug: string } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, coverPhoto?: { __typename?: 'Photo', id: string, variants: Array<{ __typename?: 'PhotoVariant', variantType: string, url: string, width: number, height: number }> } | null } | null };
+export type AlbumQuery = { __typename?: 'Query', album?: { __typename?: 'Album', id: string, title: string, description?: string | null, isPublic: boolean, photoCount: number, createdAt: string, updatedAt: string, communityId?: string | null, myMembership?: { __typename?: 'CommunityMember', id: string, role: string, status: string } | null, community?: { __typename?: 'Community', id: string, name: string, slug: string } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, coverPhoto?: { __typename?: 'Photo', id: string, variants: Array<{ __typename?: 'PhotoVariant', variantType: string, url: string, width: number, height: number }> } | null } | null };
 
 export type AlbumsQueryVariables = Exact<{
   userId?: InputMaybe<Scalars['ID']['input']>;
@@ -2195,7 +2220,7 @@ export type ForumThreadQueryVariables = Exact<{
 }>;
 
 
-export type ForumThreadQuery = { __typename?: 'Query', forumThread?: { __typename?: 'ForumThread', id: string, title: string, isPinned: boolean, isLocked: boolean, postCount: number, lastPostAt: string, createdAt: string, author: { __typename?: 'User', username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, category: { __typename?: 'ForumCategory', id: string, name: string, slug: string, communityId: string } } | null };
+export type ForumThreadQuery = { __typename?: 'Query', forumThread?: { __typename?: 'ForumThread', id: string, title: string, isPinned: boolean, isLocked: boolean, postCount: number, lastPostAt: string, createdAt: string, author: { __typename?: 'User', username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, category: { __typename?: 'ForumCategory', id: string, name: string, slug: string, communityId?: string | null } } | null };
 
 export type ForumPostsQueryVariables = Exact<{
   threadId: Scalars['ID']['input'];
@@ -2207,7 +2232,7 @@ export type ForumPostsQueryVariables = Exact<{
 export type ForumPostsQuery = { __typename?: 'Query', forumPosts: { __typename?: 'ForumPostConnection', totalCount: number, edges: Array<{ __typename?: 'ForumPostEdge', cursor: string, node: { __typename?: 'ForumPost', id: string, body: string, isDeleted: boolean, createdAt: string, updatedAt: string, author: { __typename?: 'User', username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, replies: Array<{ __typename?: 'ForumPost', id: string, body: string, isDeleted: boolean, createdAt: string, author: { __typename?: 'User', username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } }> } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type CreateForumCategoryMutationVariables = Exact<{
-  communityId: Scalars['ID']['input'];
+  communityId?: InputMaybe<Scalars['ID']['input']>;
   name: Scalars['String']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
   slug?: InputMaybe<Scalars['String']['input']>;
@@ -2281,6 +2306,20 @@ export type UpdateForumPostMutationVariables = Exact<{
 
 
 export type UpdateForumPostMutation = { __typename?: 'Mutation', updateForumPost: { __typename?: 'ForumPost', id: string, body: string } };
+
+export type GlobalForumCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GlobalForumCategoriesQuery = { __typename?: 'Query', globalForumCategories: Array<{ __typename?: 'ForumCategory', id: string, name: string, description?: string | null, slug: string, position: number, threadCount: number, latestThread?: { __typename?: 'ForumThread', id: string, title: string, lastPostAt: string, author: { __typename?: 'User', username: string } } | null }> };
+
+export type CreateGlobalForumCategoryMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+  description?: InputMaybe<Scalars['String']['input']>;
+  slug?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type CreateGlobalForumCategoryMutation = { __typename?: 'Mutation', createGlobalForumCategory: { __typename?: 'ForumCategory', id: string, name: string, slug: string, description?: string | null, position: number, threadCount: number } };
 
 export type DeleteForumPostMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -2499,7 +2538,7 @@ export function useSignInMutation() {
   return Urql.useMutation<SignInMutation, SignInMutationVariables>(SignInDocument);
 };
 export const PhotosDocument = gql`
-    query Photos($first: Int, $after: String, $userId: ID, $albumId: ID, $aircraftType: String, $airportCode: String, $tags: [String!]) {
+    query Photos($first: Int, $after: String, $userId: ID, $albumId: ID, $aircraftType: String, $airportCode: String, $tags: [String!], $manufacturer: String, $sortBy: PhotoSortBy) {
   photos(
     first: $first
     after: $after
@@ -2508,6 +2547,8 @@ export const PhotosDocument = gql`
     aircraftType: $aircraftType
     airportCode: $airportCode
     tags: $tags
+    manufacturer: $manufacturer
+    sortBy: $sortBy
   ) {
     edges {
       cursor
@@ -2970,6 +3011,11 @@ export const AlbumDocument = gql`
     query Album($id: ID!) {
   album(id: $id) {
     ...AlbumFields
+    myMembership {
+      id
+      role
+      status
+    }
   }
 }
     ${AlbumFieldsFragmentDoc}`;
@@ -3770,7 +3816,7 @@ export function useForumPostsQuery(options: Omit<Urql.UseQueryArgs<ForumPostsQue
   return Urql.useQuery<ForumPostsQuery, ForumPostsQueryVariables>({ query: ForumPostsDocument, ...options });
 };
 export const CreateForumCategoryDocument = gql`
-    mutation CreateForumCategory($communityId: ID!, $name: String!, $description: String, $slug: String) {
+    mutation CreateForumCategory($communityId: ID, $name: String!, $description: String, $slug: String) {
   createForumCategory(
     communityId: $communityId
     name: $name
@@ -3915,6 +3961,46 @@ export const UpdateForumPostDocument = gql`
 
 export function useUpdateForumPostMutation() {
   return Urql.useMutation<UpdateForumPostMutation, UpdateForumPostMutationVariables>(UpdateForumPostDocument);
+};
+export const GlobalForumCategoriesDocument = gql`
+    query GlobalForumCategories {
+  globalForumCategories {
+    id
+    name
+    description
+    slug
+    position
+    threadCount
+    latestThread {
+      id
+      title
+      lastPostAt
+      author {
+        username
+      }
+    }
+  }
+}
+    `;
+
+export function useGlobalForumCategoriesQuery(options?: Omit<Urql.UseQueryArgs<GlobalForumCategoriesQueryVariables>, 'query'>) {
+  return Urql.useQuery<GlobalForumCategoriesQuery, GlobalForumCategoriesQueryVariables>({ query: GlobalForumCategoriesDocument, ...options });
+};
+export const CreateGlobalForumCategoryDocument = gql`
+    mutation CreateGlobalForumCategory($name: String!, $description: String, $slug: String) {
+  createGlobalForumCategory(name: $name, description: $description, slug: $slug) {
+    id
+    name
+    slug
+    description
+    position
+    threadCount
+  }
+}
+    `;
+
+export function useCreateGlobalForumCategoryMutation() {
+  return Urql.useMutation<CreateGlobalForumCategoryMutation, CreateGlobalForumCategoryMutationVariables>(CreateGlobalForumCategoryDocument);
 };
 export const DeleteForumPostDocument = gql`
     mutation DeleteForumPost($id: ID!) {

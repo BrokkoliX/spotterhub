@@ -45,6 +45,12 @@ export const likeMutationResolvers = {
         data: { userId, photoId: args.photoId },
       });
 
+      // Increment denormalized likeCount
+      await ctx.prisma.photo.update({
+        where: { id: args.photoId },
+        data: { likeCount: { increment: 1 } },
+      });
+
       // Notify the photo owner (skip self-likes)
       const [photoOwner, liker] = await Promise.all([
         ctx.prisma.photo.findUnique({ where: { id: args.photoId }, select: { userId: true } }),
@@ -86,9 +92,15 @@ export const likeMutationResolvers = {
     }
 
     // Delete if exists, no-op if not (idempotent)
-    await ctx.prisma.like.deleteMany({
+    const deleted = await ctx.prisma.like.deleteMany({
       where: { userId, photoId: args.photoId },
     });
+    if (deleted.count > 0) {
+      await ctx.prisma.photo.update({
+        where: { id: args.photoId },
+        data: { likeCount: { decrement: 1 } },
+      });
+    }
 
     return ctx.prisma.photo.findUnique({
       where: { id: args.photoId },

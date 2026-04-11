@@ -125,9 +125,10 @@ export const eventMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
     const role = await getMemberRole(ctx, dbUser.id, args.communityId);
 
-    if (!role || roleWeight[role] < roleWeight['admin']) {
+    if (!isSuperuser && (!role || roleWeight[role] < roleWeight['admin'])) {
       throw new GraphQLError('Only community owners and admins can create events', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -180,6 +181,7 @@ export const eventMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
     const event = await ctx.prisma.communityEvent.findUnique({ where: { id: args.id } });
     if (!event) {
       throw new GraphQLError('Event not found', { extensions: { code: 'NOT_FOUND' } });
@@ -187,7 +189,7 @@ export const eventMutationResolvers = {
 
     const role = await getMemberRole(ctx, dbUser.id, event.communityId);
     const isOrganizer = event.organizerId === dbUser.id;
-    const isAdminPlus = role !== null && roleWeight[role] >= roleWeight['admin'];
+    const isAdminPlus = isSuperuser || (role !== null && roleWeight[role] >= roleWeight['admin']);
 
     if (!isOrganizer && !isAdminPlus) {
       throw new GraphQLError('Only the organizer or an admin can update this event', {
@@ -226,6 +228,7 @@ export const eventMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
     const event = await ctx.prisma.communityEvent.findUnique({ where: { id: args.id } });
     if (!event) {
       throw new GraphQLError('Event not found', { extensions: { code: 'NOT_FOUND' } });
@@ -233,7 +236,7 @@ export const eventMutationResolvers = {
 
     const role = await getMemberRole(ctx, dbUser.id, event.communityId);
     const isOrganizer = event.organizerId === dbUser.id;
-    const isAdminPlus = role !== null && roleWeight[role] >= roleWeight['admin'];
+    const isAdminPlus = isSuperuser || (role !== null && roleWeight[role] >= roleWeight['admin']);
 
     if (!isOrganizer && !isAdminPlus) {
       throw new GraphQLError('Only the organizer or an admin can delete this event', {

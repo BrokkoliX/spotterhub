@@ -216,7 +216,11 @@ export default function UploadPage() {
   return (
     <div className={styles.page}>
       <div className="container">
-        <h1 className={styles.title}>Upload Photo</h1>
+        <h1 className={styles.title}>📷 Upload to My Collection</h1>
+        <p className={styles.subtitle}>
+          Photos you upload here go into your personal collection.
+          To add photos to a community album, open the album and use &ldquo;Add Photos&rdquo; to pick from your existing photos.
+        </p>
 
         {step === 'done' && createdPhotoId ? (
           <div className={styles.success}>

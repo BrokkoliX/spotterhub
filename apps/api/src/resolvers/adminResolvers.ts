@@ -2,13 +2,13 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const VALID_REPORT_ACTIONS = ['resolved', 'dismissed'];
 const VALID_USER_STATUSES = ['active', 'suspended', 'banned'];
-const VALID_USER_ROLES = ['user', 'moderator', 'admin'];
+const VALID_USER_ROLES = ['user', 'moderator', 'admin', 'superuser'];
 const VALID_MODERATION_STATUSES = ['pending', 'approved', 'rejected', 'review'];
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
@@ -225,22 +225,26 @@ export const adminMutationResolvers = {
     args: { userId: string; status: string },
     ctx: Context,
   ) => {
-    await requireRole(ctx, ['admin']);
+    const caller = await getDbUser(ctx);
+    const target = await ctx.prisma.user.findUnique({ where: { id: args.userId } });
+    if (!target) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    // Superuser status can only be changed by another superuser
+    if (target.role === 'superuser' && caller.role !== 'superuser') {
+      throw new GraphQLError('Cannot modify a superuser', { extensions: { code: 'FORBIDDEN' } });
+    }
+
+    if (!['admin', 'superuser'].includes(caller.role)) {
+      await requireRole(ctx, ['admin']);
+    }
 
     if (!VALID_USER_STATUSES.includes(args.status)) {
       throw new GraphQLError(
         `Invalid status. Must be one of: ${VALID_USER_STATUSES.join(', ')}`,
         { extensions: { code: 'BAD_USER_INPUT' } },
       );
-    }
-
-    const user = await ctx.prisma.user.findUnique({
-      where: { id: args.userId },
-    });
-    if (!user) {
-      throw new GraphQLError('User not found', {
-        extensions: { code: 'NOT_FOUND' },
-      });
     }
 
     return ctx.prisma.user.update({
@@ -255,7 +259,27 @@ export const adminMutationResolvers = {
     args: { userId: string; role: string },
     ctx: Context,
   ) => {
-    await requireRole(ctx, ['admin']);
+    const caller = await getDbUser(ctx);
+    const target = await ctx.prisma.user.findUnique({ where: { id: args.userId } });
+    if (!target) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    // Superuser role can only be changed by another superuser
+    if (target.role === 'superuser' && caller.role !== 'superuser') {
+      throw new GraphQLError('Cannot modify a superuser', { extensions: { code: 'FORBIDDEN' } });
+    }
+
+    // Prevent non-superusers from promoting someone to superuser
+    if (args.role === 'superuser' && caller.role !== 'superuser') {
+      throw new GraphQLError('Only a superuser can promote someone to superuser', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    if (!['admin', 'superuser'].includes(caller.role)) {
+      await requireRole(ctx, ['admin']);
+    }
 
     if (!VALID_USER_ROLES.includes(args.role)) {
       throw new GraphQLError(
@@ -264,18 +288,9 @@ export const adminMutationResolvers = {
       );
     }
 
-    const user = await ctx.prisma.user.findUnique({
-      where: { id: args.userId },
-    });
-    if (!user) {
-      throw new GraphQLError('User not found', {
-        extensions: { code: 'NOT_FOUND' },
-      });
-    }
-
     return ctx.prisma.user.update({
       where: { id: args.userId },
-      data: { role: args.role as 'user' | 'moderator' | 'admin' },
+      data: { role: args.role as 'user' | 'moderator' | 'admin' | 'superuser' },
       include: { profile: true },
     });
   },

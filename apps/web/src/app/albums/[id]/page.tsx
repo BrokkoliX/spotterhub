@@ -66,10 +66,11 @@ export default function AlbumDetailPage({
   const isCommunityAlbum = !!album?.communityId;
   const myCommunityRole = album?.myMembership?.role;
   const isCommunityAdmin = myCommunityRole === 'owner' || myCommunityRole === 'admin';
+  const isSuperuser = user?.role === 'superuser';
   const canAddPhotos = isCommunityAlbum
-    ? isCommunityAdmin || !!myCommunityRole // any active member
+    ? isSuperuser || isCommunityAdmin || !!myCommunityRole // any active member; superuser always can
     : isOwner;
-  const canManageAlbum = isCommunityAlbum ? isCommunityAdmin : isOwner;
+  const canManageAlbum = isCommunityAlbum ? (isSuperuser || isCommunityAdmin) : isOwner;
 
   const handleLoadMore = useCallback(() => {
     if (connection?.pageInfo?.endCursor) {
@@ -180,7 +181,7 @@ export default function AlbumDetailPage({
                   className="btn btn-primary"
                   onClick={() => setShowAddPhotos(true)}
                 >
-                  + Add Photos
+                  {isCommunityAlbum ? '+ Add from My Photos' : '+ Add Photos'}
                 </button>
               </div>
             )}

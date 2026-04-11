@@ -66,6 +66,10 @@ import { spottingLocationMutationResolvers } from './resolvers/spottingLocationR
 import { authMutationResolvers } from './resolvers/authResolvers.js';
 import { profileMutationResolvers } from './resolvers/profileResolvers.js';
 import { userFieldResolvers, userQueryResolvers } from './resolvers/userResolvers.js';
+import {
+  siteSettingsMutationResolvers,
+  siteSettingsQueryResolvers,
+} from './resolvers/siteSettingsResolvers.js';
 
 // ─── JSON Scalar ────────────────────────────────────────────────────────────
 
@@ -120,6 +124,7 @@ export const resolvers = {
     ...forumQueryResolvers,
     ...eventQueryResolvers,
     ...notificationQueryResolvers,
+    ...siteSettingsQueryResolvers,
   },
 
   Mutation: {
@@ -138,6 +143,7 @@ export const resolvers = {
     ...forumMutationResolvers,
     ...eventMutationResolvers,
     ...notificationMutationResolvers,
+    ...siteSettingsMutationResolvers,
   },
 
   User: {

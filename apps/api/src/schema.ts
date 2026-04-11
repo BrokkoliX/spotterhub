@@ -3,6 +3,14 @@ import gql from 'graphql-tag';
 export const typeDefs = gql`
   scalar JSON
 
+  enum PhotoSortBy {
+    recent
+    popular_day
+    popular_week
+    popular_month
+    popular_all
+  }
+
   type Query {
     """
     Health check — verifies the API is running and the database is reachable.
@@ -43,6 +51,8 @@ export const typeDefs = gql`
       aircraftType: String
       airportCode: String
       tags: [String!]
+      manufacturer: String
+      sortBy: PhotoSortBy
     ): PhotoConnection!
 
     """
@@ -164,10 +174,16 @@ export const typeDefs = gql`
     """
     communityModerationLogs(communityId: ID!, action: String, first: Int = 20, after: String): CommunityModerationLogConnection!
 
+    """Fetch site-wide settings (banner, tagline). Returns null if not set."""
+    siteSettings: SiteSettings
+
     # ─── Forum Queries ───────────────────────────────────────────────────────
 
     """List all forum categories for a community, ordered by position."""
     forumCategories(communityId: ID!): [ForumCategory!]!
+
+    """List all global forum categories (not tied to any community), ordered by position."""
+    globalForumCategories: [ForumCategory!]!
 
     """Fetch a single forum category by ID."""
     forumCategory(id: ID!): ForumCategory
@@ -410,6 +426,9 @@ export const typeDefs = gql`
     """
     deleteCommunity(id: ID!): Boolean!
 
+    """Update site-wide settings (banner, tagline). Requires admin role."""
+    updateSiteSettings(input: UpdateSiteSettingsInput!): SiteSettings!
+
     """
     Join a public community, or join an invite-only community with a valid invite code.
     """
@@ -453,8 +472,11 @@ export const typeDefs = gql`
 
     # ─── Forum Mutations ────────────────────────────────────────────────────
 
-    """Create a forum category in a community. Requires owner or admin role."""
-    createForumCategory(communityId: ID!, name: String!, description: String, slug: String): ForumCategory!
+    """Create a forum category in a community. Requires owner or admin role. Pass communityId: null for global categories (admin only)."""
+    createForumCategory(communityId: ID, name: String!, description: String, slug: String): ForumCategory!
+
+    """Create a global forum category (not tied to any community). Requires admin role."""
+    createGlobalForumCategory(name: String!, description: String, slug: String): ForumCategory!
 
     """Update a forum category. Requires owner or admin role."""
     updateForumCategory(id: ID!, name: String, description: String, position: Int): ForumCategory!
@@ -886,6 +908,8 @@ export const typeDefs = gql`
     photoCount: Int!
     """Photos in this album (junction-table based for community albums)."""
     photos(first: Int = 20, after: String): PhotoConnection!
+    """Current user's membership in the community this album belongs to (null if not a community album)."""
+    myMembership: CommunityMember
     createdAt: String!
     updatedAt: String!
   }
@@ -1090,6 +1114,20 @@ export const typeDefs = gql`
     totalCount: Int!
   }
 
+  # ─── Site Settings ────────────────────────────────────────────────────────────
+
+  type SiteSettings {
+    id: ID!
+    bannerUrl: String
+    tagline: String
+    updatedAt: String!
+  }
+
+  input UpdateSiteSettingsInput {
+    bannerUrl: String
+    tagline: String
+  }
+
   input CreateCommunityInput {
     """Community name (3–100 characters)."""
     name: String!
@@ -1118,10 +1156,10 @@ export const typeDefs = gql`
 
   # ─── Forum Types ─────────────────────────────────────────────────────────
 
-  """A discussion category within a community forum."""
+  """A discussion category within a community forum or global forum."""
   type ForumCategory {
     id: ID!
-    communityId: ID!
+    communityId: ID
     name: String!
     description: String
     slug: String!

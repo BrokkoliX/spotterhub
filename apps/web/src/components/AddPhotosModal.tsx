@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
@@ -123,7 +124,11 @@ export function AddPhotosModal({
         {/* Empty */}
         {!photosResult.fetching && photos.length === 0 && (
           <p className={styles.empty}>
-            No available photos to add. Upload some photos first!
+            No available photos to add.{' '}
+            <Link href="/upload" style={{ color: 'var(--color-accent)' }}>
+              Upload some photos
+            </Link>{' '}
+            to your collection first!
           </p>
         )}
 

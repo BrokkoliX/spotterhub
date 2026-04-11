@@ -7,7 +7,7 @@ import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.
 
 export interface ForumCategoryParent {
   id: string;
-  communityId: string;
+  communityId: string | null;
 }
 
 export interface ForumThreadParent {
@@ -40,7 +40,7 @@ function slugify(name: string): string {
     .slice(0, 50);
 }
 
-async function getCommunityIdForCategory(categoryId: string, ctx: Context): Promise<string> {
+async function getCommunityIdForCategory(categoryId: string, ctx: Context): Promise<string | null> {
   const category = await ctx.prisma.forumCategory.findUnique({
     where: { id: categoryId },
     select: { communityId: true },
@@ -51,7 +51,7 @@ async function getCommunityIdForCategory(categoryId: string, ctx: Context): Prom
   return category.communityId;
 }
 
-async function getCommunityIdForThread(threadId: string, ctx: Context): Promise<string> {
+async function getCommunityIdForThread(threadId: string, ctx: Context): Promise<string | null> {
   const thread = await ctx.prisma.forumThread.findUnique({
     where: { id: threadId },
     select: { category: { select: { communityId: true } } },
@@ -62,7 +62,7 @@ async function getCommunityIdForThread(threadId: string, ctx: Context): Promise<
   return thread.category.communityId;
 }
 
-async function getCommunityIdForPost(postId: string, ctx: Context): Promise<string> {
+async function getCommunityIdForPost(postId: string, ctx: Context): Promise<string | null> {
   const post = await ctx.prisma.forumPost.findUnique({
     where: { id: postId },
     select: { thread: { select: { category: { select: { communityId: true } } } } },
@@ -105,9 +105,25 @@ async function requireActiveMember(
   return role;
 }
 
+async function requireAdmin(ctx: Context): Promise<void> {
+  const dbUser = await getDbUser(ctx);
+  if (!['admin', 'superuser'].includes(dbUser.role)) {
+    throw new GraphQLError('Only global admins can perform this action', {
+      extensions: { code: 'FORBIDDEN' },
+    });
+  }
+}
+
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const forumQueryResolvers = {
+  globalForumCategories: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    return ctx.prisma.forumCategory.findMany({
+      where: { communityId: null },
+      orderBy: { position: 'asc' },
+    });
+  },
+
   forumCategories: async (
     _parent: unknown,
     args: { communityId: string },
@@ -210,18 +226,67 @@ export const forumQueryResolvers = {
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
 export const forumMutationResolvers = {
+  createGlobalForumCategory: async (
+    _parent: unknown,
+    args: { name: string; description?: string; slug?: string },
+    ctx: Context,
+  ) => {
+    await requireAdmin(ctx);
+
+    const name = args.name.trim();
+    if (!name || name.length < 2 || name.length > 80) {
+      throw new GraphQLError('Category name must be 2–80 characters', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const slug = args.slug?.trim() || slugify(name);
+    if (!slug) {
+      throw new GraphQLError('Could not generate a valid slug from the category name', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const existing = await ctx.prisma.forumCategory.findUnique({
+      where: { communityId_slug: { communityId: null as unknown as string, slug } },
+    });
+    if (existing) {
+      throw new GraphQLError('A global category with this slug already exists', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const position = await ctx.prisma.forumCategory.count({
+      where: { communityId: null },
+    });
+
+    return ctx.prisma.forumCategory.create({
+      data: {
+        communityId: null,
+        name,
+        description: args.description?.trim() ?? null,
+        slug,
+        position,
+      },
+    });
+  },
+
   createForumCategory: async (
     _parent: unknown,
-    args: { communityId: string; name: string; description?: string; slug?: string },
+    args: { communityId: string | null; name: string; description?: string; slug?: string },
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
-    const role = await getMemberRole(args.communityId, dbUser.id, ctx);
 
-    if (!role || !['owner', 'admin'].includes(role)) {
-      throw new GraphQLError('Only community owners and admins can create forum categories', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (args.communityId === null) {
+      await requireAdmin(ctx);
+    } else {
+      const role = await getMemberRole(args.communityId, dbUser.id, ctx);
+      if (!role || !['owner', 'admin'].includes(role)) {
+        throw new GraphQLError('Only community owners and admins can create forum categories', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     const name = args.name.trim();
@@ -239,8 +304,9 @@ export const forumMutationResolvers = {
     }
 
     // Check slug uniqueness within community
+    const communityIdForSlug = args.communityId as string;
     const existing = await ctx.prisma.forumCategory.findUnique({
-      where: { communityId_slug: { communityId: args.communityId, slug } },
+      where: { communityId_slug: { communityId: communityIdForSlug, slug } },
     });
     if (existing) {
       throw new GraphQLError('A category with this slug already exists in this community', {
@@ -249,12 +315,12 @@ export const forumMutationResolvers = {
     }
 
     const position = await ctx.prisma.forumCategory.count({
-      where: { communityId: args.communityId },
+      where: { communityId: communityIdForSlug },
     });
 
     return ctx.prisma.forumCategory.create({
       data: {
-        communityId: args.communityId,
+        communityId: communityIdForSlug,
         name,
         description: args.description?.trim() ?? null,
         slug,
@@ -270,12 +336,16 @@ export const forumMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForCategory(args.id, ctx);
-    const role = await getMemberRole(communityId, dbUser.id, ctx);
 
-    if (!role || !['owner', 'admin'].includes(role)) {
-      throw new GraphQLError('Only community owners and admins can update forum categories', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (communityId === null) {
+      await requireAdmin(ctx);
+    } else {
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
+      if (!role || !['owner', 'admin'].includes(role)) {
+        throw new GraphQLError('Only community owners and admins can update forum categories', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     const data: Record<string, unknown> = {};
@@ -305,12 +375,16 @@ export const forumMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForCategory(args.id, ctx);
-    const role = await getMemberRole(communityId, dbUser.id, ctx);
 
-    if (!role || !['owner', 'admin'].includes(role)) {
-      throw new GraphQLError('Only community owners and admins can delete forum categories', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (communityId === null) {
+      await requireAdmin(ctx);
+    } else {
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
+      if (!role || !['owner', 'admin'].includes(role)) {
+        throw new GraphQLError('Only community owners and admins can delete forum categories', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     await ctx.prisma.forumCategory.delete({ where: { id: args.id } });
@@ -324,7 +398,10 @@ export const forumMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForCategory(args.categoryId, ctx);
-    await requireActiveMember(communityId, dbUser.id, ctx);
+
+    if (communityId !== null) {
+      await requireActiveMember(communityId, dbUser.id, ctx);
+    }
 
     const title = args.title.trim();
     if (!title || title.length < 3 || title.length > 200) {
@@ -381,14 +458,23 @@ export const forumMutationResolvers = {
     }
 
     const communityId = thread.category.communityId;
-    const role = await getMemberRole(communityId, dbUser.id, ctx);
     const isAuthor = thread.authorId === dbUser.id;
-    const isModerator = role && roleWeight(role) >= roleWeight('moderator');
+    const isGlobalAdmin = dbUser.role === 'admin';
 
-    if (!isAuthor && !isModerator) {
-      throw new GraphQLError('You do not have permission to delete this thread', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (communityId === null) {
+      if (!isAuthor && !isGlobalAdmin) {
+        throw new GraphQLError('You do not have permission to delete this thread', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
+    } else {
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
+      const isModerator = role && roleWeight(role) >= roleWeight('moderator');
+      if (!isAuthor && !isModerator) {
+        throw new GraphQLError('You do not have permission to delete this thread', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     await ctx.prisma.forumThread.delete({ where: { id: args.id } });
@@ -402,12 +488,20 @@ export const forumMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForThread(args.id, ctx);
-    const role = await getMemberRole(communityId, dbUser.id, ctx);
 
-    if (!role || roleWeight(role) < roleWeight('moderator')) {
-      throw new GraphQLError('Only moderators and above can pin threads', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (communityId === null) {
+      if (dbUser.role !== 'admin') {
+        throw new GraphQLError('Only global admins can pin threads', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
+    } else {
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
+      if (!role || roleWeight(role) < roleWeight('moderator')) {
+        throw new GraphQLError('Only moderators and above can pin threads', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     return ctx.prisma.forumThread.update({
@@ -423,12 +517,20 @@ export const forumMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForThread(args.id, ctx);
-    const role = await getMemberRole(communityId, dbUser.id, ctx);
 
-    if (!role || roleWeight(role) < roleWeight('moderator')) {
-      throw new GraphQLError('Only moderators and above can lock threads', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (communityId === null) {
+      if (dbUser.role !== 'admin') {
+        throw new GraphQLError('Only global admins can lock threads', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
+    } else {
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
+      if (!role || roleWeight(role) < roleWeight('moderator')) {
+        throw new GraphQLError('Only moderators and above can lock threads', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     return ctx.prisma.forumThread.update({
@@ -444,7 +546,10 @@ export const forumMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForThread(args.threadId, ctx);
-    await requireActiveMember(communityId, dbUser.id, ctx);
+
+    if (communityId !== null) {
+      await requireActiveMember(communityId, dbUser.id, ctx);
+    }
 
     const thread = await ctx.prisma.forumThread.findUnique({
       where: { id: args.threadId },
@@ -564,14 +669,23 @@ export const forumMutationResolvers = {
     }
 
     const communityId = post.thread.category.communityId;
-    const role = await getMemberRole(communityId, dbUser.id, ctx);
     const isAuthor = post.authorId === dbUser.id;
-    const isModerator = role && roleWeight(role) >= roleWeight('moderator');
+    const isGlobalAdmin = dbUser.role === 'admin';
 
-    if (!isAuthor && !isModerator) {
-      throw new GraphQLError('You do not have permission to delete this post', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+    if (communityId === null) {
+      if (!isAuthor && !isGlobalAdmin) {
+        throw new GraphQLError('You do not have permission to delete this post', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
+    } else {
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
+      const isModerator = role && roleWeight(role) >= roleWeight('moderator');
+      if (!isAuthor && !isModerator) {
+        throw new GraphQLError('You do not have permission to delete this post', {
+          extensions: { code: 'FORBIDDEN' },
+        });
+      }
     }
 
     // Soft delete

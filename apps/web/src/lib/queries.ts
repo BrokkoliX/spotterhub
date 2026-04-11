@@ -95,6 +95,8 @@ export const GET_PHOTOS = gql`
     $aircraftType: String
     $airportCode: String
     $tags: [String!]
+    $manufacturer: String
+    $sortBy: PhotoSortBy
   ) {
     photos(
       first: $first
@@ -104,6 +106,8 @@ export const GET_PHOTOS = gql`
       aircraftType: $aircraftType
       airportCode: $airportCode
       tags: $tags
+      manufacturer: $manufacturer
+      sortBy: $sortBy
     ) {
       edges {
         cursor
@@ -534,6 +538,7 @@ export const GET_ALBUM = gql`
   query Album($id: ID!) {
     album(id: $id) {
       ...AlbumFields
+      myMembership { id role status }
     }
   }
   ${ALBUM_FIELDS}
@@ -1059,7 +1064,7 @@ export const GET_FORUM_POSTS = gql`
 `;
 
 export const CREATE_FORUM_CATEGORY = gql`
-  mutation CreateForumCategory($communityId: ID!, $name: String!, $description: String, $slug: String) {
+  mutation CreateForumCategory($communityId: ID, $name: String!, $description: String, $slug: String) {
     createForumCategory(communityId: $communityId, name: $name, description: $description, slug: $slug) {
       id name slug description position threadCount
     }
@@ -1116,6 +1121,33 @@ export const CREATE_FORUM_POST = gql`
 export const UPDATE_FORUM_POST = gql`
   mutation UpdateForumPost($id: ID!, $body: String!) {
     updateForumPost(id: $id, body: $body) { id body }
+  }
+`;
+
+export const GET_GLOBAL_FORUM_CATEGORIES = gql`
+  query GlobalForumCategories {
+    globalForumCategories {
+      id
+      name
+      description
+      slug
+      position
+      threadCount
+      latestThread {
+        id
+        title
+        lastPostAt
+        author { username }
+      }
+    }
+  }
+`;
+
+export const CREATE_GLOBAL_FORUM_CATEGORY = gql`
+  mutation CreateGlobalForumCategory($name: String!, $description: String, $slug: String) {
+    createGlobalForumCategory(name: $name, description: $description, slug: $slug) {
+      id name slug description position threadCount
+    }
   }
 `;
 
@@ -1256,5 +1288,29 @@ export const MARK_ALL_NOTIFICATIONS_READ = gql`
 export const DELETE_NOTIFICATION = gql`
   mutation DeleteNotification($id: ID!) {
     deleteNotification(id: $id)
+  }
+`;
+
+// ─── Site Settings ────────────────────────────────────────────────────────────
+
+export const GET_SITE_SETTINGS = gql`
+  query SiteSettings {
+    siteSettings {
+      id
+      bannerUrl
+      tagline
+      updatedAt
+    }
+  }
+`;
+
+export const UPDATE_SITE_SETTINGS = gql`
+  mutation UpdateSiteSettings($input: UpdateSiteSettingsInput!) {
+    updateSiteSettings(input: $input) {
+      id
+      bannerUrl
+      tagline
+      updatedAt
+    }
   }
 `;

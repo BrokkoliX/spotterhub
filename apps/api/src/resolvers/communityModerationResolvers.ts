@@ -23,9 +23,10 @@ export const communityModerationQueryResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
     const membership = await getMembership(ctx, args.communityId, dbUser.id);
 
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
       throw new GraphQLError('Only community owners and admins can view the moderation log', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -72,9 +73,10 @@ export const communityModerationMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
 
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!callerMembership || !['owner', 'admin'].includes(callerMembership.role)) {
+    if (!isSuperuser && (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))) {
       throw new GraphQLError('Only community owners and admins can ban members', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -93,7 +95,7 @@ export const communityModerationMutationResolvers = {
       });
     }
 
-    if (roleWeight(targetMembership.role) >= roleWeight(callerMembership.role)) {
+    if (!isSuperuser && roleWeight(targetMembership.role) >= roleWeight(callerMembership!.role)) {
       throw new GraphQLError('Cannot ban a member with equal or higher role', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -133,9 +135,10 @@ export const communityModerationMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
 
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!callerMembership || !['owner', 'admin'].includes(callerMembership.role)) {
+    if (!isSuperuser && (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))) {
       throw new GraphQLError('Only community owners and admins can unban members', {
         extensions: { code: 'FORBIDDEN' },
       });

@@ -211,9 +211,10 @@ export const communityMutationResolvers = {
       throw new GraphQLError('Community not found', { extensions: { code: 'NOT_FOUND' } });
     }
 
-    // Check permission: owner or admin
+    // Check permission: owner or admin or superuser
+    const isSuperuser = dbUser.role === 'superuser';
     const membership = await getMembership(ctx, args.id, dbUser.id);
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
       throw new GraphQLError('Only community owners and admins can update community details', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -387,10 +388,11 @@ export const communityMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
 
     // Get caller's membership
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!callerMembership || !['owner', 'admin', 'moderator'].includes(callerMembership.role)) {
+    if (!isSuperuser && (!callerMembership || !['owner', 'admin', 'moderator'].includes(callerMembership.role))) {
       throw new GraphQLError('You do not have permission to remove members', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -404,8 +406,8 @@ export const communityMutationResolvers = {
       });
     }
 
-    // Cannot remove someone with equal or higher role
-    if (roleWeight(targetMembership.role) >= roleWeight(callerMembership.role)) {
+    // Superuser can remove anyone; otherwise cannot remove someone with equal or higher role
+    if (!isSuperuser && roleWeight(targetMembership.role) >= roleWeight(callerMembership!.role)) {
       throw new GraphQLError('Cannot remove a member with equal or higher role', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -421,6 +423,7 @@ export const communityMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
     const newRole = args.role as CommunityRoleType;
 
     if (!COMMUNITY_ROLES.includes(newRole) || newRole === 'owner') {
@@ -429,16 +432,16 @@ export const communityMutationResolvers = {
       });
     }
 
-    // Caller must be owner or admin
+    // Caller must be owner or admin or superuser
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!callerMembership || !['owner', 'admin'].includes(callerMembership.role)) {
+    if (!isSuperuser && (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))) {
       throw new GraphQLError('Only owners and admins can change member roles', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    // Cannot promote above own role
-    if (roleWeight(newRole) >= roleWeight(callerMembership.role)) {
+    // Cannot promote above own role (superuser bypasses this)
+    if (!isSuperuser && roleWeight(newRole) >= roleWeight(callerMembership!.role)) {
       throw new GraphQLError('Cannot assign a role equal to or higher than your own', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -451,8 +454,8 @@ export const communityMutationResolvers = {
       });
     }
 
-    // Cannot change role of someone with equal or higher role
-    if (roleWeight(targetMembership.role) >= roleWeight(callerMembership.role)) {
+    // Cannot change role of someone with equal or higher role (superuser bypasses this)
+    if (!isSuperuser && roleWeight(targetMembership.role) >= roleWeight(callerMembership!.role)) {
       throw new GraphQLError('Cannot change the role of a member with equal or higher role', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -470,9 +473,10 @@ export const communityMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
     const membership = await getMembership(ctx, args.communityId, dbUser.id);
 
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
       throw new GraphQLError('Only owners and admins can manage invite codes', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -555,6 +559,38 @@ export const communityFieldResolvers = {
     ctx: Context,
   ) => {
     const take = Math.min(args.first ?? 20, 50);
+
+    // Superuser sees all photos regardless of membership
+    const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
+
+    if (isSuperuser) {
+      // Superuser: bypass membership filter, show all approved photos
+      const where: Record<string, unknown> = {
+        moderationStatus: { in: ['approved', 'pending'] },
+      };
+      if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
+
+      const [items, totalCount] = await Promise.all([
+        ctx.prisma.photo.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: take + 1,
+        }),
+        ctx.prisma.photo.count({ where }),
+      ]);
+
+      const hasNextPage = items.length > take;
+      const edges = items.slice(0, take).map((p) => ({
+        cursor: encodeCursor(p.createdAt),
+        node: p,
+      }));
+      return {
+        edges,
+        pageInfo: { hasNextPage, endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null },
+        totalCount,
+      };
+    }
 
     // Get all active member user IDs
     const memberUserIds = await ctx.prisma.communityMember.findMany({

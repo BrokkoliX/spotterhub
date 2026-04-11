@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation } from 'urql';
@@ -7,7 +8,7 @@ import { useMutation } from 'urql';
 import { useAuth } from '@/lib/auth';
 import { CREATE_COMMUNITY } from '@/lib/queries';
 
-import styles from '../page.module.css';
+import styles from './page.module.css';
 
 function slugify(text: string): string {
   return text
@@ -33,7 +34,7 @@ export default function NewCommunityPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (ready && !user) {
-    router.push('/login');
+    router.push('/signin');
     return null;
   }
 
@@ -70,95 +71,112 @@ export default function NewCommunityPage() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>Create a Community</h1>
+      <div className={styles.header}>
+        <Link href="/communities" className={styles.breadcrumb}>
+          ← Communities
+        </Link>
+        <h1 className={styles.title}>Create a Community</h1>
+        <p className={styles.subtitle}>
+          Build a space for aviation photographers in your area or around a specific topic.
+        </p>
+      </div>
 
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Name</label>
-          <input
-            className={styles.input}
-            type="text"
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="e.g. LAX Spotters"
-            required
-            minLength={3}
-            maxLength={100}
-          />
-        </div>
+      <div className={styles.card}>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Community Name</label>
+            <input
+              className={styles.input}
+              type="text"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="e.g. LAX Spotters"
+              required
+              minLength={3}
+              maxLength={100}
+            />
+          </div>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Slug (URL-friendly)</label>
-          <input
-            className={styles.input}
-            type="text"
-            value={slug}
-            onChange={(e) => {
-              setSlug(e.target.value);
-              setSlugManual(true);
-            }}
-            placeholder="lax-spotters"
-            required
-            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
-          />
-        </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>URL Slug</label>
+            <input
+              className={styles.input}
+              type="text"
+              value={slug}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                setSlugManual(true);
+              }}
+              placeholder="lax-spotters"
+              required
+              pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+            />
+            <span className={styles.hint}>
+              spotterhub.com/communities/<strong>{slug || 'your-slug'}</strong>
+            </span>
+          </div>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Description</label>
-          <textarea
-            className={styles.textarea}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="What is this community about?"
-            maxLength={2000}
-          />
-        </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Description</label>
+            <textarea
+              className={styles.textarea}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this community about? Who should join?"
+              maxLength={2000}
+            />
+          </div>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Category</label>
-          <select
-            className={styles.select}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="general">General</option>
-            <option value="airliners">Airliners</option>
-            <option value="military">Military</option>
-            <option value="general-aviation">General Aviation</option>
-            <option value="helicopters">Helicopters</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
+          <div className={styles.row}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Category</label>
+              <select
+                className={styles.select}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="general">General</option>
+                <option value="airliners">Airliners</option>
+                <option value="military">Military</option>
+                <option value="general-aviation">General Aviation</option>
+                <option value="helicopters">Helicopters</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Visibility</label>
-          <select
-            className={styles.select}
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-          >
-            <option value="public">Public — anyone can join</option>
-            <option value="invite_only">Invite Only — requires an invite code</option>
-          </select>
-        </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Visibility</label>
+              <select
+                className={styles.select}
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value)}
+              >
+                <option value="public">Public</option>
+                <option value="invite_only">Invite Only</option>
+              </select>
+            </div>
+          </div>
 
-        <div className={styles.formGroup}>
-          <label className={styles.label}>Location (optional)</label>
-          <input
-            className={styles.input}
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="e.g. Los Angeles, CA"
-          />
-        </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Location <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
+            <input
+              className={styles.input}
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Los Angeles, CA"
+            />
+          </div>
 
-        {error && <div className={styles.error}>{error}</div>}
+          {error && <div className={styles.error}>{error}</div>}
 
-        <button className="btn btn-primary" type="submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Community'}
-        </button>
-      </form>
+          <div className={styles.actions}>
+            <button className={`btn btn-primary ${styles.submitBtn}`} type="submit" disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create Community'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,15 @@
 .title {
   font-size: 1.5rem;
   font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
   margin-bottom: 24px;
+  line-height: 1.5;
+  max-width: 560px;
 }
 
 .twoCol {

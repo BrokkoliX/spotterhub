@@ -35,7 +35,14 @@ export async function requireRole(
     where: { cognitoSub: authUser.sub },
     select: { role: true },
   });
-  if (!dbUser || !allowedRoles.includes(dbUser.role)) {
+  if (!dbUser) {
+    throw new GraphQLError('User not found', {
+      extensions: { code: 'NOT_FOUND' },
+    });
+  }
+  // Superuser bypasses all role checks
+  if (dbUser.role === 'superuser') return authUser;
+  if (!allowedRoles.includes(dbUser.role)) {
     throw new GraphQLError('You do not have permission to perform this action', {
       extensions: { code: 'FORBIDDEN' },
     });
