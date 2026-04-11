@@ -3,15 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files for workspace resolution
+# Copy root package files
 COPY package.json package-lock.json* ./
+
+# Copy workspace package files
 COPY packages/shared/package.json ./packages/shared/
 
-# Install dependencies (including devDependencies needed for build)
-RUN npm ci --workspaces=false
+# Copy app source
+COPY apps/web ./apps/web
 
-# Copy source
-COPY . .
+# Install dependencies
+RUN npm ci --workspaces=false
 
 # Build Next.js standalone output
 RUN npm run build --workspace=@spotterhub/web

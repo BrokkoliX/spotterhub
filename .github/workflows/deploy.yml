@@ -121,8 +121,8 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/api
-          dockerfile: ./apps/api/Dockerfile
+          context: .
+          dockerfile: apps/api/Dockerfile
           push: true
           tags: |
             ${{ steps.ecr-api.outputs.repo-uri }}:latest
@@ -169,8 +169,8 @@ jobs:
       - name: Build and push Web image
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/web
-          dockerfile: ./apps/web/Dockerfile
+          context: .
+          dockerfile: apps/web/Dockerfile
           push: true
           tags: |
             ${{ steps.ecr-web.outputs.repo-uri }}:latest
