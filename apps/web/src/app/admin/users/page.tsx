@@ -28,7 +28,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function AdminUsersPage() {
   const { user, ready } = useAuth();
-  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator');
+  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
   const canManage = user?.role === 'admin';
 
   const [roleFilter, setRoleFilter] = useState('');

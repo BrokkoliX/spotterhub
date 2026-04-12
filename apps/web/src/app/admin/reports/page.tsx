@@ -19,7 +19,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function AdminReportsPage() {
   const { user, ready } = useAuth();
-  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator');
+  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
   const [statusFilter, setStatusFilter] = useState('open');
 
   const [{ data, fetching }, reexecute] = useAdminReportsQuery({

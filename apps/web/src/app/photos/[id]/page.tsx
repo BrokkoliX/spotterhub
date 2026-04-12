@@ -206,6 +206,88 @@ export default function PhotoDetailPage({
               </ul>
             </div>
 
+            {/* Aircraft Info */}
+            {photo.aircraft && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>✈️ Aircraft</h3>
+                <ul className={styles.metaList}>
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Registration</span>
+                    <span className={styles.metaValue}>{photo.aircraft.registration}</span>
+                  </li>
+                  {photo.aircraft.msn && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>MSN</span>
+                      <span className={styles.metaValue}>{photo.aircraft.msn}</span>
+                    </li>
+                  )}
+                  {photo.aircraft.manufacturingDate && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Built</span>
+                      <span className={styles.metaValue}>
+                        {new Date(photo.aircraft.manufacturingDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Gear */}
+            {(photo.gearBody || photo.gearLens) && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>📷 Gear Used</h3>
+                <ul className={styles.metaList}>
+                  {photo.gearBody && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Body</span>
+                      <span className={styles.metaValue}>{photo.gearBody}</span>
+                    </li>
+                  )}
+                  {photo.gearLens && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Lens</span>
+                      <span className={styles.metaValue}>{photo.gearLens}</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Photographer credit */}
+            {photo.photographer && photo.photographer.id !== photo.user.id && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>📸 Photographer</h3>
+                <Link
+                  href={`/u/${photo.photographer.username}/photos`}
+                  className={styles.userInfo}
+                >
+                  <div className={styles.avatar}>
+                    {photo.photographer.profile?.avatarUrl ? (
+                      <img
+                        src={photo.photographer.profile.avatarUrl}
+                        alt={photo.photographerName ?? photo.photographer.username}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+                  <div className={styles.userDetails}>
+                    <div className={styles.displayName}>
+                      {photo.photographerName ?? photo.photographer.username}
+                    </div>
+                    <div className={styles.username}>@{photo.photographer.username}</div>
+                  </div>
+                </Link>
+              </div>
+            )}
+
             {/* Location */}
             {photo.location && (
               <div className={styles.card}>

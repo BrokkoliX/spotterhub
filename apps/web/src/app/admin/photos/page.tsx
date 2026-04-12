@@ -29,7 +29,7 @@ function thumbUrl(photo: PhotoNode): string {
 
 export default function AdminPhotosPage() {
   const { user, ready } = useAuth();
-  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator');
+  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
   const [statusFilter, setStatusFilter] = useState('pending');
 
   const [{ data, fetching }, reexecute] = useAdminPhotosQuery({

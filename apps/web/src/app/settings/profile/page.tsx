@@ -28,6 +28,8 @@ interface ProfileData {
   favoriteAircraft?: string[];
   favoriteAirports?: string[];
   isPublic?: boolean;
+  cameraBodies?: string[];
+  lenses?: string[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -65,6 +67,10 @@ export default function ProfileSettingsPage() {
   const [favoriteAircraft, setFavoriteAircraft] = useState('');
   const [favoriteAirports, setFavoriteAirports] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [cameraBodies, setCameraBodies] = useState<string[]>([]);
+  const [lenses, setLenses] = useState<string[]>([]);
+  const [newCameraBody, setNewCameraBody] = useState('');
+  const [newLens, setNewLens] = useState('');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -101,6 +107,8 @@ export default function ProfileSettingsPage() {
       setFavoriteAirports(arrayToInput(p.favoriteAirports));
       setIsPublic(p.isPublic ?? true);
       setAvatarUrl(p.avatarUrl ?? null);
+      setCameraBodies(p.cameraBodies ?? []);
+      setLenses(p.lenses ?? []);
       setFormInitialized(true);
     }
   }, [meResult.data, formInitialized]);
@@ -191,6 +199,8 @@ export default function ProfileSettingsPage() {
           favoriteAircraft: inputToArray(favoriteAircraft),
           favoriteAirports: inputToArray(favoriteAirports),
           isPublic,
+          cameraBodies,
+          lenses,
         },
       });
 
@@ -398,6 +408,110 @@ export default function ProfileSettingsPage() {
                 placeholder="e.g., KSEA, KLAX, EGLL"
               />
               <span className={styles.hint}>Comma-separated (ICAO codes)</span>
+            </div>
+
+            {/* Camera Bodies */}
+            <div className={styles.field}>
+              <label className={styles.label}>Camera Bodies</label>
+              {cameraBodies.length > 0 && (
+                <div className={styles.gearList}>
+                  {cameraBodies.map((body) => (
+                    <span key={body} className={styles.gearTag}>
+                      {body}
+                      <button
+                        type="button"
+                        className={styles.gearTagRemove}
+                        onClick={() => setCameraBodies((prev) => prev.filter((b) => b !== body))}
+                        aria-label={`Remove ${body}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className={styles.gearAddRow}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={newCameraBody}
+                  onChange={(e) => setNewCameraBody(e.target.value)}
+                  placeholder="e.g., Canon EOS R5"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (newCameraBody.trim()) {
+                        setCameraBodies((prev) => [...prev, newCameraBody.trim()]);
+                        setNewCameraBody('');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles.gearAddBtn}
+                  onClick={() => {
+                    if (newCameraBody.trim()) {
+                      setCameraBodies((prev) => [...prev, newCameraBody.trim()]);
+                      setNewCameraBody('');
+                    }
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Lenses */}
+            <div className={styles.field}>
+              <label className={styles.label}>Lenses</label>
+              {lenses.length > 0 && (
+                <div className={styles.gearList}>
+                  {lenses.map((lens) => (
+                    <span key={lens} className={styles.gearTag}>
+                      {lens}
+                      <button
+                        type="button"
+                        className={styles.gearTagRemove}
+                        onClick={() => setLenses((prev) => prev.filter((l) => l !== lens))}
+                        aria-label={`Remove ${lens}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className={styles.gearAddRow}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={newLens}
+                  onChange={(e) => setNewLens(e.target.value)}
+                  placeholder="e.g., Sigma 150-600mm f/5-6.3"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (newLens.trim()) {
+                        setLenses((prev) => [...prev, newLens.trim()]);
+                        setNewLens('');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles.gearAddBtn}
+                  onClick={() => {
+                    if (newLens.trim()) {
+                      setLenses((prev) => [...prev, newLens.trim()]);
+                      setNewLens('');
+                    }
+                  }}
+                >
+                  Add
+                </button>
+              </div>
             </div>
 
             <div className={styles.checkboxField}>

@@ -219,7 +219,7 @@ export function Header() {
           )}
           {showUser && (
             <Link href="/upload" className={styles.navLink}>
-              My Uploads
+              Upload
             </Link>
           )}
           {(isAdmin || isSuperuser) && (

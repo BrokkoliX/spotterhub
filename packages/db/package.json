@@ -12,7 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-images": "tsx prisma/seed-images.ts",
-    "db:seed-all": "tsx prisma/seed.ts && tsx prisma/seed-images.ts",
+    "db:seed-aircraft": "tsx prisma/seed-aircraft-types.ts",
     "db:reset": "prisma migrate reset --force",
     "generate": "prisma generate"
   },

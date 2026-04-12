@@ -125,7 +125,9 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
             initialLikeCount={photo.likeCount}
             initialIsLiked={photo.isLikedByMe}
           />
-          <span>💬 {photo.commentCount}</span>
+          <Link href={`/photos/${photo.id}#comments`} className={styles.commentBtn}>
+            💬 {photo.commentCount}
+          </Link>
         </div>
       </div>
     </article>

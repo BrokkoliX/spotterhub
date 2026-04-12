@@ -51,6 +51,22 @@ export const PHOTO_FIELDS = gql`
     commentCount
     isLikedByMe
     createdAt
+    aircraft {
+      id
+      registration
+      aircraftType
+      airline
+      msn
+      manufacturingDate
+    }
+    photographer {
+      id
+      username
+      profile { displayName avatarUrl }
+    }
+    photographerName
+    gearBody
+    gearLens
     user {
       id
       username
@@ -96,6 +112,8 @@ export const GET_PHOTOS = gql`
     $airportCode: String
     $tags: [String!]
     $manufacturer: String
+    $airline: String
+    $photographer: String
     $sortBy: PhotoSortBy
   ) {
     photos(
@@ -107,6 +125,8 @@ export const GET_PHOTOS = gql`
       airportCode: $airportCode
       tags: $tags
       manufacturer: $manufacturer
+      airline: $airline
+      photographer: $photographer
       sortBy: $sortBy
     ) {
       edges {
@@ -193,6 +213,8 @@ export const GET_USER = gql`
         favoriteAircraft
         favoriteAirports
         isPublic
+        cameraBodies
+        lenses
       }
     }
   }
@@ -330,6 +352,8 @@ export const GET_ME = gql`
         favoriteAircraft
         favoriteAirports
         isPublic
+        cameraBodies
+        lenses
       }
     }
   }
@@ -348,6 +372,8 @@ export const UPDATE_PROFILE = gql`
       favoriteAircraft
       favoriteAirports
       isPublic
+      cameraBodies
+      lenses
     }
   }
 `;
@@ -407,7 +433,51 @@ export const SEARCH_USERS = gql`
   }
 `;
 
-// ─── Airports & Map ─────────────────────────────────────────────────────────
+// ─── Airlines ────────────────────────────────────────────────────────────────
+
+export const SEARCH_AIRLINES = gql`
+  query SearchAirlines($query: String!, $first: Int) {
+    searchAirlines(query: $query, first: $first)
+  }
+`;
+
+export const SEARCH_AIRPORTS = gql`
+  query SearchAirports($query: String!, $first: Int) {
+    searchAirports(query: $query, first: $first) {
+      icaoCode
+      iataCode
+      name
+      city
+      country
+    }
+  }
+`;
+
+// ─── Aircraft ────────────────────────────────────────────────────────────────
+
+export const SEARCH_AIRCRAFT_TYPES = gql`
+  query SearchAircraftTypes($search: String!, $first: Int) {
+    aircraftTypes(search: $search, first: $first) {
+      edges {
+        cursor
+        node {
+          id
+          iataCode
+          icaoCode
+          manufacturer
+          aircraftName
+          category
+          engineType
+          engineCount
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
 
 export const GET_AIRPORTS = gql`
   query Airports {

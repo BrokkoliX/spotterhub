@@ -26,7 +26,7 @@ async function main() {
     where: { email: 'alice@spotterhub.dev' },
     update: {},
     create: {
-      cognitoSub: `dev-${passwordHash.slice(0, 32)}`,
+      cognitoSub: `dev1-${passwordHash.slice(0, 32)}`,
       email: 'alice@spotterhub.dev',
       username: 'alice',
       role: 'user',
@@ -140,6 +140,238 @@ async function main() {
 
   console.log(`  ✅ Follows: alice ↔ bob`);
 
+  // ─── Sample Communities ─────────────────────────────────────────────────
+
+  const spotterHubCommunity = await prisma.community.upsert({
+    where: { slug: 'spotterhub' },
+    update: {},
+    create: {
+      name: 'SpotterHub Community',
+      slug: 'spotterhub',
+      description: 'The official SpotterHub community for aviation photographers worldwide.',
+      category: 'General',
+      visibility: 'public',
+      ownerId: alice.id,
+    },
+  });
+
+  const pacificNwCommunity = await prisma.community.upsert({
+    where: { slug: 'pacific-nw-spotters' },
+    update: {},
+    create: {
+      name: 'Pacific NW Spotters',
+      slug: 'pacific-nw-spotters',
+      description: 'Aviation photographers based in the Pacific Northwest — Seattle, Portland, and beyond.',
+      category: 'Regional',
+      visibility: 'public',
+      ownerId: bob.id,
+    },
+  });
+
+  await prisma.communityMember.upsert({
+    where: { communityId_userId: { communityId: spotterHubCommunity.id, userId: alice.id } },
+    update: {},
+    create: { communityId: spotterHubCommunity.id, userId: alice.id, role: 'owner' },
+  });
+  await prisma.communityMember.upsert({
+    where: { communityId_userId: { communityId: pacificNwCommunity.id, userId: alice.id } },
+    update: {},
+    create: { communityId: pacificNwCommunity.id, userId: alice.id, role: 'member' },
+  });
+  await prisma.communityMember.upsert({
+    where: { communityId_userId: { communityId: spotterHubCommunity.id, userId: bob.id } },
+    update: {},
+    create: { communityId: spotterHubCommunity.id, userId: bob.id, role: 'moderator' },
+  });
+  await prisma.communityMember.upsert({
+    where: { communityId_userId: { communityId: pacificNwCommunity.id, userId: bob.id } },
+    update: {},
+    create: { communityId: pacificNwCommunity.id, userId: bob.id, role: 'owner' },
+  });
+
+  console.log(`  ✅ Communities: spotterhub, pacific-nw-spotters`);
+
+  // ─── Forum Categories ───────────────────────────────────────────────────
+
+  const spotterHubGeneralCategory = await prisma.forumCategory.upsert({
+    where: { communityId_slug: { communityId: spotterHubCommunity.id, slug: 'general' } },
+    update: {},
+    create: {
+      communityId: spotterHubCommunity.id,
+      name: 'General Discussion',
+      description: 'Talk about anything aviation photography related.',
+      slug: 'general',
+      position: 0,
+    },
+  });
+
+  const spotterHubGearCategory = await prisma.forumCategory.upsert({
+    where: { communityId_slug: { communityId: spotterHubCommunity.id, slug: 'gear' } },
+    update: {},
+    create: {
+      communityId: spotterHubCommunity.id,
+      name: 'Gear & Technique',
+      description: 'Discuss cameras, lenses, and shooting techniques.',
+      slug: 'gear',
+      position: 1,
+    },
+  });
+
+  const pacificNwCategory = await prisma.forumCategory.upsert({
+    where: { communityId_slug: { communityId: pacificNwCommunity.id, slug: 'general' } },
+    update: {},
+    create: {
+      communityId: pacificNwCommunity.id,
+      name: 'General',
+      description: 'Pacific Northwest aviation photography discussion.',
+      slug: 'general',
+      position: 0,
+    },
+  });
+
+  console.log(`  ✅ Forum categories: 3 created`);
+
+  // ─── Forum Threads & Posts ─────────────────────────────────────────────
+
+  const thread1Id = 'a1b2c3d4-0000-0000-0000-000000000001';
+  await prisma.forumThread.upsert({
+    where: { id: thread1Id },
+    update: {},
+    create: {
+      id: thread1Id,
+      categoryId: spotterHubGeneralCategory.id,
+      authorId: charlie.id,
+      title: 'Welcome to SpotterHub — introduce yourself!',
+      isPinned: true,
+      postCount: 2,
+    },
+  });
+
+  const post1Id = 'a1b2c3d4-0000-0000-0000-000000000011';
+  await prisma.forumPost.upsert({
+    where: { id: post1Id },
+    update: {},
+    create: {
+      id: post1Id,
+      threadId: thread1Id,
+      authorId: charlie.id,
+      body: "Welcome to SpotterHub! This is the place to introduce yourself to the community. Tell us about your favorite aircraft, your home airport, or what got you into aviation photography.\n\nLooking forward to seeing your shots!",
+    },
+  });
+
+  const post2Id = 'a1b2c3d4-0000-0000-0000-000000000012';
+  await prisma.forumPost.upsert({
+    where: { id: post2Id },
+    update: {},
+    create: {
+      id: post2Id,
+      threadId: thread1Id,
+      authorId: alice.id,
+      body: "Hey everyone! I'm Alice, based in Seattle. My favorite spot is the toll road at SEA — nothing beats a 747-8F departing over Mt. Rainier. Excited to be part of this community!",
+    },
+  });
+
+  const thread2Id = 'a1b2c3d4-0000-0000-0000-000000000002';
+  await prisma.forumThread.upsert({
+    where: { id: thread2Id },
+    update: {},
+    create: {
+      id: thread2Id,
+      categoryId: spotterHubGearCategory.id,
+      authorId: bob.id,
+      title: 'Best lens for air shows? 200-600mm vs 100-400mm',
+      postCount: 1,
+    },
+  });
+
+  const post3Id = 'a1b2c3d4-0000-0000-0000-000000000013';
+  await prisma.forumPost.upsert({
+    where: { id: post3Id },
+    update: {},
+    create: {
+      id: post3Id,
+      threadId: thread2Id,
+      authorId: bob.id,
+      body: "Heading to Miramar Air Show next month. Currently torn between the Sony 200-600mm and the Canon 100-400mm + 1.4x extender. For fighter jets at close range it's easy but the heavy metal at 3000ft needs reach. What's everyone using?",
+    },
+  });
+
+  const thread3Id = 'a1b2c3d4-0000-0000-0000-000000000003';
+  await prisma.forumThread.upsert({
+    where: { id: thread3Id },
+    update: {},
+    create: {
+      id: thread3Id,
+      categoryId: pacificNwCategory.id,
+      authorId: bob.id,
+      title: 'March 20th SEA Ops — A380 and 747 day',
+      postCount: 1,
+    },
+  });
+
+  const post4Id = 'a1b2c3d4-0000-0000-0000-000000000014';
+  await prisma.forumPost.upsert({
+    where: { id: post4Id },
+    update: {},
+    create: {
+      id: post4Id,
+      threadId: thread3Id,
+      authorId: bob.id,
+      body: 'Just got back from the toll road. Had an Emirates A380 and a Lufthansa 747-8 in the same 20-minute window. Light was absolutely perfect around 5pm. KSEA delivered today.',
+    },
+  });
+
+  console.log(`  ✅ Forum threads & posts: 3 threads, 4 posts`);
+
+  // ─── Community Events ───────────────────────────────────────────────────
+
+  const event1Id = 'b2c3d4e5-0000-0000-0000-000000000001';
+  await prisma.communityEvent.upsert({
+    where: { id: event1Id },
+    update: {},
+    create: {
+      id: event1Id,
+      communityId: pacificNwCommunity.id,
+      organizerId: bob.id,
+      title: 'SEA Spotting Meetup — Spring 2026',
+      description: 'Join us at the Mt. Rainier trail for a group spotting session. Bring your longest lenses! Weather dependent.',
+      location: 'Mt. Rainier Viewpoint, Federal Way, WA',
+      startsAt: new Date('2026-05-15T14:00:00Z'),
+      endsAt: new Date('2026-05-15T18:00:00Z'),
+      maxAttendees: 20,
+    },
+  });
+
+  const event2Id = 'b2c3d4e5-0000-0000-0000-000000000002';
+  await prisma.communityEvent.upsert({
+    where: { id: event2Id },
+    update: {},
+    create: {
+      id: event2Id,
+      communityId: spotterHubCommunity.id,
+      organizerId: alice.id,
+      title: 'LAX Twilight Session',
+      description: "Evening spotting at In-N-Out airfield. We'll be gathering near the fence on arrivals view. Bring your wide angles.",
+      location: 'In-N-Out Burger, Los Angeles, CA',
+      startsAt: new Date('2026-04-20T17:30:00Z'),
+      endsAt: new Date('2026-04-20T20:30:00Z'),
+      maxAttendees: 15,
+    },
+  });
+
+  await prisma.eventAttendee.upsert({
+    where: { eventId_userId: { eventId: event1Id, userId: alice.id } },
+    update: {},
+    create: { eventId: event1Id, userId: alice.id, status: 'going' },
+  });
+  await prisma.eventAttendee.upsert({
+    where: { eventId_userId: { eventId: event2Id, userId: alice.id } },
+    update: {},
+    create: { eventId: event2Id, userId: alice.id, status: 'going' },
+  });
+
+  console.log(`  ✅ Community events: 2 events with RSVPs`);
+
   // ─── Clean up orphaned test users ──────────────────────────────────────
 
   await prisma.user.deleteMany({
@@ -160,7 +392,7 @@ async function main() {
     {
       userId: alice.id,
       caption: 'Emirates A380 on final approach at LAX, golden hour light painting the fuselage.',
-      aircraftType: 'Airbus A380-800',
+      aircraftTypeName: 'Airbus A380-800',
       airline: 'Emirates',
       airportCode: 'KLAX',
       takenAt: new Date('2026-03-15T17:42:00Z'),
@@ -170,7 +402,7 @@ async function main() {
     {
       userId: alice.id,
       caption: 'Alaska 737 MAX departing SEA with Mt. Rainier in the background.',
-      aircraftType: 'Boeing 737 MAX 9',
+      aircraftTypeName: 'Boeing 737 MAX 9',
       airline: 'Alaska Airlines',
       airportCode: 'KSEA',
       takenAt: new Date('2026-03-20T10:15:00Z'),
@@ -180,7 +412,7 @@ async function main() {
     {
       userId: bob.id,
       caption: 'F-22 Raptor demo at Miramar Air Show — afterburner climb!',
-      aircraftType: 'Lockheed Martin F-22 Raptor',
+      aircraftTypeName: 'Lockheed Martin F-22 Raptor',
       airline: 'USAF',
       airportCode: 'KNKX',
       takenAt: new Date('2026-02-28T14:30:00Z'),
@@ -190,7 +422,7 @@ async function main() {
     {
       userId: bob.id,
       caption: 'Lufthansa 747-8 pushing back at Frankfurt, morning fog.',
-      aircraftType: 'Boeing 747-8i',
+      aircraftTypeName: 'Boeing 747-8i',
       airline: 'Lufthansa',
       airportCode: 'EDDF',
       takenAt: new Date('2026-01-10T07:00:00Z'),
@@ -200,7 +432,7 @@ async function main() {
     {
       userId: alice.id,
       caption: 'Singapore Airlines A350 taxiing at Changi — love this livery.',
-      aircraftType: 'Airbus A350-900',
+      aircraftTypeName: 'Airbus A350-900',
       airline: 'Singapore Airlines',
       airportCode: 'WSSS',
       takenAt: new Date('2026-03-01T09:20:00Z'),
@@ -210,7 +442,7 @@ async function main() {
     {
       userId: charlie.id,
       caption: 'British Airways A350 arriving at Heathrow on 27L.',
-      aircraftType: 'Airbus A350-1000',
+      aircraftTypeName: 'Airbus A350-1000',
       airline: 'British Airways',
       airportCode: 'EGLL',
       takenAt: new Date('2026-02-14T16:45:00Z'),

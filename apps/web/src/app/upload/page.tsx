@@ -7,13 +7,14 @@ import {
   type FormEvent,
   type KeyboardEvent,
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react';
-import { useMutation } from 'urql';
+import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { CREATE_PHOTO, GET_UPLOAD_URL } from '@/lib/queries';
+import { CREATE_PHOTO, GET_ME, GET_UPLOAD_URL, SEARCH_AIRCRAFT_TYPES } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -25,6 +26,61 @@ export default function UploadPage() {
 
   const [, getUploadUrl] = useMutation(GET_UPLOAD_URL);
   const [, createPhoto] = useMutation(CREATE_PHOTO);
+
+  // Fetch user's gear list
+  const [meResult] = useQuery({ query: GET_ME });
+  const cameraBodies: string[] = meResult.data?.me?.profile?.cameraBodies ?? [];
+  const lenses: string[] = meResult.data?.me?.profile?.lenses ?? [];
+
+  // Aircraft typeahead
+  const [aircraftTypeSearch, setAircraftTypeSearch] = useState('');
+  const [aircraftTypeResults, setAircraftTypeResults] = useState<Array<{
+    id: string;
+    manufacturer: string;
+    aircraftName: string;
+    iataCode: string | null;
+    icaoCode: string | null;
+  }>>([]);
+  const [showAircraftTypeDropdown, setShowAircraftTypeDropdown] = useState(false);
+  const aircraftTypeSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [aircraftTypeSearchResult] = useQuery({
+    query: SEARCH_AIRCRAFT_TYPES,
+    variables: { search: aircraftTypeSearch, first: 10 },
+    pause: aircraftTypeSearch.length < 1,
+  });
+
+  useEffect(() => {
+    if (aircraftTypeSearchResult.data?.aircraftTypes?.edges) {
+      setAircraftTypeResults(
+        aircraftTypeSearchResult.data.aircraftTypes.edges.map(
+          (e: { node: { id: string; manufacturer: string; aircraftName: string; iataCode: string | null; icaoCode: string | null } }) => e.node,
+        ),
+      );
+    } else {
+      setAircraftTypeResults([]);
+    }
+  }, [aircraftTypeSearchResult.data]);
+
+  // Debounce aircraft type search
+  const handleAircraftTypeSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setAircraftTypeSearch(val);
+    setAircraftTypeId('');
+    if (aircraftTypeSearchRef.current) clearTimeout(aircraftTypeSearchRef.current);
+    if (val.length > 0) {
+      setShowAircraftTypeDropdown(true);
+    } else {
+      setShowAircraftTypeDropdown(false);
+    }
+  };
+
+  const selectAircraftType = (at: { id: string; manufacturer: string; aircraftName: string }) => {
+    setAircraftTypeId(at.id);
+    setAircraftType(`${at.manufacturer} ${at.aircraftName}`);
+    setAircraftTypeSearch(`${at.manufacturer} ${at.aircraftName}`);
+    setShowAircraftTypeDropdown(false);
+  };
 
   // State
   const [step, setStep] = useState<UploadStep>('select');
@@ -38,9 +94,15 @@ export default function UploadPage() {
 
   // Metadata form
   const [caption, setCaption] = useState('');
+  const [aircraftTypeId, setAircraftTypeId] = useState('');
   const [aircraftType, setAircraftType] = useState('');
   const [airline, setAirline] = useState('');
   const [airportCode, setAirportCode] = useState('');
+  const [takenAt, setTakenAt] = useState('');
+  const [gearBody, setGearBody] = useState('');
+  const [gearBodyCustom, setGearBodyCustom] = useState('');
+  const [gearLens, setGearLens] = useState('');
+  const [gearLensCustom, setGearLensCustom] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [latitude, setLatitude] = useState('');
@@ -131,6 +193,13 @@ export default function UploadPage() {
     setS3Key(null);
     setStep('select');
     setUploadProgress(0);
+    setAircraftTypeSearch('');
+    setAircraftTypeId('');
+    setTakenAt('');
+    setGearBody('');
+    setGearBodyCustom('');
+    setGearLens('');
+    setGearLensCustom('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -171,12 +240,15 @@ export default function UploadPage() {
         fileSizeBytes: file.size,
         caption: caption || undefined,
         aircraftType: aircraftType || undefined,
-        airline: airline || undefined,
         airportCode: airportCode || undefined,
+        takenAt: takenAt || undefined,
         tags: tags.length > 0 ? tags : undefined,
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
         locationPrivacy: locationPrivacy !== 'exact' ? locationPrivacy : undefined,
+        aircraftTypeId: aircraftTypeId || undefined,
+        gearBody: gearBody === '__custom__' ? gearBodyCustom : gearBody || undefined,
+        gearLens: gearLens === '__custom__' ? gearLensCustom : gearLens || undefined,
       },
     });
 
@@ -237,9 +309,15 @@ export default function UploadPage() {
                 onClick={() => {
                   clearFile();
                   setCaption('');
+                  setAircraftTypeSearch('');
+                  setAircraftTypeId('');
                   setAircraftType('');
-                  setAirline('');
                   setAirportCode('');
+                  setTakenAt('');
+                  setGearBody('');
+                  setGearBodyCustom('');
+                  setGearLens('');
+                  setGearLensCustom('');
                   setTags([]);
                   setLatitude('');
                   setLongitude('');
@@ -284,6 +362,7 @@ export default function UploadPage() {
                   </p>
                   <input
                     ref={fileInputRef}
+                    data-testid="file-input"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                     onChange={handleFileInput}
@@ -348,17 +427,86 @@ export default function UploadPage() {
                 </div>
 
                 <div className="field">
-                  <label htmlFor="aircraftType" className="label">
+                  <label htmlFor="aircraftTypeSearch" className="label">
                     Aircraft Type
                   </label>
-                  <input
-                    id="aircraftType"
-                    type="text"
-                    className="input"
-                    value={aircraftType}
-                    onChange={(e) => setAircraftType(e.target.value)}
-                    placeholder="e.g. Boeing 747-8"
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id="aircraftTypeSearch"
+                      type="text"
+                      className="input"
+                      value={aircraftTypeSearch}
+                      onChange={handleAircraftTypeSearchChange}
+                      onFocus={() => aircraftTypeSearch.length > 0 && setShowAircraftTypeDropdown(true)}
+                      placeholder="Search aircraft type (e.g. Boeing 747)"
+                      autoComplete="off"
+                    />
+                    {showAircraftTypeDropdown && aircraftTypeResults.length > 0 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 8,
+                          zIndex: 100,
+                          maxHeight: 240,
+                          overflowY: 'auto',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        {aircraftTypeResults.map((at) => (
+                          <button
+                            key={at.id}
+                            type="button"
+                            onClick={() => selectAircraftType(at)}
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '8px 12px',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid var(--color-border)',
+                            }}
+                          >
+                            <span style={{ fontWeight: 600 }}>{at.manufacturer} {at.aircraftName}</span>
+                            <span style={{ marginLeft: 8, color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                              {at.iataCode ? `IATA: ${at.iataCode}` : ''}
+                              {at.icaoCode ? ` ICAO: ${at.icaoCode}` : ''}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showAircraftTypeDropdown && aircraftTypeSearch.length > 0 && aircraftTypeResults.length === 0 && !aircraftTypeSearchResult.fetching && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 8,
+                          zIndex: 100,
+                          padding: '8px 12px',
+                          color: 'var(--color-text-secondary)',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        No aircraft type found
+                      </div>
+                    )}
+                  </div>
+                  {aircraftTypeSearchResult.fetching && aircraftTypeSearch.length > 0 && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                      Searching…
+                    </p>
+                  )}
                 </div>
 
                 <div className="field">
@@ -373,6 +521,79 @@ export default function UploadPage() {
                     onChange={(e) => setAirline(e.target.value)}
                     placeholder="e.g. Lufthansa"
                   />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="takenAt" className="label">
+                    Date Taken
+                  </label>
+                  <input
+                    id="takenAt"
+                    type="datetime-local"
+                    className="input"
+                    value={takenAt}
+                    onChange={(e) => setTakenAt(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.gearRow}>
+                  <div className="field">
+                    <label htmlFor="gearBody" className="label">
+                      Camera Body
+                    </label>
+                    <select
+                      id="gearBody"
+                      className="input"
+                      value={gearBody}
+                      onChange={(e) => setGearBody(e.target.value)}
+                    >
+                      <option value="">Select body…</option>
+                      {cameraBodies.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                      <option value="__custom__">Other (enter below)…</option>
+                    </select>
+                    {gearBody === '__custom__' && (
+                      <input
+                        type="text"
+                        className="input"
+                        style={{ marginTop: 6 }}
+                        placeholder="Enter camera body"
+                        value={gearBodyCustom}
+                        onChange={(e) => setGearBodyCustom(e.target.value)}
+                        autoFocus
+                      />
+                    )}
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="gearLens" className="label">
+                      Lens
+                    </label>
+                    <select
+                      id="gearLens"
+                      className="input"
+                      value={gearLens}
+                      onChange={(e) => setGearLens(e.target.value)}
+                    >
+                      <option value="">Select lens…</option>
+                      {lenses.map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                      <option value="__custom__">Other (enter below)…</option>
+                    </select>
+                    {gearLens === '__custom__' && (
+                      <input
+                        type="text"
+                        className="input"
+                        style={{ marginTop: 6 }}
+                        placeholder="Enter lens"
+                        value={gearLensCustom}
+                        onChange={(e) => setGearLensCustom(e.target.value)}
+                        autoFocus
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <div className="field">

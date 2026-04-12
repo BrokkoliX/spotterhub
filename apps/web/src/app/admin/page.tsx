@@ -10,7 +10,7 @@ import styles from './page.module.css';
 
 export default function AdminDashboard() {
   const { user, ready } = useAuth();
-  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator');
+  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
 
   const [{ data, fetching }] = useQuery({
     query: ADMIN_STATS,
