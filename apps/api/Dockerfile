@@ -39,6 +39,8 @@ COPY --from=builder /app/packages/db/prisma ./prisma
 RUN addgroup -g 1001 -S nodejs && adduser -S nodeapp -u 1001
 USER nodeapp
 
+COPY --from=builder /app/apps/api/docker-entrypoint.sh /docker-entrypoint.sh
+
 ENV NODE_ENV=production
 ENV API_PORT=4000
 
@@ -48,7 +50,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:4000/health || exit 1
 
-COPY --from=builder /app/apps/api/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-ENTRYPOINT ["/docker-entrypoint.sh"]
+ENTRYPOINT ["sh", "/docker-entrypoint.sh"]

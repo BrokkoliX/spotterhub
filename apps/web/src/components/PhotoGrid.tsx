@@ -1,6 +1,7 @@
 'use client';
 
 import { PhotoCard, type PhotoData } from './PhotoCard';
+export type { PhotoData };
 import styles from './PhotoGrid.module.css';
 
 interface PhotoGridProps {
