@@ -10,6 +10,7 @@ async function getSharp(): Promise<any> {
     try {
       _sharp = await import('sharp');
     } catch (err) {
+      console.error('Failed to load sharp:', err);
       throw new Error(
         'sharp module not available. Image processing requires a platform with sharp native binaries installed.',
       );
@@ -17,7 +18,6 @@ async function getSharp(): Promise<any> {
   }
   return _sharp;
 }
-
 
 import { getObject, getObjectUrl, uploadBuffer } from './s3.js';
 
@@ -101,17 +101,12 @@ export async function extractExif(buffer: Buffer): Promise<ExifData> {
  * @param originalKey - The S3 key of the original uploaded image.
  * @returns Array of generated variant metadata.
  */
-export async function generateVariants(
-  originalKey: string,
-): Promise<ImageVariantResult[]> {
+export async function generateVariants(originalKey: string): Promise<ImageVariantResult[]> {
   const original = await getObject(originalKey);
   const results: ImageVariantResult[] = [];
 
   // Generate thumbnail
-  const thumbnail = await resizeImage(
-    original,
-    IMAGE_VARIANT_SIZES.thumbnail,
-  );
+  const thumbnail = await resizeImage(original, IMAGE_VARIANT_SIZES.thumbnail);
   const thumbnailKey = deriveVariantKey(originalKey, 'thumbnail');
   await uploadBuffer(thumbnailKey, thumbnail.buffer, 'image/jpeg');
   results.push({
@@ -124,10 +119,7 @@ export async function generateVariants(
   });
 
   // Generate display variant
-  const display = await resizeImage(
-    original,
-    IMAGE_VARIANT_SIZES.display,
-  );
+  const display = await resizeImage(original, IMAGE_VARIANT_SIZES.display);
   const displayKey = deriveVariantKey(originalKey, 'display');
   await uploadBuffer(displayKey, display.buffer, 'image/jpeg');
   results.push({
@@ -165,11 +157,10 @@ interface ResizeResult {
  * Resizes an image to fit within the given long-edge dimension, preserving aspect ratio.
  * Converts to JPEG for consistent output.
  */
-async function resizeImage(
-  input: Buffer,
-  longEdge: number,
-): Promise<ResizeResult> {
-  const result = await (await getSharp())(input)
+async function resizeImage(input: Buffer, longEdge: number): Promise<ResizeResult> {
+  const result = await (
+    await getSharp()
+  )(input)
     .resize(longEdge, longEdge, {
       fit: 'inside',
       withoutEnlargement: true,
@@ -199,9 +190,7 @@ function deriveVariantKey(originalKey: string, variant: string): string {
  * Returns null if GPS data is not present or cannot be parsed.
  * This is a simplified parser — a production system would use exifr or similar.
  */
-function parseGpsFromExif(
-  _exifBuffer: Buffer,
-): { latitude: number; longitude: number } | null {
+function parseGpsFromExif(_exifBuffer: Buffer): { latitude: number; longitude: number } | null {
   // Simplified: Sharp doesn't provide easy GPS access from the raw buffer.
   // In a production system, we'd use the `exifr` package for reliable EXIF parsing.
   // For now, GPS will be manually provided via the createPhoto mutation.
