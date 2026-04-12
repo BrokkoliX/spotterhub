@@ -35,13 +35,23 @@ export class SpotterHubStack extends Stack {
     // ─── VPC ──────────────────────────────────────────────────────────────
     const vpc = new ec2.Vpc(this, 'SpotterSpaceVPC', {
       maxAzs: 2,
-      natGateways: 0,
+      natGateways: 1,
       subnetConfiguration: [
         {
           name: 'public',
           subnetType: ec2.SubnetType.PUBLIC,
         },
+        {
+          name: 'private',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
       ],
+    });
+
+    // ─── Security Group for Lambda ───────────────────────────────────────
+    const lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
+      vpc,
+      allowAllOutbound: true,
     });
 
     // ─── Security Group for RDS ──────────────────────────────────────────
@@ -50,7 +60,7 @@ export class SpotterHubStack extends Stack {
       allowAllOutbound: true,
     });
     dbSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4('0.0.0.0/0'),
+      lambdaSecurityGroup,
       ec2.Port.tcp(5432),
       'PostgreSQL from Lambda',
     );
@@ -111,6 +121,19 @@ export class SpotterHubStack extends Stack {
       }),
     );
 
+    // VPC ENI creation (needed when Lambda is in a VPC)
+    lambdaExecutionRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: [
+          'ec2:CreateNetworkInterface',
+          'ec2:DescribeNetworkInterfaces',
+          'ec2:DeleteNetworkInterface',
+        ],
+        resources: ['*'],
+      }),
+    );
+
     // S3 access for photo uploads
     lambdaExecutionRole.addToPolicy(
       new PolicyStatement({
@@ -120,23 +143,30 @@ export class SpotterHubStack extends Stack {
       }),
     );
 
-    // ─── Lambda Function ──────────────────────────────────────────────────
+    // ─── Lambda Function (in VPC private subnets) ─────────────────────────
     const apiLambda = new NodejsFunction(this, 'ApiLambda', {
       functionName: `spotterspace-${stage}-api`,
-      entry: path.join(__dirname, '../../apps/api/src/lambda.ts'),
+      entry: path.join(__dirname, '../../../apps/api/src/lambda.ts'),
       runtime: Runtime.NODEJS_20_X,
       handler: 'handler',
       role: lambdaExecutionRole,
       timeout: Duration.seconds(30),
       memorySize: 512,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [lambdaSecurityGroup],
       environment: {
         NODE_ENV: 'production',
         STAGE: stage,
-        AWS_REGION: this.region,
+        AWS_REGION_NAME: this.region,
         PHOTOS_BUCKET_NAME: photosBucket.bucketName,
-        // Pass secret ARNs so the Lambda can fetch them from Secrets Manager
         DB_SECRET_ARN: dbUrlSecret.secretArn,
         JWT_SECRET_ARN: jwtSecret.secretArn,
+      },
+      bundling: {
+        // sharp is a native module that can't run in Lambda — it's only needed
+        // for the web app's Next.js image optimization (deployed separately via Amplify)
+        externalModules: ['sharp'],
       },
     });
 
@@ -145,9 +175,17 @@ export class SpotterHubStack extends Stack {
       authType: lambda_.FunctionUrlAuthType.NONE,
     });
 
-    // Grant Lambda VPC access to RDS
-    apiLambda.connections.securityGroups.push(dbSecurityGroup);
-    apiLambda.connections.allowTo(db, ec2.Port.tcp(5432));
+    // ─── VPC Endpoints ────────────────────────────────────────────────────
+    // S3 gateway endpoint (allows Lambda in private subnets to access S3)
+    vpc.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+    });
+
+    // Secrets Manager interface endpoint (private DNS for Secrets Manager)
+    vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      securityGroups: [lambdaSecurityGroup],
+    });
 
     // ─── Amplify Service Role (for web app CI/CD) ─────────────────────────
     const amplifyServiceRole = new Role(this, 'AmplifyServiceRole', {

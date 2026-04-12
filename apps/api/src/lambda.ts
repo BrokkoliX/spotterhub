@@ -16,7 +16,7 @@ async function initSecrets(): Promise<void> {
 
   const { GetSecretValueCommand } = await import('@aws-sdk/client-secrets-manager');
   const { SecretsManagerClient } = await import('@aws-sdk/client-secrets-manager');
-  const client = new SecretsManagerClient({ region: process.env['AWS_REGION'] || 'us-east-1' });
+  const client = new SecretsManagerClient({ region: process.env['AWS_REGION_NAME'] || 'us-east-1' });
 
   const stage = process.env['STAGE'] ?? 'dev';
   const [dbResult, jwtResult] = await Promise.all([

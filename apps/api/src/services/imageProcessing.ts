@@ -1,5 +1,22 @@
 import { IMAGE_VARIANT_SIZES } from '@spotterhub/shared';
-import sharp from 'sharp';
+
+// Lazy-load sharp only when image processing is actually needed.
+// In Lambda (linux-x64), sharp's native binaries may not be available,
+// so we handle the error gracefully and skip processing.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _sharp: any = null;
+async function getSharp(): Promise<any> {
+  if (!_sharp) {
+    try {
+      _sharp = await import('sharp');
+    } catch (err) {
+      throw new Error(
+        'sharp module not available. Image processing requires a platform with sharp native binaries installed.',
+      );
+    }
+  }
+  return _sharp;
+}
 
 
 import { getObject, getObjectUrl, uploadBuffer } from './s3.js';
@@ -35,7 +52,7 @@ export interface ExifData {
  * @returns Parsed EXIF data with nullable fields for missing metadata.
  */
 export async function extractExif(buffer: Buffer): Promise<ExifData> {
-  const metadata = await sharp(buffer).metadata();
+  const metadata = await (await getSharp())(buffer).metadata();
 
   let latitude: number | null = null;
   let longitude: number | null = null;
@@ -152,7 +169,7 @@ async function resizeImage(
   input: Buffer,
   longEdge: number,
 ): Promise<ResizeResult> {
-  const result = await sharp(input)
+  const result = await (await getSharp())(input)
     .resize(longEdge, longEdge, {
       fit: 'inside',
       withoutEnlargement: true,
