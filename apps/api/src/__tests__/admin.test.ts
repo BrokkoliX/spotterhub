@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-import type { Context } from '../context.js';
 
 import {
   cleanDatabase,
