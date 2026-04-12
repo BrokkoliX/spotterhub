@@ -82,7 +82,7 @@ export function AddPhotosModal({
       });
       setCursor(connection.pageInfo.endCursor);
     }
-  }, [connection, fetchedPhotos]);
+  }, [photosResult, connection, fetchedPhotos]);
 
   const handleSubmit = async () => {
     if (selected.size === 0) return;
