@@ -247,7 +247,6 @@ jobs:
             --output json)
           echo "api-url=$(echo $api_service | jq -r '.url')" >> $GITHUB_OUTPUT
           echo "api-arn=$(echo $api_service | jq -r '.arn')" >> $GITHUB_OUTPUT
-          echo "api_service=$api_service" >> $GITHUB_OUTPUT
 
       - name: Wait for API service to stabilize
         run: |
