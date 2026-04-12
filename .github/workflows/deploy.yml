@@ -142,25 +142,28 @@ jobs:
           # Build spec for monorepo Next.js app at apps/web
           BUILD_SPEC=$(cat <<'EOF'
 version: 1
-application:
-  frontend:
-    phases:
-      preBuild:
-        commands:
-          - npm ci
-          - npx turbo run build --filter=@spotterhub/web
-      build:
-        commands:
-          - cp -r apps/web/.next/static apps/web/.next/standalone/ 2>/dev/null || true
-    artifacts:
-      baseDirectory: apps/web/.next/standalone
-      files:
-        - '**/*'
-    cache:
-      paths:
-        - node_modules/**/*
-        - .npm/**/*
-        - .next/cache/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        - npx turbo run generate --filter=@spotterhub/db
+        - npx turbo run build --filter=@spotterhub/db
+        - npx turbo run build --filter=@spotterhub/shared
+        - npx turbo run build --filter=@spotterhub/api
+        - npx turbo run build --filter=@spotterhub/web
+    build:
+      commands:
+        - cp -r apps/web/.next/static apps/web/.next/standalone/ 2>/dev/null || true
+  artifacts:
+    baseDirectory: apps/web/.next/standalone
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .npm/**/*
+      - .next/cache/**/*
 EOF
           )
 
