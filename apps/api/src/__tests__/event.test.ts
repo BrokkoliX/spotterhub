@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
+
 import {
   cleanDatabase,
   createTestContext,
@@ -113,7 +114,11 @@ async function seedCommunity(ownerId: string) {
   return community;
 }
 
-async function addMember(communityId: string, userId: string, role = 'member') {
+async function addMember(
+  communityId: string,
+  userId: string,
+  role: import('@prisma/client').CommunityRole = 'member',
+) {
   return prisma.communityMember.create({
     data: { communityId, userId, role },
   });
@@ -126,7 +131,12 @@ const FUTURE_END = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString();
 async function seedEvent(
   communityId: string,
   organizerId: string,
-  overrides: Partial<{ startsAt: string; endsAt: string; maxAttendees: number; title: string }> = {},
+  overrides: Partial<{
+    startsAt: string;
+    endsAt: string;
+    maxAttendees: number;
+    title: string;
+  }> = {},
 ) {
   return prisma.communityEvent.create({
     data: {
@@ -202,7 +212,10 @@ describe('communityEvents query', () => {
       ctx(),
     );
     if (res.body.kind !== 'single') return;
-    const data = res.body.singleResult.data?.communityEvents as { edges: unknown[]; totalCount: number };
+    const data = res.body.singleResult.data?.communityEvents as {
+      edges: unknown[];
+      totalCount: number;
+    };
     expect(data.edges).toHaveLength(0);
     expect(data.totalCount).toBe(0);
   });
@@ -219,7 +232,11 @@ describe('communityEvent query', () => {
       ctx(),
     );
     if (res.body.kind !== 'single') return;
-    const data = res.body.singleResult.data?.communityEvent as { id: string; title: string; organizer: { username: string } };
+    const data = res.body.singleResult.data?.communityEvent as {
+      id: string;
+      title: string;
+      organizer: { username: string };
+    };
     expect(data.id).toBe(event.id);
     expect(data.title).toBe('Planespotting Day');
     expect(data.organizer.username).toBe('alice');
@@ -286,7 +303,10 @@ describe('createCommunityEvent mutation', () => {
     const res = await server.executeOperation(
       {
         query: CREATE_EVENT,
-        variables: { communityId: community.id, input: { title: 'Member Event', startsAt: FUTURE } },
+        variables: {
+          communityId: community.id,
+          input: { title: 'Member Event', startsAt: FUTURE },
+        },
       },
       ctx(BOB),
     );
@@ -345,7 +365,10 @@ describe('updateCommunityEvent mutation', () => {
     );
     if (res.body.kind !== 'single') return;
     expect(res.body.singleResult.errors).toBeUndefined();
-    const data = res.body.singleResult.data?.updateCommunityEvent as { title: string; location: string };
+    const data = res.body.singleResult.data?.updateCommunityEvent as {
+      title: string;
+      location: string;
+    };
     expect(data.title).toBe('Updated Title');
     expect(data.location).toBe('Terminal 1');
   });
@@ -498,7 +521,7 @@ describe('rsvpEvent mutation', () => {
   });
 
   it('non-member cannot RSVP', async () => {
-    const { alice, bob } = await seedUsers();
+    const { alice } = await seedUsers();
     const community = await seedCommunity(alice.id);
     const event = await seedEvent(community.id, alice.id);
 

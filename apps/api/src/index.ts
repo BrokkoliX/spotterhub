@@ -1,7 +1,7 @@
-import express from 'express';
-import cors from 'cors';
 import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@apollo/server/express';
+import { expressMiddleware } from '@apollo/server/express4';
+import cors from 'cors';
+import express from 'express';
 
 import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';

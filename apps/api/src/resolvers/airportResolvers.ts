@@ -1,3 +1,5 @@
+import { Prisma } from '@spotterhub/db';
+
 import type { Context } from '../context.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -27,6 +29,47 @@ export const airportQueryResolvers = {
 
     return ctx.prisma.airport.findUnique({
       where: { iataCode: code },
+    });
+  },
+
+  searchAirports: async (
+    _parent: unknown,
+    args: { query: string; first?: number },
+    ctx: Context,
+  ) => {
+    const q = args.query.trim();
+    if (!q) return [];
+
+    const take = Math.min(args.first ?? 8, 20);
+    const words = q.split(/\s+/).filter(Boolean);
+
+    const where = (
+      words.length === 1
+        ? {
+            OR: [
+              { icaoCode: { contains: words[0], mode: 'insensitive' } },
+              { iataCode: { contains: words[0], mode: 'insensitive' } },
+              { name: { contains: words[0], mode: 'insensitive' } },
+              { city: { contains: words[0], mode: 'insensitive' } },
+            ],
+          }
+        : {
+            AND: words.map((word) => ({
+              OR: [
+                { icaoCode: { contains: word, mode: 'insensitive' } },
+                { iataCode: { contains: word, mode: 'insensitive' } },
+                { name: { contains: word, mode: 'insensitive' } },
+                { city: { contains: word, mode: 'insensitive' } },
+              ],
+            })),
+          }
+    ) as Prisma.AirportWhereInput;
+
+    return ctx.prisma.airport.findMany({
+      where,
+      select: { icaoCode: true, iataCode: true, name: true, city: true, country: true },
+      orderBy: { icaoCode: 'asc' },
+      take,
     });
   },
 };

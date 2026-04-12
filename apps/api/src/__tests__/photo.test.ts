@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
-import type { Context } from '../context.js';
 import {
   createTestUser,
   cleanDatabase,
@@ -10,11 +9,31 @@ import {
   teardownTestServer,
 } from './testHelpers.js';
 
+// Mock generateVariants so test doesn't emit NoSuchKey errors from S3
+vi.mock('../services/imageProcessing.js', () => ({
+  generateVariants: vi.fn().mockResolvedValue([
+    {
+      variantType: 'thumbnail',
+      url: 'https://example.com/t.jpg',
+      key: 'v/t.jpg',
+      width: 150,
+      height: 100,
+      fileSizeBytes: 5000,
+    },
+    {
+      variantType: 'display',
+      url: 'https://example.com/d.jpg',
+      key: 'v/d.jpg',
+      width: 640,
+      height: 427,
+      fileSizeBytes: 30000,
+    },
+  ]),
+}));
+
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
 let server: Awaited<ReturnType<typeof setupTestServer>>;
-
-
 
 beforeAll(async () => {
   server = await setupTestServer();
@@ -139,7 +158,12 @@ describe('Photo: createPhoto', () => {
     );
 
     expect(result.body.kind).toBe('single');
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
 
     // Variant generation may fail without real S3/LocalStack, so we accept either
     // a successful photo or a photo with empty variants
@@ -154,6 +178,10 @@ describe('Photo: createPhoto', () => {
     expect(photo.tags).toEqual(expect.arrayContaining(['747', 'approach', 'sunset']));
     expect(photo.likeCount).toBe(0);
     expect(photo.commentCount).toBe(0);
+    // Variants are generated from the mocked generateVariants
+    const variants = photo.variants as Array<Record<string, unknown>>;
+    expect(variants).toHaveLength(2);
+    expect(variants.map((v) => v.variantType).sort()).toEqual(['display', 'thumbnail']);
   });
 
   it('rejects unauthenticated users', async () => {
@@ -171,7 +199,12 @@ describe('Photo: createPhoto', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { errors?: Array<{ message: string; extensions?: { code: string } }> } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ message: string; extensions?: { code: string } }> };
+      }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('UNAUTHENTICATED');
   });
@@ -207,7 +240,12 @@ describe('Photo: updatePhoto', () => {
       { contextValue: ctx },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     const updated = data.data?.updatePhoto as Record<string, unknown>;
     expect(updated.caption).toBe('Updated caption');
@@ -217,8 +255,16 @@ describe('Photo: updatePhoto', () => {
   });
 
   it('prevents non-owners from updating a photo', async () => {
-    const { user } = await createTestUser({ email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' });
-    const { ctx: otherCtx } = await createTestUser({ email: 'other@test.com', username: 'other', cognitoSub: 'sub-other' });
+    const { user } = await createTestUser({
+      email: 'owner@test.com',
+      username: 'owner',
+      cognitoSub: 'sub-owner',
+    });
+    const { ctx: otherCtx } = await createTestUser({
+      email: 'other@test.com',
+      username: 'other',
+      cognitoSub: 'sub-other',
+    });
 
     const photo = await prisma.photo.create({
       data: {
@@ -236,7 +282,12 @@ describe('Photo: updatePhoto', () => {
       { contextValue: otherCtx },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { errors?: Array<{ extensions?: { code: string } }> } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ extensions?: { code: string } }> };
+      }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('FORBIDDEN');
   });
@@ -262,7 +313,12 @@ describe('Photo: deletePhoto', () => {
       { contextValue: ctx },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.deletePhoto).toBe(true);
 
@@ -282,7 +338,12 @@ describe('Photo: deletePhoto', () => {
       { contextValue: ctx },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { errors?: Array<{ extensions?: { code: string } }> } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ extensions?: { code: string } }> };
+      }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('NOT_FOUND');
   });
@@ -297,7 +358,7 @@ describe('Photo: photo query', () => {
         userId: user.id,
         originalUrl: 'https://example.com/photo.jpg',
         caption: 'A sunny day at the airport',
-        aircraftType: 'Boeing 737-800',
+        aircraftTypeName: 'Boeing 737-800',
         moderationStatus: 'approved',
         tags: { create: [{ tag: 'boeing' }, { tag: '737' }] },
       },
@@ -311,7 +372,12 @@ describe('Photo: photo query', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     const fetched = data.data?.photo as Record<string, unknown>;
     expect(fetched).toBeDefined();
@@ -329,7 +395,12 @@ describe('Photo: photo query', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.photo).toBeNull();
   });
@@ -363,7 +434,9 @@ describe('Photo: photos feed with pagination and filtering', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const page1Data = (page1.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }).singleResult;
+    const page1Data = (
+      page1.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
+    ).singleResult;
     const page1Photos = page1Data.data?.photos as {
       edges: Array<{ cursor: string; node: { id: string; caption: string } }>;
       pageInfo: { hasNextPage: boolean; endCursor: string };
@@ -384,7 +457,9 @@ describe('Photo: photos feed with pagination and filtering', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const page2Data = (page2.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }).singleResult;
+    const page2Data = (
+      page2.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
+    ).singleResult;
     const page2Photos = page2Data.data?.photos as {
       edges: Array<{ node: { caption: string } }>;
       pageInfo: { hasNextPage: boolean };
@@ -399,9 +474,24 @@ describe('Photo: photos feed with pagination and filtering', () => {
 
     await prisma.photo.createMany({
       data: [
-        { userId: user.id, originalUrl: 'https://example.com/1.jpg', aircraftType: 'Boeing 747-8', moderationStatus: 'approved' },
-        { userId: user.id, originalUrl: 'https://example.com/2.jpg', aircraftType: 'Airbus A380', moderationStatus: 'approved' },
-        { userId: user.id, originalUrl: 'https://example.com/3.jpg', aircraftType: 'Boeing 737 MAX', moderationStatus: 'approved' },
+        {
+          userId: user.id,
+          originalUrl: 'https://example.com/1.jpg',
+          aircraftTypeName: 'Boeing 747-8',
+          moderationStatus: 'approved',
+        },
+        {
+          userId: user.id,
+          originalUrl: 'https://example.com/2.jpg',
+          aircraftTypeName: 'Airbus A380',
+          moderationStatus: 'approved',
+        },
+        {
+          userId: user.id,
+          originalUrl: 'https://example.com/3.jpg',
+          aircraftTypeName: 'Boeing 737 MAX',
+          moderationStatus: 'approved',
+        },
       ],
     });
 
@@ -413,8 +503,13 @@ describe('Photo: photos feed with pagination and filtering', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }).singleResult;
-    const photos = data.data?.photos as { edges: Array<{ node: { aircraftType: string } }>; totalCount: number };
+    const data = (
+      result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
+    ).singleResult;
+    const photos = data.data?.photos as {
+      edges: Array<{ node: { aircraftType: string } }>;
+      totalCount: number;
+    };
 
     expect(photos.totalCount).toBe(2);
     photos.edges.forEach((edge) => {
@@ -427,9 +522,24 @@ describe('Photo: photos feed with pagination and filtering', () => {
 
     await prisma.photo.createMany({
       data: [
-        { userId: user.id, originalUrl: 'https://example.com/1.jpg', airportCode: 'KSFO', moderationStatus: 'approved' },
-        { userId: user.id, originalUrl: 'https://example.com/2.jpg', airportCode: 'KLAX', moderationStatus: 'approved' },
-        { userId: user.id, originalUrl: 'https://example.com/3.jpg', airportCode: 'KSFO', moderationStatus: 'approved' },
+        {
+          userId: user.id,
+          originalUrl: 'https://example.com/1.jpg',
+          airportCode: 'KSFO',
+          moderationStatus: 'approved',
+        },
+        {
+          userId: user.id,
+          originalUrl: 'https://example.com/2.jpg',
+          airportCode: 'KLAX',
+          moderationStatus: 'approved',
+        },
+        {
+          userId: user.id,
+          originalUrl: 'https://example.com/3.jpg',
+          airportCode: 'KSFO',
+          moderationStatus: 'approved',
+        },
       ],
     });
 
@@ -441,7 +551,9 @@ describe('Photo: photos feed with pagination and filtering', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }).singleResult;
+    const data = (
+      result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
+    ).singleResult;
     const photos = data.data?.photos as { totalCount: number };
     expect(photos.totalCount).toBe(2);
   });
@@ -475,21 +587,46 @@ describe('Photo: photos feed with pagination and filtering', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }).singleResult;
-    const photos = data.data?.photos as { totalCount: number; edges: Array<{ node: { id: string } }> };
+    const data = (
+      result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
+    ).singleResult;
+    const photos = data.data?.photos as {
+      totalCount: number;
+      edges: Array<{ node: { id: string } }>;
+    };
     expect(photos.totalCount).toBe(1);
     expect(photos.edges[0].node.id).toBe(photo1.id);
   });
 
   it('filters photos by userId', async () => {
-    const { user: user1 } = await createTestUser({ email: 'user1@test.com', username: 'user1', cognitoSub: 'sub-1' });
-    const { user: user2 } = await createTestUser({ email: 'user2@test.com', username: 'user2', cognitoSub: 'sub-2' });
+    const { user: user1 } = await createTestUser({
+      email: 'user1@test.com',
+      username: 'user1',
+      cognitoSub: 'sub-1',
+    });
+    const { user: user2 } = await createTestUser({
+      email: 'user2@test.com',
+      username: 'user2',
+      cognitoSub: 'sub-2',
+    });
 
     await prisma.photo.createMany({
       data: [
-        { userId: user1.id, originalUrl: 'https://example.com/1.jpg', moderationStatus: 'approved' },
-        { userId: user1.id, originalUrl: 'https://example.com/2.jpg', moderationStatus: 'approved' },
-        { userId: user2.id, originalUrl: 'https://example.com/3.jpg', moderationStatus: 'approved' },
+        {
+          userId: user1.id,
+          originalUrl: 'https://example.com/1.jpg',
+          moderationStatus: 'approved',
+        },
+        {
+          userId: user1.id,
+          originalUrl: 'https://example.com/2.jpg',
+          moderationStatus: 'approved',
+        },
+        {
+          userId: user2.id,
+          originalUrl: 'https://example.com/3.jpg',
+          moderationStatus: 'approved',
+        },
       ],
     });
 
@@ -501,7 +638,9 @@ describe('Photo: photos feed with pagination and filtering', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }).singleResult;
+    const data = (
+      result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
+    ).singleResult;
     const photos = data.data?.photos as { totalCount: number };
     expect(photos.totalCount).toBe(2);
   });
@@ -517,7 +656,12 @@ describe('Photo: getUploadUrl', () => {
       { contextValue: createTestContext(null) },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { errors?: Array<{ extensions?: { code: string } }> } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ extensions?: { code: string } }> };
+      }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('UNAUTHENTICATED');
   });
@@ -533,8 +677,243 @@ describe('Photo: getUploadUrl', () => {
       { contextValue: ctx },
     );
 
-    const data = (result.body as { kind: 'single'; singleResult: { errors?: Array<{ extensions?: { code: string } }> } }).singleResult;
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ extensions?: { code: string } }> };
+      }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('BAD_USER_INPUT');
+  });
+});
+
+describe('Photo: createPhoto variants and location', () => {
+  it('stores thumbnail and display variant records on success', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/variant-test.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+            caption: 'Variant test',
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: {
+          data: Record<string, unknown>;
+          errors?: Array<{ extensions?: { code: string }; message?: string }>;
+        };
+      }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    const variants = photo.variants as Array<Record<string, unknown>>;
+    expect(variants).toHaveLength(2);
+    expect(variants.map((v) => v.variantType).sort()).toEqual(['display', 'thumbnail']);
+  });
+
+  it('still creates photo record when variant generation throws', async () => {
+    const { ctx } = await createTestUser();
+    // Keep the mock but make generateVariants throw
+    const { generateVariants } = await import('../services/imageProcessing.js');
+    vi.mocked(generateVariants).mockRejectedValueOnce(new Error('S3 unavailable'));
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/error-test.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: {
+          data: Record<string, unknown>;
+          errors?: Array<{ extensions?: { code: string }; message?: string }>;
+        };
+      }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    expect(photo.id).toBeDefined();
+    const variants = photo.variants as Array<unknown>;
+    expect(variants).toHaveLength(0);
+  });
+
+  it('applies approximate privacy jitter to coordinates', async () => {
+    const { ctx } = await createTestUser();
+    // Force variant generation to throw so the early-return is skipped
+    const { generateVariants } = await import('../services/imageProcessing.js');
+    vi.mocked(generateVariants).mockRejectedValueOnce(new Error('S3 unavailable'));
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/approx-privacy.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+            latitude: 47.4502,
+            longitude: -122.3088,
+            locationPrivacy: 'approximate',
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: {
+          data: Record<string, unknown>;
+          errors?: Array<{ extensions?: { code: string }; message?: string }>;
+        };
+      }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    expect(photo.id).toBeDefined();
+
+    // Fetch the location record and verify jitter was applied
+    const location = await prisma.photoLocation.findUnique({
+      where: { photoId: photo.id as string },
+    });
+    expect(location).not.toBeNull();
+    expect(location!.displayLatitude).not.toBeCloseTo(location!.rawLatitude, 3);
+    expect(location!.displayLongitude).not.toBeCloseTo(location!.rawLongitude, 3);
+  });
+
+  it('sets display coordinates to 0 when privacy is hidden', async () => {
+    const { ctx } = await createTestUser();
+    // Force variant generation to throw so the early-return is skipped
+    const { generateVariants } = await import('../services/imageProcessing.js');
+    vi.mocked(generateVariants).mockRejectedValueOnce(new Error('S3 unavailable'));
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/hidden-privacy.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+            latitude: 47.4502,
+            longitude: -122.3088,
+            locationPrivacy: 'hidden',
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: {
+          data: Record<string, unknown>;
+          errors?: Array<{ extensions?: { code: string }; message?: string }>;
+        };
+      }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+
+    const location = await prisma.photoLocation.findUnique({
+      where: { photoId: photo.id as string },
+    });
+    expect(location).not.toBeNull();
+    expect(location!.displayLatitude).toBe(0);
+    expect(location!.displayLongitude).toBe(0);
+  });
+});
+
+describe('Photo: getUploadUrl validation', () => {
+  it('rejects GIF mime type', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: GET_UPLOAD_URL,
+        variables: { input: { mimeType: 'image/gif', fileSizeBytes: 1024 } },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ extensions?: { code: string } }> };
+      }
+    ).singleResult;
+    expect(data.errors).toBeDefined();
+    expect(data.errors![0].extensions?.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('rejects file exceeding free tier 20MB limit', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: GET_UPLOAD_URL,
+        variables: { input: { mimeType: 'image/jpeg', fileSizeBytes: 21 * 1024 * 1024 } },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ extensions?: { code: string }; message?: string }> };
+      }
+    ).singleResult;
+    expect(data.errors).toBeDefined();
+    expect(data.errors![0].extensions?.code).toBe('BAD_USER_INPUT');
+    expect(data.errors![0].message).toMatch(/size/i);
+  });
+
+  it('accepts HEIC mime type', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: GET_UPLOAD_URL,
+        variables: { input: { mimeType: 'image/heic', fileSizeBytes: 5 * 1024 * 1024 } },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: {
+          data: Record<string, unknown>;
+          errors?: Array<{ extensions?: { code: string }; message?: string }>;
+        };
+      }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    expect((data.data?.getUploadUrl as Record<string, string>).url).toBeDefined();
+    expect((data.data?.getUploadUrl as Record<string, string>).key).toMatch(/^uploads\//);
   });
 });
