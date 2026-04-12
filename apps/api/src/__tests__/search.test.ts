@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
+
 import {
   createTestUser,
   cleanDatabase,
@@ -30,7 +31,7 @@ async function createTestPhoto(userId: string, overrides: Partial<{
       mimeType: 'image/jpeg',
       moderationStatus: 'approved',
       caption: overrides.caption,
-      aircraftType: overrides.aircraftType,
+      aircraftTypeName: overrides.aircraftType ?? null,
       airline: overrides.airline,
       airportCode: overrides.airportCode,
     },

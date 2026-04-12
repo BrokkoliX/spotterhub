@@ -542,15 +542,6 @@ export const albumMutationResolvers = {
     });
     if (!isSuperuser && (!membership || !['owner', 'admin'].includes(membership.role))) {
       // Non-admins can only remove photos they added themselves
-      const entries = await ctx.prisma.albumPhoto.findMany({
-        where: { albumId: args.albumId, photoId: { in: args.photoIds } },
-        select: { photoId: true, album: { select: { communityId: true } } },
-      });
-      // Allow only their own photos
-      const userPhotoIds = entries
-        .filter((e) => e.album.communityId === album.communityId)
-        .map((e) => e.photoId);
-
       const photos = await ctx.prisma.photo.findMany({
         where: { id: { in: args.photoIds }, userId: dbUser.id },
         select: { id: true },

@@ -62,17 +62,6 @@ async function getCommunityIdForThread(threadId: string, ctx: Context): Promise<
   return thread.category.communityId;
 }
 
-async function getCommunityIdForPost(postId: string, ctx: Context): Promise<string | null> {
-  const post = await ctx.prisma.forumPost.findUnique({
-    where: { id: postId },
-    select: { thread: { select: { category: { select: { communityId: true } } } } },
-  });
-  if (!post) {
-    throw new GraphQLError('Forum post not found', { extensions: { code: 'NOT_FOUND' } });
-  }
-  return post.thread.category.communityId;
-}
-
 async function getMemberRole(
   communityId: string,
   userId: string,

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-import type { Context } from '../context.js';
+
 import {
   cleanDatabase,
   createTestContext,
@@ -93,16 +93,6 @@ const GET_THREADS = `
       edges { cursor node { id title isPinned postCount author { username } } }
       pageInfo { hasNextPage endCursor }
       totalCount
-    }
-  }
-`;
-
-const GET_THREAD = `
-  query ForumThread($id: ID!) {
-    forumThread(id: $id) {
-      id title isPinned isLocked postCount
-      author { username }
-      firstPost { id body }
     }
   }
 `;

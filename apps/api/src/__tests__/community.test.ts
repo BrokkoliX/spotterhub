@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-import type { Context } from '../context.js';
+
 import {
   cleanDatabase,
   createTestContext,
@@ -372,7 +372,7 @@ describe('deleteCommunity', () => {
 
 describe('joinCommunity', () => {
   it('joins a public community', async () => {
-    const { bob } = await createUsers();
+    await createUsers();
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
@@ -700,12 +700,11 @@ describe('banCommunityMember', () => {
       ctx(ALICE),
     );
 
-    // Charlie (admin) tries to ban Bob (admin) - should fail (equal weight)
+    // Bob (admin) tries to ban another admin - should fail (equal weight)
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
-    const charlieId = (await prisma.user.findUnique({ where: { username: 'charlie' } }))!.id;
     const res = await server.executeOperation(
       { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
-      { contextValue: createTestContext(CHARLIE) },
+      { contextValue: createTestContext(BOB) },
     );
 
     expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');

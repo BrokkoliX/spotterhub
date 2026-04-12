@@ -59,24 +59,39 @@ export const authMutationResolvers = {
     // In dev mode, we store a hashed password in cognitoSub as a workaround.
     // In production, cognitoSub comes from AWS Cognito.
     const passwordHash = hashPassword(password);
-    const sub = `dev-${passwordHash.slice(0, 32)}`;
+    const sub = `dev1-${passwordHash.slice(0, 32)}`;
 
-    const user = await ctx.prisma.user.create({
-      data: {
-        cognitoSub: sub,
-        email,
-        username,
-        profile: {
-          create: {
-            displayName: username,
+    try {
+      const user = await ctx.prisma.user.create({
+        data: {
+          cognitoSub: sub,
+          email,
+          username,
+          profile: {
+            create: {
+              displayName: username,
+            },
           },
         },
-      },
-      include: { profile: true },
-    });
-
-    const token = signToken({ sub, email, username });
-    return { token, user };
+        include: { profile: true },
+      });
+      const token = signToken({ sub, email, username });
+      return { token, user };
+    } catch (err: unknown) {
+      // Handle unique constraint violation on cognitoSub — means another user
+      // already has this password (same hash). In dev mode this is rare but
+      // possible if two users pick the same password.
+      if (
+        err instanceof Error &&
+        err.message.includes('Unique constraint') ||
+        (err as { code?: string }).code === 'P2002'
+      ) {
+        throw new GraphQLError('A user with this password already exists', {
+          extensions: { code: 'BAD_USER_INPUT' },
+        });
+      }
+      throw err;
+    }
   },
 
   signIn: async (
@@ -86,6 +101,7 @@ export const authMutationResolvers = {
   ) => {
     const { email, password } = args.input;
     const passwordHash = hashPassword(password);
+    // Auth: derive sub from password for existing dev accounts (backwards compat)
     const sub = `dev-${passwordHash.slice(0, 32)}`;
 
     const user = await ctx.prisma.user.findUnique({
@@ -93,7 +109,22 @@ export const authMutationResolvers = {
       include: { profile: true },
     });
 
-    if (!user || user.cognitoSub !== sub) {
+    if (!user) {
+      throw new GraphQLError('Invalid email or password', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    // New accounts use dev1- prefix — derive expected sub from password hash
+    const isNewDevSub = user.cognitoSub.startsWith('dev1-');
+    if (isNewDevSub) {
+      const expectedSub = `dev1-${passwordHash.slice(0, 32)}`;
+      if (user.cognitoSub !== expectedSub) {
+        throw new GraphQLError('Invalid email or password', {
+          extensions: { code: 'UNAUTHENTICATED' },
+        });
+      }
+    } else if (!user.cognitoSub.startsWith('dev1-') && user.cognitoSub !== sub) {
       throw new GraphQLError('Invalid email or password', {
         extensions: { code: 'UNAUTHENTICATED' },
       });
@@ -105,7 +136,7 @@ export const authMutationResolvers = {
       });
     }
 
-    const token = signToken({ sub, email, username: user.username });
+    const token = signToken({ sub: user.cognitoSub, email, username: user.username });
     return { token, user };
   },
 };

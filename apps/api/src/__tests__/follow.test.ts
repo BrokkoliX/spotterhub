@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
+
 import {
   createTestUser,
   cleanDatabase,
@@ -397,7 +398,7 @@ async function createTestPhoto(userId: string, overrides: Partial<{ aircraftType
       userId,
       caption: overrides.caption ?? 'Test Photo',
       originalUrl: `https://localhost:4566/spotterhub/${key}`,
-      aircraftType: overrides.aircraftType ?? null,
+      aircraftTypeName: overrides.aircraftType ?? null,
       airline: overrides.airline ?? null,
       airportCode: overrides.airportCode ?? null,
     },

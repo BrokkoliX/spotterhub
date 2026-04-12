@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-import type { Context } from '../context.js';
+
 import {
   cleanDatabase,
   createTestContext,
@@ -133,7 +133,6 @@ async function createPhotoWithLocation(userId: string, lat: number, lng: number,
 
 describe('photosInBounds', () => {
   it('returns photos within the bounding box', async () => {
-    const user = await createUser();
     await createPhotoWithLocation(user.id, 47.45, -122.31);
     await createPhotoWithLocation(user.id, 47.46, -122.30);
     // Outside bounds
@@ -152,7 +151,6 @@ describe('photosInBounds', () => {
   });
 
   it('excludes photos with hidden privacy', async () => {
-    const user = await createUser();
     await createPhotoWithLocation(user.id, 47.45, -122.31, 'exact');
     await createPhotoWithLocation(user.id, 47.46, -122.30, 'hidden');
 
@@ -169,7 +167,6 @@ describe('photosInBounds', () => {
   });
 
   it('respects the first limit', async () => {
-    const user = await createUser();
     await createPhotoWithLocation(user.id, 47.45, -122.31);
     await createPhotoWithLocation(user.id, 47.46, -122.30);
     await createPhotoWithLocation(user.id, 47.47, -122.29);
@@ -189,7 +186,6 @@ describe('photosInBounds', () => {
 
 describe('photosNearby', () => {
   it('returns photos within the radius', async () => {
-    const user = await createUser();
     // ~200m from center point
     await createPhotoWithLocation(user.id, 47.4502, -122.3088);
     // ~50km away — outside default 5km radius
@@ -211,7 +207,6 @@ describe('photosNearby', () => {
 
 describe('createSpottingLocation', () => {
   it('creates a spotting location', async () => {
-    const user = await createUser();
     const airport = await createAirport();
 
     const res = await server.executeOperation(
@@ -281,7 +276,6 @@ describe('createSpottingLocation', () => {
 
 describe('deleteSpottingLocation', () => {
   it('deletes own spotting location', async () => {
-    const user = await createUser();
     const airport = await createAirport();
     const spot = await prisma.spottingLocation.create({
       data: {

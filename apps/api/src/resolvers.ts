@@ -1,30 +1,27 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 
+import { adminMutationResolvers, adminQueryResolvers } from './resolvers/adminResolvers.js';
+import { aircraftFieldResolvers, aircraftMutationResolvers, aircraftQueryResolvers } from './resolvers/aircraftResolvers.js';
+import {
+  airportFieldResolvers,
+  airportQueryResolvers,
+} from './resolvers/airportResolvers.js';
+import {
+  albumFieldResolvers,
+  albumMutationResolvers,
+  albumQueryResolvers,
+} from './resolvers/albumResolvers.js';
+import { authMutationResolvers } from './resolvers/authResolvers.js';
 import {
   commentFieldResolvers,
   commentMutationResolvers,
   commentQueryResolvers,
 } from './resolvers/commentResolvers.js';
 import {
-  airportFollowFieldResolvers,
-  followFieldResolvers,
-  followMutationResolvers,
-  followQueryResolvers,
-} from './resolvers/followResolvers.js';
-import {
-  likeFieldResolvers,
-  likeMutationResolvers,
-} from './resolvers/likeResolvers.js';
-import {
-  photoFieldResolvers,
-  photoMutationResolvers,
-  photoQueryResolvers,
-} from './resolvers/photoResolvers.js';
-import {
-  airportFieldResolvers,
-  airportQueryResolvers,
-} from './resolvers/airportResolvers.js';
-import { adminMutationResolvers, adminQueryResolvers } from './resolvers/adminResolvers.js';
+  communityModerationLogFieldResolvers,
+  communityModerationMutationResolvers,
+  communityModerationQueryResolvers,
+} from './resolvers/communityModerationResolvers.js';
 import {
   communityFieldResolvers,
   communityMemberFieldResolvers,
@@ -32,10 +29,17 @@ import {
   communityQueryResolvers,
 } from './resolvers/communityResolvers.js';
 import {
-  communityModerationLogFieldResolvers,
-  communityModerationMutationResolvers,
-  communityModerationQueryResolvers,
-} from './resolvers/communityModerationResolvers.js';
+  communityEventFieldResolvers,
+  eventAttendeeFieldResolvers,
+  eventMutationResolvers,
+  eventQueryResolvers,
+} from './resolvers/eventResolvers.js';
+import {
+  airportFollowFieldResolvers,
+  followFieldResolvers,
+  followMutationResolvers,
+  followQueryResolvers,
+} from './resolvers/followResolvers.js';
 import {
   forumCategoryFieldResolvers,
   forumMutationResolvers,
@@ -44,32 +48,29 @@ import {
   forumThreadFieldResolvers,
 } from './resolvers/forumResolvers.js';
 import {
-  communityEventFieldResolvers,
-  eventAttendeeFieldResolvers,
-  eventMutationResolvers,
-  eventQueryResolvers,
-} from './resolvers/eventResolvers.js';
+  likeFieldResolvers,
+  likeMutationResolvers,
+} from './resolvers/likeResolvers.js';
+import { locationQueryResolvers } from './resolvers/locationResolvers.js';
 import {
   notificationFieldResolvers,
   notificationMutationResolvers,
   notificationQueryResolvers,
 } from './resolvers/notificationResolvers.js';
 import {
-  albumFieldResolvers,
-  albumMutationResolvers,
-  albumQueryResolvers,
-} from './resolvers/albumResolvers.js';
-import { locationQueryResolvers } from './resolvers/locationResolvers.js';
+  photoFieldResolvers,
+  photoMutationResolvers,
+  photoQueryResolvers,
+} from './resolvers/photoResolvers.js';
+import { profileMutationResolvers } from './resolvers/profileResolvers.js';
 import { reportMutationResolvers } from './resolvers/reportResolvers.js';
 import { searchQueryResolvers } from './resolvers/searchResolvers.js';
-import { spottingLocationMutationResolvers } from './resolvers/spottingLocationResolvers.js';
-import { authMutationResolvers } from './resolvers/authResolvers.js';
-import { profileMutationResolvers } from './resolvers/profileResolvers.js';
-import { userFieldResolvers, userQueryResolvers } from './resolvers/userResolvers.js';
 import {
   siteSettingsMutationResolvers,
   siteSettingsQueryResolvers,
 } from './resolvers/siteSettingsResolvers.js';
+import { spottingLocationMutationResolvers } from './resolvers/spottingLocationResolvers.js';
+import { userFieldResolvers, userQueryResolvers } from './resolvers/userResolvers.js';
 
 // ─── JSON Scalar ────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ export const resolvers = {
     ...eventQueryResolvers,
     ...notificationQueryResolvers,
     ...siteSettingsQueryResolvers,
+    ...aircraftQueryResolvers,
   },
 
   Mutation: {
@@ -144,6 +146,7 @@ export const resolvers = {
     ...eventMutationResolvers,
     ...notificationMutationResolvers,
     ...siteSettingsMutationResolvers,
+    ...aircraftMutationResolvers,
   },
 
   User: {
@@ -182,4 +185,13 @@ export const resolvers = {
   EventAttendee: eventAttendeeFieldResolvers,
 
   Notification: notificationFieldResolvers,
+
+  Aircraft: {
+    ...aircraftFieldResolvers,
+  },
+
+  AircraftType: {
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+    updatedAt: (parent: { updatedAt: Date }) => parent.updatedAt.toISOString(),
+  },
 };
