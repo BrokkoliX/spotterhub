@@ -7,7 +7,8 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies (including devDependencies needed for build)
-RUN npm install --workspaces
+# Using --ignore-scripts to skip husky install (no git repo in Docker)
+RUN npm install --ignore-scripts
 
 # Build Next.js standalone output
 RUN npm run build --workspace=@spotterhub/web

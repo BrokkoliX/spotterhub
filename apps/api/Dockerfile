@@ -7,7 +7,8 @@ WORKDIR /app
 COPY . .
 
 # Install all dependencies (devDependencies needed for TypeScript compilation)
-RUN npm install --workspaces
+# Using --ignore-scripts to skip husky install (no git repo in Docker)
+RUN npm install --workspaces --ignore-scripts
 
 # Generate Prisma client (binary targets are set in schema.prisma)
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate
