@@ -75,15 +75,18 @@ export function AddPhotosModal({
   const handleLoadMore = useCallback(() => {
     if (connection?.pageInfo?.endCursor) {
       setAllPhotos((prev) => {
-        const existing = prev.length > 0 ? prev : fetchedPhotos;
-        const newPhotos = fetchedPhotos.filter(
+        const fetched = photosResult.data?.photos?.edges?.map(
+          (e: { node: PhotoData }) => e.node,
+        ) ?? [];
+        const existing = prev.length > 0 ? prev : fetched;
+        const newPhotos = fetched.filter(
           (p: PhotoData) => !existing.some((ep: PhotoData) => ep.id === p.id),
         );
         return [...existing, ...newPhotos];
       });
       setCursor(connection.pageInfo.endCursor);
     }
-  }, [connection, fetchedPhotos]);
+  }, [connection, photosResult.data]);
 
   const handleSubmit = async () => {
     if (selected.size === 0) return;
