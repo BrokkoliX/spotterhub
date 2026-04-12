@@ -16,11 +16,12 @@ async function initSecrets(): Promise<void> {
 
   const { GetSecretValueCommand } = await import('@aws-sdk/client-secrets-manager');
   const { SecretsManagerClient } = await import('@aws-sdk/client-secrets-manager');
-  const client = new SecretsManagerClient({ region: 'us-east-1' });
+  const client = new SecretsManagerClient({ region: process.env['AWS_REGION'] || 'us-east-1' });
 
+  const stage = process.env['STAGE'] ?? 'dev';
   const [dbResult, jwtResult] = await Promise.all([
-    client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/DATABASE_URL' })),
-    client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/JWT_SECRET' })),
+    client.send(new GetSecretValueCommand({ SecretId: `spotterspace/${stage}/DATABASE_URL` })),
+    client.send(new GetSecretValueCommand({ SecretId: `spotterspace/${stage}/JWT_SECRET` })),
   ]);
 
   process.env.DATABASE_URL = dbResult.SecretString ?? '';
@@ -58,6 +59,18 @@ export const handler = async (event: {
   headers?: Record<string, string | undefined>;
   isBase64Encoded?: boolean;
 }) => {
+  const path = event.requestContext?.http?.path ?? event.path ?? '/';
+  const method = event.requestContext?.http?.method ?? event.httpMethod ?? 'GET';
+
+  // Health check endpoint (Lambda Function URL has no custom path routing)
+  if (path === '/health' || (path === '/' && method === 'GET')) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'ok' }),
+    };
+  }
+
   // Initialize secrets before handling (fetches DATABASE_URL from Secrets Manager on cold start)
   await ensureInitialized();
 

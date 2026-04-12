@@ -7,7 +7,7 @@ const app = new App();
 
 const stage = process.env['STAGE'] ?? 'dev';
 
-new SpotterHubStack(app, `SpotterHub-${stage}-Stack`, {
+new SpotterHubStack(app, `SpotterSpace-${stage}-Stack`, {
   stage: stage as 'dev' | 'prod',
   jwtSecretInitialValue: process.env['JWT_SECRET_INITIAL_VALUE'] ?? 'change-me-in-aws-console',
   env: {

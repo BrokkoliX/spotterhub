@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "spotterhub-photos.s3.us-east-1.amazonaws.com",
+        hostname: "spotterspace-photos.s3.us-east-1.amazonaws.com",
         pathname: "/**",
       },
     ],

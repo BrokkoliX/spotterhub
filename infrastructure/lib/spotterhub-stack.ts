@@ -1,14 +1,18 @@
-// SpotterHub AWS Infrastructure — CDK v2
+// SpotterSpace AWS Infrastructure — CDK v2
 import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import {
   aws_ec2 as ec2,
-  aws_ecr as ecr,
   aws_iam as iam,
+  aws_lambda as lambda_,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
   aws_s3 as s3,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import path from 'path';
 
 export interface SpotterHubStackProps extends StackProps {
   stage: 'dev' | 'prod';
@@ -22,15 +26,14 @@ export class SpotterHubStack extends Stack {
     const { stage, jwtSecretInitialValue } = props;
 
     // ─── S3 Bucket for Photos ──────────────────────────────────────────────
-    // Referenced from env var; bucket is created at runtime by the API
     const photosBucket = s3.Bucket.fromBucketName(
       this,
       'PhotosBucket',
-      process.env['S3_BUCKET_NAME'] ?? 'spotterhub-photos',
+      process.env['S3_BUCKET_NAME'] ?? 'spotterspace-photos',
     );
 
     // ─── VPC ──────────────────────────────────────────────────────────────
-    const vpc = new ec2.Vpc(this, 'SpotterHubVPC', {
+    const vpc = new ec2.Vpc(this, 'SpotterSpaceVPC', {
       maxAzs: 2,
       natGateways: 0,
       subnetConfiguration: [
@@ -49,7 +52,7 @@ export class SpotterHubStack extends Stack {
     dbSecurityGroup.addIngressRule(
       ec2.Peer.ipv4('0.0.0.0/0'),
       ec2.Port.tcp(5432),
-      'PostgreSQL from App Runner',
+      'PostgreSQL from Lambda',
     );
 
     // ─── RDS PostgreSQL 16 ───────────────────────────────────────────────
@@ -58,13 +61,13 @@ export class SpotterHubStack extends Stack {
         ? ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL)
         : ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO);
 
-    const db = new rds.DatabaseInstance(this, 'SpotterHubDB', {
+    const db = new rds.DatabaseInstance(this, 'SpotterSpaceDB', {
       engine: rds.DatabaseInstanceEngine.postgres({
         version: rds.PostgresEngineVersion.VER_16,
       }),
       instanceType: dbInstanceType,
-      credentials: rds.Credentials.fromGeneratedSecret('spotterhub_admin', {
-        secretName: `spotterhub/${stage}/db-admin`,
+      credentials: rds.Credentials.fromGeneratedSecret('spotterspace_admin', {
+        secretName: `spotterspace/${stage}/db-admin`,
       }),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
@@ -81,106 +84,81 @@ export class SpotterHubStack extends Stack {
     // ─── Secrets Manager ─────────────────────────────────────────────────
     // DATABASE_URL — constructed from RDS instance endpoint
     const dbUrlSecret = new secretsmanager.Secret(this, 'DBUrlSecret', {
-      secretName: `spotterhub/${stage}/DATABASE_URL`,
+      secretName: `spotterspace/${stage}/DATABASE_URL`,
       secretStringValue: SecretValue.unsafePlainText(
-        `postgresql://${db.instanceEndpoint.hostname}:${db.instanceEndpoint.port}/spotterhub?schema=public`,
+        `postgresql://${db.instanceEndpoint.hostname}:${db.instanceEndpoint.port}/spotterspace?schema=public`,
       ),
     });
 
     // JWT_SECRET — user-provided initial value
     const jwtSecret = new secretsmanager.Secret(this, 'JWTSecret', {
-      secretName: `spotterhub/${stage}/JWT_SECRET`,
+      secretName: `spotterspace/${stage}/JWT_SECRET`,
       secretStringValue: SecretValue.unsafePlainText(jwtSecretInitialValue),
     });
 
-    // ─── ECR Repositories ─────────────────────────────────────────────────
-    const apiRepo = new ecr.Repository(this, 'SpotterHubApiRepo', {
-      repositoryName: `spotterhub-${stage}-api`,
-      removalPolicy:
-        stage === 'prod' ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    // ─── Lambda Execution Role ───────────────────────────────────────────
+    const lambdaExecutionRole = new Role(this, 'LambdaExecutionRole', {
+      assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+      roleName: `spotterspace-${stage}-lambdaexec`,
     });
 
-    const webRepo = new ecr.Repository(this, 'SpotterHubWebRepo', {
-      repositoryName: `spotterhub-${stage}-web`,
-      removalPolicy:
-        stage === 'prod' ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    // Secrets access
+    lambdaExecutionRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [dbUrlSecret.secretArn, jwtSecret.secretArn],
+      }),
+    );
+
+    // S3 access for photo uploads
+    lambdaExecutionRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['s3:GetObject', 's3:PutObject', 's3:ListBucket', 's3:DeleteObject'],
+        resources: [photosBucket.bucketArn, `${photosBucket.bucketArn}/*`],
+      }),
+    );
+
+    // ─── Lambda Function ──────────────────────────────────────────────────
+    const apiLambda = new NodejsFunction(this, 'ApiLambda', {
+      functionName: `spotterspace-${stage}-api`,
+      entry: path.join(__dirname, '../../apps/api/src/lambda.ts'),
+      runtime: Runtime.NODEJS_20_X,
+      handler: 'handler',
+      role: lambdaExecutionRole,
+      timeout: Duration.seconds(30),
+      memorySize: 512,
+      environment: {
+        NODE_ENV: 'production',
+        STAGE: stage,
+        AWS_REGION: this.region,
+        PHOTOS_BUCKET_NAME: photosBucket.bucketName,
+        // Pass secret ARNs so the Lambda can fetch them from Secrets Manager
+        DB_SECRET_ARN: dbUrlSecret.secretArn,
+        JWT_SECRET_ARN: jwtSecret.secretArn,
+      },
     });
 
-    // ─── IAM Roles for App Runner ───────────────────────────────────────────
-    // Execution role: grants container code permission to read secrets and S3
-    const appRunnerExecutionRole = new iam.Role(
-      this,
-      'AppRunnerExecutionRole',
-      {
-        assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
-      },
-    );
+    // Add function URL for HTTP access (no auth for GraphQL)
+    const fnUrl = apiLambda.addFunctionUrl({
+      authType: lambda_.FunctionUrlAuthType.NONE,
+    });
 
-    // ECR access role: App Runner assumes this to pull images from ECR
-    const appRunnerECRAccessRole = new iam.Role(
-      this,
-      'AppRunnerECRAccessRole',
-      {
-        assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
-      },
-    );
-    appRunnerECRAccessRole.attachInlinePolicy(
-      new iam.Policy(this, 'AppRunnerECRAccessPolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['ecr:GetAuthorizationToken'],
-            resources: ['*'],
-          }),
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['ecr:PullImage'],
-            resources: [apiRepo.repositoryArn, webRepo.repositoryArn],
-          }),
-        ],
-      }),
-    );
+    // Grant Lambda VPC access to RDS
+    apiLambda.connections.securityGroups.push(dbSecurityGroup);
+    apiLambda.connections.allowTo(db, ec2.Port.tcp(5432));
 
-    // Inline policy: read secrets
-    appRunnerExecutionRole.attachInlinePolicy(
-      new iam.Policy(this, 'SecretsReadPolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['secretsmanager:GetSecretValue'],
-            resources: [dbUrlSecret.secretArn, jwtSecret.secretArn],
-          }),
-        ],
-      }),
-    );
-
-    // Inline policy: S3 access
-    appRunnerExecutionRole.attachInlinePolicy(
-      new iam.Policy(this, 'S3Policy', {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['s3:GetObject', 's3:PutObject', 's3:ListBucket'],
-            resources: [photosBucket.bucketArn, `${photosBucket.bucketArn}/*`],
-          }),
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['s3:CreateBucket'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
+    // ─── Amplify Service Role (for web app CI/CD) ─────────────────────────
+    const amplifyServiceRole = new Role(this, 'AmplifyServiceRole', {
+      assumedBy: new ServicePrincipal('amplify.us-east-1.amazonaws.com'),
+      roleName: `spotterspace-${stage}-amplify-service`,
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess-Amplify'),
+      ],
+    });
 
     // ─── CloudFormation Outputs ──────────────────────────────────────────
-    new CfnOutput(this, 'ECRApiRepoUri', {
-      value: apiRepo.repositoryUri,
-    });
-
-    new CfnOutput(this, 'ECRWebRepoUri', {
-      value: webRepo.repositoryUri,
-    });
-
     new CfnOutput(this, 'DBInstanceEndpoint', {
       value: db.instanceEndpoint.hostname,
     });
@@ -193,12 +171,20 @@ export class SpotterHubStack extends Stack {
       value: jwtSecret.secretArn,
     });
 
-    new CfnOutput(this, 'AppRunnerExecutionRoleArn', {
-      value: appRunnerExecutionRole.roleArn,
+    new CfnOutput(this, 'LambdaExecutionRoleArn', {
+      value: lambdaExecutionRole.roleArn,
     });
 
-    new CfnOutput(this, 'AppRunnerECRAccessRoleArn', {
-      value: appRunnerECRAccessRole.roleArn,
+    new CfnOutput(this, 'LambdaFunctionArn', {
+      value: apiLambda.functionArn,
+    });
+
+    new CfnOutput(this, 'AmplifyServiceRoleArn', {
+      value: amplifyServiceRole.roleArn,
+    });
+
+    new CfnOutput(this, 'ApiFunctionUrl', {
+      value: fnUrl.url,
     });
 
     new CfnOutput(this, 'AWSRegion', {
