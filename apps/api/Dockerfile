@@ -8,9 +8,11 @@ COPY package.json package-lock.json* ./
 COPY tsconfig.base.json ./
 COPY turbo.json ./
 
-# Copy workspace package source
+# Copy workspace package source and configs
 COPY packages/shared/src ./packages/shared/src/
+COPY packages/shared/tsconfig.json ./packages/shared/
 COPY packages/db/src ./packages/db/src/
+COPY packages/db/tsconfig.json ./packages/db/
 COPY packages/db/prisma ./packages/db/prisma/
 
 # Copy app source
@@ -22,8 +24,8 @@ RUN npm install
 # Generate Prisma client
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
-# Build workspace packages in dependency order using npx tsc -p
-RUN cd packages/shared && npx tsc -p . && \
+# Build workspace packages in dependency order using npx tsc -p with absolute paths
+RUN cd /app/packages/shared && npx tsc -p . && \
     cd /app/packages/db && npx tsc -p . && \
     cd /app/apps/api && npx tsc -p .
 

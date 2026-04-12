@@ -10,6 +10,7 @@ COPY tsconfig.base.json ./
 # Copy workspace package files
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/shared/src ./packages/shared/src/
+COPY packages/shared/tsconfig.json ./packages/shared/
 
 # Copy app source
 COPY apps/web ./apps/web
