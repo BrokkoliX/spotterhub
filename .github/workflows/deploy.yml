@@ -218,11 +218,11 @@ jobs:
                 "ImageRepositoryType": "ECR",
                 "ImageConfiguration": {
                   "Port": "4000",
-                  "RuntimeEnvironmentVariables": [
-                    {"Name": "NODE_ENV", "Value": "production"},
-                    {"Name": "API_PORT", "Value": "4000"},
-                    {"Name": "STAGE", "Value": "'${{ steps.cdk.outputs.stage }}'"}
-                  ]
+                  "RuntimeEnvironmentVariables": {
+                    "NODE_ENV": "production",
+                    "API_PORT": "4000",
+                    "STAGE": "'${{ steps.cdk.outputs.stage }}'"
+                  }
                 }
               },
               "AutoDeploymentsEnabled": true,
@@ -267,12 +267,12 @@ jobs:
                 "ImageRepositoryType": "ECR",
                 "ImageConfiguration": {
                   "Port": "3000",
-                  "RuntimeEnvironmentVariables": [
-                    {"Name": "NODE_ENV", "Value": "production"},
-                    {"Name": "PORT", "Value": "3000"},
-                    {"Name": "NEXT_PUBLIC_API_URL", "Value": "${{ steps.api-service.outputs.api-url }}"},
-                    {"Name": "NEXT_PUBLIC_MAPBOX_TOKEN", "Value": "${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}"}
-                  ]
+                  "RuntimeEnvironmentVariables": {
+                    "NODE_ENV": "production",
+                    "PORT": "3000",
+                    "NEXT_PUBLIC_API_URL": "${{ steps.api-service.outputs.api-url }}",
+                    "NEXT_PUBLIC_MAPBOX_TOKEN": "${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}"
+                  }
                 }
               },
               "AutoDeploymentsEnabled": true,
