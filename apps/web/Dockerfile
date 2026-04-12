@@ -3,24 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files and configs
-COPY package.json package-lock.json* ./
-COPY tsconfig.base.json ./
+# Copy entire monorepo for proper workspace resolution
+COPY . .
 
-# Copy workspace package files
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/shared/src ./packages/shared/src/
-COPY packages/shared/tsconfig.json ./packages/shared/
+# Install dependencies (including devDependencies needed for build)
+RUN npm install --workspaces
 
-# Copy app source
-COPY apps/web ./apps/web
+# Build Next.js standalone output
+RUN npm run build --workspace=@spotterhub/web
 
-# Install dependencies
-RUN npm install
-
-# Build @spotterhub/shared first (needed by web), then Next.js
-RUN cd packages/shared && npx tsc -p . && \
-    cd /app/apps/web && npx next build
+# Prune devDependencies
+RUN npm prune --production --workspace=@spotterhub/web
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
@@ -41,7 +34,7 @@ COPY --from=builder /app/apps/web/public ./public
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/ || exit 1
 
 CMD ["node", "server.js"]

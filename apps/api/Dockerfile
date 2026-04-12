@@ -3,33 +3,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files and configs
-COPY package.json package-lock.json* ./
-COPY tsconfig.base.json ./
-COPY turbo.json ./
+# Copy entire monorepo for proper workspace resolution
+COPY . .
 
-# Copy workspace package source and configs
-COPY packages/shared/src ./packages/shared/src/
-COPY packages/shared/tsconfig.json ./packages/shared/
-COPY packages/db/src ./packages/db/src/
-COPY packages/db/tsconfig.json ./packages/db/
-COPY packages/db/prisma ./packages/db/prisma/
+# Install all dependencies (devDependencies needed for TypeScript compilation)
+RUN npm install --workspaces
 
-# Copy app source
-COPY apps/api ./apps/api
+# Generate Prisma client (binary targets are set in schema.prisma)
+RUN DATABASE_URL="postgresql://placeholder" npx prisma generate
 
-# Install all dependencies
-RUN npm install
+# Compile TypeScript (turbo builds dependencies first via ^build in turbo.json)
+RUN npm run build --workspace=@spotterhub/api
 
-# Generate Prisma client
-RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
-
-# Build workspace packages in dependency order using npx tsc -p with absolute paths
-RUN cd /app/packages/shared && npx tsc -p . && \
-    cd /app/packages/db && npx tsc -p . && \
-    cd /app/apps/api && npx tsc -p .
-
-# (devDependencies are excluded by runtime stage COPY, so no prune needed)
+# Prune devDependencies from production image
+RUN npm prune --production --workspace=@spotterhub/api
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
@@ -39,7 +26,7 @@ WORKDIR /app
 # Install AWS CLI (for secrets fetching) and gzip
 RUN apk add --no-cache aws-cli gzip
 
-# Copy production node_modules and built output from builder
+# Copy production node_modules and built output
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/dist ./dist
@@ -57,7 +44,7 @@ ENV API_PORT=4000
 EXPOSE 4000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:4000/health || exit 1
 
 COPY --from=builder /app/apps/api/docker-entrypoint.sh /docker-entrypoint.sh
