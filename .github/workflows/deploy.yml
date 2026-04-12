@@ -152,11 +152,8 @@ frontend:
         - npx turbo run build --filter=@spotterhub/shared
         - npx turbo run build --filter=@spotterhub/api
         - npx turbo run build --filter=@spotterhub/web
-    build:
-      commands:
-        - cp -r apps/web/.next/static apps/web/.next/standalone/ 2>/dev/null || true
   artifacts:
-    baseDirectory: apps/web/.next/standalone
+    baseDirectory: apps/web/.next
     files:
       - '**/*'
   cache:

@@ -1,0 +1,314 @@
+{
+  "/SpotterSpace-dev-Stack/DBInstanceEndpoint": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DBInstanceEndpoint"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/DBUrlSecretArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DBUrlSecretArn"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/JWTSecretArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "JWTSecretArn"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/LambdaExecutionRoleArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LambdaExecutionRoleArn"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/LambdaFunctionArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LambdaFunctionArn"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/AmplifyServiceRoleArn": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AmplifyServiceRoleArn"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiFunctionUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiFunctionUrl"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/AWSRegion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AWSRegion"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/PhotosBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PhotosBucketName"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/Stage": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Stage"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPC025F84FE"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/IGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCIGWF2D3EDAC"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/VPCGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCVPCGW04576ED6"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/LambdaSecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LambdaSecurityGroup0BD9FC99"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/DBSecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DBSecurityGroupE3B245A3"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/DBSecurityGroup/from SpotterSpacedevStackLambdaSecurityGroup336C7C58:5432": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DBSecurityGroupfromSpotterSpacedevStackLambdaSecurityGroup336C7C585432ECB698B2"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceDB/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceDBEC50A259"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/DBUrlSecret/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DBUrlSecretE0FBDEFA"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/JWTSecret/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "JWTSecretF6F1CBF0"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/LambdaExecutionRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LambdaExecutionRoleD5C26073"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiLambda/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiLambda91D2282D"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiLambda/invoke-function-url": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiLambdainvokefunctionurlBBF64BA4"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiLambda/invoke-function": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiLambdainvokefunction7E9EDB55"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/AmplifyServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AmplifyServiceRole1EB3E935"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet1Subnet465C863E"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet1RouteTableF49E4975"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet1RouteTableAssociation0B0B77FA"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet1DefaultRoute389EE9CE"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/EIP": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet1EIP3DF8EB97"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/NATGateway": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet1NATGatewayE70691A1"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet2SubnetB1F7AD13"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet2RouteTable5073C6E9"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet2RouteTableAssociation4CEEBDB9"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCpublicSubnet2DefaultRoute3BFA0119"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet1Subnet73097EC4"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet1RouteTable1050D01E"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet1RouteTableAssociationDDC02A08"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet1DefaultRouteDB899695"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet2SubnetCA1ECED7"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet2RouteTableAF2776E7"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet2RouteTableAssociation336D4DFB"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCprivateSubnet2DefaultRoute2A244202"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/S3Endpoint/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCS3Endpoint6E7F170E"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceVPC/SecretsManagerEndpoint/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceVPCSecretsManagerEndpoint33DBE5BF"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceDB/SubnetGroup/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceDBSubnetGroup5C41F2C7"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceDB/Secret/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpacedevStackSpotterSpaceDBSecret1B8C5D183fdaad7efa858a3daf9490cf0a702aeb"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/LambdaExecutionRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LambdaExecutionRoleDefaultPolicy6D69732F"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiLambda/FunctionUrl/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiLambdaFunctionUrl727286F0"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/SpotterSpaceDB/Secret/Attachment/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SpotterSpaceDBSecretAttachment9E88A1EA"
+    }
+  ]
+}

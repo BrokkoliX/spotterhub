@@ -1,0 +1,1081 @@
+{
+ "Resources": {
+  "SpotterSpaceVPC025F84FE": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/Resource"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet1Subnet465C863E": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/18",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/Subnet"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet1RouteTableF49E4975": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/RouteTable"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet1RouteTableAssociation0B0B77FA": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet1RouteTableF49E4975"
+    },
+    "SubnetId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet1Subnet465C863E"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/RouteTableAssociation"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet1DefaultRoute389EE9CE": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "SpotterSpaceVPCIGWF2D3EDAC"
+    },
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet1RouteTableF49E4975"
+    }
+   },
+   "DependsOn": [
+    "SpotterSpaceVPCVPCGW04576ED6"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/DefaultRoute"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet1EIP3DF8EB97": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/EIP"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet1NATGatewayE70691A1": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "SpotterSpaceVPCpublicSubnet1EIP3DF8EB97",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet1Subnet465C863E"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1"
+     }
+    ]
+   },
+   "DependsOn": [
+    "SpotterSpaceVPCpublicSubnet1DefaultRoute389EE9CE",
+    "SpotterSpaceVPCpublicSubnet1RouteTableAssociation0B0B77FA"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet1/NATGateway"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet2SubnetB1F7AD13": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.64.0/18",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/Subnet"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet2RouteTable5073C6E9": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/RouteTable"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet2RouteTableAssociation4CEEBDB9": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet2RouteTable5073C6E9"
+    },
+    "SubnetId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet2SubnetB1F7AD13"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/RouteTableAssociation"
+   }
+  },
+  "SpotterSpaceVPCpublicSubnet2DefaultRoute3BFA0119": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "SpotterSpaceVPCIGWF2D3EDAC"
+    },
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet2RouteTable5073C6E9"
+    }
+   },
+   "DependsOn": [
+    "SpotterSpaceVPCVPCGW04576ED6"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/publicSubnet2/DefaultRoute"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet1Subnet73097EC4": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.128.0/18",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/Subnet"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet1RouteTable1050D01E": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/RouteTable"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet1RouteTableAssociationDDC02A08": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCprivateSubnet1RouteTable1050D01E"
+    },
+    "SubnetId": {
+     "Ref": "SpotterSpaceVPCprivateSubnet1Subnet73097EC4"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/RouteTableAssociation"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet1DefaultRouteDB899695": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet1NATGatewayE70691A1"
+    },
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCprivateSubnet1RouteTable1050D01E"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet1/DefaultRoute"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet2SubnetCA1ECED7": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.192.0/18",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/Subnet"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet2RouteTableAF2776E7": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/RouteTable"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet2RouteTableAssociation336D4DFB": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCprivateSubnet2RouteTableAF2776E7"
+    },
+    "SubnetId": {
+     "Ref": "SpotterSpaceVPCprivateSubnet2SubnetCA1ECED7"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/RouteTableAssociation"
+   }
+  },
+  "SpotterSpaceVPCprivateSubnet2DefaultRoute2A244202": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "SpotterSpaceVPCpublicSubnet1NATGatewayE70691A1"
+    },
+    "RouteTableId": {
+     "Ref": "SpotterSpaceVPCprivateSubnet2RouteTableAF2776E7"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/privateSubnet2/DefaultRoute"
+   }
+  },
+  "SpotterSpaceVPCIGWF2D3EDAC": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/IGW"
+   }
+  },
+  "SpotterSpaceVPCVPCGW04576ED6": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "SpotterSpaceVPCIGWF2D3EDAC"
+    },
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/VPCGW"
+   }
+  },
+  "SpotterSpaceVPCS3Endpoint6E7F170E": {
+   "Type": "AWS::EC2::VPCEndpoint",
+   "Properties": {
+    "RouteTableIds": [
+     {
+      "Ref": "SpotterSpaceVPCprivateSubnet1RouteTable1050D01E"
+     },
+     {
+      "Ref": "SpotterSpaceVPCprivateSubnet2RouteTableAF2776E7"
+     },
+     {
+      "Ref": "SpotterSpaceVPCpublicSubnet1RouteTableF49E4975"
+     },
+     {
+      "Ref": "SpotterSpaceVPCpublicSubnet2RouteTable5073C6E9"
+     }
+    ],
+    "ServiceName": {
+     "Fn::Join": [
+      "",
+      [
+       "com.amazonaws.",
+       {
+        "Ref": "AWS::Region"
+       },
+       ".s3"
+      ]
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC"
+     }
+    ],
+    "VpcEndpointType": "Gateway",
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/S3Endpoint/Resource"
+   }
+  },
+  "SpotterSpaceVPCSecretsManagerEndpoint33DBE5BF": {
+   "Type": "AWS::EC2::VPCEndpoint",
+   "Properties": {
+    "PrivateDnsEnabled": true,
+    "SecurityGroupIds": [
+     {
+      "Fn::GetAtt": [
+       "LambdaSecurityGroup0BD9FC99",
+       "GroupId"
+      ]
+     }
+    ],
+    "ServiceName": "com.amazonaws.us-east-1.secretsmanager",
+    "SubnetIds": [
+     {
+      "Ref": "SpotterSpaceVPCprivateSubnet1Subnet73097EC4"
+     },
+     {
+      "Ref": "SpotterSpaceVPCprivateSubnet2SubnetCA1ECED7"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "SpotterSpace-dev-Stack/SpotterSpaceVPC"
+     }
+    ],
+    "VpcEndpointType": "Interface",
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceVPC/SecretsManagerEndpoint/Resource"
+   }
+  },
+  "LambdaSecurityGroup0BD9FC99": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "SpotterSpace-dev-Stack/LambdaSecurityGroup",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": {
+       "Fn::GetAtt": [
+        "SpotterSpaceVPC025F84FE",
+        "CidrBlock"
+       ]
+      },
+      "Description": {
+       "Fn::Join": [
+        "",
+        [
+         "from ",
+         {
+          "Fn::GetAtt": [
+           "SpotterSpaceVPC025F84FE",
+           "CidrBlock"
+          ]
+         },
+         ":443"
+        ]
+       ]
+      },
+      "FromPort": 443,
+      "IpProtocol": "tcp",
+      "ToPort": 443
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/LambdaSecurityGroup/Resource"
+   }
+  },
+  "DBSecurityGroupE3B245A3": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "SpotterSpace-dev-Stack/DBSecurityGroup",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "SpotterSpaceVPC025F84FE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/DBSecurityGroup/Resource"
+   }
+  },
+  "DBSecurityGroupfromSpotterSpacedevStackLambdaSecurityGroup336C7C585432ECB698B2": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "PostgreSQL from Lambda",
+    "FromPort": 5432,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "DBSecurityGroupE3B245A3",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "LambdaSecurityGroup0BD9FC99",
+      "GroupId"
+     ]
+    },
+    "ToPort": 5432
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/DBSecurityGroup/from SpotterSpacedevStackLambdaSecurityGroup336C7C58:5432"
+   }
+  },
+  "SpotterSpaceDBSubnetGroup5C41F2C7": {
+   "Type": "AWS::RDS::DBSubnetGroup",
+   "Properties": {
+    "DBSubnetGroupDescription": "Subnet group for SpotterSpaceDB database",
+    "SubnetIds": [
+     {
+      "Ref": "SpotterSpaceVPCpublicSubnet1Subnet465C863E"
+     },
+     {
+      "Ref": "SpotterSpaceVPCpublicSubnet2SubnetB1F7AD13"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceDB/SubnetGroup/Default"
+   }
+  },
+  "SpotterSpacedevStackSpotterSpaceDBSecret1B8C5D183fdaad7efa858a3daf9490cf0a702aeb": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "Description": {
+     "Fn::Join": [
+      "",
+      [
+       "Generated by the CDK for stack: ",
+       {
+        "Ref": "AWS::StackName"
+       }
+      ]
+     ]
+    },
+    "GenerateSecretString": {
+     "ExcludeCharacters": " %+~`#$&*()|[]{}:;<>?!'/@\"\\",
+     "GenerateStringKey": "password",
+     "PasswordLength": 30,
+     "SecretStringTemplate": "{\"username\":\"spotterspace_admin\"}"
+    },
+    "Name": "spotterspace/dev/db-admin"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceDB/Secret/Resource"
+   }
+  },
+  "SpotterSpaceDBSecretAttachment9E88A1EA": {
+   "Type": "AWS::SecretsManager::SecretTargetAttachment",
+   "Properties": {
+    "SecretId": {
+     "Ref": "SpotterSpacedevStackSpotterSpaceDBSecret1B8C5D183fdaad7efa858a3daf9490cf0a702aeb"
+    },
+    "TargetId": {
+     "Ref": "SpotterSpaceDBEC50A259"
+    },
+    "TargetType": "AWS::RDS::DBInstance"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceDB/Secret/Attachment/Resource"
+   }
+  },
+  "SpotterSpaceDBEC50A259": {
+   "Type": "AWS::RDS::DBInstance",
+   "Properties": {
+    "AllocatedStorage": "20",
+    "BackupRetentionPeriod": 1,
+    "CopyTagsToSnapshot": true,
+    "DBInstanceClass": "db.t3.micro",
+    "DBSubnetGroupName": {
+     "Ref": "SpotterSpaceDBSubnetGroup5C41F2C7"
+    },
+    "Engine": "postgres",
+    "EngineVersion": "16",
+    "MasterUserPassword": {
+     "Fn::Join": [
+      "",
+      [
+       "{{resolve:secretsmanager:",
+       {
+        "Ref": "SpotterSpacedevStackSpotterSpaceDBSecret1B8C5D183fdaad7efa858a3daf9490cf0a702aeb"
+       },
+       ":SecretString:password::}}"
+      ]
+     ]
+    },
+    "MasterUsername": "spotterspace_admin",
+    "MultiAZ": false,
+    "PubliclyAccessible": true,
+    "StorageEncrypted": true,
+    "StorageType": "gp2",
+    "VPCSecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "DBSecurityGroupE3B245A3",
+       "GroupId"
+      ]
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/SpotterSpaceDB/Resource"
+   }
+  },
+  "DBUrlSecretE0FBDEFA": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "Name": "spotterspace/dev/DATABASE_URL",
+    "SecretString": {
+     "Fn::Join": [
+      "",
+      [
+       "postgresql://",
+       {
+        "Fn::GetAtt": [
+         "SpotterSpaceDBEC50A259",
+         "Endpoint.Address"
+        ]
+       },
+       ":",
+       {
+        "Fn::GetAtt": [
+         "SpotterSpaceDBEC50A259",
+         "Endpoint.Port"
+        ]
+       },
+       "/spotterspace?schema=public"
+      ]
+     ]
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/DBUrlSecret/Resource"
+   }
+  },
+  "JWTSecretF6F1CBF0": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "Name": "spotterspace/dev/JWT_SECRET",
+    "SecretString": "dev-secret-do-not-use-in-production"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/JWTSecret/Resource"
+   }
+  },
+  "LambdaExecutionRoleD5C26073": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "RoleName": "spotterspace-dev-lambdaexec"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/LambdaExecutionRole/Resource"
+   }
+  },
+  "LambdaExecutionRoleDefaultPolicy6D69732F": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "secretsmanager:GetSecretValue",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Ref": "DBUrlSecretE0FBDEFA"
+        },
+        {
+         "Ref": "JWTSecretF6F1CBF0"
+        }
+       ]
+      },
+      {
+       "Action": [
+        "ec2:CreateNetworkInterface",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DeleteNetworkInterface"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":s3:::spotterhub-photos"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":s3:::spotterhub-photos/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "LambdaExecutionRoleDefaultPolicy6D69732F",
+    "Roles": [
+     {
+      "Ref": "LambdaExecutionRoleD5C26073"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/LambdaExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "ApiLambda91D2282D": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-654654553862-us-east-1",
+     "S3Key": "3d915a3135b5e30b4ca0dd8070920c5802ed769c40db1f940412b71d9b1f55f3.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "NODE_ENV": "production",
+      "STAGE": "dev",
+      "AWS_REGION_NAME": "us-east-1",
+      "PHOTOS_BUCKET_NAME": "spotterhub-photos",
+      "DB_SECRET_ARN": {
+       "Ref": "DBUrlSecretE0FBDEFA"
+      },
+      "JWT_SECRET_ARN": {
+       "Ref": "JWTSecretF6F1CBF0"
+      }
+     }
+    },
+    "FunctionName": "spotterspace-dev-api",
+    "Handler": "index.handler",
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "LambdaExecutionRoleD5C26073",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 30,
+    "VpcConfig": {
+     "SecurityGroupIds": [
+      {
+       "Fn::GetAtt": [
+        "LambdaSecurityGroup0BD9FC99",
+        "GroupId"
+       ]
+      }
+     ],
+     "SubnetIds": [
+      {
+       "Ref": "SpotterSpaceVPCprivateSubnet1Subnet73097EC4"
+      },
+      {
+       "Ref": "SpotterSpaceVPCprivateSubnet2SubnetCA1ECED7"
+      }
+     ]
+    }
+   },
+   "DependsOn": [
+    "LambdaExecutionRoleDefaultPolicy6D69732F",
+    "LambdaExecutionRoleD5C26073",
+    "SpotterSpaceVPCprivateSubnet1DefaultRouteDB899695",
+    "SpotterSpaceVPCprivateSubnet1RouteTableAssociationDDC02A08",
+    "SpotterSpaceVPCprivateSubnet2DefaultRoute2A244202",
+    "SpotterSpaceVPCprivateSubnet2RouteTableAssociation336D4DFB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiLambda/Resource",
+    "aws:asset:path": "asset.3d915a3135b5e30b4ca0dd8070920c5802ed769c40db1f940412b71d9b1f55f3",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "ApiLambdaFunctionUrl727286F0": {
+   "Type": "AWS::Lambda::Url",
+   "Properties": {
+    "AuthType": "NONE",
+    "TargetFunctionArn": {
+     "Fn::GetAtt": [
+      "ApiLambda91D2282D",
+      "Arn"
+     ]
+    }
+   },
+   "DependsOn": [
+    "SpotterSpaceVPCprivateSubnet1DefaultRouteDB899695",
+    "SpotterSpaceVPCprivateSubnet1RouteTableAssociationDDC02A08",
+    "SpotterSpaceVPCprivateSubnet2DefaultRoute2A244202",
+    "SpotterSpaceVPCprivateSubnet2RouteTableAssociation336D4DFB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiLambda/FunctionUrl/Resource"
+   }
+  },
+  "ApiLambdainvokefunctionurlBBF64BA4": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunctionUrl",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "ApiLambda91D2282D",
+      "Arn"
+     ]
+    },
+    "FunctionUrlAuthType": "NONE",
+    "Principal": "*"
+   },
+   "DependsOn": [
+    "SpotterSpaceVPCprivateSubnet1DefaultRouteDB899695",
+    "SpotterSpaceVPCprivateSubnet1RouteTableAssociationDDC02A08",
+    "SpotterSpaceVPCprivateSubnet2DefaultRoute2A244202",
+    "SpotterSpaceVPCprivateSubnet2RouteTableAssociation336D4DFB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiLambda/invoke-function-url"
+   }
+  },
+  "ApiLambdainvokefunction7E9EDB55": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "ApiLambda91D2282D",
+      "Arn"
+     ]
+    },
+    "InvokedViaFunctionUrl": true,
+    "Principal": "*"
+   },
+   "DependsOn": [
+    "SpotterSpaceVPCprivateSubnet1DefaultRouteDB899695",
+    "SpotterSpaceVPCprivateSubnet1RouteTableAssociationDDC02A08",
+    "SpotterSpaceVPCprivateSubnet2DefaultRoute2A244202",
+    "SpotterSpaceVPCprivateSubnet2RouteTableAssociation336D4DFB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiLambda/invoke-function"
+   }
+  },
+  "AmplifyServiceRole1EB3E935": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "amplify.us-east-1.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/AdministratorAccess-Amplify"
+       ]
+      ]
+     }
+    ],
+    "RoleName": "spotterspace-dev-amplify-service"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/AmplifyServiceRole/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/32RTW/iMBCGf0vvxtuFqto9QqEVlzYiXa5o4kyzhmQcecZFVZT/voodAlKlPb0zr5/5sD3X84df+v4Ozjwz5WlW20J3uYA5KTjzoeOFXgVzQlkBo0Iz192+Nerpg/bZk8pCUVuTh4JQBu8a7VwQfIeixqt/9ZbMzlgQ62iCh2CzzQZ5BXkBwTN8qczbTxC8Nt6SoCecgLTJmC1FwPxtkESNzr41GypbZ0lGdEpjpw8weMvkaIK38vXiXWjj6v81tlR5ZO6VL1l3axAogHFLLEAGVVp7Kl2vbo0LnaPx6W7r1aWyVxxdboCgQq+7NHkAk7yDr1BuLjwB306S3SsLje52Ln1J1MzV1sQ3TFGvamiKEg7kSjyyfo3yHMjEr+LFAZhRWC8HGeG428Rcgj++HvqOkqFvLLN11Pdqh+yCN6hil1ygslQN1FuQNkivhun6yD8+5/f652/9eHdka2c+kNgG9S7pP1E6Tmm6AgAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "SpotterSpace-dev-Stack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "DBInstanceEndpoint": {
+   "Value": {
+    "Fn::GetAtt": [
+     "SpotterSpaceDBEC50A259",
+     "Endpoint.Address"
+    ]
+   }
+  },
+  "DBUrlSecretArn": {
+   "Value": {
+    "Ref": "DBUrlSecretE0FBDEFA"
+   }
+  },
+  "JWTSecretArn": {
+   "Value": {
+    "Ref": "JWTSecretF6F1CBF0"
+   }
+  },
+  "LambdaExecutionRoleArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "LambdaExecutionRoleD5C26073",
+     "Arn"
+    ]
+   }
+  },
+  "LambdaFunctionArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiLambda91D2282D",
+     "Arn"
+    ]
+   }
+  },
+  "AmplifyServiceRoleArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "AmplifyServiceRole1EB3E935",
+     "Arn"
+    ]
+   }
+  },
+  "ApiFunctionUrl": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiLambdaFunctionUrl727286F0",
+     "FunctionUrl"
+    ]
+   }
+  },
+  "AWSRegion": {
+   "Value": "us-east-1"
+  },
+  "PhotosBucketName": {
+   "Value": "spotterhub-photos"
+  },
+  "Stage": {
+   "Value": "dev"
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

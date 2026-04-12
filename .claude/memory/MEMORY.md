@@ -1,0 +1,1 @@
+- [Command allowance preferences](feedback_command_allowances.md) — npm install approved without prompting
