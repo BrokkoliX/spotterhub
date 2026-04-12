@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -50,8 +50,9 @@ export function AddPhotosModal({
   );
 
   const connection = photosResult.data?.photos;
-  const fetchedPhotos: PhotoData[] =
-    connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+  const fetchedPhotos: PhotoData[] = photosResult.data?.photos?.edges?.map(
+    (e: { node: PhotoData }) => e.node,
+  ) ?? [];
 
   // Merge paginated results and exclude photos already in the album
   const photos =
@@ -76,13 +77,13 @@ export function AddPhotosModal({
       setAllPhotos((prev) => {
         const existing = prev.length > 0 ? prev : fetchedPhotos;
         const newPhotos = fetchedPhotos.filter(
-          (p) => !existing.some((ep) => ep.id === p.id),
+          (p: PhotoData) => !existing.some((ep: PhotoData) => ep.id === p.id),
         );
         return [...existing, ...newPhotos];
       });
       setCursor(connection.pageInfo.endCursor);
     }
-  }, [photosResult.data, connection, fetchedPhotos]);
+  }, [connection, fetchedPhotos]);
 
   const handleSubmit = async () => {
     if (selected.size === 0) return;
