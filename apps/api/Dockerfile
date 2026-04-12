@@ -14,8 +14,7 @@ RUN npm install --workspaces --ignore-scripts
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
 # Compile TypeScript (turbo discovers all workspaces and builds in dependency order)
-# Adding node_modules/.bin to PATH so turbo/npm can find tsc
-RUN PATH="/app/node_modules/.bin:$PATH" npm run build
+RUN npx turbo run build --filter=@spotterhub/api
 
 # Prune devDependencies from production image
 RUN npm prune --production --workspace=@spotterhub/api

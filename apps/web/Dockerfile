@@ -11,8 +11,7 @@ COPY . .
 RUN npm install --ignore-scripts
 
 # Build Next.js standalone output
-# Adding node_modules/.bin to PATH so turbo/npm can find tsc and next
-RUN PATH="/app/node_modules/.bin:$PATH" npm run build
+RUN npx turbo run build --filter=@spotterhub/web
 
 # Prune devDependencies
 RUN npm prune --production --workspace=@spotterhub/web
