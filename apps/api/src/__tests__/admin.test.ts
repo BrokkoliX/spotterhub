@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import type { Context } from '../context.js';
+
 import {
   cleanDatabase,
   createTestContext,
@@ -134,7 +135,12 @@ async function createUsers() {
     data: { email: 'admin@test.com', username: 'admin', cognitoSub: 'sub-admin', role: 'admin' },
   });
   const mod = await prisma.user.create({
-    data: { email: 'mod@test.com', username: 'moderator', cognitoSub: 'sub-mod', role: 'moderator' },
+    data: {
+      email: 'mod@test.com',
+      username: 'moderator',
+      cognitoSub: 'sub-mod',
+      role: 'moderator',
+    },
   });
   const regular = await prisma.user.create({
     data: { email: 'user@test.com', username: 'regular', cognitoSub: 'sub-regular', role: 'user' },
@@ -146,7 +152,7 @@ async function createUsers() {
 
 describe('adminStats', () => {
   it('returns platform statistics for admin', async () => {
-    const { admin, regular } = await createUsers();
+    const { regular } = await createUsers();
     await prisma.photo.create({
       data: {
         userId: regular.id,
@@ -156,10 +162,7 @@ describe('adminStats', () => {
       },
     });
 
-    const res = await server.executeOperation(
-      { query: ADMIN_STATS },
-      ctx(ADMIN_USER),
-    );
+    const res = await server.executeOperation({ query: ADMIN_STATS }, ctx(ADMIN_USER));
 
     const data = (res.body as any).singleResult.data;
     expect(data.adminStats.totalUsers).toBe(3);
@@ -170,10 +173,7 @@ describe('adminStats', () => {
   it('works for moderator role', async () => {
     await createUsers();
 
-    const res = await server.executeOperation(
-      { query: ADMIN_STATS },
-      ctx(MOD_USER),
-    );
+    const res = await server.executeOperation({ query: ADMIN_STATS }, ctx(MOD_USER));
 
     const data = (res.body as any).singleResult.data;
     expect(data.adminStats.totalUsers).toBe(3);
@@ -182,20 +182,14 @@ describe('adminStats', () => {
   it('rejects regular user', async () => {
     await createUsers();
 
-    const res = await server.executeOperation(
-      { query: ADMIN_STATS },
-      ctx(REGULAR_USER),
-    );
+    const res = await server.executeOperation({ query: ADMIN_STATS }, ctx(REGULAR_USER));
 
     const errors = (res.body as any).singleResult.errors;
     expect(errors[0].extensions.code).toBe('FORBIDDEN');
   });
 
   it('rejects unauthenticated user', async () => {
-    const res = await server.executeOperation(
-      { query: ADMIN_STATS },
-      ctx(null),
-    );
+    const res = await server.executeOperation({ query: ADMIN_STATS }, ctx(null));
 
     const errors = (res.body as any).singleResult.errors;
     expect(errors[0].extensions.code).toBe('UNAUTHENTICATED');
@@ -264,7 +258,7 @@ describe('adminReports', () => {
 
 describe('adminResolveReport', () => {
   it('resolves a report', async () => {
-    const { admin, regular } = await createUsers();
+    const { regular } = await createUsers();
     const photo = await prisma.photo.create({
       data: {
         userId: regular.id,
