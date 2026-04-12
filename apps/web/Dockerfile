@@ -11,7 +11,7 @@ COPY . .
 RUN npm install --ignore-scripts
 
 # Build Next.js standalone output
-RUN npm run build --workspace=@spotterhub/web
+RUN npm run build
 
 # Prune devDependencies
 RUN npm prune --production --workspace=@spotterhub/web

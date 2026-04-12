@@ -13,8 +13,8 @@ RUN npm install --workspaces --ignore-scripts
 # Generate Prisma client (binary targets are set in schema.prisma)
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
-# Compile TypeScript (turbo builds dependencies first via ^build in turbo.json)
-RUN npm run build --workspace=@spotterhub/api
+# Compile TypeScript (turbo discovers all workspaces and builds in dependency order)
+RUN npm run build
 
 # Prune devDependencies from production image
 RUN npm prune --production --workspace=@spotterhub/api
