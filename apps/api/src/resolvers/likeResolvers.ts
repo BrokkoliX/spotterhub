@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { resolveUserId } from '../utils/resolverHelpers.js';
+
 import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────

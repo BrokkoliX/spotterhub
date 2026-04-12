@@ -52,6 +52,8 @@ export const typeDefs = gql`
       airportCode: String
       tags: [String!]
       manufacturer: String
+      airline: String
+      photographer: String
       sortBy: PhotoSortBy
     ): PhotoConnection!
 
@@ -65,6 +67,11 @@ export const typeDefs = gql`
     Search users by username or display name.
     """
     searchUsers(query: String!, first: Int = 20, after: String): UserConnection!
+
+    """
+    Distinct airline names matching a search string, for typeahead dropdowns.
+    """
+    searchAirlines(query: String!, first: Int = 10): [String!]!
 
     """
     Fetch a single album by ID.
@@ -97,6 +104,26 @@ export const typeDefs = gql`
     Fetch a single airport by ICAO or IATA code.
     """
     airport(code: String!): Airport
+
+    """
+    Minimal airport result for typeahead search — omits expensive relations.
+    """
+    searchAirports(query: String!, first: Int = 8): [AirportSearchResult!]!
+
+    """
+    Search aircraft by registration. Used for typeahead on the upload form.
+    """
+    aircrafts(search: String, first: Int = 20, after: String): AircraftConnection!
+
+    """
+    Fetch a single aircraft by registration.
+    """
+    aircraft(registration: String!): Aircraft
+
+    """
+    Search canonical aircraft types from OpenFlights.
+    """
+    aircraftTypes(search: String, first: Int = 20, after: String): AircraftTypeConnection!
 
     """
     Fetch photos within a geographic bounding box.
@@ -384,6 +411,16 @@ export const typeDefs = gql`
     """
     deleteSpottingLocation(id: ID!): Boolean!
 
+    """
+    Create an aircraft record. Requires admin or superuser role.
+    """
+    createAircraft(input: CreateAircraftInput!): Aircraft!
+
+    """
+    Update an aircraft record. Requires admin or superuser role.
+    """
+    updateAircraft(id: ID!, input: UpdateAircraftInput!): Aircraft!
+
     # ─── Admin Mutations ───────────────────────────────────────────────────
 
     """
@@ -613,6 +650,10 @@ export const typeDefs = gql`
     favoriteAirports: [String!]!
     """Whether this profile is publicly visible."""
     isPublic: Boolean!
+    """Camera bodies in the user's gear list."""
+    cameraBodies: [String!]!
+    """Lenses in the user's gear list."""
+    lenses: [String!]!
   }
 
   input UpdateProfileInput {
@@ -625,6 +666,8 @@ export const typeDefs = gql`
     favoriteAircraft: [String!]
     favoriteAirports: [String!]
     isPublic: Boolean
+    cameraBodies: [String!]
+    lenses: [String!]
   }
 
   # ─── Photo Types ─────────────────────────────────────────────────────────
@@ -670,6 +713,18 @@ export const typeDefs = gql`
     commentCount: Int!
     """Whether the currently authenticated user has liked this photo."""
     isLikedByMe: Boolean!
+    """Linked aircraft record, if any."""
+    aircraft: Aircraft
+    """Canonical aircraft type from the OpenFlights database."""
+    aircraftTypeRef: AircraftType
+    """The person who took the photo (defaults to uploader)."""
+    photographer: User
+    """Name of the photographer."""
+    photographerName: String
+    """Camera body used."""
+    gearBody: String
+    """Lens used."""
+    gearLens: String
     createdAt: String!
     updatedAt: String!
   }
@@ -729,6 +784,14 @@ export const typeDefs = gql`
     longitude: Float
     """Location privacy mode: exact (default), approximate, or hidden."""
     locationPrivacy: String
+    """Link to a structured Aircraft record."""
+    aircraftId: ID
+    """Link to a canonical AircraftType (OpenFlights)."""
+    aircraftTypeId: ID
+    """Camera body used (from user's gear list)."""
+    gearBody: String
+    """Lens used (from user's gear list)."""
+    gearLens: String
   }
 
   input UpdatePhotoInput {
@@ -741,6 +804,10 @@ export const typeDefs = gql`
     latitude: Float
     longitude: Float
     locationPrivacy: String
+    aircraftId: ID
+    aircraftTypeId: ID
+    gearBody: String
+    gearLens: String
   }
 
   # ─── Pagination ──────────────────────────────────────────────────────────
@@ -762,6 +829,28 @@ export const typeDefs = gql`
     edges: [PhotoEdge!]!
     pageInfo: PageInfo!
     totalCount: Int!
+  }
+
+  type AircraftConnection {
+    edges: [AircraftEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type AircraftEdge {
+    cursor: String!
+    node: Aircraft!
+  }
+
+  type AircraftTypeConnection {
+    edges: [AircraftTypeEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type AircraftTypeEdge {
+    cursor: String!
+    node: AircraftType!
   }
 
   type PhotoEdge {
@@ -947,6 +1036,15 @@ export const typeDefs = gql`
 
   # ─── Airport & Location Types ────────────────────────────────────────────
 
+  """Minimal airport info for typeahead search results."""
+  type AirportSearchResult {
+    icaoCode: String!
+    iataCode: String
+    name: String!
+    city: String
+    country: String
+  }
+
   """An airport with geographic coordinates and associated photos."""
   type Airport {
     id: ID!
@@ -991,6 +1089,62 @@ export const typeDefs = gql`
     airport: Airport
     """Associated spotting location, if any."""
     spottingLocation: SpottingLocation
+  }
+
+  """Canonical aircraft type from OpenFlights (type-level, not individual aircraft)."""
+  type AircraftType {
+    id: ID!
+    """IATA aircraft type code (e.g., '738')."""
+    iataCode: String
+    """ICAO aircraft type code (e.g., 'B738')."""
+    icaoCode: String
+    """Manufacturer name (e.g., 'Boeing')."""
+    manufacturer: String!
+    """Full aircraft type name (e.g., 'Boeing 737-86N')."""
+    aircraftName: String!
+    """Category: Jet, Propeller, Helicopter, etc."""
+    category: String
+    """Engine type: Jet, Turboprop, Piston, etc."""
+    engineType: String
+    """Number of engines."""
+    engineCount: Int
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  """A known aircraft with MSN and manufacturing info."""
+  type Aircraft {
+    id: ID!
+    """Registration (tail number)."""
+    registration: String!
+    """Aircraft type name (e.g., Boeing 737 MAX 8)."""
+    aircraftType: String!
+    """Canonical aircraft type from OpenFlights."""
+    aircraftTypeRef: AircraftType
+    """Airline or operator."""
+    airline: String
+    """Manufacturer serial number."""
+    msn: String
+    """Date the aircraft was manufactured."""
+    manufacturingDate: String
+  }
+
+  input CreateAircraftInput {
+    registration: String!
+    aircraftType: String!
+    aircraftTypeId: ID
+    airline: String
+    msn: String
+    manufacturingDate: String
+  }
+
+  input UpdateAircraftInput {
+    registration: String
+    aircraftType: String
+    aircraftTypeId: ID
+    airline: String
+    msn: String
+    manufacturingDate: String
   }
 
   """Lightweight photo data for map markers."""

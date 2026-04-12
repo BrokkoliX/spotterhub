@@ -44,6 +44,8 @@ export interface PhotosArgs {
   airportCode?: string;
   tags?: string[];
   manufacturer?: string;
+  airline?: string;
+  photographer?: string;
   sortBy?: PhotoSortBy;
 }
 
@@ -60,6 +62,10 @@ export interface CreatePhotoInput {
   latitude?: number;
   longitude?: number;
   locationPrivacy?: string;
+  aircraftId?: string;
+  aircraftTypeId?: string;
+  gearBody?: string;
+  gearLens?: string;
 }
 
 export interface UpdatePhotoInput {
@@ -72,11 +78,23 @@ export interface UpdatePhotoInput {
   latitude?: number;
   longitude?: number;
   locationPrivacy?: string;
+  aircraftId?: string;
+  aircraftTypeId?: string;
+  gearBody?: string;
+  gearLens?: string;
 }
 
 export interface PhotoParent {
   id: string;
   userId: string;
+  aircraftTypeName?: string | null;
+  aircraftId?: string | null;
+  aircraftTypeId?: string | null;
+  photographerId?: string | null;
+  photographerName?: string | null;
+  gearBody?: string | null;
+  gearLens?: string | null;
+  takenAt?: Date | null;
 }
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
@@ -107,7 +125,7 @@ export const photoQueryResolvers = {
       where.albumId = args.albumId;
     }
     if (args.aircraftType) {
-      where.aircraftType = { contains: args.aircraftType, mode: 'insensitive' };
+      where.aircraftTypeName = { contains: args.aircraftType, mode: 'insensitive' };
     }
     if (args.airportCode) {
       where.airportCode = { equals: args.airportCode, mode: 'insensitive' };
@@ -118,13 +136,19 @@ export const photoQueryResolvers = {
       };
     }
     if (args.manufacturer) {
-      // Manufacturer is derived: aircraftType starts with manufacturer name
+      // Manufacturer is derived: aircraftTypeName starts with manufacturer name
       // e.g. "Boeing 747" -> manufacturer "Boeing"
-      where.aircraftType = {
-        ...(where.aircraftType as object || {}),
+      where.aircraftTypeName = {
+        ...(where.aircraftTypeName as object || {}),
         startsWith: args.manufacturer,
         mode: 'insensitive',
       };
+    }
+    if (args.airline) {
+      where.airline = { contains: args.airline, mode: 'insensitive' };
+    }
+    if (args.photographer) {
+      where.photographerName = { contains: args.photographer, mode: 'insensitive' };
     }
 
     // Determine sort order
@@ -206,7 +230,7 @@ export const photoMutationResolvers = {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
-      select: { id: true },
+      include: { profile: true },
     });
     if (!user) {
       throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
@@ -215,18 +239,28 @@ export const photoMutationResolvers = {
     const { input } = args;
     const originalUrl = getObjectUrl(input.s3Key);
 
+    // Auto-credit photographer to uploader, photographerName from profile displayName
+    const photographerId = user.id;
+    const photographerName = user.profile?.displayName ?? user.username;
+
     // Create the photo record
     const photo = await ctx.prisma.photo.create({
       data: {
         userId: user.id,
         caption: input.caption,
-        aircraftType: input.aircraftType,
+        aircraftTypeName: input.aircraftType,
         airline: input.airline,
         airportCode: input.airportCode,
         takenAt: input.takenAt ? new Date(input.takenAt) : null,
         originalUrl,
         fileSizeBytes: input.fileSizeBytes,
         mimeType: input.mimeType,
+        photographerId,
+        photographerName,
+        aircraftId: input.aircraftId ?? null,
+        aircraftTypeId: input.aircraftTypeId ?? null,
+        gearBody: input.gearBody ?? null,
+        gearLens: input.gearLens ?? null,
         // In dev, auto-approve; in production, start as pending
         moderationStatus: process.env.NODE_ENV === 'production' ? 'pending' : 'approved',
         tags: input.tags
@@ -332,7 +366,7 @@ export const photoMutationResolvers = {
       });
     }
 
-    const { tags, takenAt, latitude, longitude, locationPrivacy, ...rest } = args.input;
+    const { tags, takenAt, latitude, longitude, locationPrivacy, aircraftId, aircraftTypeId, aircraftType, gearBody, gearLens, ...rest } = args.input;
 
     // Update tags if provided: delete existing, create new
     if (tags !== undefined) {
@@ -382,6 +416,11 @@ export const photoMutationResolvers = {
       data: {
         ...rest,
         ...(takenAt !== undefined && { takenAt: takenAt ? new Date(takenAt) : null }),
+        ...(aircraftId !== undefined && { aircraftId: aircraftId ?? null }),
+        ...(aircraftTypeId !== undefined && { aircraftTypeId: aircraftTypeId ?? null }),
+        ...(aircraftType !== undefined && { aircraftTypeName: aircraftType }),
+        ...(gearBody !== undefined && { gearBody: gearBody ?? null }),
+        ...(gearLens !== undefined && { gearLens: gearLens ?? null }),
       },
       include: { user: true, variants: true, tags: true },
     });
@@ -474,4 +513,24 @@ export const photoFieldResolvers = {
       spottingLocation: loc.spottingLocation,
     };
   },
+
+  aircraft: (parent: PhotoParent & { aircraftId?: string | null }, _args: unknown, ctx: Context) => {
+    if (!parent.aircraftId) return null;
+    return ctx.prisma.aircraft.findUnique({ where: { id: parent.aircraftId } });
+  },
+
+  aircraftType: (parent: PhotoParent) => parent.aircraftTypeName ?? null,
+
+  aircraftTypeRef: (parent: PhotoParent, _args: unknown, ctx: Context) => {
+    if (!parent.aircraftTypeId) return null;
+    return ctx.prisma.aircraftType.findUnique({ where: { id: parent.aircraftTypeId } });
+  },
+
+  photographer: (parent: PhotoParent & { photographerId?: string | null }, _args: unknown, ctx: Context) => {
+    if (!parent.photographerId) return null;
+    return ctx.prisma.user.findUnique({ where: { id: parent.photographerId } });
+  },
+
+  takenAt: (parent: { takenAt: Date | null }) =>
+    parent.takenAt?.toISOString() ?? null,
 };

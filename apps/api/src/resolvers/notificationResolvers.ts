@@ -20,7 +20,7 @@ export interface NotificationParent {
   createdAt: Date;
 }
 
-interface NotificationsArgs {
+export interface NotificationsArgs {
   first?: number;
   after?: string;
   unreadOnly?: boolean;

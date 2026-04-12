@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+
 import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -306,7 +307,7 @@ export const followQueryResolvers = {
       .map((f) => f.targetValue!);
     if (followedAircraftTypes.length > 0) {
       orConditions.push({
-        aircraftType: { in: followedAircraftTypes, mode: 'insensitive' },
+        aircraftTypeName: { in: followedAircraftTypes, mode: 'insensitive' },
       });
     }
 

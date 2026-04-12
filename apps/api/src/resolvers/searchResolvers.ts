@@ -24,7 +24,7 @@ export const searchQueryResolvers = {
       moderationStatus: { in: ['approved', 'pending'] },
       OR: [
         { caption: { contains: q, mode: 'insensitive' } },
-        { aircraftType: { contains: q, mode: 'insensitive' } },
+        { aircraftTypeName: { contains: q, mode: 'insensitive' } },
         { airline: { contains: q, mode: 'insensitive' } },
         { airportCode: { contains: q, mode: 'insensitive' } },
         { tags: { some: { tag: { contains: q, mode: 'insensitive' } } } },
@@ -104,5 +104,29 @@ export const searchQueryResolvers = {
       },
       totalCount,
     };
+  },
+
+  searchAirlines: async (
+    _parent: unknown,
+    args: { query: string; first?: number },
+    ctx: Context,
+  ) => {
+    const take = Math.min(args.first ?? 10, 20);
+    const q = args.query.trim();
+
+    if (!q) return [];
+
+    const airlines = await ctx.prisma.photo.findMany({
+      where: {
+        airline: { contains: q, mode: 'insensitive' },
+        moderationStatus: { in: ['approved', 'pending'] },
+      },
+      select: { airline: true },
+      distinct: ['airline'],
+      orderBy: { airline: 'asc' },
+      take,
+    });
+
+    return airlines.map((a) => a.airline).filter((s): s is string => !!s);
   },
 };
