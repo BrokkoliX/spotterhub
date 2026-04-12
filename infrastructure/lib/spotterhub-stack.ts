@@ -1,4 +1,5 @@
 // SpotterSpace AWS Infrastructure — CDK v2
+// Deployment: CDK bootstrap + cdk deploy (see .github/workflows/deploy.yml)
 import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import {
   aws_ec2 as ec2,
