@@ -24,10 +24,15 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  # ─── Deploy Infrastructure (CDK — Lambda + RDS + VPC) ──────────────────────
+  # ─── Deploy Infrastructure (CDK — App Runner + VPC Connector + DNS) ────────
   deploy-infra:
     name: Deploy CDK Infrastructure
     runs-on: ubuntu-latest
+    outputs:
+      api-ecr: ${{ steps.outputs.outputs.api-ecr }}
+      web-ecr: ${{ steps.outputs.outputs.web-ecr }}
+      api-service-arn: ${{ steps.outputs.outputs.api-service-arn }}
+      web-service-arn: ${{ steps.outputs.outputs.web-service-arn }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,11 +41,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Install CDK
         run: |
@@ -60,54 +60,52 @@ jobs:
       - name: Bootstrap CDK
         run: |
           cd infrastructure
-          cdk bootstrap aws://${{ vars.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} \
-            --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess \
+          cdk bootstrap aws://${{ vars.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} 
+            --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess 
             2>/dev/null || true
 
       - name: Deploy CDK Stack
         id: cdk-deploy
         run: |
           cd infrastructure
-          STAGE="${{ inputs.stage || 'dev' }}" \
-          JWT_SECRET_INITIAL_VALUE="${{ secrets.JWT_SECRET_INITIAL_VALUE }}" \
-          S3_BUCKET_NAME="${{ vars.S3_BUCKET_NAME || 'spotterspace-photos' }}" \
-          cdk deploy SpotterSpace-${{ inputs.stage || 'dev' }}-Stack \
-            --require-approval never \
+          STAGE="${{ inputs.stage || 'dev' }}" 
+          S3_BUCKET_NAME="${{ vars.S3_BUCKET_NAME || 'spotterspace-photos' }}" 
+          VPC_ID="${{ vars.VPC_ID }}" 
+          DOMAIN_NAME="${{ vars.DOMAIN_NAME || '' }}" 
+          HOSTED_ZONE_ID="${{ vars.HOSTED_ZONE_ID || '' }}" 
+          CDK_DEFAULT_ACCOUNT="${{ vars.AWS_ACCOUNT_ID }}" 
+          CDK_DEFAULT_REGION="${{ env.AWS_REGION }}" 
+          cdk deploy SpotterSpace-${{ inputs.stage || 'dev' }}-Stack 
+            --require-approval never 
             --outputs-file cdks-outputs.json
-
-      - name: Upload CDK outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: cdks-outputs
-          path: infrastructure/cdks-outputs.json
-          retention-days: 1
 
       - name: Extract deployment outputs
         id: outputs
         run: |
           stack_name="SpotterSpace-${{ inputs.stage || 'dev' }}-Stack"
-          api_url=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text)
-          amplify_role=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`AmplifyServiceRoleArn`].OutputValue' --output text)
-          echo "api-url=$api_url" >> $GITHUB_OUTPUT
-          echo "amplify-role=$amplify_role" >> $GITHUB_OUTPUT
-          echo "stage=${{ inputs.stage || 'dev' }}" >> $GITHUB_OUTPUT
+          api_ecr=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiEcrRepositoryUri`].OutputValue' --output text)
+          web_ecr=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WebEcrRepositoryUri`].OutputValue' --output text)
+          api_service_arn=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiServiceArn`].OutputValue' --output text)
+          web_service_arn=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WebServiceArn`].OutputValue' --output text)
+          echo "api-ecr=$api_ecr" >> $GITHUB_OUTPUT
+          echo "web-ecr=$web_ecr" >> $GITHUB_OUTPUT
+          echo "api-service-arn=$api_service_arn" >> $GITHUB_OUTPUT
+          echo "web-service-arn=$web_service_arn" >> $GITHUB_OUTPUT
 
       - name: Print CDK deployment info
         run: |
           echo "✅ CDK Stack deployed"
-          echo "   API URL: ${{ steps.outputs.outputs.api-url }}"
-          echo "   Amplify Role: ${{ steps.outputs.outputs.amplify-role }}"
+          echo "   API ECR: ${{ steps.outputs.outputs.api-ecr }}"
+          echo "   Web ECR: ${{ steps.outputs.outputs.web-ecr }}"
 
-  # ─── Deploy Web App (Amplify) ─────────────────────────────────────────────
-  deploy-web:
-    name: Deploy Web App (Amplify)
+  # ─── Build and Push API Docker Image ───────────────────────────────────────
+  deploy-api:
+    name: Deploy API (App Runner)
     runs-on: ubuntu-latest
     needs: deploy-infra
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Needed for Amplify to analyze commits
 
       - name: Authenticate to AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -116,93 +114,65 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Extract CDK outputs
-        id: cdk
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ needs.deploy-infra.outputs.api-ecr }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Trigger App Runner deployment
         run: |
-          stack_name="SpotterSpace-${{ inputs.stage || 'dev' }}-Stack"
-          api_url=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text)
-          amplify_role=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`AmplifyServiceRoleArn`].OutputValue' --output text)
-          echo "api-url=$api_url" >> $GITHUB_OUTPUT
-          echo "amplify-role=$amplify_role" >> $GITHUB_OUTPUT
-          echo "stage=${{ inputs.stage || 'dev' }}" >> $GITHUB_OUTPUT
+          aws apprunner start-deployment 
+            --service-arn "${{ needs.deploy-infra.outputs.api-service-arn }}"
+          echo "✅ API App Runner deployment triggered"
 
-      - name: Create or update Amplify app
-        id: amplify-app
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          AMPLIFY_ROLE: ${{ steps.cdk.outputs.amplify-role }}
-          API_URL: ${{ steps.cdk.outputs.api-url }}
-          MAPBOX_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
-          STAGE: ${{ steps.cdk.outputs.stage }}
+  # ─── Build and Push Web Docker Image ───────────────────────────────────────
+  deploy-web:
+    name: Deploy Web App (App Runner)
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push web Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ needs.deploy-infra.outputs.web-ecr }}:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.${{ vars.DOMAIN_NAME || 'spotterspace.com' }}/graphql
+            NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
+
+      - name: Trigger App Runner deployment
         run: |
-          set -e
-
-          APP_NAME="spotterspace-$STAGE-web"
-
-          # Build spec for monorepo Next.js app at apps/web
-          BUILD_SPEC=$(cat <<'EOF'
-version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm ci
-        - npx turbo run generate --filter=@spotterhub/db
-        - npx turbo run build --filter=@spotterhub/db
-        - npx turbo run build --filter=@spotterhub/shared
-        - npx turbo run build --filter=@spotterhub/api
-        - npx turbo run build --filter=@spotterhub/web
-  artifacts:
-    baseDirectory: apps/web/.next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
-      - .npm/**/*
-      - .next/cache/**/*
-EOF
-          )
-
-          # Check if app already exists
-          APP_ID=$(aws amplify list-apps --query "apps[?name=='$APP_NAME'].appId" --output text 2>/dev/null | tr -d '\n')
-
-          # Combine env vars into single arg (AWS CLI format: KeyName=K,V=Val KeyName=K2,V=Val2)
-          ENV_VARS="KeyName=NEXT_PUBLIC_API_URL,Value=$API_URL KeyName=NEXT_PUBLIC_MAPBOX_TOKEN,Value=$MAPBOX_TOKEN"
-
-          if [ -n "$APP_ID" ]; then
-            echo "Updating existing Amplify app: $APP_ID"
-            aws amplify update-app \
-              --app-id "$APP_ID" \
-              --build-spec "$BUILD_SPEC" \
-              --environment-variables "$ENV_VARS" \
-              --iam-service-role-arn "$AMPLIFY_ROLE" \
-              --enable-branch-auto-build \
-              --enable-basic-auth false
-          else
-            echo "Creating new Amplify app: $APP_NAME"
-            aws amplify create-app \
-              --name "$APP_NAME" \
-              --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-              --build-spec "$BUILD_SPEC" \
-              --environment-variables "$ENV_VARS" \
-              --iam-service-role-arn "$AMPLIFY_ROLE" \
-              --oauth-token "$GH_TOKEN" \
-              --enable-branch-auto-build \
-              --enable-basic-auth false \
-              --platform WEB \
-              --output json | tee /tmp/amplify-create.json
-            APP_ID=$(cat /tmp/amplify-create.json | jq -r '.app.appId')
-          fi
-
-          echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
-          echo "✅ Amplify app ready: $APP_ID"
-
-      - name: Trigger Amplify deployment
-        env:
-          APP_ID: ${{ steps.amplify-app.outputs.app-id }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          echo "Amplify app ID: $APP_ID"
-          echo "✅ Amplify will auto-deploy from GitHub main branch"
-          echo "   Visit https://us-east-1.console.aws.amazon.com/amplify/apps/$APP_ID"
+          aws apprunner start-deployment 
+            --service-arn "${{ needs.deploy-infra.outputs.web-service-arn }}"
+          echo "✅ Web App Runner deployment triggered"

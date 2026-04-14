@@ -7,14 +7,14 @@ services:
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: spotterhub
-      POSTGRES_PASSWORD: spotterhub_dev
-      POSTGRES_DB: spotterhub
+      POSTGRES_USER: spotterspace
+      POSTGRES_PASSWORD: spotterspace_dev
+      POSTGRES_DB: spotterspace
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-test-db.sql:/docker-entrypoint-initdb.d/02-init-test-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spotterhub"]
+      test: ["CMD-SHELL", "pg_isready -U spotterspace"]
       interval: 5s
       timeout: 5s
       retries: 5

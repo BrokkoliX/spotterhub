@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-11 (Session 13)
+> **Last updated:** 2026-04-14 (Session 14)
 > **Purpose:** Living document tracking implementation progress against the roadmap. Update after each session.
 
 ---
@@ -165,11 +165,59 @@
 - **API Dockerfile** (`apps/api/Dockerfile`): Multi-stage Node 20 Alpine build — compiles TypeScript, runs `prisma generate`, prunes devDependencies, copies prisma schema for migrate deploy.
 - **API entrypoint** (`apps/api/docker-entrypoint.sh`): Fetches `DATABASE_URL` and `JWT_SECRET` from AWS Secrets Manager at startup, runs `prisma migrate deploy` (idempotent), starts Node server.
 - **Web Dockerfile** (`apps/web/Dockerfile`): Multi-stage Next.js standalone build — builds standalone output, copies static assets.
-- **Next.js config** (`apps/web/next.config.ts`): Added `output: 'standalone'` and S3 production `remotePatterns` for `spotterhub-photos.s3.us-east-1.amazonaws.com`.
+- **Next.js config** (`apps/web/next.config.ts`): Added `output: 'standalone'` and S3 production `remotePatterns` for `spotterspace-photos.s3.us-east-1.amazonaws.com`.
 - **CDK infrastructure stack** (`infrastructure/`): VPC, RDS PostgreSQL 16 (t3.micro/t3.small), Secrets Manager for DATABASE_URL + JWT_SECRET, ECR repositories, App Runner services (API on port 4000, Web on port 3000 with NEXT_PUBLIC_API_URL wired to API URL).
 - **GitHub Actions deploy workflow** (`.github/workflows/deploy.yml`): Triggers on push to `main` — CDK deploy → Docker build/push API to ECR → Docker build/push Web to ECR → App Runner redeploy.
 
 **Not included** (deferred): Cognito auth wiring, CloudFront CDN, production S3 bucket creation, Lambda.
+
+### Session 14 ✅ (2026-04-14): App Runner Deployment — Custom Domain & HTTPS (ALL WORKING)
+
+**What's deployed (CDK-managed `SpotterSpace-dev-Stack`):**
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| App Runner service (web) | ✅ RUNNING | `wjigqzbc7x.us-east-1.awsapprunner.com` |
+| App Runner service (api) | ✅ RUNNING | `japveibkai.us-east-1.awsapprunner.com` |
+| CloudFront distribution | ✅ DEPLOYED | `d1yo7g0mlwprtw.cloudfront.net` (CDK-managed) |
+| VPC Connector | ✅ Created | `spotterspace-dev-vpc-connector` in private subnets |
+| ECR repos | ✅ Created | `spotterspace-dev-web`, `spotterspace-dev-api` |
+| Secrets Manager | ✅ Connected | `spotterspace/DATABASE_URL`, `spotterspace/JWT_SECRET` |
+
+**DNS & HTTPS (all endpoints confirmed working):**
+
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| `https://www.spotterspace.com/` | ✅ HTTP 200 | CNAME → Web App Runner |
+| `https://api.spotterspace.com/graphql` | ✅ HTTP 200 | CNAME → API App Runner |
+| `https://api.spotterspace.com/health` | ✅ HTTP 200 | Health check endpoint |
+| `https://spotterspace.com/` | ✅ HTTP 301 | CloudFront Function → redirects to www |
+
+**Root domain (apex) redirect — FIXED:**
+- Apex `spotterspace.com` → CloudFront distribution → CloudFront Function (inline JS) → 301 → `https://www.spotterspace.com`
+- CloudFront distribution, ACM certificate, CloudFront Function, and Route 53 DNS records are all managed as IaC in `infrastructure/lib/spotterspace-stack.ts`
+- Gated by `domainName` + `hostedZoneId` props — only deployed when those env vars are set
+
+**Critical Dockerfile fix (nested Next.js standalone structure):**
+- Next.js standalone output has `server.js` at `standalone/apps/web/server.js` (nested one level deeper than expected)
+- Dockerfile must copy standalone to `/app/apps/web` and static files to `/app/apps/web/apps/web/.next/static`
+- CMD must be `["node", "apps/web/apps/web/server.js"]`
+- This was causing CSS/JS 404s on the live site — static files in wrong path
+
+**AWS CDK Resources created (`SpotterSpace-dev-Stack`):**
+- VPC Connector (`spotterspace-dev-vpc-connector`) in private subnets
+- App Runner: `spotterspace-dev-api` (port 4000, VPC egress, IAM role for Secrets + S3)
+- App Runner: `spotterspace-dev-web` (port 3000, public egress, `NEXT_PUBLIC_API_URL` wired)
+- CloudFront distribution + ACM certificate (`*.spotterspace.com`)
+- Route 53 records: A alias (apex→CF), CNAME (www→web), CNAME (api→api)
+- IAM roles: `spotterspace-dev-apprunner-access` (ECR pull), `spotterspace-dev-api-instance` (secrets + S3)
+
+**Files changed:**
+- `apps/web/Dockerfile` — fixed static file paths and CMD for nested standalone structure
+- `infrastructure/lib/spotterspace-stack.ts` — full CDK stack: VPC Connector, App Runner services, CloudFront + ACM + Route 53 (gated by domain props), IAM roles
+- `infrastructure/bin/spotterspace.ts` — reads `STAGE`, `DOMAIN_NAME`, `HOSTED_ZONE_ID`, `VPC_ID` from env
+- `.github/workflows/deploy.yml` — CDK bootstrap + deploy → Docker build/push API → Docker build/push Web → App Runner redeploy
+- `DEPLOYMENT_STATUS.md` — comprehensive deployment reference (see that file for all manual commands)
 
 ---
 
@@ -210,7 +258,7 @@
 - [ ] SEO implementation (SSR metadata, sitemaps, structured data, Open Graph tags)
 - [ ] Accessibility audit (WCAG 2.1 AA, axe-core integration)
 - [ ] Performance tuning and load testing
-- [x] ~~AWS production infrastructure (CDK stacks: RDS, S3, CloudFront, Cognito, Lambda, ECS Fargate)~~ — **Partially done** (Session 13): App Runner, VPC, RDS, Secrets Manager, ECR. Remaining: Cognito auth wiring, CloudFront CDN, production S3 bucket, monitoring/alerting
+- [x] ~~AWS production infrastructure (CDK stacks: RDS, S3, CloudFront, Cognito, Lambda, ECS Fargate)~~ — **Partially done** (Sessions 13-14): App Runner, VPC, RDS, Secrets Manager, ECR, CloudFront. Remaining: Cognito auth wiring, production S3, Lambda, monitoring/alerting
 - [ ] Monitoring, alerting, runbooks
 - [ ] Email system (SES: transactional, triggered, digest)
 
@@ -238,14 +286,16 @@
 
 **Phase 1a and Phase 1b are complete. AWS deployment scaffolding is in place.**
 
-**Session 13 done:** App Runner deployment infrastructure (Dockerfiles, CDK stack, GitHub Actions deploy workflow).
+**Session 13-14 done:** App Runner deployment infrastructure (Dockerfiles, CDK stack, GitHub Actions deploy workflow, CloudFront distribution).
 
 **Next — Phase 2 Launch Prep:**
-1. **AWS setup** — configure GitHub repo vars/secrets (`AWS_ACCOUNT_ID`, `S3_BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `JWT_SECRET_INITIAL_VALUE`, `NEXT_PUBLIC_MAPBOX_TOKEN`), run `cdk bootstrap`, merge to main to trigger first deploy
+1. **Deploy root domain HTTPS fix** — CloudFront + ACM + Route 53 now codified in CDK. Clean up old manually-created resources, then deploy with `DOMAIN_NAME` and `HOSTED_ZONE_ID` (see `DEPLOYMENT_STATUS.md`)
 2. **Cognito auth** — wire `signUp`/`signIn` resolvers to AWS Cognito (currently mock JWT in dev)
-3. **CloudFront CDN** — add CloudFront distribution in CDK stack, wire S3 bucket behind CDN
-4. SEO implementation (metadata, sitemaps, Open Graph)
-5. Performance tuning and load testing
+3. **Configure GitHub secrets/variables:**
+   - **Secrets:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `JWT_SECRET_INITIAL_VALUE`, `NEXT_PUBLIC_MAPBOX_TOKEN`
+   - **Variables:** `AWS_ACCOUNT_ID`, `S3_BUCKET_NAME`, `CDK_DEFAULT_ACCOUNT`, `CDK_DEFAULT_REGION`, `DOMAIN_NAME` (`spotterspace.com`), `HOSTED_ZONE_ID` (`Z00113712EMKXVCPQFWZW`), `ENABLE_APP_RUNNER` (`true`)
+4. **Run `cdk bootstrap`** and merge to main to trigger first deploy
+5. SEO implementation (metadata, sitemaps, Open Graph)
 
 ---
 
@@ -273,8 +323,8 @@
 | API Dockerfile   | `apps/api/Dockerfile`                                            |
 | API entrypoint   | `apps/api/docker-entrypoint.sh`                                   |
 | Web Dockerfile   | `apps/web/Dockerfile`                                            |
-| CDK app          | `infrastructure/bin/spotterhub.ts`                                |
-| CDK stack        | `infrastructure/lib/spotterhub-stack.ts`                          |
+| CDK app          | `infrastructure/bin/spotterspace.ts`                                |
+| CDK stack        | `infrastructure/lib/spotterspace-stack.ts`                          |
 
 ---
 

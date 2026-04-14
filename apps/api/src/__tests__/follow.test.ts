@@ -396,7 +396,7 @@ async function createTestPhoto(userId: string, overrides: Partial<{ aircraftType
     data: {
       userId,
       caption: overrides.caption ?? 'Test Photo',
-      originalUrl: `https://localhost:4566/spotterhub/${key}`,
+      originalUrl: `https://localhost:4566/spotterspace-photos/${key}`,
       aircraftTypeName: overrides.aircraftType ?? null,
       airline: overrides.airline ?? null,
       airportCode: overrides.airportCode ?? null,

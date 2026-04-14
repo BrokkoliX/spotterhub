@@ -70,7 +70,7 @@ test.describe('Upload page', () => {
           body: JSON.stringify({
             data: {
               getUploadUrl: {
-                url: 'http://localhost:4566/spotterhub-photos/test-key.jpg',
+                url: 'http://localhost:4566/spotterspace-photos/test-key.jpg',
                 key: 'test-key.jpg',
               },
             },
@@ -97,7 +97,7 @@ test.describe('Upload page', () => {
     });
 
     // Intercept S3 PUT
-    await page.route('http://localhost:4566/spotterhub-photos/*', async (route) => {
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
       await route.fulfill({ status: 200 });
     });
 
@@ -138,7 +138,7 @@ test.describe('Upload page', () => {
           body: JSON.stringify({
             data: {
               getUploadUrl: {
-                url: 'http://localhost:4566/spotterhub-photos/test-key.jpg',
+                url: 'http://localhost:4566/spotterspace-photos/test-key.jpg',
                 key: 'test-key.jpg',
               },
             },
@@ -150,7 +150,7 @@ test.describe('Upload page', () => {
     });
 
     // Make S3 PUT fail
-    await page.route('http://localhost:4566/spotterhub-photos/*', async (route) => {
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
       await route.fulfill({ status: 500 });
     });
 
@@ -208,7 +208,7 @@ test.describe('Upload page', () => {
           body: JSON.stringify({
             data: {
               getUploadUrl: {
-                url: 'http://localhost:4566/spotterhub-photos/test-key.jpg',
+                url: 'http://localhost:4566/spotterspace-photos/test-key.jpg',
                 key: 'test-key.jpg',
               },
             },
@@ -234,11 +234,11 @@ test.describe('Upload page', () => {
       await route.continue();
     });
 
-    await page.route('http://localhost:4566/spotterhub-photos/*', async (route) => {
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
       await route.fulfill({ status: 200 });
     });
 
-    await page.route('http://localhost:4566/spotterhub-photos/*', async (route) => {
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
       await route.fulfill({ status: 200 });
     });
 

@@ -1,3 +1,3 @@
 module.exports = {
-  extends: ['@spotterhub/eslint-config'],
+  extends: ['@spotterspace/eslint-config'],
 };

@@ -1,5 +1,5 @@
 {
-  "name": "spotterhub",
+  "name": "spotterspace",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -14,9 +14,9 @@
     "test:e2e": "turbo run test:e2e",
     "format": "prettier --write '**/*.{ts,tsx,js,jsx,json,md}'",
     "format:check": "prettier --check '**/*.{ts,tsx,js,jsx,json,md}'",
-    "db:migrate": "turbo run db:migrate --filter=@spotterhub/db",
-    "db:seed": "turbo run db:seed --filter=@spotterhub/db",
-    "db:reset": "turbo run db:reset --filter=@spotterhub/db",
+    "db:migrate": "turbo run db:migrate --filter=@spotterspace/db",
+    "db:seed": "turbo run db:seed --filter=@spotterspace/db",
+    "db:reset": "turbo run db:reset --filter=@spotterspace/db",
     "prepare": "husky"
   },
   "devDependencies": {

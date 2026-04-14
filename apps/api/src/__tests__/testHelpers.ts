@@ -1,5 +1,5 @@
 import { ApolloServer } from '@apollo/server';
-import { prisma } from '@spotterhub/db';
+import { prisma } from '@spotterspace/db';
 
 import type { Context } from '../context.js';
 import { createLoaders } from '../loaders.js';

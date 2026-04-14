@@ -112,7 +112,7 @@ export default function NewCommunityPage() {
               pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
             />
             <span className={styles.hint}>
-              spotterhub.com/communities/<strong>{slug || 'your-slug'}</strong>
+              spotterspace.com/communities/<strong>{slug || 'your-slug'}</strong>
             </span>
           </div>
 

@@ -602,7 +602,7 @@ export const typeDefs = gql`
 
   # ─── User & Profile Types ────────────────────────────────────────────────
 
-  """A registered SpotterHub user."""
+  """A registered SpotterSpace user."""
   type User {
     id: ID!
     """Unique email address."""

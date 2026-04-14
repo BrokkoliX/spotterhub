@@ -3,14 +3,14 @@
  *
  * 1. Points DATABASE_URL at the isolated test database.
  * 2. Pushes the Prisma schema so tables exist (no migration history needed).
- * 3. The singleton PrismaClient in @spotterhub/db picks up the env var automatically.
+ * 3. The singleton PrismaClient in @spotterspace/db picks up the env var automatically.
  */
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
-  'postgresql://spotterhub:spotterhub_dev@localhost:5432/spotterhub';
+  'postgresql://spotterspace:spotterspace_dev@localhost:5432/spotterspace';
 
 export default function setup() {
   // Override for PrismaClient and all child processes

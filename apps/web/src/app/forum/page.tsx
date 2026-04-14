@@ -123,7 +123,7 @@ export default function GlobalForumPage() {
           <div className={styles.heroEmoji}>💬</div>
           <h1 className={styles.heroTitle}>Global Forum</h1>
           <p className={styles.heroSubtitle}>
-            Aviation discussion from across the SpotterHub community
+            Aviation discussion from across the SpotterSpace community
           </p>
         </div>
       </div>

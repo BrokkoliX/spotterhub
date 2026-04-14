@@ -180,7 +180,7 @@ export default function HomePage() {
         {!siteBannerUrl && <div className={styles.heroGradient} />}
         <div className={styles.heroContent}>
           {!siteBannerUrl && <div className={styles.heroEmoji}>🛩️</div>}
-          <h1 className={styles.heroTitle}>SpotterHub</h1>
+          <h1 className={styles.heroTitle}>SpotterSpace</h1>
           <p className={styles.heroSubtitle}>
             {siteTagline || "The world's community for aviation photography"}
           </p>

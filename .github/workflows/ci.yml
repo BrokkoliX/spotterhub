@@ -20,19 +20,19 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4
         env:
-          POSTGRES_USER: spotterhub
-          POSTGRES_PASSWORD: spotterhub_dev
-          POSTGRES_DB: spotterhub
+          POSTGRES_USER: spotterspace
+          POSTGRES_PASSWORD: spotterspace_dev
+          POSTGRES_DB: spotterspace
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U spotterhub"
+          --health-cmd "pg_isready -U spotterspace"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://spotterhub:spotterhub_dev@localhost:5432/spotterhub
+      DATABASE_URL: postgresql://spotterspace:spotterspace_dev@localhost:5432/spotterspace
       NODE_ENV: test
 
     steps:
@@ -49,7 +49,7 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        run: npx turbo run generate --filter=@spotterhub/db
+        run: npx turbo run generate --filter=@spotterspace/db
 
       - name: Lint
         run: npx turbo run lint

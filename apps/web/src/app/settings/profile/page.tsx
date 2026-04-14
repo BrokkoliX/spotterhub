@@ -48,7 +48,7 @@ function inputToArray(str: string): string[] {
 }
 
 const S3_ENDPOINT = 'http://localhost:4566';
-const S3_BUCKET = 'spotterhub-photos';
+const S3_BUCKET = 'spotterspace-photos';
 
 // ─── Component ──────────────────────────────────────────────────────────────
 

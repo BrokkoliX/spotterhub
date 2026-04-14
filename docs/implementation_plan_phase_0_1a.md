@@ -27,7 +27,7 @@ Session-by-session engineering blueprint for SpotterHub. This document covers sc
 1. **Initialize Turborepo monorepo**
 
    ```
-   spotterhub/
+   spotterspace/
    ├── apps/
    │   ├── web/          # Next.js (App Router, TypeScript)
    │   └── api/          # Apollo Server (TypeScript)

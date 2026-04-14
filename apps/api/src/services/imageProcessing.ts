@@ -1,4 +1,4 @@
-import { IMAGE_VARIANT_SIZES } from '@spotterhub/shared';
+import { IMAGE_VARIANT_SIZES } from '@spotterspace/shared';
 
 // Lazy-load sharp only when image processing is actually needed.
 // In Lambda (linux-x64), sharp's native binaries may not be available,

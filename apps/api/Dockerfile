@@ -14,18 +14,18 @@ RUN npm install --workspaces --ignore-scripts
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
 # Compile TypeScript (turbo discovers all workspaces and builds in dependency order)
-RUN npx turbo run build --filter=@spotterhub/api
+RUN npx turbo run build --filter=@spotterspace/api
 
 # Prune devDependencies from production image
-RUN npm prune --production --workspace=@spotterhub/api
+RUN npm prune --production --workspace=@spotterspace/api
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Install AWS CLI (for secrets fetching) and gzip
-RUN apk add --no-cache aws-cli gzip
+# Secrets are fetched by the Node.js app using @aws-sdk/client-secrets-manager
+# No need for AWS CLI in the container
 
 # Copy production node_modules and built output
 COPY --from=builder /app/node_modules ./node_modules

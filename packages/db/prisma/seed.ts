@@ -23,11 +23,11 @@ async function main() {
   const passwordHash = hashPassword(testPassword);
 
   const alice = await prisma.user.upsert({
-    where: { email: 'alice@spotterhub.dev' },
+    where: { email: 'alice@spotterspace.dev' },
     update: {},
     create: {
       cognitoSub: `dev1-${passwordHash.slice(0, 32)}`,
-      email: 'alice@spotterhub.dev',
+      email: 'alice@spotterspace.dev',
       username: 'alice',
       role: 'user',
       profile: {
@@ -46,11 +46,11 @@ async function main() {
   });
 
   const bob = await prisma.user.upsert({
-    where: { email: 'bob@spotterhub.dev' },
+    where: { email: 'bob@spotterspace.dev' },
     update: {},
     create: {
       cognitoSub: `dev-${hashPassword('bobpass123').slice(0, 32)}`,
-      email: 'bob@spotterhub.dev',
+      email: 'bob@spotterspace.dev',
       username: 'bob-mod',
       role: 'moderator',
       profile: {
@@ -69,11 +69,11 @@ async function main() {
   });
 
   const charlie = await prisma.user.upsert({
-    where: { email: 'charlie@spotterhub.dev' },
+    where: { email: 'charlie@spotterspace.dev' },
     update: {},
     create: {
       cognitoSub: `dev-${hashPassword('adminpass123').slice(0, 32)}`,
-      email: 'charlie@spotterhub.dev',
+      email: 'charlie@spotterspace.dev',
       username: 'charlie-admin',
       role: 'admin',
       profile: {
@@ -142,13 +142,13 @@ async function main() {
 
   // ─── Sample Communities ─────────────────────────────────────────────────
 
-  const spotterHubCommunity = await prisma.community.upsert({
-    where: { slug: 'spotterhub' },
+  const spotterSpaceCommunity = await prisma.community.upsert({
+    where: { slug: 'spotterspace' },
     update: {},
     create: {
-      name: 'SpotterHub Community',
-      slug: 'spotterhub',
-      description: 'The official SpotterHub community for aviation photographers worldwide.',
+      name: 'SpotterSpace Community',
+      slug: 'spotterspace',
+      description: 'The official SpotterSpace community for aviation photographers worldwide.',
       category: 'General',
       visibility: 'public',
       ownerId: alice.id,
@@ -169,9 +169,9 @@ async function main() {
   });
 
   await prisma.communityMember.upsert({
-    where: { communityId_userId: { communityId: spotterHubCommunity.id, userId: alice.id } },
+    where: { communityId_userId: { communityId: spotterSpaceCommunity.id, userId: alice.id } },
     update: {},
-    create: { communityId: spotterHubCommunity.id, userId: alice.id, role: 'owner' },
+    create: { communityId: spotterSpaceCommunity.id, userId: alice.id, role: 'owner' },
   });
   await prisma.communityMember.upsert({
     where: { communityId_userId: { communityId: pacificNwCommunity.id, userId: alice.id } },
@@ -179,9 +179,9 @@ async function main() {
     create: { communityId: pacificNwCommunity.id, userId: alice.id, role: 'member' },
   });
   await prisma.communityMember.upsert({
-    where: { communityId_userId: { communityId: spotterHubCommunity.id, userId: bob.id } },
+    where: { communityId_userId: { communityId: spotterSpaceCommunity.id, userId: bob.id } },
     update: {},
-    create: { communityId: spotterHubCommunity.id, userId: bob.id, role: 'moderator' },
+    create: { communityId: spotterSpaceCommunity.id, userId: bob.id, role: 'moderator' },
   });
   await prisma.communityMember.upsert({
     where: { communityId_userId: { communityId: pacificNwCommunity.id, userId: bob.id } },
@@ -189,15 +189,15 @@ async function main() {
     create: { communityId: pacificNwCommunity.id, userId: bob.id, role: 'owner' },
   });
 
-  console.log(`  ✅ Communities: spotterhub, pacific-nw-spotters`);
+  console.log(`  ✅ Communities: spotterspace, pacific-nw-spotters`);
 
   // ─── Forum Categories ───────────────────────────────────────────────────
 
   const spotterHubGeneralCategory = await prisma.forumCategory.upsert({
-    where: { communityId_slug: { communityId: spotterHubCommunity.id, slug: 'general' } },
+    where: { communityId_slug: { communityId: spotterSpaceCommunity.id, slug: 'general' } },
     update: {},
     create: {
-      communityId: spotterHubCommunity.id,
+      communityId: spotterSpaceCommunity.id,
       name: 'General Discussion',
       description: 'Talk about anything aviation photography related.',
       slug: 'general',
@@ -206,10 +206,10 @@ async function main() {
   });
 
   const spotterHubGearCategory = await prisma.forumCategory.upsert({
-    where: { communityId_slug: { communityId: spotterHubCommunity.id, slug: 'gear' } },
+    where: { communityId_slug: { communityId: spotterSpaceCommunity.id, slug: 'gear' } },
     update: {},
     create: {
-      communityId: spotterHubCommunity.id,
+      communityId: spotterSpaceCommunity.id,
       name: 'Gear & Technique',
       description: 'Discuss cameras, lenses, and shooting techniques.',
       slug: 'gear',
@@ -241,7 +241,7 @@ async function main() {
       id: thread1Id,
       categoryId: spotterHubGeneralCategory.id,
       authorId: charlie.id,
-      title: 'Welcome to SpotterHub — introduce yourself!',
+      title: 'Welcome to SpotterSpace — introduce yourself!',
       isPinned: true,
       postCount: 2,
     },
@@ -255,7 +255,7 @@ async function main() {
       id: post1Id,
       threadId: thread1Id,
       authorId: charlie.id,
-      body: "Welcome to SpotterHub! This is the place to introduce yourself to the community. Tell us about your favorite aircraft, your home airport, or what got you into aviation photography.\n\nLooking forward to seeing your shots!",
+      body: "Welcome to SpotterSpace! This is the place to introduce yourself to the community. Tell us about your favorite aircraft, your home airport, or what got you into aviation photography.\n\nLooking forward to seeing your shots!",
     },
   });
 
@@ -348,7 +348,7 @@ async function main() {
     update: {},
     create: {
       id: event2Id,
-      communityId: spotterHubCommunity.id,
+      communityId: spotterSpaceCommunity.id,
       organizerId: alice.id,
       title: 'LAX Twilight Session',
       description: "Evening spotting at In-N-Out airfield. We'll be gathering near the fence on arrivals view. Bring your wide angles.",
@@ -385,7 +385,7 @@ async function main() {
   // ─── Sample Photos ────────────────────────────────────────────────────
 
   const S3_ENDPOINT = process.env.S3_ENDPOINT ?? 'http://localhost:4566';
-  const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterhub-photos';
+  const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterspace-photos';
   const s3Base = `${S3_ENDPOINT}/${S3_BUCKET}`;
 
   const samplePhotos = [

@@ -1,4 +1,4 @@
-import { Prisma } from '@spotterhub/db';
+import { Prisma } from '@spotterspace/db';
 
 import type { Context } from '../context.js';
 

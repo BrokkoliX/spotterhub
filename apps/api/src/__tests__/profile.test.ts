@@ -214,12 +214,12 @@ describe('Profile: updateAvatar', () => {
     const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
 
     const res = await server.executeOperation(
-      { query: UPDATE_AVATAR, variables: { avatarUrl: 'http://localhost:4566/spotterhub-photos/avatar.jpg' } },
+      { query: UPDATE_AVATAR, variables: { avatarUrl: 'http://localhost:4566/spotterspace-photos/avatar.jpg' } },
       { contextValue: ctx },
     );
 
     const data = (res.body as any).singleResult.data;
-    expect(data.updateAvatar.avatarUrl).toBe('http://localhost:4566/spotterhub-photos/avatar.jpg');
+    expect(data.updateAvatar.avatarUrl).toBe('http://localhost:4566/spotterspace-photos/avatar.jpg');
   });
 
   it('creates profile if none exists and sets avatar', async () => {
@@ -227,12 +227,12 @@ describe('Profile: updateAvatar', () => {
     const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
 
     const res = await server.executeOperation(
-      { query: UPDATE_AVATAR, variables: { avatarUrl: 'http://localhost:4566/spotterhub-photos/new.jpg' } },
+      { query: UPDATE_AVATAR, variables: { avatarUrl: 'http://localhost:4566/spotterspace-photos/new.jpg' } },
       { contextValue: ctx },
     );
 
     const data = (res.body as any).singleResult.data;
-    expect(data.updateAvatar.avatarUrl).toBe('http://localhost:4566/spotterhub-photos/new.jpg');
+    expect(data.updateAvatar.avatarUrl).toBe('http://localhost:4566/spotterspace-photos/new.jpg');
   });
 
   it('requires authentication', async () => {
@@ -257,7 +257,7 @@ describe('Profile: me query with profile', () => {
         userId: user.id,
         displayName: 'Bob',
         bio: 'Spotter',
-        avatarUrl: 'http://localhost:4566/spotterhub-photos/bob.jpg',
+        avatarUrl: 'http://localhost:4566/spotterspace-photos/bob.jpg',
         locationRegion: 'Europe',
         experienceLevel: 'intermediate',
         gear: 'Sony A7IV',
@@ -278,7 +278,7 @@ describe('Profile: me query with profile', () => {
     expect(data.me.profile).toMatchObject({
       displayName: 'Bob',
       bio: 'Spotter',
-      avatarUrl: 'http://localhost:4566/spotterhub-photos/bob.jpg',
+      avatarUrl: 'http://localhost:4566/spotterspace-photos/bob.jpg',
       locationRegion: 'Europe',
       experienceLevel: 'intermediate',
       gear: 'Sony A7IV',

@@ -1,5 +1,5 @@
 import type { StandaloneServerContextFunctionArgument } from '@apollo/server/standalone';
-import { prisma } from '@spotterhub/db';
+import { prisma } from '@spotterspace/db';
 import jwt from 'jsonwebtoken';
 
 import { createLoaders, type Loaders } from './loaders.js';

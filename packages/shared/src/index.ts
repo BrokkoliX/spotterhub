@@ -1,6 +1,6 @@
 /**
- * @module @spotterhub/shared
- * Shared types, constants, and validation logic used across the SpotterHub monorepo.
+ * @module @spotterspace/shared
+ * Shared types, constants, and validation logic used across the SpotterSpace monorepo.
  */
 
 // ─── Enums ───────────────────────────────────────────────────────────────────

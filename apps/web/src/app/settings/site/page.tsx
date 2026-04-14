@@ -15,7 +15,7 @@ import {
 import styles from './page.module.css';
 
 const S3_ENDPOINT = 'http://localhost:4566';
-const S3_BUCKET = 'spotterhub-photos';
+const S3_BUCKET = 'spotterspace-photos';
 
 export default function SiteSettingsPage() {
   const { user, ready } = useAuth();
@@ -152,7 +152,7 @@ export default function SiteSettingsPage() {
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Homepage Banner</h2>
             <p className={styles.sectionDesc}>
-              Shown at the top of the SpotterHub homepage. Recommended: 1500×400px or similar wide image.
+              Shown at the top of the SpotterSpace homepage. Recommended: 1500×400px or similar wide image.
             </p>
             <div className={styles.bannerPreview}>
               {bannerUrl ? (

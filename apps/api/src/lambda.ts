@@ -18,10 +18,11 @@ async function initSecrets(): Promise<void> {
   const { SecretsManagerClient } = await import('@aws-sdk/client-secrets-manager');
   const client = new SecretsManagerClient({ region: process.env['AWS_REGION_NAME'] || 'us-east-1' });
 
-  const stage = process.env['STAGE'] ?? 'dev';
+  const dbSecretId = process.env['DB_SECRET_ARN'] ?? 'spotterspace/DATABASE_URL';
+  const jwtSecretId = process.env['JWT_SECRET_ARN'] ?? 'spotterspace/JWT_SECRET';
   const [dbResult, jwtResult] = await Promise.all([
-    client.send(new GetSecretValueCommand({ SecretId: `spotterspace/${stage}/DATABASE_URL` })),
-    client.send(new GetSecretValueCommand({ SecretId: `spotterspace/${stage}/JWT_SECRET` })),
+    client.send(new GetSecretValueCommand({ SecretId: dbSecretId })),
+    client.send(new GetSecretValueCommand({ SecretId: jwtSecretId })),
   ]);
 
   process.env.DATABASE_URL = dbResult.SecretString ?? '';
@@ -104,7 +105,7 @@ export const handler = async (event: {
     // Create context directly (bypass StandaloneServerContextFunctionArgument type requirement)
     const authHeader = headers.authorization ?? headers.Authorization ?? '';
     const ctx: Context = {
-      prisma: (await import('@spotterhub/db')).prisma,
+      prisma: (await import('@spotterspace/db')).prisma,
       user: null, // Will be populated by createContext logic below
       loaders: null as unknown as import('./loaders.js').Loaders,
     };

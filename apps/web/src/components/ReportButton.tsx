@@ -100,7 +100,7 @@ export function ReportButton({ targetType, targetId }: ReportButtonProps) {
               <>
                 <h3 className={styles.modalTitle}>Report Submitted</h3>
                 <p className={styles.success}>
-                  Thank you for helping keep SpotterHub safe. Our team will review this report.
+                  Thank you for helping keep SpotterSpace safe. Our team will review this report.
                 </p>
                 <div className={styles.actions}>
                   <button type="button" className={styles.cancelBtn} onClick={handleClose}>

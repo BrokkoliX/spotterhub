@@ -1,5 +1,5 @@
 {
-  "app": "node dist/bin/spotterhub.js",
+  "app": "node dist/bin/spotterspace.js",
   "watch": {
     "include": ["**"],
     "exclude": ["node_modules", "dist"]

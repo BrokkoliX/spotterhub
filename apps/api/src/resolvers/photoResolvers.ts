@@ -1,4 +1,4 @@
-import { validateUpload } from '@spotterhub/shared';
+import { validateUpload } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
 

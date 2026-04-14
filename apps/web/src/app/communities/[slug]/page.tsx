@@ -136,7 +136,7 @@ export default function CommunityPage() {
       }
       // Save the S3 object URL as the banner
       const S3_ENDPOINT = 'http://localhost:4566';
-      const S3_BUCKET = 'spotterhub-photos';
+      const S3_BUCKET = 'spotterspace-photos';
       const bannerUrl = `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
       await updateCommunity({
         id: community.id,
@@ -271,7 +271,7 @@ export default function CommunityPage() {
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
               const S3_ENDPOINT = 'http://localhost:4566';
-              const S3_BUCKET = 'spotterhub-photos';
+              const S3_BUCKET = 'spotterspace-photos';
               return `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
             }}
             onAvatarUpload={async (file: File) => {
@@ -289,7 +289,7 @@ export default function CommunityPage() {
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
               const S3_ENDPOINT = 'http://localhost:4566';
-              const S3_BUCKET = 'spotterhub-photos';
+              const S3_BUCKET = 'spotterspace-photos';
               return `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
             }}
             onDelete={async () => {

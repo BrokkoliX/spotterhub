@@ -11,7 +11,7 @@ import sharp from 'sharp';
 const prisma = new PrismaClient();
 
 const S3_ENDPOINT = process.env.S3_ENDPOINT ?? 'http://localhost:4566';
-const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterhub-photos';
+const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterspace-photos';
 const S3_REGION = process.env.S3_REGION ?? 'us-east-1';
 
 const s3 = new S3Client({
@@ -75,7 +75,7 @@ async function generateImage(
 }
 
 function extractS3Key(url: string): string {
-  // URL format: http://localhost:4566/spotterhub-photos/uploads/...
+  // URL format: http://localhost:4566/spotterspace-photos/uploads/...
   const bucketPrefix = `${S3_ENDPOINT}/${S3_BUCKET}/`;
   return url.replace(bucketPrefix, '');
 }

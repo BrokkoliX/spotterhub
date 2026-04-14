@@ -191,7 +191,7 @@ export function Header() {
       <div className={styles.inner}>
         <Link href="/" className={styles.logo}>
           <span className={styles.logoIcon}>✈️</span>
-          <span>SpotterHub</span>
+          <span>SpotterSpace</span>
         </Link>
 
         <nav className={styles.nav}>

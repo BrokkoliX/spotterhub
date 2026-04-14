@@ -6,7 +6,7 @@ import { Providers } from '@/lib/providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SpotterHub — Aviation Photography Community',
+  title: 'SpotterSpace — Aviation Photography Community',
   description:
     'The premier platform for aviation photographers to share, discover, and connect.',
 };

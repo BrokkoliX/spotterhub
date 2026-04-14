@@ -16,7 +16,7 @@ test.describe('Homepage', () => {
   });
 
   test('loads the homepage with hero banner and filter bar', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'SpotterHub' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'SpotterSpace' })).toBeVisible();
     await expect(page.getByPlaceholder('Aircraft type (e.g. Boeing 747)')).toBeVisible();
     await expect(page.getByPlaceholder('Airport (e.g. KLAX)')).toBeVisible();
     await expect(page.getByPlaceholder('Airline')).toBeVisible();

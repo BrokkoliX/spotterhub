@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { validateUsername } from '@spotterhub/shared';
+import { validateUsername } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
 import { signToken } from '../auth/jwt.js';

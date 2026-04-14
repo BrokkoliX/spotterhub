@@ -1666,7 +1666,7 @@ export type UploadUrlPayload = {
   url: Scalars['String']['output'];
 };
 
-/** A registered SpotterHub user. */
+/** A registered SpotterSpace user. */
 export type User = {
   __typename?: 'User';
   createdAt: Scalars['String']['output'];

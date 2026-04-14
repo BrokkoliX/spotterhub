@@ -12,7 +12,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterhub-photos';
+const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterspace-photos';
 const S3_REGION = process.env.S3_REGION ?? 'us-east-1';
 const S3_ENDPOINT = process.env.S3_ENDPOINT; // e.g. http://localhost:4566 for LocalStack
 
