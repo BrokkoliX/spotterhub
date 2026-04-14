@@ -1,0 +1,16 @@
+{
+  "SpotterSpace-dev-Stack": {
+    "DBUrlSecretArn": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterspace/DATABASE_URL-fFpNor",
+    "WebServiceArn": "arn:aws:apprunner:us-east-1:654654553862:service/spotterspace-dev-web/a7c685e155424c6585b98d42e1c33c7d",
+    "ApiEcrRepositoryUri": "654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api",
+    "WebServiceUrl": "wjigqzbc7x.us-east-1.awsapprunner.com",
+    "VpcId": "vpc-09a6870488b73260e",
+    "WebEcrRepositoryUri": "654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web",
+    "AWSRegion": "us-east-1",
+    "Stage": "dev",
+    "ApiServiceUrl": "japveibkai.us-east-1.awsapprunner.com",
+    "PhotosBucketName": "spotterspace-photos",
+    "JWTSecretArn": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterspace/JWT_SECRET-V8C46k",
+    "ApiServiceArn": "arn:aws:apprunner:us-east-1:654654553862:service/spotterspace-dev-api/b1cecd8dfee645da86eab6ab95e866aa"
+  }
+}

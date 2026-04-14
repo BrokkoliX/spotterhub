@@ -1,0 +1,23 @@
+{
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterhub-dev-api:v3",
+      "ImageRepositoryType": "ECR",
+      "ImageConfiguration": {
+        "Port": "4000",
+        "RuntimeEnvironmentVariables": {
+          "API_PORT": "4000",
+          "AWS_REGION": "us-east-1",
+          "NODE_ENV": "production",
+          "PHOTOS_BUCKET_NAME": "spotterspace-photos",
+          "STAGE": "dev"
+        },
+        "RuntimeEnvironmentSecrets": {}
+      }
+    },
+    "AutoDeploymentsEnabled": false,
+    "AuthenticationConfiguration": {
+      "AccessRoleArn": "arn:aws:iam::654654553862:role/spotterspace-dev-apprunner-access"
+    }
+  }
+}

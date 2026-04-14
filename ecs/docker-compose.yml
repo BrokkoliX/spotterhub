@@ -1,0 +1,124 @@
+version: "3.9"
+
+x-common-env: &common-env
+  AWS_REGION: us-east-1
+  NODE_ENV: production
+  STAGE: dev
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      platform: linux/amd64
+    image: 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-api:latest
+    ports:
+      - "4000:4000"
+    environment:
+      <<: *common-env
+      API_PORT: 4000
+      DATABASE_URL: "${DATABASE_URL}"
+      JWT_SECRET: "${JWT_SECRET}"
+      PHOTOS_BUCKET_NAME: spotterspace-photos
+    secrets:
+      - DATABASE_URL
+      - JWT_SECRET
+    x-aws-cloudformation:
+      Resources:
+        TaskDefinition:
+          Properties:
+            ExecutionRoleArn: arn:aws:iam::654654553862:role/ecsTaskExecutionRole
+            TaskRoleArn: arn:aws:iam::654654553862:role/ecsSpotterSpaceTaskRole
+            NetworkMode: awsvpc
+            RequiresCompatibilities:
+              - FARGATE
+            Cpu: "1024"
+            Memory: "2048"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "2G"
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      platform: linux/amd64
+      args:
+        NEXT_PUBLIC_API_URL: https://api.spotterspace.com/graphql
+        NEXT_PUBLIC_MAPBOX_TOKEN: "${MAPBOX_TOKEN}"
+    image: 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-web:latest
+    ports:
+      - "3000:3000"
+    environment:
+      <<: *common-env
+      NEXT_PUBLIC_API_URL: https://api.spotterspace.com/graphql
+    x-aws-cloudformation:
+      Resources:
+        TaskDefinition:
+          Properties:
+            ExecutionRoleArn: arn:aws:iam::654654553862:role/ecsTaskExecutionRole
+            NetworkMode: awsvpc
+            RequiresCompatibilities:
+              - FARGATE
+            Cpu: "1024"
+            Memory: "2048"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "2G"
+
+secrets:
+  DATABASE_URL:
+    name: "spotterhub/DATABASE_URL"
+    external: true
+  JWT_SECRET:
+    name: "spotterhub/JWT_SECRET"
+    external: true
+
+x-aws-vpc:
+  cluster: spotterspace-cluster
+  loadbalancer: spotterspace-alb
+  subnets:
+    - subnet-022c0065046782a64
+    - subnet-082c94f0897298f6e
+    - subnet-096b774ed307c85ed
+  security_groups:
+    - name: ecs-spotterSpace-Api-sg
+      description: Security group for SpotterSpace API
+      ingress:
+        - from_port: 4000
+          to_port: 4000
+          protocol: tcp
+          cidr: 0.0.0.0/0
+      egress:
+        - from_port: 0
+          to_port: 0
+          protocol: all
+          cidr: 0.0.0.0/0
+    - name: ecs-spotterSpace-Web-sg
+      description: Security group for SpotterSpace Web
+      ingress:
+        - from_port: 3000
+          to_port: 3000
+          protocol: tcp
+          cidr: 0.0.0.0/0
+      egress:
+        - from_port: 0
+          to_port: 0
+          protocol: all
+          cidr: 0.0.0.0/0

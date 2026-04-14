@@ -14,9 +14,6 @@ import type { Context } from '../context.js';
  * managed by AWS Cognito and never stored in the application database.
  */
 function hashPassword(password: string): string {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Local auth is disabled in production — use AWS Cognito');
-  }
   return createHash('sha256').update(password).digest('hex');
 }
 

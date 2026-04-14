@@ -1,17 +1,15 @@
 // SpotterSpace AWS Infrastructure — CDK v2
-// Architecture: Dual App Runner (web + API) → RDS PostgreSQL via VPC Connector
-// Deployment: CDK bootstrap + cdk deploy (see .github/workflows/deploy.yml)
+// Architecture: ECS Fargate (web + API) → ALB → RDS via VPC
 import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import {
-  aws_apprunner as apprunner,
   aws_certificatemanager as acm,
-  aws_cloudfront as cloudfront,
-  aws_cloudfront_origins as origins,
   aws_ec2 as ec2,
   aws_ecr as ecr,
+  aws_ecs as ecs,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_route53 as route53,
-  aws_route53_targets as targets,
   aws_secretsmanager as secretsmanager,
   aws_s3 as s3,
 } from 'aws-cdk-lib';
@@ -19,354 +17,415 @@ import { Construct } from 'constructs';
 
 export interface SpotterSpaceStackProps extends StackProps {
   stage: 'dev' | 'prod';
-  /** Root domain name, e.g. "spotterspace.com". Enables CloudFront + ACM + Route 53. */
   domainName?: string;
-  /** Route 53 hosted zone ID for the domain. Required when domainName is set. */
   hostedZoneId?: string;
-  /** VPC ID where the RDS instance lives. App Runner VPC Connector will be created here. */
   vpcId: string;
+  albArn?: string;
+  ecsSecurityGroupId?: string;
+  ecsSubnetIds?: string[];
 }
 
 export class SpotterSpaceStack extends Stack {
   constructor(scope: Construct, id: string, props: SpotterSpaceStackProps) {
     super(scope, id, props);
 
-    const { stage, domainName, hostedZoneId, vpcId } = props;
+    const {
+      stage,
+      domainName,
+      hostedZoneId,
+      vpcId,
+      albArn,
+      ecsSecurityGroupId,
+      ecsSubnetIds,
+    } = props;
 
-    // ─── Import Existing VPC (contains the RDS instance) ──────────────────
+    // ─── VPC ───────────────────────────────────────────────────────────────
     const vpc = ec2.Vpc.fromLookup(this, 'ExistingVpc', { vpcId });
 
-    // ─── S3 Bucket for Photos ──────────────────────────────────────────────
+    // Use only private subnets for ECS tasks (so they can reach Secrets Manager via interface endpoint)
+    const subnetIds = ecsSubnetIds ?? [
+      'subnet-082c94f0897298f6e',
+      'subnet-096b774ed307c85ed',
+    ];
+
+    const ecsSgId = ecsSecurityGroupId ?? 'sg-08e5864c53710a095';
+    const ecsSg = ec2.SecurityGroup.fromSecurityGroupId(this, 'EcsSecurityGroup', ecsSgId);
+
+    // ─── Additional SG Rules (previously manual) ───────────────────────────
+    // Secrets Manager endpoint SG — allow ECS to pull secrets
+    const secretsEndpointSg = ec2.SecurityGroup.fromSecurityGroupId(
+      this,
+      'SecretsEndpointSG',
+      'sg-0ddf2cd67fa1b09f0',
+    );
+    secretsEndpointSg.addIngressRule(ecsSg, ec2.Port.tcp(443), 'Allow ECS to reach Secrets Manager');
+
+    // RDS SG — allow ECS to connect to database
+    const rdsSg = ec2.SecurityGroup.fromSecurityGroupId(this, 'RdsSG', 'sg-0925439b428efdf13');
+    rdsSg.addIngressRule(ecsSg, ec2.Port.tcp(5432), 'Allow ECS to reach RDS');
+
+    // ECS/ALB SG — self-referencing so ALB can forward to ECS tasks
+    ecsSg.addIngressRule(ecsSg, ec2.Port.allTraffic(), 'Allow ALB to ECS traffic');
+
+    // ─── ALB ──────────────────────────────────────────────────────────────
+    const albArnStr = albArn ?? 'arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121';
+    const alb = elbv2.ApplicationLoadBalancer.fromLookup(this, 'ExistingALB', {
+      loadBalancerArn: albArnStr,
+    });
+
+    // ─── S3 Bucket ─────────────────────────────────────────────────────────
     const photosBucket = s3.Bucket.fromBucketName(
       this,
       'PhotosBucket',
       process.env['S3_BUCKET_NAME'] ?? 'spotterspace-photos',
     );
 
-    // ─── Secrets Manager ─────────────────────────────────────────────────
-    // Import existing secrets (created manually, shared by API container).
-    // Must use fromSecretCompleteArn with full ARN (including random suffix)
-    // so CDK generates correct IAM policies.
+    // ─── Secrets ───────────────────────────────────────────────────────────
     const dbUrlSecret = secretsmanager.Secret.fromSecretCompleteArn(
       this,
       'DBUrlSecret',
-      'arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterspace/DATABASE_URL-fFpNor',
+      'arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/DATABASE_URL-fFpNor',
     );
 
     const jwtSecret = secretsmanager.Secret.fromSecretCompleteArn(
       this,
       'JWTSecret',
-      'arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterspace/JWT_SECRET-V8C46k',
+      'arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/JWT_SECRET-V8C46k',
     );
 
-    // ─── ECR Repositories (import existing) ──────────────────────────────
-    const webEcrRepo = ecr.Repository.fromRepositoryName(
+    // ─── ECR Repos ─────────────────────────────────────────────────────────
+    const webEcrRepo = ecr.Repository.fromRepositoryName(this, 'WebEcrRepo', `spotterspace-${stage}-web`);
+    const apiEcrRepo = ecr.Repository.fromRepositoryName(this, 'ApiEcrRepo', `spotterspace-${stage}-api`);
+
+    // ─── IAM Roles ─────────────────────────────────────────────────────────
+    const taskExecutionRole = iam.Role.fromRoleArn(
       this,
-      'WebEcrRepo',
-      `spotterspace-${stage}-web`,
+      'TaskExecutionRole',
+      'arn:aws:iam::654654553862:role/ecsTaskExecutionRole',
     );
 
-    const apiEcrRepo = ecr.Repository.fromRepositoryName(
+    const taskRole = iam.Role.fromRoleArn(
       this,
-      'ApiEcrRepo',
-      `spotterspace-${stage}-api`,
+      'TaskRole',
+      'arn:aws:iam::654654553862:role/ecsSpotterSpaceTaskRole',
     );
 
-    // ─── Security Group for App Runner VPC Connector ─────────────────────
-    const appRunnerSg = new ec2.SecurityGroup(this, 'AppRunnerVpcConnectorSG', {
-      vpc,
-      description: 'Security group for App Runner VPC Connector - allows egress to RDS',
-      allowAllOutbound: true,
+    // ─── Log Groups ────────────────────────────────────────────────────────
+    const apiLogGroup = new LogGroup(this, 'ApiLogGroup', {
+      logGroupName: `/ecs/spotterspace-${stage}/api`,
+      retention: RetentionDays.ONE_WEEK,
     });
 
-    // Allow App Runner SG to reach the RDS security group on port 5432
-    const rdsSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
-      this,
-      'RdsSecurityGroup',
-      'sg-0925439b428efdf13',
-    );
-    rdsSecurityGroup.addIngressRule(
-      appRunnerSg,
-      ec2.Port.tcp(5432),
-      'Allow App Runner VPC Connector to reach RDS',
-    );
-
-    // Allow App Runner SG to reach the Secrets Manager VPC endpoint on port 443
-    const secretsEndpointSg = ec2.SecurityGroup.fromSecurityGroupId(
-      this,
-      'SecretsEndpointSG',
-      'sg-0ddf2cd67fa1b09f0',
-    );
-    secretsEndpointSg.addIngressRule(
-      appRunnerSg,
-      ec2.Port.tcp(443),
-      'Allow App Runner VPC Connector to reach Secrets Manager VPC endpoint',
-    );
-
-    // ─── App Runner VPC Connector (shared by web + API) ──────────────────
-    // Place in the private subnets (which have NAT egress for outbound internet).
-    // For imported VPCs, CDK classifies subnets as "Private" (not PRIVATE_WITH_EGRESS),
-    // so we select by group name which matches the CDK context cache.
-    const privateSubnets = vpc.selectSubnets({ subnetGroupName: 'Private' });
-    const vpcConnector = new apprunner.CfnVpcConnector(this, 'VpcConnector', {
-      vpcConnectorName: `spotterspace-${stage}-vpc-connector`,
-      subnets: privateSubnets.subnetIds,
-      securityGroups: [appRunnerSg.securityGroupId],
+    const webLogGroup = new LogGroup(this, 'WebLogGroup', {
+      logGroupName: `/ecs/spotterspace-${stage}/web`,
+      retention: RetentionDays.ONE_WEEK,
     });
 
-    // ─── App Runner Access Role (ECR pull — shared) ──────────────────────
-    const appRunnerAccessRole = new iam.Role(this, 'AppRunnerAccessRole', {
-      assumedBy: new iam.ServicePrincipal('build.apprunner.amazonaws.com'),
-      roleName: `spotterspace-${stage}-apprunner-access`,
+    // ─── Target Groups (Cfn for dependency ordering) ─────────────────────
+    const apiTG = new elbv2.CfnTargetGroup(this, 'ApiTargetGroup', {
+      name: `spotterspace-${stage}-api-tg`,
+      port: 4000,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      vpcId,
+      targetType: 'ip',
+      healthCheckPath: '/health',
+      healthCheckIntervalSeconds: 10,
+      healthyThresholdCount: 2,
+      unhealthyThresholdCount: 3,
     });
 
-    appRunnerAccessRole.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['ecr:GetAuthorizationToken'],
-        resources: ['*'],
-      }),
-    );
-
-    appRunnerAccessRole.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'ecr:BatchCheckLayerAvailability',
-          'ecr:GetDownloadUrlForLayer',
-          'ecr:BatchGetImage',
-        ],
-        resources: [webEcrRepo.repositoryArn, apiEcrRepo.repositoryArn],
-      }),
-    );
-
-    // ─── App Runner Instance Role for API (Secrets Manager + S3) ─────────
-    const apiInstanceRole = new iam.Role(this, 'ApiInstanceRole', {
-      assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
-      roleName: `spotterspace-${stage}-api-instance`,
+    const webTG = new elbv2.CfnTargetGroup(this, 'WebTargetGroup', {
+      name: `spotterspace-${stage}-web-tg`,
+      port: 3000,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      vpcId,
+      targetType: 'ip',
+      healthCheckPath: '/api/health',
+      healthCheckIntervalSeconds: 10,
+      healthyThresholdCount: 2,
+      unhealthyThresholdCount: 3,
     });
 
-    apiInstanceRole.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: [dbUrlSecret.secretArn, jwtSecret.secretArn],
-      }),
-    );
-
-    apiInstanceRole.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['s3:GetObject', 's3:PutObject', 's3:ListBucket', 's3:DeleteObject'],
-        resources: [photosBucket.bucketArn, `${photosBucket.bucketArn}/*`],
-      }),
-    );
-
-    // ─── API App Runner Service ──────────────────────────────────────────
-    const apiService = new apprunner.CfnService(this, 'ApiService', {
-      serviceName: `spotterspace-${stage}-api`,
-      sourceConfiguration: {
-        authenticationConfiguration: {
-          accessRoleArn: appRunnerAccessRole.roleArn,
+    // ─── ALB Listener (HTTP :80) ───────────────────────────────────────────
+    // Created BEFORE ECS services so target groups are registered
+    const httpListener = new elbv2.CfnListener(this, 'HttpListener', {
+      loadBalancerArn: alb.loadBalancerArn,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      port: 80,
+      defaultActions: [
+        {
+          type: 'forward',
+          targetGroupArn: webTG.ref,
         },
-        autoDeploymentsEnabled: false,
-        imageRepository: {
-          imageIdentifier: `${apiEcrRepo.repositoryUri}:latest`,
-          imageRepositoryType: 'ECR',
-          imageConfiguration: {
-            port: '4000',
-            runtimeEnvironmentVariables: [
-              { name: 'NODE_ENV', value: 'production' },
-              { name: 'STAGE', value: stage },
-              { name: 'AWS_REGION', value: this.region },
-              { name: 'API_PORT', value: '4000' },
-              { name: 'PHOTOS_BUCKET_NAME', value: photosBucket.bucketName },
-            ],
+      ],
+    });
+
+    // Host-based rules on HTTP listener (created after listener)
+    const apiListenerRule = new elbv2.CfnListenerRule(this, 'ApiListenerRule', {
+      listenerArn: httpListener.ref,
+      priority: 100,
+      conditions: [
+        {
+          field: 'host-header',
+          hostHeaderConfig: {
+            values: [`api.${domainName ?? 'spotterspace.com'}`],
           },
         },
-      },
-      instanceConfiguration: {
-        cpu: '1 vCPU',
-        memory: '2 GB',
-        instanceRoleArn: apiInstanceRole.roleArn,
-      },
-      healthCheckConfiguration: {
-        path: '/health',
-        protocol: 'HTTP',
-        interval: 10,
-        healthyThreshold: 2,
-        unhealthyThreshold: 3,
-      },
-      networkConfiguration: {
-        egressConfiguration: {
-          egressType: 'VPC',
-          vpcConnectorArn: vpcConnector.attrVpcConnectorArn,
+      ],
+      actions: [
+        {
+          type: 'forward',
+          targetGroupArn: apiTG.ref,
         },
-      },
+      ],
     });
 
-    // The API service URL (e.g. "abc123.us-east-1.awsapprunner.com")
-    const apiServiceUrl = apiService.getAtt('ServiceUrl').toString();
-
-    // ─── Web App Runner Service ──────────────────────────────────────────
-    const webService = new apprunner.CfnService(this, 'WebService', {
-      serviceName: `spotterspace-${stage}-web`,
-      sourceConfiguration: {
-        authenticationConfiguration: {
-          accessRoleArn: appRunnerAccessRole.roleArn,
-        },
-        autoDeploymentsEnabled: false,
-        imageRepository: {
-          imageIdentifier: `${webEcrRepo.repositoryUri}:latest`,
-          imageRepositoryType: 'ECR',
-          imageConfiguration: {
-            port: '3000',
-            runtimeEnvironmentVariables: [
-              {
-                name: 'NEXT_PUBLIC_API_URL',
-                value: domainName
-                  ? `https://api.${domainName}/graphql`
-                  : `https://${apiServiceUrl}/graphql`,
-              },
-              { name: 'NODE_ENV', value: 'production' },
-              { name: 'HOSTNAME', value: '0.0.0.0' },
-            ],
+    const webListenerRule = new elbv2.CfnListenerRule(this, 'WebListenerRule', {
+      listenerArn: httpListener.ref,
+      priority: 200,
+      conditions: [
+        {
+          field: 'host-header',
+          hostHeaderConfig: {
+            values: [`www.${domainName ?? 'spotterspace.com'}`],
           },
         },
-      },
-      instanceConfiguration: {
-        cpu: '1 vCPU',
-        memory: '2 GB',
-      },
-      healthCheckConfiguration: {
-        path: '/api/health',
-        protocol: 'HTTP',
-        interval: 10,
-        healthyThreshold: 2,
-        unhealthyThreshold: 3,
-      },
-      networkConfiguration: {
-        egressConfiguration: {
-          egressType: 'DEFAULT',
+      ],
+      actions: [
+        {
+          type: 'forward',
+          targetGroupArn: webTG.ref,
         },
-      },
+      ],
     });
 
-    const webServiceUrl = webService.getAtt('ServiceUrl').toString();
+    // ─── HTTPS Listener (443) ──────────────────────────────────────────────
+    // CDK will create the cert and add DNS validation records to Route53
+    let httpsListener: elbv2.CfnListener | null = null;
 
-    // ─── Custom Domain: CloudFront + ACM + Route 53 ────────────────────────
-    // Apex domain (spotterspace.com) → 301 redirect → www.spotterspace.com
-    // www.spotterspace.com → CNAME → Web App Runner
-    // api.spotterspace.com → CNAME → API App Runner
     if (domainName && hostedZoneId) {
-      const wwwDomain = `www.${domainName}`;
-      const apiDomain = `api.${domainName}`;
-
-      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HttpsHostedZone', {
         hostedZoneId,
         zoneName: domainName,
       });
 
-      // ACM certificate for root + wildcard (must be in us-east-1 for CloudFront)
       const certificate = new acm.Certificate(this, 'SiteCertificate', {
         domainName,
         subjectAlternativeNames: [`*.${domainName}`],
         validation: acm.CertificateValidation.fromDns(hostedZone),
       });
 
-      // CloudFront Function: redirect apex → www
-      const redirectFunction = new cloudfront.Function(this, 'ApexRedirectFunction', {
-        functionName: `spotterspace-${stage}-apex-redirect`,
-        code: cloudfront.FunctionCode.fromInline(`
-function handler(event) {
-  var request = event.request;
-  var host = request.headers.host.value;
-  if (host === "${domainName}") {
-    return {
-      statusCode: 301,
-      statusDescription: "Moved Permanently",
-      headers: {
-        location: { value: "https://${wwwDomain}" + request.uri }
-      }
-    };
-  }
-  return request;
-}
-        `.trim()),
-        comment: `Redirect ${domainName} to ${wwwDomain}`,
-        runtime: cloudfront.FunctionRuntime.JS_2_0,
+      httpsListener = new elbv2.CfnListener(this, 'HttpsListener', {
+        loadBalancerArn: alb.loadBalancerArn,
+        protocol: elbv2.ApplicationProtocol.HTTPS,
+        port: 443,
+        certificates: [{ certificateArn: certificate.certificateArn }],
+        defaultActions: [
+          {
+            type: 'forward',
+            targetGroupArn: webTG.ref,
+          },
+        ],
       });
 
-      // CloudFront distribution — apex domain only (all requests are redirected)
-      const distribution = new cloudfront.Distribution(this, 'ApexDistribution', {
-        comment: `${domainName} apex redirect to ${wwwDomain}`,
-        domainNames: [domainName],
-        certificate,
-        defaultBehavior: {
-          origin: new origins.HttpOrigin(domainName, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          functionAssociations: [
-            {
-              function: redirectFunction,
-              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+      // Host-based HTTPS rule: api.spotterspace.com → apiTG (priority 100)
+      new elbv2.CfnListenerRule(this, 'HttpsApiListenerRule', {
+        listenerArn: httpsListener.ref,
+        priority: 100,
+        conditions: [
+          {
+            field: 'host-header',
+            hostHeaderConfig: {
+              values: [`api.${domainName}`],
             },
-          ],
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-        },
-        httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
-        priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+          },
+        ],
+        actions: [
+          {
+            type: 'forward',
+            targetGroupArn: apiTG.ref,
+          },
+        ],
       });
-
-      // Route 53: apex → CloudFront (A record alias)
-      new route53.ARecord(this, 'ApexAliasRecord', {
-        zone: hostedZone,
-        recordName: domainName,
-        target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
-      });
-
-      // Route 53: www → Web App Runner (CNAME)
-      new route53.CnameRecord(this, 'WwwCnameRecord', {
-        zone: hostedZone,
-        recordName: wwwDomain,
-        domainName: webServiceUrl,
-      });
-
-      // Route 53: api → API App Runner (CNAME)
-      new route53.CnameRecord(this, 'ApiCnameRecord', {
-        zone: hostedZone,
-        recordName: apiDomain,
-        domainName: apiServiceUrl,
-      });
-
-      new CfnOutput(this, 'CertificateArn', { value: certificate.certificateArn });
-      new CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
-      new CfnOutput(this, 'DistributionDomainName', { value: distribution.distributionDomainName });
     }
 
-    // ─── CloudFormation Outputs ──────────────────────────────────────────
-    new CfnOutput(this, 'ApiServiceUrl', {
-      value: apiServiceUrl,
-      description: 'API App Runner service URL',
+    // ─── Task Definitions (Cfn) ─────────────────────────────────────────────
+    const apiTaskDef = new ecs.CfnTaskDefinition(this, 'ApiTaskDef', {
+      family: `spotterspace-${stage}-api`,
+      cpu: '1024',
+      memory: '2048',
+      networkMode: 'awsvpc',
+      requiresCompatibilities: ['FARGATE'],
+      executionRoleArn: taskExecutionRole.roleArn,
+      taskRoleArn: taskRole.roleArn,
+      containerDefinitions: [
+        {
+          name: 'api',
+          image: apiEcrRepo.repositoryUri + ':v5',
+          portMappings: [{ containerPort: 4000, protocol: 'tcp' }],
+          secrets: [
+            { name: 'DATABASE_URL', valueFrom: dbUrlSecret.secretArn + ':DATABASE_URL::' },
+            { name: 'JWT_SECRET', valueFrom: jwtSecret.secretArn + ':JWT_SECRET::' },
+          ],
+          environment: [
+            { name: 'NODE_ENV', value: 'production' },
+            { name: 'STAGE', value: stage },
+            { name: 'AWS_REGION', value: this.region },
+            { name: 'API_PORT', value: '4000' },
+            { name: 'PHOTOS_BUCKET_NAME', value: photosBucket.bucketName },
+          ],
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': apiLogGroup.logGroupName,
+              'awslogs-stream-prefix': 'api',
+              'awslogs-region': this.region,
+            },
+          },
+          healthCheck: {
+            command: ['CMD', 'wget', '-qO-', 'http://localhost:4000/health'],
+            interval: 10,
+            timeout: 5,
+            retries: 3,
+            startPeriod: 30,
+          },
+        },
+      ],
     });
 
-    new CfnOutput(this, 'WebServiceUrl', {
-      value: webServiceUrl,
-      description: 'Web App Runner service URL',
+    const webTaskDef = new ecs.CfnTaskDefinition(this, 'WebTaskDef', {
+      family: `spotterspace-${stage}-web`,
+      cpu: '1024',
+      memory: '2048',
+      networkMode: 'awsvpc',
+      requiresCompatibilities: ['FARGATE'],
+      executionRoleArn: taskExecutionRole.roleArn,
+      containerDefinitions: [
+        {
+          name: 'web',
+          image: webEcrRepo.repositoryUri + ':v6',
+          portMappings: [{ containerPort: 3000, protocol: 'tcp' }],
+          environment: [
+            { name: 'NODE_ENV', value: 'production' },
+            {
+              name: 'NEXT_PUBLIC_API_URL',
+              value: domainName
+                ? `https://api.${domainName}/graphql`
+                : 'https://api.spotterspace.com/graphql',
+            },
+            { name: 'HOSTNAME', value: '0.0.0.0' },
+          ],
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': webLogGroup.logGroupName,
+              'awslogs-stream-prefix': 'web',
+              'awslogs-region': this.region,
+            },
+          },
+          healthCheck: {
+            command: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/health'],
+            interval: 10,
+            timeout: 5,
+            retries: 3,
+            startPeriod: 30,
+          },
+        },
+      ],
     });
 
+    // ─── ECS Cluster ────────────────────────────────────────────────────────
+    const cluster = ecs.Cluster.fromClusterArn(
+      this,
+      'EcsCluster',
+      `arn:aws:ecs:${this.region}:654654553862:cluster/spotterspace-cluster`,
+    );
+
+    // ─── ECS Services — use CfnService (L2 FargateService has taskRole runtime requirement) ─
+    // loadBalancers config auto-registers task IPs with ALB target groups
+    const apiService = new ecs.CfnService(this, 'ApiService', {
+      cluster: cluster.clusterName,
+      serviceName: `spotterspace-${stage}-api`,
+      taskDefinition: apiTaskDef.ref,
+      desiredCount: 1,
+      launchType: 'FARGATE',
+      networkConfiguration: {
+        awsvpcConfiguration: {
+          subnets: subnetIds,
+          securityGroups: [ecsSgId],
+          assignPublicIp: 'DISABLED',
+        },
+      },
+      loadBalancers: [
+        {
+          containerName: 'api',
+          containerPort: 4000,
+          targetGroupArn: apiTG.ref,
+        },
+      ],
+    });
+
+    const webService = new ecs.CfnService(this, 'WebService', {
+      cluster: cluster.clusterName,
+      serviceName: `spotterspace-${stage}-web`,
+      taskDefinition: webTaskDef.ref,
+      desiredCount: 1,
+      launchType: 'FARGATE',
+      networkConfiguration: {
+        awsvpcConfiguration: {
+          subnets: subnetIds,
+          securityGroups: [ecsSgId],
+          assignPublicIp: 'DISABLED',
+        },
+      },
+      loadBalancers: [
+        {
+          containerName: 'web',
+          containerPort: 3000,
+          targetGroupArn: webTG.ref,
+        },
+      ],
+    });
+
+    // ─── Dependency ordering ───────────────────────────────────────────────
+    // ECS services must wait for ALB listeners + target groups to exist
+    apiService.addDependency(httpListener);
+    apiService.addDependency(apiTG);
+    webService.addDependency(httpListener);
+    webService.addDependency(webTG);
+    if (httpsListener) {
+      apiService.addDependency(httpsListener);
+      webService.addDependency(httpsListener);
+    }
+
+    // ─── Route 53 CNAMEs ───────────────────────────────────────────────────
+    if (domainName && hostedZoneId) {
+      const dnsHostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'DnsHostedZone', {
+        hostedZoneId,
+        zoneName: domainName,
+      });
+
+      new route53.CnameRecord(this, 'WwwCnameRecord', {
+        zone: dnsHostedZone,
+        recordName: `www.${domainName}`,
+        domainName: alb.loadBalancerDnsName,
+      });
+
+      new route53.CnameRecord(this, 'ApiCnameRecord', {
+        zone: dnsHostedZone,
+        recordName: `api.${domainName}`,
+        domainName: alb.loadBalancerDnsName,
+      });
+    }
+
+    // ─── Outputs ───────────────────────────────────────────────────────────
+    new CfnOutput(this, 'ClusterName', { value: cluster.clusterName });
     new CfnOutput(this, 'ApiServiceArn', { value: apiService.attrServiceArn });
     new CfnOutput(this, 'WebServiceArn', { value: webService.attrServiceArn });
-
-    new CfnOutput(this, 'ApiEcrRepositoryUri', { value: apiEcrRepo.repositoryUri });
-    new CfnOutput(this, 'WebEcrRepositoryUri', { value: webEcrRepo.repositoryUri });
-
-    new CfnOutput(this, 'DBUrlSecretArn', { value: dbUrlSecret.secretArn });
-    new CfnOutput(this, 'JWTSecretArn', { value: jwtSecret.secretArn });
-    new CfnOutput(this, 'PhotosBucketName', { value: photosBucket.bucketName });
-    new CfnOutput(this, 'VpcId', { value: vpc.vpcId });
+    new CfnOutput(this, 'ApiTaskDefinitionArn', { value: apiTaskDef.ref });
+    new CfnOutput(this, 'WebTaskDefinitionArn', { value: webTaskDef.ref });
+    new CfnOutput(this, 'AlbDnsName', { value: alb.loadBalancerDnsName });
+    new CfnOutput(this, 'AlbArn', { value: alb.loadBalancerArn });
     new CfnOutput(this, 'Stage', { value: stage });
-    new CfnOutput(this, 'AWSRegion', { value: this.region });
   }
 }

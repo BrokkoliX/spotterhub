@@ -1,0 +1,46 @@
+{
+  "ServiceName": "spotterspace-dev-api-final",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:v1",
+      "ImageRepositoryType": "ECR",
+      "ImageConfiguration": {
+        "Port": "4000",
+        "RuntimeEnvironmentVariables": {
+          "API_PORT": "4000",
+          "AWS_REGION": "us-east-1",
+          "NODE_ENV": "production",
+          "PHOTOS_BUCKET_NAME": "spotterspace-photos",
+          "STAGE": "dev"
+        }
+      }
+    },
+    "AutoDeploymentsEnabled": false,
+    "AuthenticationConfiguration": {
+      "AccessRoleArn": "arn:aws:iam::654654553862:role/spotterspace-dev-apprunner-access"
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1024",
+    "Memory": "2048",
+    "InstanceRoleArn": "arn:aws:iam::654654553862:role/spotterspace-dev-api-instance"
+  },
+  "HealthCheckConfiguration": {
+    "Protocol": "HTTP",
+    "Path": "/health",
+    "Interval": 10,
+    "Timeout": 2,
+    "HealthyThreshold": 2,
+    "UnhealthyThreshold": 3
+  },
+  "NetworkConfiguration": {
+    "EgressConfiguration": {
+      "EgressType": "VPC",
+      "VpcConnectorArn": "arn:aws:apprunner:us-east-1:654654553862:vpcconnector/spotterspace-dev-vpc-connector/1/ee58cba725dc461e8c14245c8c27d18e"
+    },
+    "IngressConfiguration": {
+      "IsPubliclyAccessible": true
+    },
+    "IpAddressType": "IPV4"
+  }
+}

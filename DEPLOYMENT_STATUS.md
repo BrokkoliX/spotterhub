@@ -1,6 +1,6 @@
 # SpotterHub — Deployment & Operations Guide
 
-> **Last updated:** 2026-04-14
+> **Last updated:** 2026-04-15
 > **Domain:** spotterspace.com (registered 2026-04-11 via Amazon Registrar)
 > **AWS Region:** us-east-1
 > **AWS Account:** 654654553862
@@ -37,19 +37,27 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
     CNAME                  CNAME                  A (alias)
     │                      │                      │
     ▼                      ▼                      ▼
-┌──────────────┐   ┌──────────────┐       ┌──────────────┐
-│ App Runner   │   │ App Runner   │       │ CloudFront   │
-│ Web (Next.js)│   │ API (Apollo) │       │ Apex Redirect│
-│ Port 3000    │   │ Port 4000    │       └──────────────┘
-└──────────────┘   └──────┬───────┘
-                          │ VPC Connector
-                          │ (private subnets + NAT)
-                          ▼
-                   ┌──────────────┐     ┌──────────────┐
-                   │ RDS Postgres │     │ S3 Bucket    │
-                   │ spotterspace-db│     │ spotterspace-│
-                   │ Port 5432    │     │ photos       │
-                   └──────────────┘     └──────────────┘
+┌──────────────────────────────────────┐  ┌──────────────┐
+│         ALB (spotterspace-alb)       │  │ CloudFront   │
+│  :443 HTTPS  ─── host-based rules   │  │ Apex Redirect│
+│  :80  HTTP   ─── host-based rules   │  └──────────────┘
+│  api.* → apiTG   │  www.* → webTG   │
+└──────┬───────────────────┬───────────┘
+       │                   │
+       ▼                   ▼
+┌──────────────┐   ┌──────────────┐
+│ ECS Fargate  │   │ ECS Fargate  │
+│ API (Apollo) │   │ Web (Next.js)│
+│ Port 4000    │   │ Port 3000    │
+│ Private Subs │   │ Private Subs │
+└──────┬───────┘   └──────────────┘
+       │ (private subnets + NAT)
+       ▼
+┌──────────────┐     ┌──────────────┐
+│ RDS Postgres │     │ S3 Bucket    │
+│ spotterspace-db│   │ spotterspace-│
+│ Port 5432    │     │ photos       │
+└──────────────┘     └──────────────┘
 ```
 
 ### Live Endpoints
@@ -74,14 +82,14 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 ```
 ┌─────────────────┐
 │  deploy-infra   │  CDK bootstrap + deploy (creates/updates all AWS resources)
-│  (CDK Stack)    │  Outputs: ECR URIs, App Runner service ARNs
+│  (CDK Stack)    │  Outputs: ECS cluster, service ARNs, ECR URIs
 └────────┬────────┘
          │
     ┌────┴────┐
     │         │
     ▼         ▼
 ┌─────────┐ ┌─────────┐
-│deploy-  │ │deploy-  │  Build Docker images → Push to ECR → Trigger App Runner redeploy
+│deploy-  │ │deploy-  │  Build Docker images → Push to ECR → Force ECS redeployment
 │api      │ │web      │  (run in parallel after infra)
 └─────────┘ └─────────┘
 ```
@@ -93,18 +101,18 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
    - `aws-actions/configure-aws-credentials` for auth
    - `cdk bootstrap` (idempotent, runs on every deploy)
    - `cdk deploy SpotterSpace-dev-Stack --require-approval never --outputs-file cdks-outputs.json`
-   - Extract CloudFormation outputs (ECR URIs, App Runner ARNs) → pass to downstream jobs
+   - Extract CloudFormation outputs (ECS service ARNs, cluster name) → pass to downstream jobs
 
 2. **deploy-api** (needs deploy-infra):
    - Checkout → AWS auth → ECR login → Docker Buildx
    - Build `apps/api/Dockerfile` → push to ECR (`spotterspace-dev-api:latest`)
-   - `aws apprunner start-deployment` → triggers rolling deploy
+   - `aws ecs update-service --force-new-deployment` → ECS pulls new image and registers with ALB target group
 
 3. **deploy-web** (needs deploy-infra):
    - Checkout → AWS auth → ECR login → Docker Buildx
    - Build `apps/web/Dockerfile` with build args (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`)
    - Push to ECR (`spotterspace-dev-web:latest`)
-   - `aws apprunner start-deployment` → triggers rolling deploy
+   - `aws ecs update-service --force-new-deployment` → ECS pulls new image and registers with ALB target group
 
 ### Workflow: `.github/workflows/ci.yml`
 
@@ -139,7 +147,7 @@ These steps are **one-time setup** and do not need to be repeated on subsequent 
 |----------|---------|---------------|
 | VPC | `vpc-09a6870488b73260e` (10.0.0.0/20) with public + private subnets + NAT gateway | AWS Console or CDK |
 | RDS PostgreSQL | `spotterspace-db` (PostgreSQL 16.3, db.t3.medium, private subnets) | AWS Console |
-| RDS Security Group | `sg-0925439b428efdf13` (allows 5432 from VPC connector) | AWS Console |
+| RDS Security Group | `sg-0925439b428efdf13` (allows 5432 from ECS tasks) | AWS Console |
 | Secrets Manager VPC Endpoint | Security group `sg-0ddf2cd67fa1b09f0` | AWS Console |
 | ECR Repository (api) | `spotterspace-dev-api` | `aws ecr create-repository --repository-name spotterspace-dev-api` |
 | ECR Repository (web) | `spotterspace-dev-web` | `aws ecr create-repository --repository-name spotterspace-dev-web` |
@@ -168,7 +176,7 @@ cdk bootstrap aws://654654553862/us-east-1
 
 ### 4. Initial ECR Image Push
 
-App Runner requires at least one image in ECR before the first CDK deploy creates the services. Push an initial image manually:
+ECS Fargate requires at least one image in ECR before the first CDK deploy creates the services. Push an initial image manually:
 
 ```bash
 # Authenticate to ECR
@@ -210,7 +218,7 @@ Configure these in the GitHub repository settings under **Settings → Secrets a
 | `HOSTED_ZONE_ID` | `Z00113712EMKXVCPQFWZW` | Route 53 hosted zone for the domain |
 | `S3_BUCKET_NAME` | `spotterspace-photos` | S3 bucket for photo storage |
 
-> **Note:** If `DOMAIN_NAME` or `HOSTED_ZONE_ID` are empty/unset, the CDK stack will skip CloudFront, ACM certificate, and Route 53 record creation — services will only be accessible via their `*.awsapprunner.com` URLs.
+> **Note:** If `DOMAIN_NAME` or `HOSTED_ZONE_ID` are empty/unset, the CDK stack will skip CloudFront, ACM certificate, HTTPS listener, and Route 53 record creation — services will only be accessible via the ALB DNS name (`spotterspace-alb-*.us-east-1.elb.amazonaws.com`).
 
 ---
 
@@ -222,29 +230,34 @@ All infrastructure is defined in `infrastructure/lib/spotterspace-stack.ts` and 
 
 | Resource | Type | Details |
 |----------|------|---------|
-| VPC Connector | App Runner | `spotterspace-dev-vpc-connector` in private subnets |
-| API Service | App Runner | `spotterspace-dev-api`, port 4000, VPC egress |
-| Web Service | App Runner | `spotterspace-dev-web`, port 3000, public egress |
-| Security Group | EC2 | For VPC Connector (egress to RDS port 5432 + Secrets Manager port 443) |
-| Access Role | IAM | `spotterspace-dev-apprunner-access` — ECR pull permissions |
-| Instance Role | IAM | `spotterspace-dev-api-instance` — Secrets Manager read + S3 read/write |
+| ECS Cluster | ECS | `spotterspace-cluster` (Fargate) |
+| API Service | ECS Fargate | `spotterspace-dev-api`, port 4000, private subnets, auto-registered with ALB |
+| Web Service | ECS Fargate | `spotterspace-dev-web`, port 3000, private subnets, auto-registered with ALB |
+| API Target Group | ALB | `spotterspace-dev-api-tg`, port 4000, health check `/health` |
+| Web Target Group | ALB | `spotterspace-dev-web-tg`, port 3000, health check `/api/health` |
+| HTTP Listener | ALB | Port 80, host-based rules: `api.*` → apiTG, default → webTG |
+| HTTPS Listener | ALB | Port 443, host-based rules (if domain configured) |
+| Security Group | EC2 | `sg-08e5864c53710a095` — shared ALB + ECS SG with self-referencing rule |
+| Log Groups | CloudWatch | `/ecs/spotterspace-dev/api`, `/ecs/spotterspace-dev/web` (1 week retention) |
+| Task Execution Role | IAM | `ecsTaskExecutionRole` — ECR pull + CloudWatch logs |
+| Task Role | IAM | `ecsSpotterSpaceTaskRole` — Secrets Manager read + S3 read/write |
 | ACM Certificate | ACM | `*.spotterspace.com` + `spotterspace.com` (DNS-validated via Route 53) |
-| Apex Distribution | CloudFront | 301 redirect `spotterspace.com` → `www.spotterspace.com` |
-| CloudFront Function | CloudFront | `spotterspace-dev-apex-redirect` (viewer-request JS function) |
-| DNS: A Record | Route 53 | `spotterspace.com` → CloudFront alias |
-| DNS: CNAME (www) | Route 53 | `www.spotterspace.com` → Web App Runner URL |
-| DNS: CNAME (api) | Route 53 | `api.spotterspace.com` → API App Runner URL |
+| DNS: CNAME (www) | Route 53 | `www.spotterspace.com` → ALB DNS name |
+| DNS: CNAME (api) | Route 53 | `api.spotterspace.com` → ALB DNS name |
 
 ### Imported Resources (not managed by CDK — do not delete)
 
 | Resource | Details |
 |----------|---------|
 | VPC | `vpc-09a6870488b73260e` (10.0.0.0/20, us-east-1) |
+| ALB | `spotterspace-alb` (`spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com`) |
+| ECS Cluster | `spotterspace-cluster` |
 | RDS | `spotterspace-db` (PostgreSQL 16.3, db.t3.medium) |
 | ECR (web) | `spotterspace-dev-web` |
 | ECR (api) | `spotterspace-dev-api` |
 | Secrets Manager | `spotterspace/DATABASE_URL`, `spotterspace/JWT_SECRET` |
 | S3 Bucket | `spotterspace-photos` |
+| ALB Security Group | `sg-08e5864c53710a095` |
 | RDS Security Group | `sg-0925439b428efdf13` |
 | Secrets Manager VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0` |
 
@@ -257,7 +270,7 @@ The CDK app (`infrastructure/bin/spotterspace.ts`) reads these env vars:
 | `STAGE` | No | `dev` | Deployment stage (`dev` or `prod`) |
 | `DOMAIN_NAME` | No | — | Root domain (gates CloudFront/ACM/Route 53) |
 | `HOSTED_ZONE_ID` | No | — | Route 53 hosted zone ID |
-| `VPC_ID` | No | `vpc-09a6870488b73260e` | VPC for App Runner connector |
+| `VPC_ID` | No | `vpc-09a6870488b73260e` | VPC for ECS tasks and ALB |
 | `S3_BUCKET_NAME` | No | `spotterspace-photos` | S3 bucket name |
 | `CDK_DEFAULT_ACCOUNT` | Yes | — | AWS account ID |
 | `CDK_DEFAULT_REGION` | No | `us-east-1` | AWS region |
@@ -268,14 +281,14 @@ After deploy, these outputs are available (used by deploy-api and deploy-web job
 
 | Output | Description |
 |--------|-------------|
-| `ApiServiceUrl` | API App Runner URL (e.g., `japveibkai.us-east-1.awsapprunner.com`) |
-| `WebServiceUrl` | Web App Runner URL |
-| `ApiServiceArn` | API App Runner service ARN (for `start-deployment`) |
-| `WebServiceArn` | Web App Runner service ARN |
-| `ApiEcrRepositoryUri` | API ECR repo URI |
-| `WebEcrRepositoryUri` | Web ECR repo URI |
-| `CertificateArn` | ACM certificate ARN (if domain configured) |
-| `DistributionId` | CloudFront distribution ID (if domain configured) |
+| `ClusterName` | ECS cluster name (`spotterspace-cluster`) |
+| `ApiServiceArn` | ECS API service ARN (for `update-service --force-new-deployment`) |
+| `WebServiceArn` | ECS Web service ARN |
+| `ApiTaskDefinitionArn` | API task definition ARN (includes revision number) |
+| `WebTaskDefinitionArn` | Web task definition ARN |
+| `AlbDnsName` | ALB DNS name (`spotterspace-alb-*.us-east-1.elb.amazonaws.com`) |
+| `AlbArn` | ALB ARN |
+| `Stage` | Deployment stage (`dev` or `prod`) |
 
 ---
 
@@ -317,22 +330,19 @@ If static assets (CSS/JS) return 404 in production, this path mapping is likely 
 
 | Record | Type | Target |
 |--------|------|--------|
-| `spotterspace.com` | A (alias) | CloudFront distribution `d1yo7g0mlwprtw.cloudfront.net` |
-| `www.spotterspace.com` | CNAME | Web App Runner URL |
-| `api.spotterspace.com` | CNAME | API App Runner URL |
+| `www.spotterspace.com` | CNAME | ALB DNS name (`spotterspace-alb-*.us-east-1.elb.amazonaws.com`) |
+| `api.spotterspace.com` | CNAME | ALB DNS name |
 
 ### How It Works
 
-1. **Apex domain** (`spotterspace.com`): Route 53 A record → CloudFront → CloudFront Function → 301 redirect to `https://www.spotterspace.com`
-2. **www subdomain**: Route 53 CNAME → App Runner (web) — serves Next.js app
-3. **api subdomain**: Route 53 CNAME → App Runner (api) — serves Apollo GraphQL
+1. **www subdomain**: Route 53 CNAME → ALB → host-based rule → Web target group → ECS Fargate (Next.js)
+2. **api subdomain**: Route 53 CNAME → ALB → host-based rule → API target group → ECS Fargate (Apollo)
 
 ### SSL/TLS
 
 - ACM certificate covers `spotterspace.com` + `*.spotterspace.com`
 - Validated via DNS (Route 53 auto-creates validation CNAME records)
-- CloudFront uses the certificate for apex domain
-- App Runner provides its own managed TLS for `www` and `api` subdomains
+- ALB HTTPS listener (port 443) uses the ACM certificate for `www` and `api` subdomains
 
 ### Nameservers
 
@@ -375,8 +385,9 @@ docker build --platform linux/amd64 -f apps/api/Dockerfile
   -t 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:latest .
 docker push 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:latest
 
-# Trigger redeploy (get ARN from CDK outputs or AWS console)
-aws apprunner start-deployment --service-arn <ApiServiceArn>
+# Force ECS to pull new image and redeploy
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-api --force-new-deployment --region us-east-1
 ```
 
 ### Web Image (manual build + deploy)
@@ -389,20 +400,28 @@ docker build --platform linux/amd64 -f apps/web/Dockerfile
   -t 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web:latest .
 docker push 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web:latest
 
-# Trigger redeploy
-aws apprunner start-deployment --service-arn <WebServiceArn>
+# Force ECS to pull new image and redeploy
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-web --force-new-deployment --region us-east-1
 ```
 
 ---
 
 ## Monitoring & Health Checks
 
-### App Runner Health Checks
+### ALB Target Group Health Checks
 
-| Service | Endpoint | Interval | Healthy/Unhealthy Thresholds |
-|---------|----------|----------|-------------------------------|
-| API | `GET /health` | 10s | 2 healthy / 3 unhealthy |
-| Web | `GET /api/health` | 10s | 2 healthy / 3 unhealthy |
+| Service | Target Group | Endpoint | Interval | Healthy/Unhealthy Thresholds |
+|---------|-------------|----------|----------|-------------------------------|
+| API | `spotterspace-dev-api-tg` | `GET /health` | 10s | 2 healthy / 3 unhealthy |
+| Web | `spotterspace-dev-web-tg` | `GET /api/health` | 10s | 2 healthy / 3 unhealthy |
+
+### ECS Container Health Checks
+
+| Service | Command | Interval | Retries | Start Period |
+|---------|---------|----------|---------|--------------|
+| API | `wget -qO- http://localhost:4000/health` | 10s | 3 | 30s |
+| Web | `wget -qO- http://localhost:3000/api/health` | 10s | 3 | 30s |
 
 ### Verifying Endpoints
 
@@ -424,18 +443,38 @@ dig www.spotterspace.com CNAME +short
 dig api.spotterspace.com CNAME +short
 ```
 
-### App Runner Logs
+### Checking Target Health
 
 ```bash
-# API logs
-aws apprunner list-operations --service-arn <ApiServiceArn>
+# API target group health
+aws elbv2 describe-target-health \
+  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-api-tg/105538bfd82988b2 \
+  --region us-east-1
 
-# Web logs
-aws apprunner list-operations --service-arn <WebServiceArn>
+# Web target group health
+aws elbv2 describe-target-health \
+  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-web-tg/53bffb7b973906cb \
+  --region us-east-1
+```
 
-# Full logs are available in CloudWatch Logs:
-#   /aws/apprunner/spotterspace-dev-api/*/application
-#   /aws/apprunner/spotterspace-dev-web/*/application
+### ECS & CloudWatch Logs
+
+```bash
+# List running tasks
+aws ecs list-tasks --cluster spotterspace-cluster --region us-east-1 --desired-status RUNNING
+
+# Describe a specific task (ENI, health, container status)
+aws ecs describe-tasks --cluster spotterspace-cluster --tasks <task_arn> --region us-east-1
+
+# CloudWatch log groups:
+#   /ecs/spotterspace-dev/api
+#   /ecs/spotterspace-dev/web
+
+# Read recent API logs
+aws logs tail /ecs/spotterspace-dev/api --since 30m --region us-east-1
+
+# Read recent Web logs
+aws logs tail /ecs/spotterspace-dev/web --since 30m --region us-east-1
 ```
 
 ---
@@ -463,17 +502,36 @@ COPY --from=builder /app/apps/web/.next/static /app/apps/web/apps/web/.next/stat
 CMD ["node", "apps/web/apps/web/server.js"]
 ```
 
-### App Runner Deployment Stuck / Failing
+### ALB Health Checks Failing (504 / Target.Timeout)
+
+**Cause:** ECS `CfnService` definitions missing `loadBalancers` config — task IPs are not registered with ALB target groups. **This was fixed in Session 15** (2026-04-15).
+
+**Verify:** Check target health:
+```bash
+aws elbv2 describe-target-health \
+  --target-group-arn <target-group-arn> --region us-east-1
+```
+
+**Fix:** Ensure `loadBalancers` is set on both ECS services in `spotterspace-stack.ts`:
+```typescript
+loadBalancers: [{
+  containerName: 'api',  // or 'web'
+  containerPort: 4000,   // or 3000
+  targetGroupArn: apiTG.ref,  // or webTG.ref
+}],
+```
+
+### ECS Deployment Stuck / Failing
 
 ```bash
-# Check service status
-aws apprunner describe-service --service-arn <ServiceArn> --query 'Service.Status'
+# Check service status and events
+aws ecs describe-services --cluster spotterspace-cluster \
+  --services spotterspace-dev-api spotterspace-dev-web --region us-east-1 \
+  --query 'services[*].{Name:serviceName,Status:status,Running:runningCount,Desired:desiredCount,Events:events[0:3]}'
 
-# Check recent operations
-aws apprunner list-operations --service-arn <ServiceArn> --query 'OperationSummaryList[0]'
-
-# Force redeploy with latest image
-aws apprunner start-deployment --service-arn <ServiceArn>
+# Force new deployment
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-api --force-new-deployment --region us-east-1
 ```
 
 ### CDK Deploy Fails
@@ -484,14 +542,14 @@ aws apprunner start-deployment --service-arn <ServiceArn>
 
 ### API Can't Connect to RDS
 
-- Verify the VPC Connector is in private subnets with NAT gateway
-- Check security group `sg-0925439b428efdf13` allows inbound 5432 from the App Runner security group
+- Verify ECS tasks are running in private subnets (`subnet-082c94f0897298f6e`, `subnet-096b774ed307c85ed`) with NAT gateway
+- Check security group `sg-0925439b428efdf13` allows inbound 5432 from ECS security group (`sg-08e5864c53710a095`)
 - Check Secrets Manager contains the correct `DATABASE_URL` with the RDS endpoint
-- Verify the Secrets Manager VPC Endpoint security group (`sg-0ddf2cd67fa1b09f0`) allows inbound 443
+- Verify the Secrets Manager VPC Endpoint security group (`sg-0ddf2cd67fa1b09f0`) allows inbound 443 from ECS SG
 
 ### Secret Loading Fails
 
-The API loads secrets from AWS Secrets Manager at startup using `@aws-sdk/client-secrets-manager`. The instance role (`spotterspace-dev-api-instance`) must have `secretsmanager:GetSecretValue` permission for both secret ARNs. Check CloudWatch logs for error messages.
+The API loads secrets via ECS task definition `secrets` config (injected as env vars at container start by the ECS agent). The task execution role (`ecsTaskExecutionRole`) must have `secretsmanager:GetSecretValue` permission for both secret ARNs. Check CloudWatch logs at `/ecs/spotterspace-dev/api` for error messages.
 
 ---
 
@@ -500,8 +558,9 @@ The API loads secrets from AWS Secrets Manager at startup using `@aws-sdk/client
 | File | Description |
 |------|-------------|
 | `infrastructure/bin/spotterspace.ts` | CDK app entry point (reads env vars) |
-| `infrastructure/lib/spotterspace-stack.ts` | Full CDK stack definition |
-| `.github/workflows/deploy.yml` | Deploy workflow (CDK + Docker + App Runner) |
+| `infrastructure/lib/spotterspace-stack.ts` | Full CDK stack definition (ECS Fargate + ALB) |
+| `infrastructure/TROUBLESHOOTING.md` | ECS/ALB health check issue root cause and resolution |
+| `.github/workflows/deploy.yml` | Deploy workflow (CDK + Docker + ECS) |
 | `.github/workflows/ci.yml` | CI workflow (lint, typecheck, test, build) |
 | `apps/api/Dockerfile` | API Docker build (multi-stage, Node 20 Alpine) |
 | `apps/api/docker-entrypoint.sh` | API container startup script |

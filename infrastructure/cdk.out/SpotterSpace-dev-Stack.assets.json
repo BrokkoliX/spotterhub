@@ -1,31 +1,16 @@
 {
   "version": "53.0.0",
   "files": {
-    "3d915a3135b5e30b4ca0dd8070920c5802ed769c40db1f940412b71d9b1f55f3": {
-      "displayName": "ApiLambda/Code",
-      "source": {
-        "path": "asset.3d915a3135b5e30b4ca0dd8070920c5802ed769c40db1f940412b71d9b1f55f3",
-        "packaging": "zip"
-      },
-      "destinations": {
-        "654654553862-us-east-1-d6088507": {
-          "bucketName": "cdk-hnb659fds-assets-654654553862-us-east-1",
-          "objectKey": "3d915a3135b5e30b4ca0dd8070920c5802ed769c40db1f940412b71d9b1f55f3.zip",
-          "region": "us-east-1",
-          "assumeRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-file-publishing-role-654654553862-us-east-1"
-        }
-      }
-    },
-    "f43646c50584210d9e9961600e93683a0061837c0407d816bef10845e2e5bafa": {
+    "1a5d0b1774dea91b11bd67e5e1bd25806921a9ca84ea386b4af92050716f6bcd": {
       "displayName": "SpotterSpace-dev-Stack Template",
       "source": {
         "path": "SpotterSpace-dev-Stack.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "654654553862-us-east-1-6aeec57c": {
+        "654654553862-us-east-1-3ade63a0": {
           "bucketName": "cdk-hnb659fds-assets-654654553862-us-east-1",
-          "objectKey": "f43646c50584210d9e9961600e93683a0061837c0407d816bef10845e2e5bafa.json",
+          "objectKey": "1a5d0b1774dea91b11bd67e5e1bd25806921a9ca84ea386b4af92050716f6bcd.json",
           "region": "us-east-1",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-file-publishing-role-654654553862-us-east-1"
         }

@@ -1,0 +1,34 @@
+{
+  "HostedZoneId": "Z00113712EMKXVCPQFWZW",
+  "ChangeBatch": {
+    "Comment": "Update DNS records for spotterspace",
+    "Changes": [
+      {
+        "Action": "UPSERT",
+        "ResourceRecordSet": {
+          "Name": "www.spotterspace.com.",
+          "Type": "CNAME",
+          "TTL": 300,
+          "ResourceRecords": [
+            {
+              "Value": "wjigqzbc7x.us-east-1.awsapprunner.com"
+            }
+          ]
+        }
+      },
+      {
+        "Action": "UPSERT",
+        "ResourceRecordSet": {
+          "Name": "api.spotterspace.com.",
+          "Type": "CNAME",
+          "TTL": 300,
+          "ResourceRecords": [
+            {
+              "Value": "puwdz2pcx3.us-east-1.awsapprunner.com"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

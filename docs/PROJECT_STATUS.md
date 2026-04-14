@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-14 (Session 14)
+> **Last updated:** 2026-04-15 (Session 15)
 > **Purpose:** Living document tracking implementation progress against the roadmap. Update after each session.
 
 ---
@@ -219,6 +219,26 @@
 - `.github/workflows/deploy.yml` — CDK bootstrap + deploy → Docker build/push API → Docker build/push Web → App Runner redeploy
 - `DEPLOYMENT_STATUS.md` — comprehensive deployment reference (see that file for all manual commands)
 
+### Session 15 ✅ (2026-04-15): ECS Fargate — ALB Health Check Fix
+
+**Problem:** After migrating from App Runner to ECS Fargate + ALB, ALB health checks timed out on every redeployment. Both target groups showed targets as `unhealthy` with reason `Target.Timeout`, returning 504s.
+
+**Root cause:** The ECS `CfnService` definitions were missing `loadBalancers` configuration. Without this, ECS does not automatically register task IPs with the ALB target groups. Every time tasks restarted after a CDK redeploy, new IPs were assigned but never registered — the ALB had no healthy targets to forward to.
+
+**Fix applied:**
+1. Added `loadBalancers` property to both API and Web `CfnService` definitions, linking each service to its respective target group. ECS now automatically registers/deregisters task IPs on deploy.
+2. Added explicit `addDependency()` calls so ECS services are created only after the ALB listeners and target groups exist in CloudFormation, preventing deployment race conditions.
+
+**Verified (post-deploy):**
+- API target group: `10.0.1.55:4000` → **healthy**
+- Web target group: `10.0.2.36:3000` → **healthy**
+- `https://api.spotterspace.com/health` → HTTP 200 ✅
+- `https://www.spotterspace.com` → HTTP 200 ✅
+
+**Files changed:**
+- `infrastructure/lib/spotterspace-stack.ts` — added `loadBalancers` to both ECS services + dependency ordering
+- `infrastructure/TROUBLESHOOTING.md` — documented root cause and resolution
+
 ---
 
 ### Session 12 ✅: Global Forum, Site Settings, Superuser & UX Polish
@@ -284,18 +304,18 @@
 
 ## Recommended Next Session Priority
 
-**Phase 1a and Phase 1b are complete. AWS deployment scaffolding is in place.**
+**Phase 1a and Phase 1b are complete. AWS deployment is live on ECS Fargate + ALB.**
 
-**Session 13-14 done:** App Runner deployment infrastructure (Dockerfiles, CDK stack, GitHub Actions deploy workflow, CloudFront distribution).
+**Sessions 13-15 done:** Deployment infrastructure (Dockerfiles, CDK stack, GitHub Actions deploy workflow, DNS/HTTPS, ECS Fargate + ALB with auto target registration).
 
 **Next — Phase 2 Launch Prep:**
-1. **Deploy root domain HTTPS fix** — CloudFront + ACM + Route 53 now codified in CDK. Clean up old manually-created resources, then deploy with `DOMAIN_NAME` and `HOSTED_ZONE_ID` (see `DEPLOYMENT_STATUS.md`)
-2. **Cognito auth** — wire `signUp`/`signIn` resolvers to AWS Cognito (currently mock JWT in dev)
-3. **Configure GitHub secrets/variables:**
+1. **Cognito auth** — wire `signUp`/`signIn` resolvers to AWS Cognito (currently mock JWT in dev)
+2. **Configure GitHub secrets/variables:**
    - **Secrets:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `JWT_SECRET_INITIAL_VALUE`, `NEXT_PUBLIC_MAPBOX_TOKEN`
-   - **Variables:** `AWS_ACCOUNT_ID`, `S3_BUCKET_NAME`, `CDK_DEFAULT_ACCOUNT`, `CDK_DEFAULT_REGION`, `DOMAIN_NAME` (`spotterspace.com`), `HOSTED_ZONE_ID` (`Z00113712EMKXVCPQFWZW`), `ENABLE_APP_RUNNER` (`true`)
-4. **Run `cdk bootstrap`** and merge to main to trigger first deploy
-5. SEO implementation (metadata, sitemaps, Open Graph)
+   - **Variables:** `AWS_ACCOUNT_ID`, `S3_BUCKET_NAME`, `CDK_DEFAULT_ACCOUNT`, `CDK_DEFAULT_REGION`, `DOMAIN_NAME` (`spotterspace.com`), `HOSTED_ZONE_ID` (`Z00113712EMKXVCPQFWZW`), `VPC_ID` (`vpc-09a6870488b73260e`)
+3. **Merge to main** to trigger first CI/CD deploy (CDK + Docker build/push + ECS redeploy)
+4. SEO implementation (metadata, sitemaps, Open Graph)
+5. Monitoring & alerting (CloudWatch dashboards, alarms for target health, error rates)
 
 ---
 

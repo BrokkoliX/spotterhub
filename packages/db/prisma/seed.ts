@@ -87,7 +87,26 @@ async function main() {
     },
   });
 
-  console.log(`  ✅ Users: alice (user), bob-mod (moderator), charlie-admin (admin)`);
+  const superuser = await prisma.user.upsert({
+    where: { email: 'robi_sz@yahoo.com' },
+    update: {},
+    create: {
+      cognitoSub: `dev1-${hashPassword('superpass123').slice(0, 32)}`,
+      email: 'robi_sz@yahoo.com',
+      username: 'robi_sz',
+      role: 'superuser',
+      status: 'active',
+      profile: {
+        create: {
+          displayName: 'Robbie',
+          bio: 'Platform superuser.',
+          experienceLevel: 'professional',
+        },
+      },
+    },
+  });
+
+  console.log(`  ✅ Users: alice (user), bob-mod (moderator), charlie-admin (admin), robi_sz (superuser)`);
 
   // ─── Sample Airports ──────────────────────────────────────────────────
 

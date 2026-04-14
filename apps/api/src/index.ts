@@ -30,8 +30,8 @@ async function loadSecrets(): Promise<void> {
   });
 
   const [dbResult, jwtResult] = await Promise.all([
-    client.send(new GetSecretValueCommand({ SecretId: 'spotterspace/DATABASE_URL' })),
-    client.send(new GetSecretValueCommand({ SecretId: 'spotterspace/JWT_SECRET' })),
+    client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/DATABASE_URL' })),
+    client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/JWT_SECRET' })),
   ]);
 
   process.env.DATABASE_URL = dbResult.SecretString ?? '';
