@@ -1,8 +1,8 @@
+import { Prisma } from '@spotterspace/db';
 import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { Prisma } from '@spotterspace/db';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,15 @@ export const airportQueryResolvers = {
 
     return ctx.prisma.airport.findMany({
       where,
-      select: { icaoCode: true, iataCode: true, name: true, city: true, country: true, latitude: true, longitude: true },
+      select: {
+        icaoCode: true,
+        iataCode: true,
+        name: true,
+        city: true,
+        country: true,
+        latitude: true,
+        longitude: true,
+      },
       orderBy: { icaoCode: 'asc' },
       take,
     });
@@ -231,11 +239,7 @@ export const airportMutationResolvers = {
     });
   },
 
-  deleteAirport: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteAirport: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     await requireRole(ctx, ['admin', 'superuser']);
 
     const existing = await ctx.prisma.airport.findUnique({
