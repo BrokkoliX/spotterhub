@@ -8,6 +8,7 @@ on:
       - "apps/web/**"
       - "packages/**"
       - "infrastructure/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
       stage:
@@ -22,87 +23,17 @@ on:
 env:
   AWS_REGION: us-east-1
   NODE_VERSION: "20"
+  ECS_CLUSTER: spotterspace-cluster
+  API_ECR_REPO: spotterspace-dev-api
+  WEB_ECR_REPO: spotterspace-dev-web
+  API_SERVICE: spotterspace-dev-api
+  WEB_SERVICE: spotterspace-dev-web
 
 jobs:
-  # ─── Deploy Infrastructure (CDK — App Runner + VPC Connector + DNS) ────────
-  deploy-infra:
-    name: Deploy CDK Infrastructure
-    runs-on: ubuntu-latest
-    outputs:
-      api-ecr: ${{ steps.outputs.outputs.api-ecr }}
-      web-ecr: ${{ steps.outputs.outputs.web-ecr }}
-      api-service-arn: ${{ steps.outputs.outputs.api-service-arn }}
-      web-service-arn: ${{ steps.outputs.outputs.web-service-arn }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install CDK
-        run: |
-          npm install -g aws-cdk
-          cd infrastructure && npm install
-
-      - name: Build infrastructure
-        run: cd infrastructure && npm run build
-
-      - name: Authenticate to AWS
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Bootstrap CDK
-        run: |
-          cd infrastructure
-          cdk bootstrap aws://${{ vars.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} 
-            --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess 
-            2>/dev/null || true
-
-      - name: Deploy CDK Stack
-        id: cdk-deploy
-        run: |
-          cd infrastructure
-          STAGE="${{ inputs.stage || 'dev' }}" 
-          S3_BUCKET_NAME="${{ vars.S3_BUCKET_NAME || 'spotterspace-photos' }}" 
-          VPC_ID="${{ vars.VPC_ID }}" 
-          DOMAIN_NAME="${{ vars.DOMAIN_NAME || '' }}" 
-          HOSTED_ZONE_ID="${{ vars.HOSTED_ZONE_ID || '' }}" 
-          CDK_DEFAULT_ACCOUNT="${{ vars.AWS_ACCOUNT_ID }}" 
-          CDK_DEFAULT_REGION="${{ env.AWS_REGION }}" 
-          cdk deploy SpotterSpace-${{ inputs.stage || 'dev' }}-Stack 
-            --require-approval never 
-            --outputs-file cdks-outputs.json
-
-      - name: Extract deployment outputs
-        id: outputs
-        run: |
-          stack_name="SpotterSpace-${{ inputs.stage || 'dev' }}-Stack"
-          api_ecr=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiEcrRepositoryUri`].OutputValue' --output text)
-          web_ecr=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WebEcrRepositoryUri`].OutputValue' --output text)
-          api_service_arn=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiServiceArn`].OutputValue' --output text)
-          web_service_arn=$(aws cloudformation describe-stacks --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WebServiceArn`].OutputValue' --output text)
-          echo "api-ecr=$api_ecr" >> $GITHUB_OUTPUT
-          echo "web-ecr=$web_ecr" >> $GITHUB_OUTPUT
-          echo "api-service-arn=$api_service_arn" >> $GITHUB_OUTPUT
-          echo "web-service-arn=$web_service_arn" >> $GITHUB_OUTPUT
-
-      - name: Print CDK deployment info
-        run: |
-          echo "✅ CDK Stack deployed"
-          echo "   API ECR: ${{ steps.outputs.outputs.api-ecr }}"
-          echo "   Web ECR: ${{ steps.outputs.outputs.web-ecr }}"
-
-  # ─── Build and Push API Docker Image ───────────────────────────────────────
+  # ─── Build and Deploy API to ECS Fargate ───────────────────────────────────
   deploy-api:
-    name: Deploy API (App Runner)
+    name: Deploy API (ECS Fargate)
     runs-on: ubuntu-latest
-    needs: deploy-infra
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,21 +57,23 @@ jobs:
           context: .
           file: apps/api/Dockerfile
           push: true
-          tags: ${{ needs.deploy-infra.outputs.api-ecr }}:latest
+          tags: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.API_ECR_REPO }}:latest
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
-      - name: Trigger App Runner deployment
+      - name: Force ECS redeployment
         run: |
-          aws apprunner start-deployment 
-            --service-arn "${{ needs.deploy-infra.outputs.api-service-arn }}"
-          echo "✅ API App Runner deployment triggered"
+          aws ecs update-service 
+            --cluster ${{ env.ECS_CLUSTER }} 
+            --service ${{ env.API_SERVICE }} 
+            --force-new-deployment 
+            --region ${{ env.AWS_REGION }}
+          echo "✅ API ECS deployment triggered"
 
-  # ─── Build and Push Web Docker Image ───────────────────────────────────────
+  # ─── Build and Deploy Web to ECS Fargate ───────────────────────────────────
   deploy-web:
-    name: Deploy Web App (App Runner)
+    name: Deploy Web (ECS Fargate)
     runs-on: ubuntu-latest
-    needs: deploy-infra
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -164,15 +97,18 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           push: true
-          tags: ${{ needs.deploy-infra.outputs.web-ecr }}:latest
+          tags: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.WEB_ECR_REPO }}:latest
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
           build-args: |
             NEXT_PUBLIC_API_URL=https://api.${{ vars.DOMAIN_NAME || 'spotterspace.com' }}/graphql
             NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
 
-      - name: Trigger App Runner deployment
+      - name: Force ECS redeployment
         run: |
-          aws apprunner start-deployment 
-            --service-arn "${{ needs.deploy-infra.outputs.web-service-arn }}"
-          echo "✅ Web App Runner deployment triggered"
+          aws ecs update-service 
+            --cluster ${{ env.ECS_CLUSTER }} 
+            --service ${{ env.WEB_SERVICE }} 
+            --force-new-deployment 
+            --region ${{ env.AWS_REGION }}
+          echo "✅ Web ECS deployment triggered"
