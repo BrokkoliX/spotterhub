@@ -79,6 +79,20 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Moderate uploads</div>
           </div>
         </Link>
+        <Link href="/admin/aircraft-types" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>✈️</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Aircraft Types</div>
+            <div className={styles.quickLinkDesc}>Manage aircraft types</div>
+          </div>
+        </Link>
+        <Link href="/admin/airports" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🛫</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Airports</div>
+            <div className={styles.quickLinkDesc}>Manage airports</div>
+          </div>
+        </Link>
       </div>
     </div>
   );
