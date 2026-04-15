@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
+import { prisma } from '@spotterspace/db';
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -10,7 +11,6 @@ import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';
 import { typeDefs } from './schema.js';
 import { ensureBucket } from './services/s3.js';
-import { prisma } from '@spotterspace/db';
 
 const PORT = parseInt(process.env.API_PORT ?? '4000', 10);
 
@@ -25,9 +25,8 @@ async function loadSecrets(): Promise<void> {
 
   console.log('Fetching secrets from AWS Secrets Manager...');
 
-  const { SecretsManagerClient, GetSecretValueCommand } = await import(
-    '@aws-sdk/client-secrets-manager'
-  );
+  const { SecretsManagerClient, GetSecretValueCommand } =
+    await import('@aws-sdk/client-secrets-manager');
   const client = new SecretsManagerClient({
     region: process.env.AWS_REGION || process.env.AWS_REGION_NAME || 'us-east-1',
   });
@@ -52,7 +51,9 @@ async function main() {
   if (process.env.NODE_ENV === 'production') {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret || jwtSecret === 'dev-secret-do-not-use-in-production') {
-      console.error('FATAL: JWT_SECRET is not set or is the dev fallback. Refusing to start in production.');
+      console.error(
+        'FATAL: JWT_SECRET is not set or is the dev fallback. Refusing to start in production.',
+      );
       process.exit(1);
     }
   }
@@ -82,7 +83,14 @@ async function main() {
       const body = req.body as { query?: string } | undefined;
       if (!body?.query) return true;
       const query = body.query.toLowerCase();
-      const authOps = ['signin', 'signup', 'resetpassword', 'requestpasswordreset', 'requestpasswordreminder', 'getuploadurl'];
+      const authOps = [
+        'signin',
+        'signup',
+        'resetpassword',
+        'requestpasswordreset',
+        'requestpasswordreminder',
+        'getuploadurl',
+      ];
       return !authOps.some((op) => query.includes(op));
     },
   });
@@ -134,7 +142,9 @@ async function main() {
   const allowedOrigins = [
     process.env.WEB_BASE_URL ?? 'http://localhost:3000',
     // Allow www and non-www variants in production
-    ...(process.env.WEB_BASE_URL ? [`https://www.${new URL(process.env.WEB_BASE_URL).hostname}`] : []),
+    ...(process.env.WEB_BASE_URL
+      ? [`https://www.${new URL(process.env.WEB_BASE_URL).hostname}`]
+      : []),
   ];
 
   app.use(
