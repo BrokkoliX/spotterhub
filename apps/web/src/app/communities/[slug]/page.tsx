@@ -17,6 +17,7 @@ import {
   LEAVE_COMMUNITY,
   REMOVE_COMMUNITY_MEMBER,
   UNBAN_COMMUNITY_MEMBER,
+  UPDATE_COMMUNITY_MEMBER_ROLE,
   UPDATE_COMMUNITY,
 } from '@/lib/queries';
 import type { CommunityQuery, UpdateCommunityInput } from '@/lib/generated/graphql';
@@ -1003,6 +1004,7 @@ function MembersTab({
   const [, banMember] = useMutation(BAN_COMMUNITY_MEMBER);
   const [, unbanMember] = useMutation(UNBAN_COMMUNITY_MEMBER);
   const [, removeMember] = useMutation(REMOVE_COMMUNITY_MEMBER);
+  const [, updateRole] = useMutation(UPDATE_COMMUNITY_MEMBER_ROLE);
 
   const myRoleWeight = roleWeight(myRole);
 
@@ -1021,12 +1023,19 @@ function MembersTab({
     await removeMember({ communityId, userId });
   };
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const result = await updateRole({ communityId, userId, role: newRole });
+    if (result.error) {
+      alert(result.error.graphQLErrors?.[0]?.message || 'Failed to update role');
+    }
+  };
+
   return (
     <div className={styles.memberList}>
       <h2 className={styles.memberListTitle}>Members ({totalCount})</h2>
       {isAdmin && (
         <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
-          Admins can ban or remove members. Owners and admins cannot be modified.
+          Admins can promote members to moderator or admin, or demote them. Owners cannot be modified.
         </div>
       )}
       <div className={styles.memberGrid}>
@@ -1057,6 +1066,15 @@ function MembersTab({
               </Link>
               {canModify && (
                 <div className={styles.memberActions}>
+                  <select
+                    className={styles.roleSelect}
+                    value={member.role}
+                    onChange={(e) => handleRoleChange(member.user.id, e.target.value)}
+                  >
+                    <option value="member">Member</option>
+                    <option value="moderator">Moderator</option>
+                    <option value="admin">Admin</option>
+                  </select>
                   {member.status !== 'banned' ? (
                     <button
                       className={styles.actionBtn}
@@ -1109,6 +1127,8 @@ function ModerationTab({ communityId }: { communityId: string }) {
     lock_thread: 'locked thread in',
     unlock_thread: 'unlocked thread in',
     delete_post: 'deleted post in',
+    delete_photo: 'deleted photo in',
+    delete_comment: 'deleted comment in',
   };
 
   return (

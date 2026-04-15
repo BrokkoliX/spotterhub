@@ -4,6 +4,7 @@ import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { validateStringLength, validateSlug } from '../utils/validation.js';
 
 import { createNotification } from './notificationResolvers.js';
 
@@ -62,6 +63,46 @@ async function getMembership(ctx: Context, communityId: string, userId: string) 
 
 function generateInviteCodeString(): string {
   return randomBytes(6).toString('hex'); // 12 chars
+}
+
+/** Check if a user can moderate a community (owner, admin, or moderator role). */
+async function canModerate(
+  ctx: Context,
+  communityId: string,
+  userId: string,
+): Promise<{ role: string } | null> {
+  const membership = await ctx.prisma.communityMember.findUnique({
+    where: { communityId_userId: { communityId, userId } },
+    select: { role: true, status: true },
+  });
+  if (!membership || membership.status !== 'active') return null;
+  if (roleWeight(membership.role) < roleWeight('moderator')) return null;
+  return { role: membership.role };
+}
+
+/** Log a moderation action to CommunityModerationLog. */
+async function logModerationAction(
+  ctx: Context,
+  params: {
+    communityId: string;
+    moderatorId: string;
+    targetUserId: string;
+    action: 'ban' | 'unban' | 'kick' | 'pin_thread' | 'unpin_thread' | 'lock_thread' | 'unlock_thread' | 'delete_post' | 'delete_photo' | 'delete_comment';
+    reason?: string;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await ctx.prisma.communityModerationLog.create({
+    data: {
+      communityId: params.communityId,
+      moderatorId: params.moderatorId,
+      targetUserId: params.targetUserId,
+      action: params.action,
+      reason: params.reason ?? undefined,
+      metadata: params.metadata as any,
+    },
+  });
 }
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
@@ -138,6 +179,9 @@ export const communityMutationResolvers = {
   ) => {
     const dbUser = await getDbUser(ctx);
     const { name, slug, description, category, visibility, location } = args.input;
+    validateStringLength(name, 'Community name', 3, 100);
+    validateSlug(slug, 'Community slug');
+    validateStringLength(description, 'Description', 0, 2000);
 
     // Validate name
     if (!name || name.trim().length < 3 || name.trim().length > 100) {
@@ -220,6 +264,10 @@ export const communityMutationResolvers = {
         extensions: { code: 'FORBIDDEN' },
       });
     }
+
+    if (args.input.name) validateStringLength(args.input.name, 'Community name', 3, 100);
+    if (args.input.slug) validateSlug(args.input.slug, 'Community slug');
+    if (args.input.description) validateStringLength(args.input.description, 'Description', 0, 2000);
 
     const { slug, visibility, ...rest } = args.input;
     const data: Record<string, unknown> = {};
@@ -487,6 +535,210 @@ export const communityMutationResolvers = {
       where: { id: args.communityId },
       data: { inviteCode: generateInviteCodeString() },
     });
+  },
+
+  deleteCommunityPhoto: async (
+    _parent: unknown,
+    args: { communityId: string; photoId: string; reason?: string },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+
+    // Check moderator access
+    const mod = await canModerate(ctx, args.communityId, dbUser.id);
+    if (!mod && dbUser.role !== 'superuser') {
+      throw new GraphQLError('You do not have permission to delete this photo', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Verify photo exists and belongs to a community album in this community
+    const photo = await ctx.prisma.photo.findUnique({
+      where: { id: args.photoId },
+      select: { userId: true, albumId: true },
+    });
+    if (!photo) {
+      throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    if (photo.albumId) {
+      const album = await ctx.prisma.album.findUnique({
+        where: { id: photo.albumId },
+        select: { communityId: true },
+      });
+      if (album?.communityId !== args.communityId) {
+        throw new GraphQLError('Photo not found in this community', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+    } else {
+      throw new GraphQLError('Photo not found in this community', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await logModerationAction(ctx, {
+      communityId: args.communityId,
+      moderatorId: dbUser.id,
+      targetUserId: photo.userId,
+      action: 'delete_photo',
+      reason: args.reason,
+      metadata: { photoId: args.photoId },
+    });
+
+    await ctx.prisma.photo.delete({ where: { id: args.photoId } });
+    return true;
+  },
+
+  deleteCommunityComment: async (
+    _parent: unknown,
+    args: { communityId: string; commentId: string; reason?: string },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+
+    const mod = await canModerate(ctx, args.communityId, dbUser.id);
+    if (!mod && dbUser.role !== 'superuser') {
+      throw new GraphQLError('You do not have permission to delete this comment', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Verify comment exists and belongs to a photo in this community
+    const comment = await ctx.prisma.comment.findUnique({
+      where: { id: args.commentId },
+      select: { userId: true, photoId: true },
+    });
+    if (!comment) {
+      throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    if (comment.photoId) {
+      const photo = await ctx.prisma.photo.findUnique({
+        where: { id: comment.photoId },
+        select: { albumId: true },
+      });
+      if (photo?.albumId) {
+        const album = await ctx.prisma.album.findUnique({
+          where: { id: photo.albumId },
+          select: { communityId: true },
+        });
+        if (album?.communityId !== args.communityId) {
+          throw new GraphQLError('Comment not found in this community', {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+      } else {
+        throw new GraphQLError('Comment not found in this community', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+    } else {
+      throw new GraphQLError('Comment not found in this community', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await logModerationAction(ctx, {
+      communityId: args.communityId,
+      moderatorId: dbUser.id,
+      targetUserId: comment.userId,
+      action: 'delete_comment',
+      reason: args.reason,
+      metadata: { commentId: args.commentId },
+    });
+
+    await ctx.prisma.comment.delete({ where: { id: args.commentId } });
+    return true;
+  },
+
+  deleteCommunityThread: async (
+    _parent: unknown,
+    args: { communityId: string; threadId: string; reason?: string },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+
+    const mod = await canModerate(ctx, args.communityId, dbUser.id);
+    if (!mod && dbUser.role !== 'superuser') {
+      throw new GraphQLError('You do not have permission to delete this thread', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const thread = await ctx.prisma.forumThread.findUnique({
+      where: { id: args.threadId },
+      select: {
+        authorId: true,
+        category: { select: { communityId: true } },
+      },
+    });
+    if (!thread) {
+      throw new GraphQLError('Thread not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+    if (thread.category.communityId !== args.communityId) {
+      throw new GraphQLError('Thread not found in this community', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await logModerationAction(ctx, {
+      communityId: args.communityId,
+      moderatorId: dbUser.id,
+      targetUserId: thread.authorId,
+      action: 'delete_post',
+      reason: args.reason,
+      metadata: { threadId: args.threadId },
+    });
+
+    await ctx.prisma.forumThread.delete({ where: { id: args.threadId } });
+    return true;
+  },
+
+  deleteCommunityPost: async (
+    _parent: unknown,
+    args: { communityId: string; postId: string; reason?: string },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+
+    const mod = await canModerate(ctx, args.communityId, dbUser.id);
+    if (!mod && dbUser.role !== 'superuser') {
+      throw new GraphQLError('You do not have permission to delete this post', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const post = await ctx.prisma.forumPost.findUnique({
+      where: { id: args.postId },
+      select: {
+        authorId: true,
+        thread: { select: { category: { select: { communityId: true } } } },
+      },
+    });
+    if (!post) {
+      throw new GraphQLError('Post not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+    if (post.thread.category.communityId !== args.communityId) {
+      throw new GraphQLError('Post not found in this community', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await logModerationAction(ctx, {
+      communityId: args.communityId,
+      moderatorId: dbUser.id,
+      targetUserId: post.authorId,
+      action: 'delete_post',
+      reason: args.reason,
+      metadata: { postId: args.postId },
+    });
+
+    await ctx.prisma.forumPost.update({
+      where: { id: args.postId },
+      data: { isDeleted: true, body: '[deleted]' },
+    });
+    return true;
   },
 };
 

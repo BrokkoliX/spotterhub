@@ -6,6 +6,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
+import { useTheme } from '@/lib/theme';
 import {
   GET_NOTIFICATIONS,
   GET_UNREAD_COUNT,
@@ -166,6 +167,7 @@ function NotificationBell() {
 
 export function Header() {
   const { user, ready, signOut } = useAuth();
+  const { theme, ready: themeReady, toggleTheme } = useTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -242,6 +244,17 @@ export function Header() {
         </div>
 
         <div className={styles.actions}>
+          {themeReady && (
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={styles.themeToggle}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          )}
           {showGuest && (
             <>
               <Link href="/signin" className="btn btn-secondary">

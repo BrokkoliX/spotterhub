@@ -4,6 +4,7 @@ import { adminMutationResolvers, adminQueryResolvers } from './resolvers/adminRe
 import { aircraftFieldResolvers, aircraftMutationResolvers, aircraftQueryResolvers } from './resolvers/aircraftResolvers.js';
 import {
   airportFieldResolvers,
+  airportMutationResolvers,
   airportQueryResolvers,
 } from './resolvers/airportResolvers.js';
 import {
@@ -147,6 +148,7 @@ export const resolvers = {
     ...notificationMutationResolvers,
     ...siteSettingsMutationResolvers,
     ...aircraftMutationResolvers,
+    ...airportMutationResolvers,
   },
 
   User: {

@@ -5,6 +5,20 @@ import { gql } from 'urql';
 export const SIGN_UP = gql`
   mutation SignUp($input: SignUpInput!) {
     signUp(input: $input) {
+      user {
+        id
+        email
+        username
+        role
+        emailVerified
+      }
+    }
+  }
+`;
+
+export const VERIFY_EMAIL = gql`
+  mutation VerifyEmail($token: String!) {
+    verifyEmail(token: $token) {
       token
       user {
         id
@@ -19,6 +33,26 @@ export const SIGN_UP = gql`
 export const SIGN_IN = gql`
   mutation SignIn($input: SignInInput!) {
     signIn(input: $input) {
+      token
+      user {
+        id
+        email
+        username
+        role
+      }
+    }
+  }
+`;
+
+export const REQUEST_PASSWORD_RESET = gql`
+  mutation RequestPasswordReset($email: String!) {
+    requestPasswordReset(email: $email)
+  }
+`;
+
+export const RESET_PASSWORD = gql`
+  mutation ResetPassword($token: String!, $newPassword: String!) {
+    resetPassword(token: $token, newPassword: $newPassword) {
       token
       user {
         id
@@ -449,6 +483,8 @@ export const SEARCH_AIRPORTS = gql`
       name
       city
       country
+      latitude
+      longitude
     }
   }
 `;
@@ -464,8 +500,8 @@ export const SEARCH_AIRCRAFT_TYPES = gql`
           id
           iataCode
           icaoCode
-          manufacturer
-          aircraftName
+          vendor
+          model
           category
           engineType
           engineCount
@@ -872,6 +908,159 @@ export const ADMIN_PHOTOS = gql`
   ${PHOTO_FIELDS}
 `;
 
+// ─── Admin Reference Data ────────────────────────────────────────────────────
+
+export const ADMIN_AIRCRAFT_TYPES = gql`
+  query AdminAircraftTypes($search: String, $first: Int, $after: String) {
+    adminAircraftTypes(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          iataCode
+          icaoCode
+          vendor
+          model
+          category
+          engineType
+          engineCount
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const DELETE_AIRCRAFT_TYPE = gql`
+  mutation DeleteAircraftType($id: ID!) {
+    deleteAircraftType(id: $id)
+  }
+`;
+
+export const CREATE_AIRCRAFT_TYPE = gql`
+  mutation CreateAircraftType($input: CreateAircraftTypeInput!) {
+    createAircraftType(input: $input) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_AIRCRAFT_TYPE = gql`
+  mutation UpdateAircraftType($id: ID!, $input: UpdateAircraftTypeInput!) {
+    updateAircraftType(id: $id, input: $input) {
+      id
+    }
+  }
+`;
+
+export const UPSERT_AIRCRAFT_TYPE = gql`
+  mutation UpsertAircraftType($input: CreateAircraftTypeInput!) {
+    upsertAircraftType(input: $input) {
+      id
+    }
+  }
+`;
+
+export const ADMIN_AIRPORTS = gql`
+  query AdminAirports($search: String, $first: Int, $after: String) {
+    adminAirports(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          icaoCode
+          iataCode
+          name
+          city
+          country
+          latitude
+          longitude
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
+export const EXPORT_AIRCRAFT_TYPES = gql`
+  query ExportAircraftTypes {
+    exportAircraftTypes {
+      id
+      iataCode
+      icaoCode
+      vendor
+      model
+      category
+      engineType
+      engineCount
+    }
+  }
+`;
+
+export const EXPORT_AIRPORTS = gql`
+  query ExportAirports {
+    exportAirports {
+      id
+      icaoCode
+      iataCode
+      name
+      city
+      country
+      latitude
+      longitude
+    }
+  }
+`;
+
+export const CREATE_AIRPORT = gql`
+  mutation CreateAirport($input: CreateAirportInput!) {
+    createAirport(input: $input) {
+      id
+      icaoCode
+      iataCode
+      name
+      city
+      country
+      latitude
+      longitude
+    }
+  }
+`;
+
+export const UPDATE_AIRPORT = gql`
+  mutation UpdateAirport($id: ID!, $input: UpdateAirportInput!) {
+    updateAirport(id: $id, input: $input) {
+      id
+      icaoCode
+      iataCode
+      name
+      city
+      country
+      latitude
+      longitude
+    }
+  }
+`;
+
+export const UPSERT_AIRPORT = gql`
+  mutation UpsertAirport($input: CreateAirportInput!) {
+    upsertAirport(input: $input) {
+      id
+    }
+  }
+`;
+
+export const DELETE_AIRPORT = gql`
+  mutation DeleteAirport($id: ID!) {
+    deleteAirport(id: $id)
+  }
+`;
+
 export const ADMIN_RESOLVE_REPORT = gql`
   mutation AdminResolveReport($id: ID!, $action: String!) {
     adminResolveReport(id: $id, action: $action) {
@@ -1022,6 +1211,40 @@ export const UNBAN_COMMUNITY_MEMBER = gql`
 export const REMOVE_COMMUNITY_MEMBER = gql`
   mutation RemoveCommunityMember($communityId: ID!, $userId: ID!) {
     removeCommunityMember(communityId: $communityId, userId: $userId)
+  }
+`;
+
+export const UPDATE_COMMUNITY_MEMBER_ROLE = gql`
+  mutation UpdateCommunityMemberRole($communityId: ID!, $userId: ID!, $role: String!) {
+    updateCommunityMemberRole(communityId: $communityId, userId: $userId, role: $role) {
+      id
+      role
+      status
+    }
+  }
+`;
+
+export const DELETE_COMMUNITY_PHOTO = gql`
+  mutation DeleteCommunityPhoto($communityId: ID!, $photoId: ID!, $reason: String) {
+    deleteCommunityPhoto(communityId: $communityId, photoId: $photoId, reason: $reason)
+  }
+`;
+
+export const DELETE_COMMUNITY_COMMENT = gql`
+  mutation DeleteCommunityComment($communityId: ID!, $commentId: ID!, $reason: String) {
+    deleteCommunityComment(communityId: $communityId, commentId: $commentId, reason: $reason)
+  }
+`;
+
+export const DELETE_COMMUNITY_THREAD = gql`
+  mutation DeleteCommunityThread($communityId: ID!, $threadId: ID!, $reason: String) {
+    deleteCommunityThread(communityId: $communityId, threadId: $threadId, reason: $reason)
+  }
+`;
+
+export const DELETE_COMMUNITY_POST = gql`
+  mutation DeleteCommunityPost($communityId: ID!, $postId: ID!, $reason: String) {
+    deleteCommunityPost(communityId: $communityId, postId: $postId, reason: $reason)
   }
 `;
 

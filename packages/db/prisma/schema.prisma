@@ -124,14 +124,17 @@ enum CommunityTier {
 // ─── Phase 1a: Core Tables ───────────────────────────────────────────────────
 
 model User {
-  id         String     @id @default(uuid()) @db.Uuid
-  cognitoSub String     @unique @map("cognito_sub")
-  email      String     @unique
-  username   String     @unique
-  role       UserRole   @default(user)
-  status     UserStatus @default(active)
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  id                     String     @id @default(uuid()) @db.Uuid
+  cognitoSub             String     @unique @map("cognito_sub")
+  email                  String     @unique
+  username               String     @unique
+  role                   UserRole   @default(user)
+  status                 UserStatus @default(active)
+  emailVerified          Boolean    @default(false) @map("email_verified")
+  emailVerificationToken String?    @map("email_verification_token")
+  passwordHash           String?    @map("password_hash")
+  createdAt              DateTime   @default(now()) @map("created_at")
+  updatedAt              DateTime   @updatedAt @map("updated_at")
 
   profile            Profile?
   photos             Photo[]
@@ -153,6 +156,7 @@ model User {
   moderationLogs     CommunityModerationLog[] @relation("Moderator")
   moderatedActions   CommunityModerationLog[] @relation("TargetUser")
   photographedPhotos  Photo[]           @relation("PhotoPhotographer")
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -299,8 +303,8 @@ model AircraftType {
   id           String   @id @default(uuid()) @db.Uuid
   iataCode     String?  @map("iata_code")
   icaoCode     String?  @map("icao_code")
-  manufacturer String   @map("manufacturer")
-  aircraftName String   @map("aircraft_name")
+  vendor       String   @map("vendor")
+  model        String   @map("model")
   category     String?  @map("category")
   engineType   String?  @map("engine_type")
   engineCount  Int?     @map("engine_count")
@@ -643,6 +647,8 @@ enum CommunityModerationAction {
   lock_thread
   unlock_thread
   delete_post
+  delete_photo
+  delete_comment
 }
 
 model CommunityModerationLog {
@@ -673,4 +679,17 @@ model SiteSettings {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }

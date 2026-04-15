@@ -11,6 +11,90 @@ export const typeDefs = gql`
     popular_all
   }
 
+  enum UserRole {
+    user
+    moderator
+    admin
+    superuser
+  }
+
+  enum UserStatus {
+    active
+    suspended
+    banned
+  }
+
+  enum ModerationStatus {
+    pending
+    approved
+    rejected
+    review
+  }
+
+  enum CommunityVisibility {
+    public
+    invite_only
+  }
+
+  enum FollowTargetType {
+    user
+    airport
+    aircraft_type
+    manufacturer
+  }
+
+  enum ReportTargetType {
+    photo
+    comment
+    profile
+    album
+  }
+
+  enum ReportReason {
+    inappropriate
+    spam
+    harassment
+    copyright
+    other
+  }
+
+  enum ReportStatus {
+    open
+    reviewed
+    resolved
+    dismissed
+  }
+
+  enum CommunityRole {
+    owner
+    admin
+    moderator
+    member
+  }
+
+  enum EventRsvpStatus {
+    going
+    maybe
+    not_going
+  }
+
+  enum NotificationType {
+    like
+    comment
+    follow
+    mention
+    moderation
+    system
+    community_join
+    community_event
+  }
+
+  enum LocationPrivacyMode {
+    exact
+    approximate
+    hidden
+  }
+
   type Query {
     """
     Health check — verifies the API is running and the database is reachable.
@@ -101,6 +185,21 @@ export const typeDefs = gql`
     airports: [Airport!]!
 
     """
+    List all airports with optional search and pagination. Requires admin role.
+    """
+    adminAirports(search: String, first: Int = 50, after: String): AirportConnection!
+
+    """
+    Export all aircraft types as a flat list. Requires admin role.
+    """
+    exportAircraftTypes: [AircraftType!]!
+
+    """
+    Export all airports as a flat list. Requires admin role.
+    """
+    exportAirports: [Airport!]!
+
+    """
     Fetch a single airport by ICAO or IATA code.
     """
     airport(code: String!): Airport
@@ -179,6 +278,12 @@ export const typeDefs = gql`
     """
     adminPhotos(moderationStatus: String = "pending", first: Int = 20, after: String): PhotoConnection!
 
+    """
+    Paginated list of aircraft types for admin management.
+    Requires admin or moderator role.
+    """
+    adminAircraftTypes(search: String, first: Int = 50, after: String): AircraftTypeConnection!
+
     # ─── Community Queries ──────────────────────────────────────────────────
 
     """
@@ -246,7 +351,7 @@ export const typeDefs = gql`
     Register a new user account (dev mode — creates user + issues JWT).
     In production, registration is handled by AWS Cognito.
     """
-    signUp(input: SignUpInput!): AuthPayload!
+    signUp(input: SignUpInput!): SignUpPayload!
 
     """
     Sign in with email and password (dev mode — validates credentials + issues JWT).
@@ -446,6 +551,50 @@ export const typeDefs = gql`
     """
     adminUpdatePhotoModeration(photoId: ID!, status: String!): Photo!
 
+    """
+    Delete an aircraft type. Fails if any aircraft references this type.
+    Requires admin or superuser role.
+    """
+    deleteAircraftType(id: ID!): Boolean!
+
+    """
+    Create an aircraft type. Requires admin or superuser role.
+    """
+    createAircraftType(input: CreateAircraftTypeInput!): AircraftType!
+
+    """
+    Update an aircraft type. Requires admin or superuser role.
+    """
+    updateAircraftType(id: ID!, input: UpdateAircraftTypeInput!): AircraftType!
+
+    """
+    Upsert an aircraft type by ICAO code. If exists, updates; otherwise creates.
+    Requires admin or superuser role.
+    """
+    upsertAircraftType(input: CreateAircraftTypeInput!): AircraftType!
+
+    """
+    Create an airport. Requires admin or superuser role.
+    """
+    createAirport(input: CreateAirportInput!): Airport!
+
+    """
+    Update an airport. Requires admin or superuser role.
+    """
+    updateAirport(id: ID!, input: UpdateAirportInput!): Airport!
+
+    """
+    Upsert an airport by ICAO code. If exists, updates; otherwise creates.
+    Requires admin or superuser role.
+    """
+    upsertAirport(input: CreateAirportInput!): Airport!
+
+    """
+    Delete an airport. Fails if any photos reference this airport.
+    Requires admin or superuser role.
+    """
+    deleteAirport(id: ID!): Boolean!
+
     # ─── Community Mutations ────────────────────────────────────────────────
 
     """
@@ -506,6 +655,30 @@ export const typeDefs = gql`
     Requires owner or admin role.
     """
     unbanCommunityMember(communityId: ID!, userId: ID!): CommunityMember!
+
+    """
+    Delete a photo in a community. Requires owner, admin, or moderator role.
+    Logs the action to the community moderation log.
+    """
+    deleteCommunityPhoto(communityId: ID!, photoId: ID!, reason: String): Boolean!
+
+    """
+    Delete a comment in a community. Requires owner, admin, or moderator role.
+    Logs the action to the community moderation log.
+    """
+    deleteCommunityComment(communityId: ID!, commentId: ID!, reason: String): Boolean!
+
+    """
+    Delete a forum thread in a community. Requires owner, admin, or moderator role.
+    Logs the action to the community moderation log.
+    """
+    deleteCommunityThread(communityId: ID!, threadId: ID!, reason: String): Boolean!
+
+    """
+    Soft-delete a forum post in a community. Requires owner, admin, or moderator role.
+    The post body is replaced with '[deleted]'. Logs the action.
+    """
+    deleteCommunityPost(communityId: ID!, postId: ID!, reason: String): Boolean!
 
     # ─── Forum Mutations ────────────────────────────────────────────────────
 
@@ -569,6 +742,24 @@ export const typeDefs = gql`
 
     """Delete a notification. Must be the notification owner."""
     deleteNotification(id: ID!): Boolean!
+
+    """
+    Request a password reminder email. Always returns true to prevent email enumeration.
+    """
+    requestPasswordReminder(email: String!): Boolean!
+
+    """
+    Request a password reset email. Always returns true to prevent email enumeration.
+    """
+    requestPasswordReset(email: String!): Boolean!
+
+    """
+    Reset password using a token from the email link. Token is single-use and expires in 1 hour.
+    """
+    resetPassword(token: String!, newPassword: String!): AuthPayload!
+
+    """Verify an email address using the token sent during sign-up."""
+    verifyEmail(token: String!): AuthPayload!
   }
 
   # ─── Auth Types ──────────────────────────────────────────────────────────
@@ -600,6 +791,12 @@ export const typeDefs = gql`
     user: User!
   }
 
+  """Response after a successful sign-up. No token is returned — user must verify email first."""
+  type SignUpPayload {
+    """The created user (email not yet verified)."""
+    user: User!
+  }
+
   # ─── User & Profile Types ────────────────────────────────────────────────
 
   """A registered SpotterSpace user."""
@@ -610,9 +807,11 @@ export const typeDefs = gql`
     """Unique username, used in profile URLs (/u/username)."""
     username: String!
     """Platform role: user, moderator, or admin."""
-    role: String!
+    role: UserRole!
     """Account status: active, suspended, or banned."""
-    status: String!
+    status: UserStatus!
+    """Whether the email has been verified."""
+    emailVerified: Boolean!
     """The user's profile, if one has been created."""
     profile: Profile
     """Number of users following this user."""
@@ -700,7 +899,7 @@ export const typeDefs = gql`
     """MIME type of the original file."""
     mimeType: String
     """Content moderation status."""
-    moderationStatus: String!
+    moderationStatus: ModerationStatus!
     """Generated image variants (thumbnail, display, etc.)."""
     variants: [PhotoVariant!]!
     """User-applied tags."""
@@ -783,7 +982,7 @@ export const typeDefs = gql`
     """Longitude of where the photo was taken."""
     longitude: Float
     """Location privacy mode: exact (default), approximate, or hidden."""
-    locationPrivacy: String
+    locationPrivacy: LocationPrivacyMode
     """Link to a structured Aircraft record."""
     aircraftId: ID
     """Link to a canonical AircraftType (OpenFlights)."""
@@ -803,7 +1002,7 @@ export const typeDefs = gql`
     tags: [String!]
     latitude: Float
     longitude: Float
-    locationPrivacy: String
+    locationPrivacy: LocationPrivacyMode
     aircraftId: ID
     aircraftTypeId: ID
     gearBody: String
@@ -851,6 +1050,17 @@ export const typeDefs = gql`
   type AircraftTypeEdge {
     cursor: String!
     node: AircraftType!
+  }
+
+  type AirportConnection {
+    edges: [AirportEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type AirportEdge {
+    cursor: String!
+    node: Airport!
   }
 
   type PhotoEdge {
@@ -905,15 +1115,15 @@ export const typeDefs = gql`
   type Report {
     id: ID!
     """The type of content being reported."""
-    targetType: String!
+    targetType: ReportTargetType!
     """The ID of the reported content."""
     targetId: ID!
     """The reason for the report."""
-    reason: String!
+    reason: ReportReason!
     """Optional description providing additional context."""
     description: String
     """Current status of the report."""
-    status: String!
+    status: ReportStatus!
     """The user who submitted the report."""
     reporter: User!
     """The admin/moderator who reviewed the report."""
@@ -948,11 +1158,11 @@ export const typeDefs = gql`
 
   input CreateReportInput {
     """Type of content: photo, comment, profile, or album."""
-    targetType: String!
+    targetType: ReportTargetType!
     """ID of the content to report."""
     targetId: ID!
     """Reason: inappropriate, spam, harassment, copyright, or other."""
-    reason: String!
+    reason: ReportReason!
     """Additional details (required when reason is 'other')."""
     description: String
   }
@@ -962,7 +1172,7 @@ export const typeDefs = gql`
   """Represents a single follow relationship."""
   type FollowEntry {
     id: ID!
-    targetType: String!
+    targetType: FollowTargetType!
     """The followed user (if targetType is 'user')."""
     user: User
     """The followed airport (if targetType is 'airport')."""
@@ -1043,6 +1253,8 @@ export const typeDefs = gql`
     name: String!
     city: String
     country: String
+    latitude: Float!
+    longitude: Float!
   }
 
   """An airport with geographic coordinates and associated photos."""
@@ -1084,7 +1296,7 @@ export const typeDefs = gql`
     """Display longitude (may be jittered based on privacy mode)."""
     longitude: Float!
     """Privacy mode: exact, approximate, or hidden."""
-    privacyMode: String!
+    privacyMode: LocationPrivacyMode!
     """Associated airport, if any."""
     airport: Airport
     """Associated spotting location, if any."""
@@ -1098,10 +1310,10 @@ export const typeDefs = gql`
     iataCode: String
     """ICAO aircraft type code (e.g., 'B738')."""
     icaoCode: String
-    """Manufacturer name (e.g., 'Boeing')."""
-    manufacturer: String!
-    """Full aircraft type name (e.g., 'Boeing 737-86N')."""
-    aircraftName: String!
+    """Manufacturer/vendor name (e.g., 'Boeing')."""
+    vendor: String!
+    """Aircraft model (e.g., '737-86N')."""
+    model: String!
     """Category: Jet, Propeller, Helicopter, etc."""
     category: String
     """Engine type: Jet, Turboprop, Piston, etc."""
@@ -1147,6 +1359,46 @@ export const typeDefs = gql`
     manufacturingDate: String
   }
 
+  input CreateAircraftTypeInput {
+    iataCode: String
+    icaoCode: String!
+    vendor: String!
+    model: String!
+    category: String
+    engineType: String
+    engineCount: Int
+  }
+
+  input UpdateAircraftTypeInput {
+    iataCode: String
+    icaoCode: String
+    vendor: String
+    model: String
+    category: String
+    engineType: String
+    engineCount: Int
+  }
+
+  input CreateAirportInput {
+    icaoCode: String!
+    iataCode: String
+    name: String!
+    city: String
+    country: String
+    latitude: Float!
+    longitude: Float!
+  }
+
+  input UpdateAirportInput {
+    icaoCode: String
+    iataCode: String
+    name: String
+    city: String
+    country: String
+    latitude: Float
+    longitude: Float
+  }
+
   """Lightweight photo data for map markers."""
   type PhotoMapMarker {
     id: ID!
@@ -1182,7 +1434,7 @@ export const typeDefs = gql`
     bannerUrl: String
     avatarUrl: String
     category: String
-    visibility: String!
+    visibility: CommunityVisibility!
     inviteCode: String
     location: String
     createdAt: String!
@@ -1210,7 +1462,7 @@ export const typeDefs = gql`
   """A member of a community with their role and status."""
   type CommunityMember {
     id: ID!
-    role: String!
+    role: CommunityRole!
     status: String!
     joinedAt: String!
     user: User!
@@ -1292,7 +1544,7 @@ export const typeDefs = gql`
     """Community category (e.g. 'military', 'airliners', 'general-aviation')."""
     category: String
     """Visibility: 'public' or 'invite_only'."""
-    visibility: String
+    visibility: CommunityVisibility
     """Geographic location or region."""
     location: String
   }
@@ -1302,7 +1554,7 @@ export const typeDefs = gql`
     slug: String
     description: String
     category: String
-    visibility: String
+    visibility: CommunityVisibility
     location: String
     bannerUrl: String
     avatarUrl: String
@@ -1413,7 +1665,7 @@ export const typeDefs = gql`
     eventId: ID!
     user: User!
     """going | maybe | not_going"""
-    status: String!
+    status: EventRsvpStatus!
     joinedAt: String!
   }
 
@@ -1456,7 +1708,7 @@ export const typeDefs = gql`
   type Notification {
     id: ID!
     """Notification type: like | comment | follow | mention | moderation | system | community_join | community_event"""
-    type: String!
+    type: NotificationType!
     title: String!
     body: String
     """JSON payload with context-specific data (e.g. photoId, communityId)."""

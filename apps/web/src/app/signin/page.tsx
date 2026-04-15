@@ -88,6 +88,12 @@ export default function SignInPage() {
           </button>
         </form>
 
+        <p className={styles.forgotPassword}>
+          <Link href="/forgot-password" className={styles.forgotLink}>
+            Forgot password?
+          </Link>
+        </p>
+
         <p className={styles.switchText}>
           Don&apos;t have an account?{' '}
           <Link href="/signup" className={styles.switchLink}>

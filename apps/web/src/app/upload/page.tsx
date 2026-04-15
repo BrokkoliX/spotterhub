@@ -15,6 +15,10 @@ import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
 import { CREATE_PHOTO, GET_ME, GET_UPLOAD_URL, SEARCH_AIRCRAFT_TYPES } from '@/lib/queries';
+import dynamic from 'next/dynamic';
+import AirportPicker, { type Airport } from '@/components/AirportPicker';
+
+const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false });
 
 import styles from './page.module.css';
 
@@ -108,6 +112,28 @@ export default function UploadPage() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [locationPrivacy, setLocationPrivacy] = useState('exact');
+  const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null);
+  const [mapPosition, setMapPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Airport picker handler — sets airport code + coordinates
+  const handleAirportSelect = (airport: Airport | null) => {
+    setSelectedAirport(airport);
+    if (airport) {
+      setAirportCode(airport.icaoCode);
+      setLatitude(String(airport.latitude));
+      setLongitude(String(airport.longitude));
+      setMapPosition({ lat: airport.latitude, lng: airport.longitude });
+    }
+  };
+
+  // Map picker handler — sets coordinates + clears airport selection
+  const handleMapSelect = (lat: number, lng: number) => {
+    setMapPosition({ lat, lng });
+    setLatitude(String(lat));
+    setLongitude(String(lng));
+    setSelectedAirport(null);
+    setAirportCode('');
+  };
 
   // ── File Selection ──────────────────────────────────────────────────────
 
@@ -597,46 +623,23 @@ export default function UploadPage() {
                 </div>
 
                 <div className="field">
-                  <label htmlFor="airportCode" className="label">
-                    Airport Code
-                  </label>
-                  <input
-                    id="airportCode"
-                    type="text"
-                    className="input"
-                    value={airportCode}
-                    onChange={(e) =>
-                      setAirportCode(e.target.value.toUpperCase())
-                    }
-                    placeholder="KSFO"
-                    maxLength={4}
-                  />
+                  <label className="label">📍 Airport (optional)</label>
+                  <AirportPicker value={selectedAirport} onChange={handleAirportSelect} />
                 </div>
 
                 <div className="field">
-                  <label className="label">📍 Location</label>
-                  <div className={styles.locationRow}>
-                    <input
-                      type="number"
-                      className="input"
-                      value={latitude}
-                      onChange={(e) => setLatitude(e.target.value)}
-                      placeholder="Latitude"
-                      step="any"
-                      min={-90}
-                      max={90}
-                    />
-                    <input
-                      type="number"
-                      className="input"
-                      value={longitude}
-                      onChange={(e) => setLongitude(e.target.value)}
-                      placeholder="Longitude"
-                      step="any"
-                      min={-180}
-                      max={180}
-                    />
-                  </div>
+                  <label className="label">📍 Or pick a location on the map</label>
+                  <MapPicker position={mapPosition} onSelect={handleMapSelect} />
+                  {mapPosition && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                      {mapPosition.lat.toFixed(4)}°, {mapPosition.lng.toFixed(4)}° — drag marker to adjust
+                    </p>
+                  )}
+                  {!mapPosition && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                      Click the map to set a location
+                    </p>
+                  )}
                 </div>
 
                 {(latitude || longitude) && (

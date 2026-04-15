@@ -1,6 +1,8 @@
-import { Prisma } from '@spotterspace/db';
+import { GraphQLError } from 'graphql';
 
+import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { Prisma } from '@spotterspace/db';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -11,6 +13,13 @@ export interface AirportParent {
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const airportQueryResolvers = {
+  exportAirports: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+    return ctx.prisma.airport.findMany({
+      orderBy: { icaoCode: 'asc' },
+    });
+  },
+
   airports: async (_parent: unknown, _args: unknown, ctx: Context) => {
     return ctx.prisma.airport.findMany({
       orderBy: { icaoCode: 'asc' },
@@ -30,6 +39,58 @@ export const airportQueryResolvers = {
     return ctx.prisma.airport.findUnique({
       where: { iataCode: code },
     });
+  },
+
+  adminAirports: async (
+    _parent: unknown,
+    args: { search?: string; first?: number; after?: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    const take = Math.min(args.first ?? 50, 100);
+    const where: Record<string, unknown> = {};
+
+    if (args.search) {
+      const words = args.search.trim().split(/\s+/).filter(Boolean);
+      where.AND = words.map((word) => ({
+        OR: [
+          { icaoCode: { contains: word, mode: 'insensitive' } },
+          { iataCode: { contains: word, mode: 'insensitive' } },
+          { name: { contains: word, mode: 'insensitive' } },
+          { city: { contains: word, mode: 'insensitive' } },
+          { country: { contains: word, mode: 'insensitive' } },
+        ],
+      }));
+    }
+
+    if (args.after) {
+      where.id = { gt: args.after };
+    }
+
+    const [items, totalCount] = await Promise.all([
+      ctx.prisma.airport.findMany({
+        where,
+        orderBy: { icaoCode: 'asc' },
+        take,
+      }),
+      ctx.prisma.airport.count({ where }),
+    ]);
+
+    const hasNextPage = items.length > take;
+    const edges = items.slice(0, take).map((airport) => ({
+      cursor: airport.id,
+      node: airport,
+    }));
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      },
+      totalCount,
+    };
   },
 
   searchAirports: async (
@@ -67,7 +128,7 @@ export const airportQueryResolvers = {
 
     return ctx.prisma.airport.findMany({
       where,
-      select: { icaoCode: true, iataCode: true, name: true, city: true, country: true },
+      select: { icaoCode: true, iataCode: true, name: true, city: true, country: true, latitude: true, longitude: true },
       orderBy: { icaoCode: 'asc' },
       take,
     });
@@ -88,6 +149,154 @@ export const airportFieldResolvers = {
       where: { airportId: parent.id },
       include: { createdBy: { include: { profile: true } } },
       orderBy: { name: 'asc' },
+    });
+  },
+};
+
+// ─── Airport Mutation Resolvers ─────────────────────────────────────────────
+
+export const airportMutationResolvers = {
+  createAirport: async (
+    _parent: unknown,
+    args: {
+      input: {
+        icaoCode: string;
+        iataCode?: string;
+        name: string;
+        city?: string;
+        country?: string;
+        latitude: number;
+        longitude: number;
+      };
+    },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    return ctx.prisma.airport.create({
+      data: {
+        icaoCode: args.input.icaoCode.toUpperCase(),
+        iataCode: args.input.iataCode?.toUpperCase(),
+        name: args.input.name,
+        city: args.input.city,
+        country: args.input.country,
+        latitude: args.input.latitude,
+        longitude: args.input.longitude,
+      },
+    });
+  },
+
+  updateAirport: async (
+    _parent: unknown,
+    args: {
+      id: string;
+      input: {
+        icaoCode?: string;
+        iataCode?: string;
+        name?: string;
+        city?: string;
+        country?: string;
+        latitude?: number;
+        longitude?: number;
+      };
+    },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    const existing = await ctx.prisma.airport.findUnique({
+      where: { id: args.id },
+    });
+    if (!existing) {
+      throw new GraphQLError('Airport not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    return ctx.prisma.airport.update({
+      where: { id: args.id },
+      data: {
+        ...(args.input.icaoCode !== undefined && {
+          icaoCode: args.input.icaoCode.toUpperCase(),
+        }),
+        ...(args.input.iataCode !== undefined && {
+          iataCode: args.input.iataCode?.toUpperCase(),
+        }),
+        ...(args.input.name !== undefined && { name: args.input.name }),
+        ...(args.input.city !== undefined && { city: args.input.city }),
+        ...(args.input.country !== undefined && { country: args.input.country }),
+        ...(args.input.latitude !== undefined && { latitude: args.input.latitude }),
+        ...(args.input.longitude !== undefined && { longitude: args.input.longitude }),
+      },
+    });
+  },
+
+  deleteAirport: async (
+    _parent: unknown,
+    args: { id: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    const existing = await ctx.prisma.airport.findUnique({
+      where: { id: args.id },
+    });
+    if (!existing) {
+      throw new GraphQLError('Airport not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await ctx.prisma.airport.delete({ where: { id: args.id } });
+    return true;
+  },
+
+  upsertAirport: async (
+    _parent: unknown,
+    args: {
+      input: {
+        icaoCode: string;
+        iataCode?: string;
+        name: string;
+        city?: string;
+        country?: string;
+        latitude: number;
+        longitude: number;
+      };
+    },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    const icao = args.input.icaoCode.toUpperCase();
+    const existing = await ctx.prisma.airport.findUnique({
+      where: { icaoCode: icao },
+    });
+
+    if (existing) {
+      return ctx.prisma.airport.update({
+        where: { id: existing.id },
+        data: {
+          iataCode: args.input.iataCode?.toUpperCase() ?? existing.iataCode,
+          name: args.input.name,
+          city: args.input.city ?? existing.city,
+          country: args.input.country ?? existing.country,
+          latitude: args.input.latitude,
+          longitude: args.input.longitude,
+        },
+      });
+    }
+
+    return ctx.prisma.airport.create({
+      data: {
+        icaoCode: icao,
+        iataCode: args.input.iataCode?.toUpperCase(),
+        name: args.input.name,
+        city: args.input.city,
+        country: args.input.country,
+        latitude: args.input.latitude,
+        longitude: args.input.longitude,
+      },
     });
   },
 };

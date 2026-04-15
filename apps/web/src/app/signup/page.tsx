@@ -1,18 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { useMutation } from 'urql';
 
-import { useAuth } from '@/lib/auth';
 import { SIGN_UP } from '@/lib/queries';
 
 import styles from '../signin/page.module.css';
 
 export default function SignUpPage() {
-  const router = useRouter();
-  const { signIn } = useAuth();
   const [, executeMutation] = useMutation(SIGN_UP);
 
   const [email, setEmail] = useState('');
@@ -20,6 +16,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [successEmail, setSuccessEmail] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,10 +33,33 @@ export default function SignUpPage() {
       return;
     }
 
-    const { token, user } = result.data.signUp;
-    signIn(token, user);
-    router.push('/');
+    setSuccessEmail(email);
+    setLoading(false);
   };
+
+  if (successEmail) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Check your email</h1>
+          <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+            We sent a verification link to
+          </p>
+          <p style={{ textAlign: 'center', fontWeight: 600, marginBottom: 24 }}>
+            {successEmail}
+          </p>
+          <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+            Click the link in the email to activate your account.
+          </p>
+          <p style={{ textAlign: 'center', marginTop: 16 }}>
+            <Link href="/signin" className="btn btn-secondary">
+              Back to sign in
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

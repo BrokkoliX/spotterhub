@@ -1,6 +1,8 @@
 /* ─── CSS Custom Properties ──────────────────────────────────────────────── */
 
 :root {
+  color-scheme: dark;
+
   --color-bg: #0a0a0a;
   --color-bg-raised: #141414;
   --color-bg-card: #1a1a1a;
@@ -50,6 +52,45 @@
   --bp-lg: 1024px;
 }
 
+/* ─── Light Theme ────────────────────────────────────────────────────────── */
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg:           #ffffff;
+  --color-bg-raised:    #f5f5f5;
+  --color-bg-card:     #eeeeee;
+  --color-bg-input:    #e8e8e8;
+  --color-bg-hover:    #e0e0e0;
+
+  --color-border:       #d4d4d4;
+  --color-border-focus: #999999;
+
+  --color-text:           #111111;
+  --color-text-secondary: #555555;
+  --color-text-muted:     #888888;
+
+  --color-accent:       #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft:  rgba(37, 99, 235, 0.12);
+
+  --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.10);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.14);
+}
+
+/* ─── Theme Transition ─────────────────────────────────────────────────── */
+
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.15s ease,
+    box-shadow 0.25s ease !important;
+}
+
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
 
 *,
@@ -67,6 +108,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 a {

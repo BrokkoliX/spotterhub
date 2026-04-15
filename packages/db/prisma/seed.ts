@@ -30,6 +30,7 @@ async function main() {
       email: 'alice@spotterspace.dev',
       username: 'alice',
       role: 'user',
+      emailVerified: true,
       profile: {
         create: {
           displayName: 'Alice Spotter',
@@ -53,6 +54,7 @@ async function main() {
       email: 'bob@spotterspace.dev',
       username: 'bob-mod',
       role: 'moderator',
+      emailVerified: true,
       profile: {
         create: {
           displayName: 'Bob the Moderator',
@@ -76,6 +78,7 @@ async function main() {
       email: 'charlie@spotterspace.dev',
       username: 'charlie-admin',
       role: 'admin',
+      emailVerified: true,
       profile: {
         create: {
           displayName: 'Charlie Admin',
@@ -96,6 +99,7 @@ async function main() {
       username: 'robi_sz',
       role: 'superuser',
       status: 'active',
+      emailVerified: true,
       profile: {
         create: {
           displayName: 'Robbie',

@@ -19,6 +19,13 @@
   font-size: 1.5rem;
   font-weight: 700;
   text-align: center;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-align: center;
   margin-bottom: 24px;
 }
 
@@ -37,17 +44,13 @@
   text-decoration: underline;
 }
 
-.forgotPassword {
+.success {
+  background: rgba(46, 213, 115, 0.1);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 16px;
   text-align: center;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  margin-top: 12px;
-}
-
-.forgotLink {
-  color: var(--color-accent);
-}
-
-.forgotLink:hover {
-  text-decoration: underline;
 }
