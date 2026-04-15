@@ -1,12 +1,12 @@
 import { validateUpload } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
-
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { generateVariants } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
 import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
+import { validateStringLength, validateArrayLength } from '../utils/validation.js';
 
 // ─── Privacy Helpers ────────────────────────────────────────────────────────
 
@@ -33,7 +33,12 @@ function applyPrivacy(lat: number, lng: number, mode: string) {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type PhotoSortBy = 'recent' | 'popular_day' | 'popular_week' | 'popular_month' | 'popular_all';
+export type PhotoSortBy =
+  | 'recent'
+  | 'popular_day'
+  | 'popular_week'
+  | 'popular_month'
+  | 'popular_all';
 
 export interface PhotosArgs {
   first?: number;
@@ -139,7 +144,7 @@ export const photoQueryResolvers = {
       // Manufacturer is derived: aircraftTypeName starts with manufacturer name
       // e.g. "Boeing 747" -> manufacturer "Boeing"
       where.aircraftTypeName = {
-        ...(where.aircraftTypeName as object || {}),
+        ...((where.aircraftTypeName as object) || {}),
         startsWith: args.manufacturer,
         mode: 'insensitive',
       };
@@ -157,15 +162,15 @@ export const photoQueryResolvers = {
       orderBy = { likeCount: 'desc' };
     } else if (args.sortBy === 'popular_day') {
       const cutoff = new Date(Date.now() - 86_400_000);
-      where.createdAt = { ...(where.createdAt as object || {}), gte: cutoff };
+      where.createdAt = { ...((where.createdAt as object) || {}), gte: cutoff };
       orderBy = { likeCount: 'desc' };
     } else if (args.sortBy === 'popular_week') {
       const cutoff = new Date(Date.now() - 7 * 86_400_000);
-      where.createdAt = { ...(where.createdAt as object || {}), gte: cutoff };
+      where.createdAt = { ...((where.createdAt as object) || {}), gte: cutoff };
       orderBy = { likeCount: 'desc' };
     } else if (args.sortBy === 'popular_month') {
       const cutoff = new Date(Date.now() - 30 * 86_400_000);
-      where.createdAt = { ...(where.createdAt as object || {}), gte: cutoff };
+      where.createdAt = { ...((where.createdAt as object) || {}), gte: cutoff };
       orderBy = { likeCount: 'desc' };
     }
 
@@ -222,11 +227,7 @@ export const photoMutationResolvers = {
     return getPresignedUploadUrl(user.id, args.input.mimeType);
   },
 
-  createPhoto: async (
-    _parent: unknown,
-    args: { input: CreatePhotoInput },
-    ctx: Context,
-  ) => {
+  createPhoto: async (_parent: unknown, args: { input: CreatePhotoInput }, ctx: Context) => {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
@@ -237,6 +238,8 @@ export const photoMutationResolvers = {
     }
 
     const { input } = args;
+    validateStringLength(input.caption, 'Caption', 0, 2000);
+    validateArrayLength(input.tags, 'Tags', 30);
     const originalUrl = getObjectUrl(input.s3Key);
 
     // Auto-credit photographer to uploader, photographerName from profile displayName
@@ -302,11 +305,7 @@ export const photoMutationResolvers = {
     // Create location if coordinates provided
     if (input.latitude != null && input.longitude != null) {
       const privacyMode = input.locationPrivacy ?? 'exact';
-      const { displayLat, displayLng } = applyPrivacy(
-        input.latitude,
-        input.longitude,
-        privacyMode,
-      );
+      const { displayLat, displayLng } = applyPrivacy(input.latitude, input.longitude, privacyMode);
 
       // Find associated airport by code if provided
       let airportId: string | null = null;
@@ -333,10 +332,12 @@ export const photoMutationResolvers = {
     }
 
     // Re-fetch to include location data
-    return ctx.prisma.photo.findUnique({
-      where: { id: photo.id },
-      include: { user: true, variants: true, tags: true },
-    }) ?? photo;
+    return (
+      ctx.prisma.photo.findUnique({
+        where: { id: photo.id },
+        include: { user: true, variants: true, tags: true },
+      }) ?? photo
+    );
   },
 
   updatePhoto: async (
@@ -366,7 +367,22 @@ export const photoMutationResolvers = {
       });
     }
 
-    const { tags, takenAt, latitude, longitude, locationPrivacy, aircraftId, aircraftTypeId, aircraftType, gearBody, gearLens, ...rest } = args.input;
+    validateStringLength(args.input.caption, 'Caption', 0, 2000);
+    validateArrayLength(args.input.tags, 'Tags', 30);
+
+    const {
+      tags,
+      takenAt,
+      latitude,
+      longitude,
+      locationPrivacy,
+      aircraftId,
+      aircraftTypeId,
+      aircraftType,
+      gearBody,
+      gearLens,
+      ...rest
+    } = args.input;
 
     // Update tags if provided: delete existing, create new
     if (tags !== undefined) {
@@ -426,11 +442,7 @@ export const photoMutationResolvers = {
     });
   },
 
-  deletePhoto: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deletePhoto: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
@@ -472,7 +484,11 @@ export const photoFieldResolvers = {
     return ctx.prisma.photoVariant.findMany({ where: { photoId: parent.id } });
   },
 
-  tags: async (parent: PhotoParent & { tags?: Array<{ tag: string }> | string[] }, _args: unknown, ctx: Context) => {
+  tags: async (
+    parent: PhotoParent & { tags?: Array<{ tag: string }> | string[] },
+    _args: unknown,
+    ctx: Context,
+  ) => {
     if (parent.tags) {
       // If already resolved to string array, return directly
       if (parent.tags.length === 0) return [];
@@ -488,21 +504,15 @@ export const photoFieldResolvers = {
   },
 
   likeCount: (parent: PhotoParent, _args: unknown, ctx: Context) => {
-    return ctx.prisma.like.count({ where: { photoId: parent.id } });
+    return ctx.loaders.photoLikeCount.load(parent.id);
   },
 
   commentCount: (parent: PhotoParent, _args: unknown, ctx: Context) => {
-    return ctx.prisma.comment.count({ where: { photoId: parent.id } });
+    return ctx.loaders.photoCommentCount.load(parent.id);
   },
 
   location: async (parent: PhotoParent, _args: unknown, ctx: Context) => {
-    const loc = await ctx.prisma.photoLocation.findUnique({
-      where: { photoId: parent.id },
-      include: {
-        airport: true,
-        spottingLocation: { include: { createdBy: { include: { profile: true } } } },
-      },
-    });
+    const loc = await ctx.loaders.photoLocation.load(parent.id);
     if (!loc || loc.privacyMode === 'hidden') return null;
     return {
       id: loc.id,
@@ -514,23 +524,30 @@ export const photoFieldResolvers = {
     };
   },
 
-  aircraft: (parent: PhotoParent & { aircraftId?: string | null }, _args: unknown, ctx: Context) => {
+  aircraft: (
+    parent: PhotoParent & { aircraftId?: string | null },
+    _args: unknown,
+    ctx: Context,
+  ) => {
     if (!parent.aircraftId) return null;
-    return ctx.prisma.aircraft.findUnique({ where: { id: parent.aircraftId } });
+    return ctx.loaders.aircraftById.load(parent.aircraftId);
   },
 
   aircraftType: (parent: PhotoParent) => parent.aircraftTypeName ?? null,
 
   aircraftTypeRef: (parent: PhotoParent, _args: unknown, ctx: Context) => {
     if (!parent.aircraftTypeId) return null;
-    return ctx.prisma.aircraftType.findUnique({ where: { id: parent.aircraftTypeId } });
+    return ctx.loaders.aircraftTypeById.load(parent.aircraftTypeId);
   },
 
-  photographer: (parent: PhotoParent & { photographerId?: string | null }, _args: unknown, ctx: Context) => {
+  photographer: (
+    parent: PhotoParent & { photographerId?: string | null },
+    _args: unknown,
+    ctx: Context,
+  ) => {
     if (!parent.photographerId) return null;
-    return ctx.prisma.user.findUnique({ where: { id: parent.photographerId } });
+    return ctx.loaders.userById.load(parent.photographerId);
   },
 
-  takenAt: (parent: { takenAt: Date | null }) =>
-    parent.takenAt?.toISOString() ?? null,
+  takenAt: (parent: { takenAt: Date | null }) => parent.takenAt?.toISOString() ?? null,
 };

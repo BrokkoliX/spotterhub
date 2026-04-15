@@ -10,7 +10,7 @@ import path from 'node:path';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
-  'postgresql://spotterspace:spotterspace_dev@localhost:5432/spotterspace';
+  'postgresql://spotterhub:spotterhub_dev@localhost:5433/spotterhub';
 
 export default function setup() {
   // Override for PrismaClient and all child processes

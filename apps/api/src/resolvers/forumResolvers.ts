@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -113,11 +114,7 @@ export const forumQueryResolvers = {
     });
   },
 
-  forumCategories: async (
-    _parent: unknown,
-    args: { communityId: string },
-    ctx: Context,
-  ) => {
+  forumCategories: async (_parent: unknown, args: { communityId: string }, ctx: Context) => {
     return ctx.prisma.forumCategory.findMany({
       where: { communityId: args.communityId },
       orderBy: { position: 'asc' },
@@ -357,11 +354,7 @@ export const forumMutationResolvers = {
     return ctx.prisma.forumCategory.update({ where: { id: args.id }, data });
   },
 
-  deleteForumCategory: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteForumCategory: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForCategory(args.id, ctx);
 
@@ -386,6 +379,8 @@ export const forumMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    validateStringLength(args.title, 'Thread title', 1, 200);
+    validateStringLength(args.body, 'Thread body', 1, 10000);
     const communityId = await getCommunityIdForCategory(args.categoryId, ctx);
 
     if (communityId !== null) {
@@ -431,11 +426,7 @@ export const forumMutationResolvers = {
     });
   },
 
-  deleteForumThread: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteForumThread: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
 
     const thread = await ctx.prisma.forumThread.findUnique({
@@ -470,11 +461,7 @@ export const forumMutationResolvers = {
     return true;
   },
 
-  pinForumThread: async (
-    _parent: unknown,
-    args: { id: string; pinned: boolean },
-    ctx: Context,
-  ) => {
+  pinForumThread: async (_parent: unknown, args: { id: string; pinned: boolean }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
     const communityId = await getCommunityIdForThread(args.id, ctx);
 
@@ -534,6 +521,7 @@ export const forumMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    validateStringLength(args.body, 'Post body', 1, 10000);
     const communityId = await getCommunityIdForThread(args.threadId, ctx);
 
     if (communityId !== null) {
@@ -597,12 +585,9 @@ export const forumMutationResolvers = {
     });
   },
 
-  updateForumPost: async (
-    _parent: unknown,
-    args: { id: string; body: string },
-    ctx: Context,
-  ) => {
+  updateForumPost: async (_parent: unknown, args: { id: string; body: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
+    validateStringLength(args.body, 'Post body', 1, 10000);
 
     const post = await ctx.prisma.forumPost.findUnique({
       where: { id: args.id },
@@ -639,11 +624,7 @@ export const forumMutationResolvers = {
     });
   },
 
-  deleteForumPost: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteForumPost: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
 
     const post = await ctx.prisma.forumPost.findUnique({

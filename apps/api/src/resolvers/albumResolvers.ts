@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,11 +50,7 @@ async function requireAlbumOwner(ctx: Context, albumId: string) {
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const albumQueryResolvers = {
-  album: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  album: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const album = await ctx.prisma.album.findUnique({
       where: { id: args.id },
       include: {
@@ -149,13 +146,11 @@ export const albumQueryResolvers = {
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
 export const albumMutationResolvers = {
-  createAlbum: async (
-    _parent: unknown,
-    args: { input: CreateAlbumInput },
-    ctx: Context,
-  ) => {
+  createAlbum: async (_parent: unknown, args: { input: CreateAlbumInput }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
     const { title, description, isPublic } = args.input;
+    validateStringLength(title, 'Album title', 1, 100);
+    validateStringLength(description, 'Description', 0, 2000);
 
     if (!title.trim()) {
       throw new GraphQLError('Album title cannot be empty', {
@@ -215,6 +210,10 @@ export const albumMutationResolvers = {
         });
       }
     }
+
+    if (args.input.title) validateStringLength(args.input.title, 'Album title', 1, 100);
+    if (args.input.description)
+      validateStringLength(args.input.description, 'Description', 0, 2000);
 
     const { title, description, isPublic, coverPhotoId } = args.input;
     const data: Record<string, unknown> = {};
@@ -279,11 +278,7 @@ export const albumMutationResolvers = {
     });
   },
 
-  deleteAlbum: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteAlbum: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const album = await ctx.prisma.album.findUnique({
       where: { id: args.id },
       select: { userId: true, communityId: true },
@@ -612,11 +607,7 @@ export const albumFieldResolvers = {
     });
   },
 
-  photos: async (
-    parent: AlbumParent,
-    args: { first?: number; after?: string },
-    ctx: Context,
-  ) => {
+  photos: async (parent: AlbumParent, args: { first?: number; after?: string }, ctx: Context) => {
     const take = Math.min(args.first ?? 20, 50);
     let items: Awaited<ReturnType<typeof ctx.prisma.photo.findMany>>;
 

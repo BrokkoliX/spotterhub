@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -20,11 +21,7 @@ const VALID_REASONS = ['inappropriate', 'spam', 'harassment', 'copyright', 'othe
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
 export const reportMutationResolvers = {
-  createReport: async (
-    _parent: unknown,
-    args: { input: CreateReportInput },
-    ctx: Context,
-  ) => {
+  createReport: async (_parent: unknown, args: { input: CreateReportInput }, ctx: Context) => {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
@@ -37,6 +34,7 @@ export const reportMutationResolvers = {
     }
 
     const { targetType, targetId, reason, description } = args.input;
+    validateStringLength(args.input.description, 'Description', 0, 2000);
 
     // Validate targetType
     if (!VALID_TARGET_TYPES.includes(targetType)) {
@@ -48,18 +46,16 @@ export const reportMutationResolvers = {
 
     // Validate reason
     if (!VALID_REASONS.includes(reason)) {
-      throw new GraphQLError(
-        `Invalid reason. Must be one of: ${VALID_REASONS.join(', ')}`,
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError(`Invalid reason. Must be one of: ${VALID_REASONS.join(', ')}`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     // Validate description for 'other' reason
     if (reason === 'other' && (!description || description.trim().length === 0)) {
-      throw new GraphQLError(
-        'Description is required when reason is "other"',
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError('Description is required when reason is "other"', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     // Verify target exists

@@ -10,6 +10,6 @@
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
-  'postgresql://spotterspace:spotterspace_dev@localhost:5432/spotterspace';
+  'postgresql://spotterhub:spotterhub_dev@localhost:5433/spotterhub';
 
 process.env.DATABASE_URL = TEST_DATABASE_URL;

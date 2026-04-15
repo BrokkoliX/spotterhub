@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+import { validateStringLength } from '../utils/validation.js';
 
 import { createNotification } from './notificationResolvers.js';
 
@@ -77,13 +78,10 @@ export const commentQueryResolvers = {
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
 export const commentMutationResolvers = {
-  addComment: async (
-    _parent: unknown,
-    args: { input: AddCommentInput },
-    ctx: Context,
-  ) => {
+  addComment: async (_parent: unknown, args: { input: AddCommentInput }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
     const { photoId, body, parentCommentId } = args.input;
+    validateStringLength(body, 'Comment body', 1, 2000);
 
     // Validate body
     const trimmedBody = body.trim();
@@ -165,12 +163,9 @@ export const commentMutationResolvers = {
     return comment;
   },
 
-  updateComment: async (
-    _parent: unknown,
-    args: { id: string; body: string },
-    ctx: Context,
-  ) => {
+  updateComment: async (_parent: unknown, args: { id: string; body: string }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
+    validateStringLength(args.body, 'Comment body', 1, 2000);
 
     const comment = await ctx.prisma.comment.findUnique({
       where: { id: args.id },
@@ -209,11 +204,7 @@ export const commentMutationResolvers = {
     });
   },
 
-  deleteComment: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteComment: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
 
     const comment = await ctx.prisma.comment.findUnique({

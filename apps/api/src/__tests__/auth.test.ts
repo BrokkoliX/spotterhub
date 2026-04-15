@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-
-
 import {
   cleanDatabase,
   createTestContext,
@@ -13,7 +11,6 @@ import {
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
 let server: Awaited<ReturnType<typeof setupTestServer>>;
-
 
 beforeAll(async () => {
   server = await setupTestServer();
@@ -28,13 +25,12 @@ beforeEach(cleanDatabase);
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('Auth: signUp', () => {
-  it('creates a new user and returns a JWT token', async () => {
+  it('creates a new user and returns user data', async () => {
     const result = await server.executeOperation(
       {
         query: `
           mutation SignUp($input: SignUpInput!) {
             signUp(input: $input) {
-              token
               user { id email username role status profile { displayName } }
             }
           }
@@ -58,10 +54,14 @@ describe('Auth: signUp', () => {
     expect(data?.signUp).toBeDefined();
 
     const signUp = data!.signUp as {
-      token: string;
-      user: { email: string; username: string; role: string; status: string; profile: { displayName: string } };
+      user: {
+        email: string;
+        username: string;
+        role: string;
+        status: string;
+        profile: { displayName: string };
+      };
     };
-    expect(signUp.token).toBeTruthy();
     expect(signUp.user.email).toBe('test@example.com');
     expect(signUp.user.username).toBe('testuser');
     expect(signUp.user.role).toBe('user');
@@ -73,7 +73,7 @@ describe('Auth: signUp', () => {
     // Create first user
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user1", password: "password123" }) { token } }`,
+        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user1", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -81,7 +81,7 @@ describe('Auth: signUp', () => {
     // Try duplicate email
     const result = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user2", password: "password123" }) { token } }`,
+        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user2", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -95,7 +95,7 @@ describe('Auth: signUp', () => {
   it('rejects invalid username (too short)', async () => {
     const result = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "short@example.com", username: "ab", password: "password123" }) { token } }`,
+        query: `mutation { signUp(input: { email: "short@example.com", username: "ab", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -109,7 +109,7 @@ describe('Auth: signUp', () => {
   it('rejects short password', async () => {
     const result = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "pw@example.com", username: "validuser", password: "short" }) { token } }`,
+        query: `mutation { signUp(input: { email: "pw@example.com", username: "validuser", password: "short" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -125,10 +125,15 @@ describe('Auth: signIn', () => {
   beforeEach(async () => {
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "login@example.com", username: "loginuser", password: "password123" }) { token } }`,
+        query: `mutation { signUp(input: { email: "login@example.com", username: "loginuser", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
+    // Mark email as verified so signIn doesn't reject with EMAIL_NOT_VERIFIED
+    await prisma.user.update({
+      where: { email: 'login@example.com' },
+      data: { emailVerified: true },
+    });
   });
 
   it('returns a token for valid credentials', async () => {
@@ -180,7 +185,7 @@ describe('Auth: me query', () => {
     // Create user first
     const signUpResult = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "me@example.com", username: "meuser", password: "password123" }) { token user { id } } }`,
+        query: `mutation { signUp(input: { email: "me@example.com", username: "meuser", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -232,7 +237,7 @@ describe('Profile: updateProfile', () => {
     // Create user
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "profile@example.com", username: "profileuser", password: "password123" }) { token } }`,
+        query: `mutation { signUp(input: { email: "profile@example.com", username: "profileuser", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -294,7 +299,7 @@ describe('Query: user(username)', () => {
   it('returns a public user by username', async () => {
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "public@example.com", username: "publicuser", password: "password123" }) { token } }`,
+        query: `mutation { signUp(input: { email: "public@example.com", username: "publicuser", password: "password123" }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -336,7 +341,10 @@ describe('Query: health', () => {
 
     expect(result.body.kind).toBe('single');
     if (result.body.kind !== 'single') return;
-    const health = result.body.singleResult.data?.health as { status: string; dbConnected: boolean };
+    const health = result.body.singleResult.data?.health as {
+      status: string;
+      dbConnected: boolean;
+    };
     expect(health.status).toBe('ok');
     expect(health.dbConnected).toBe(true);
   });

@@ -19,11 +19,7 @@ const photoIncludes = { user: true, variants: true, tags: true } as const;
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
 export const likeMutationResolvers = {
-  likePhoto: async (
-    _parent: unknown,
-    args: { photoId: string },
-    ctx: Context,
-  ) => {
+  likePhoto: async (_parent: unknown, args: { photoId: string }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
 
     // Verify photo exists
@@ -68,17 +64,16 @@ export const likeMutationResolvers = {
       }
     }
 
+    // Clear cached like count so subsequent field resolvers see the updated value
+    ctx.loaders.photoLikeCount.clear(args.photoId);
+
     return ctx.prisma.photo.findUnique({
       where: { id: args.photoId },
       include: photoIncludes,
     });
   },
 
-  unlikePhoto: async (
-    _parent: unknown,
-    args: { photoId: string },
-    ctx: Context,
-  ) => {
+  unlikePhoto: async (_parent: unknown, args: { photoId: string }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
 
     // Verify photo exists
@@ -102,6 +97,9 @@ export const likeMutationResolvers = {
         data: { likeCount: { decrement: 1 } },
       });
     }
+
+    // Clear cached like count so subsequent field resolvers see the updated value
+    ctx.loaders.photoLikeCount.clear(args.photoId);
 
     return ctx.prisma.photo.findUnique({
       where: { id: args.photoId },
