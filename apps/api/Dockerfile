@@ -20,7 +20,8 @@ RUN npx turbo run build --filter=@spotterspace/api
 RUN npm prune --production --workspace=@spotterspace/api
 
 # Reinstall prisma CLI (needed at runtime for migrate deploy in entrypoint)
-RUN npm install prisma --no-save
+# Pin to v6 to match project — v7 has breaking datasource config changes
+RUN npm install prisma@^6.2.0 --no-save
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
