@@ -2710,7 +2710,7 @@ export type SignUpMutationVariables = Exact<{
 }>;
 
 
-export type SignUpMutation = { __typename?: 'Mutation', signUp: { __typename?: 'SignUpPayload', user: { __typename?: 'User', id: string, email: string, username: string, role: UserRole, emailVerified: boolean } } };
+export type SignUpMutation = { __typename?: 'Mutation', signUp: { __typename?: 'SignUpPayload', user: { __typename?: 'User', id: string, email: string, username: string, role: UserRole } } };
 
 export type VerifyEmailMutationVariables = Exact<{
   token: Scalars['String']['input'];
@@ -4175,7 +4175,6 @@ export const SignUpDocument = gql`
       email
       username
       role
-      emailVerified
     }
   }
 }

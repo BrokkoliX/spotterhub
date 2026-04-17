@@ -10,7 +10,6 @@ export const SIGN_UP = gql`
         email
         username
         role
-        emailVerified
       }
     }
   }

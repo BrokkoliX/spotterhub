@@ -99,7 +99,7 @@ export default function SignUpPage() {
               placeholder="avgeek123"
               minLength={3}
               maxLength={30}
-              pattern="[a-zA-Z0-9_-]+"
+              pattern="[-a-zA-Z0-9_]+"
               title="Letters, numbers, hyphens, and underscores only"
             />
           </div>
