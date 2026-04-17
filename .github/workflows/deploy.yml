@@ -137,8 +137,9 @@ jobs:
           TASK_DEF=$(aws ecs describe-task-definition --task-definition spotterspace-dev-web --region ${{ env.AWS_REGION }})
 
           # Update image in container definition and register new revision
+          # Use del to remove null fields that would cause validation errors
           NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg IMG "$FULL_IMAGE" \
-            '.taskDefinition | .containerDefinitions[0].image = $IMG | {family, containerDefinitions, cpu, memory, networkMode, requiresCompatibilities, executionRoleArn, taskRoleArn}')
+            '.taskDefinition | .containerDefinitions[0].image = $IMG | {family, containerDefinitions, cpu, memory, networkMode, requiresCompatibilities, executionRoleArn, taskRoleArn} | del(.[] | nulls)')
 
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" --region ${{ env.AWS_REGION }} \
             | jq -r '.taskDefinition.taskDefinitionArn')
