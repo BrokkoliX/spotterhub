@@ -1,6 +1,6 @@
 # SpotterHub — Deployment & Operations Guide
 
-> **Last updated:** 2026-04-15
+> **Last updated:** 2026-04-17
 > **Domain:** spotterspace.com (registered 2026-04-11 via Amazon Registrar)
 > **AWS Region:** us-east-1
 > **AWS Account:** 654654553862
@@ -21,8 +21,7 @@
 10. [Network & Security Groups](#network--security-groups)
 11. [Monitoring & Health Checks](#monitoring--health-checks)
 12. [Troubleshooting](#troubleshooting)
-13. [TODO: Known Issues](#todo-known-issues)
-14. [File Reference](#file-reference)
+13. [File Reference](#file-reference)
 
 ---
 
@@ -66,71 +65,81 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 
 ### Live Endpoints
 
-| Endpoint | URL | Status |
-|----------|-----|--------|
-| Web App | https://www.spotterspace.com | ✅ |
-| API GraphQL | https://api.spotterspace.com/graphql | ✅ |
-| API Health | https://api.spotterspace.com/health | ✅ |
-| Apex Redirect | https://spotterspace.com → www | ✅ |
+| Endpoint      | URL                                  | Status |
+| ------------- | ------------------------------------ | ------ |
+| Web App       | https://www.spotterspace.com         | ✅     |
+| API GraphQL   | https://api.spotterspace.com/graphql | ✅     |
+| API Health    | https://api.spotterspace.com/health  | ✅     |
+| Apex Redirect | https://spotterspace.com → www       | ✅     |
 
 ### Key AWS Resources
 
-| Resource | Name / ID |
-|----------|-----------|
-| ECS Cluster | `spotterspace-cluster` |
-| API ECS Service | `spotterspace-dev-api` |
-| Web ECS Service | `spotterspace-dev-web` |
-| API ECR Repo | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api` |
-| Web ECR Repo | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web` |
-| API Task Definition | `spotterspace-dev-api` (rev 11, image: `:latest`) |
-| Web Task Definition | `spotterspace-dev-web` (rev 10, image: `:latest`) |
-| RDS | `spotterhub-db` (PostgreSQL 16.3, db.t3.medium, private subnets) |
-| S3 | `spotterspace-photos` |
-| ALB | `spotterspace-alb` |
-| Secrets Manager | `spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET` |
-| Route 53 Zone | `Z00113712EMKXVCPQFWZW` |
-| VPC | `vpc-09a6870488b73260e` (10.0.0.0/20) |
+| Resource            | Name / ID                                                           |
+| ------------------- | ------------------------------------------------------------------- |
+| ECS Cluster         | `spotterspace-cluster`                                              |
+| API ECS Service     | `spotterspace-dev-api`                                              |
+| Web ECS Service     | `spotterspace-dev-web`                                              |
+| API ECR Repo        | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api` |
+| Web ECR Repo        | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web` |
+| API Task Definition | `spotterspace-dev-api` (rev N, image: `:latest`)                    |
+| Web Task Definition | `spotterspace-dev-web` (rev N, image: `:latest`)                    |
+| RDS                 | `spotterhub-db` (PostgreSQL 16.3, db.t3.medium, private subnets)    |
+| S3                  | `spotterspace-photos`                                               |
+| ALB                 | `spotterspace-alb`                                                  |
+| Secrets Manager     | `spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET`                  |
+| Route 53 Zone       | `Z00113712EMKXVCPQFWZW`                                             |
+| VPC                 | `vpc-09a6870488b73260e` (10.0.0.0/20)                               |
 
 ---
 
 ## How to Deploy
 
-### Quick Reference (most common flow)
+### Standard Flow (push to main)
 
-1. **Push code to `main`** → GitHub Actions automatically builds Docker images and pushes to ECR (~5 min)
-2. **Trigger ECS redeployment** from **AWS CloudShell** (GitHub Actions can't do this yet — see [Known Issues](#todo-known-issues)):
+1. **Push code to `main`** → GitHub Actions automatically:
+   - Runs CI checks (lint → typecheck → test → build)
+   - Builds Docker images for API and Web
+   - Pushes to ECR with both `:latest` and `:{sha}` tags
+   - Triggers ECS redeployment for both services (~5-7 min total)
+
+2. **Wait 2-3 minutes** for ECS to roll out the new tasks
+
+3. **Verify:**
 
 ```bash
-# API
-aws ecs update-service --cluster spotterspace-cluster 
-  --service spotterspace-dev-api --force-new-deployment 
-  --region us-east-1 --no-cli-pager
+# Check API health
+curl -s https://api.spotterspace.com/health
 
-# Web
-aws ecs update-service --cluster spotterspace-cluster 
-  --service spotterspace-dev-web --force-new-deployment 
-  --region us-east-1 --no-cli-pager
+# Check ECS deployment status
+aws ecs describe-services --cluster spotterspace-cluster \
+  --services spotterspace-dev-api spotterspace-dev-web \
+  --region us-east-1 --no-cli-pager \
+  --query 'services[*].{Name:serviceName,Running:runningCount,Desired:desiredCount,Status:deployments[0].rolloutState}'
 ```
 
-3. **Wait 2-3 minutes** for ECS to roll out the new tasks
-4. **Verify** by visiting https://api.spotterspace.com/health and https://www.spotterspace.com
+### Manual Deploy (workflow_dispatch)
+
+Go to **GitHub Actions → Deploy to AWS → Run workflow** and choose `dev` or `prod`.
 
 ### Deploy Only API or Only Web
 
-Only run the `update-service` command for the service you want to update. GitHub Actions builds both images on every push, so both `:latest` tags are always up to date in ECR.
+Only run the `update-service` command for the service you want to update:
+
+```bash
+# API only
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-api --force-new-deployment \
+  --region us-east-1 --no-cli-pager
+
+# Web only
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-web --force-new-deployment \
+  --region us-east-1 --no-cli-pager
+```
 
 ### Verify Deployment
 
 ```bash
-# Check deployment status
-aws ecs describe-services --cluster spotterspace-cluster 
-  --services spotterspace-dev-api spotterspace-dev-web 
-  --region us-east-1 --no-cli-pager 
-  --query 'services[*].{Name:serviceName,Running:runningCount,Desired:desiredCount,Status:deployments[0].rolloutState}'
-
-# Check API
-curl -s https://api.spotterspace.com/health
-
 # Check Web
 curl -s -o /dev/null -w "%{http_code}" https://www.spotterspace.com
 ```
@@ -139,84 +148,85 @@ curl -s -o /dev/null -w "%{http_code}" https://www.spotterspace.com
 
 ## CI/CD Pipeline
 
-### Workflow: `.github/workflows/deploy.yml`
-
-**Trigger:** Push to `main` (paths: `apps/**`, `packages/**`, `infrastructure/**`, `.github/workflows/deploy.yml`) or manual `workflow_dispatch`.
-
-**Two parallel jobs:**
-
-1. **deploy-api:** Checkout → AWS auth → ECR login → Docker build & push (`spotterspace-dev-api:latest`) → Force ECS redeployment
-2. **deploy-web:** Checkout → AWS auth → ECR login → Docker build & push (`spotterspace-dev-web:latest`) → Force ECS redeployment
-
-**⚠️ The "Force ECS redeployment" step currently fails** due to missing IAM permissions on the GitHub Actions user. Docker images are pushed successfully. See [Known Issues](#todo-known-issues).
-
 ### Workflow: `.github/workflows/ci.yml`
 
 **Trigger:** Pull requests and pushes to `main`.
 
 ```
-Lint → Typecheck → Test (PR only) → Build
+Lint → Typecheck → Test → Build
 ```
+
+Runs on every PR and every push to `main`. The build step generates the URQL client types via codegen.
+
+### Workflow: `.github/workflows/deploy.yml`
+
+**Trigger:** Push to `main` (paths: `apps/api/**`, `apps/web/**`, `packages/**`, `.github/workflows/deploy.yml`) or manual `workflow_dispatch`.
+
+**Two sequential jobs:**
+
+1. **deploy-api:** Checkout → AWS auth → ECR login → Docker build & push (`spotterspace-dev-api:latest`) → Force ECS redeployment
+2. **deploy-web:** (needs `deploy-api`) Checkout → AWS auth → ECR login → Docker build & push (`spotterspace-dev-web:latest`) → Force ECS redeployment
+
+Web job waits for API to complete before building, but the two ECS redeployments run in parallel once both images are pushed.
+
+**Migrations:** These run automatically inside the API container via `docker-entrypoint.sh` before the server starts. The entrypoint runs `prisma migrate deploy` on every startup (idempotent, safe to re-run).
 
 ### GitHub Secrets & Variables
 
 **Secrets:**
 
-| Secret | Description |
-|--------|-------------|
-| `AWS_ACCESS_KEY_ID` | IAM user access key for deployments |
-| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| Secret                     | Description                         |
+| -------------------------- | ----------------------------------- |
+| `AWS_ACCESS_KEY_ID`        | IAM user access key for deployments |
+| `AWS_SECRET_ACCESS_KEY`    | IAM user secret key                 |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | Mapbox GL JS token for map features |
 
 **Variables:**
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `AWS_ACCOUNT_ID` | `654654553862` | AWS account number |
-| `VPC_ID` | `vpc-09a6870488b73260e` | VPC ID |
-| `DOMAIN_NAME` | `spotterspace.com` | Root domain |
-| `HOSTED_ZONE_ID` | `Z00113712EMKXVCPQFWZW` | Route 53 hosted zone |
-| `S3_BUCKET_NAME` | `spotterspace-photos` | S3 bucket for photos |
+| Variable         | Value              | Description        |
+| ---------------- | ------------------ | ------------------ |
+| `AWS_ACCOUNT_ID` | `654654553862`     | AWS account number |
+| `DOMAIN_NAME`    | `spotterspace.com` | Root domain        |
 
 ---
 
 ## Task Definition Management
 
-ECS task definitions may pin Docker images to specific tags (e.g., `:v5`, `:v6`). If `force-new-deployment` doesn't pick up the latest image, you need to register a new task definition revision pointing to `:latest`.
+ECS task definitions may pin Docker images to specific tags (e.g., `:sha-xxx`). If `force-new-deployment` doesn't pick up the latest image, register a new task definition revision pointing to `:latest`.
 
 ### Check Current Image Tag
 
 ```bash
-aws ecs describe-task-definition --task-definition spotterspace-dev-api 
-  --query 'taskDefinition.containerDefinitions[0].image' 
+aws ecs describe-task-definition --task-definition spotterspace-dev-api \
+  --query 'taskDefinition.containerDefinitions[0].image' \
   --output text --no-cli-pager
 ```
 
-If it shows `:latest`, a simple `force-new-deployment` will pull the newest image. If it shows a pinned tag (e.g., `:v5`), follow the steps below.
+If it shows `:latest`, a simple `force-new-deployment` will pull the newest image. If it shows a specific tag, follow the steps below.
 
 ### Update API Task Definition
 
 ```bash
 # 1. Export current task definition
-aws ecs describe-task-definition 
-  --task-definition spotterspace-dev-api 
+aws ecs describe-task-definition \
+  --task-definition spotterspace-dev-api \
   --query 'taskDefinition' --no-cli-pager > /tmp/td.json
 
 # 2. Create clean version with :latest tag (requires jq)
-jq '{family,containerDefinitions,taskRoleArn,executionRoleArn,networkMode,requiresCompatibilities,cpu,memory}' 
+jq '{family,containerDefinitions,taskRoleArn,executionRoleArn,networkMode,requiresCompatibilities,cpu,memory}' \
   /tmp/td.json | sed 's|spotterspace-dev-api:[^"]*|spotterspace-dev-api:latest|g' > /tmp/clean-td.json
 
 # 3. Register new revision
-aws ecs register-task-definition 
-  --cli-input-json file:///tmp/clean-td.json 
-  --region us-east-1 --query 'taskDefinition.taskDefinitionArn' 
+aws ecs register-task-definition \
+  --cli-input-json file:///tmp/clean-td.json \
+  --region us-east-1 --query 'taskDefinition.taskDefinitionArn' \
   --output text --no-cli-pager
 # → outputs: arn:aws:ecs:...:task-definition/spotterspace-dev-api:NEW_REV
 
 # 4. Update service with new revision
-aws ecs update-service --cluster spotterspace-cluster 
-  --service spotterspace-dev-api 
-  --task-definition spotterspace-dev-api:NEW_REV 
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-api \
+  --task-definition spotterspace-dev-api:NEW_REV \
   --force-new-deployment --region us-east-1 --no-cli-pager
 ```
 
@@ -226,24 +236,24 @@ Same process, but **omit `taskRoleArn`** (the web task has no task role):
 
 ```bash
 # 1. Export
-aws ecs describe-task-definition 
-  --task-definition spotterspace-dev-web 
+aws ecs describe-task-definition \
+  --task-definition spotterspace-dev-web \
   --query 'taskDefinition' --no-cli-pager > /tmp/web-td.json
 
 # 2. Clean — note: no taskRoleArn
-jq '{family,containerDefinitions,executionRoleArn,networkMode,requiresCompatibilities,cpu,memory}' 
+jq '{family,containerDefinitions,executionRoleArn,networkMode,requiresCompatibilities,cpu,memory}' \
   /tmp/web-td.json | sed 's|spotterspace-dev-web:[^"]*|spotterspace-dev-web:latest|g' > /tmp/clean-web-td.json
 
 # 3. Register
-aws ecs register-task-definition 
-  --cli-input-json file:///tmp/clean-web-td.json 
-  --region us-east-1 --query 'taskDefinition.taskDefinitionArn' 
+aws ecs register-task-definition \
+  --cli-input-json file:///tmp/clean-web-td.json \
+  --region us-east-1 --query 'taskDefinition.taskDefinitionArn' \
   --output text --no-cli-pager
 
 # 4. Deploy
-aws ecs update-service --cluster spotterspace-cluster 
-  --service spotterspace-dev-web 
-  --task-definition spotterspace-dev-web:NEW_REV 
+aws ecs update-service --cluster spotterspace-cluster \
+  --service spotterspace-dev-web \
+  --task-definition spotterspace-dev-web:NEW_REV \
   --force-new-deployment --region us-east-1 --no-cli-pager
 ```
 
@@ -253,18 +263,17 @@ aws ecs update-service --cluster spotterspace-cluster
 
 - RDS is in **private subnets** — it is **NOT accessible** from CloudShell, the internet, or your local machine
 - Only ECS tasks (running in the same VPC private subnets) can reach it
-- The API container runs **Prisma migrations automatically on startup** (idempotent)
-- To run ad-hoc SQL, you would need to:
-  - Enable **ECS Exec** on the API service and run commands inside the container
-  - Set up a **bastion host** or **VPN** in the VPC
+- The API container runs **Prisma migrations automatically on startup** via `docker-entrypoint.sh` (idempotent — runs on every container start)
+- The entrypoint also performs a one-time migration history cleanup: if old migration entries exist that are no longer in the migrations directory, it resets the history and marks the squashed init as applied
+- To run ad-hoc SQL, enable **ECS Exec** on the API service and run commands inside the container
 
 ### Connection String
 
 Stored in Secrets Manager as `spotterhub/DATABASE_URL`:
 
 ```bash
-aws secretsmanager get-secret-value 
-  --secret-id spotterhub/DATABASE_URL 
+aws secretsmanager get-secret-value \
+  --secret-id spotterhub/DATABASE_URL \
   --query SecretString --output text
 ```
 
@@ -277,16 +286,17 @@ Output format: `{"DATABASE_URL":"postgresql://user:pass@spotterhub-db.xxx.us-eas
 ### Dev Auth Mode
 
 The API uses a dev-mode authentication system (not AWS Cognito):
+
 - **signUp** mutation creates a user with a SHA-256 hashed password stored as `cognitoSub` (prefix `dev1-`)
 - **signIn** mutation verifies the password by recomputing the hash
 
 ### Production Superuser
 
-| Field | Value |
-|-------|-------|
-| Email | `robi_sz@yahoo.com` |
-| Password | `Jerusalem!25` |
-| Role | `superuser` |
+| Field    | Value               |
+| -------- | ------------------- |
+| Email    | `robi_sz@yahoo.com` |
+| Password | `Jerusalem!25`      |
+| Role     | `superuser`         |
 
 ### One-Time Seed Endpoint
 
@@ -294,13 +304,13 @@ The API exposes a `POST /seed` endpoint that upserts the superuser. It requires 
 
 ```bash
 # 1. Get the JWT_SECRET value
-JWT_SECRET=$(aws secretsmanager get-secret-value 
-  --secret-id spotterhub/JWT_SECRET 
-  --query SecretString --output text 
+JWT_SECRET=$(aws secretsmanager get-secret-value \
+  --secret-id spotterhub/JWT_SECRET \
+  --query SecretString --output text \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['JWT_SECRET'])")
 
 # 2. Call /seed
-curl -X POST https://api.spotterspace.com/seed 
+curl -X POST https://api.spotterspace.com/seed \
   -H "x-jwt-secret: $JWT_SECRET"
 ```
 
@@ -308,12 +318,12 @@ curl -X POST https://api.spotterspace.com/seed
 
 ## Secrets Manager
 
-| Secret ID | Contents |
-|-----------|----------|
+| Secret ID                 | Contents                              |
+| ------------------------- | ------------------------------------- |
 | `spotterhub/DATABASE_URL` | `{"DATABASE_URL":"postgresql://..."}` |
-| `spotterhub/JWT_SECRET` | `{"JWT_SECRET":"..."}` |
+| `spotterhub/JWT_SECRET`   | `{"JWT_SECRET":"..."}`                |
 
-**⚠️ Important:** The prefix is `spotterhub/`, NOT `spotterspace/`.
+**Important:** The prefix is `spotterhub/`, NOT `spotterspace/`.
 
 The API loads these at startup via `@aws-sdk/client-secrets-manager`. They are fetched directly by the app code using the ECS task role — not injected via ECS task definition secrets.
 
@@ -333,17 +343,18 @@ aws secretsmanager get-secret-value --secret-id spotterhub/JWT_SECRET --query Se
 - **Multi-stage:** Node 20 Alpine (build) → Node 20 Alpine (runtime)
 - **Build:** Copies monorepo → `npm install --workspaces --ignore-scripts` → `prisma generate` → `turbo build --filter=@spotterspace/api` → `npm prune --production`
 - **Runtime:** Non-root user (`nodeapp:1001`)
-- **Entrypoint:** `docker-entrypoint.sh` → `node dist/index.js`
+- **Entrypoint:** `docker-entrypoint.sh` → `prisma migrate deploy` → `node dist/index.js`
 - **Port:** 4000
-- **Health check:** `wget -qO- http://localhost:4000/health`
-- **Startup sequence:** Load secrets from Secrets Manager → Run Prisma migrations → Start Apollo Server
+- **Health check:** `wget -qO- http://localhost:4000/health` (start-period 60s accounts for migration time on cold starts)
+- **Startup sequence:** Run migrations → Start Apollo Server
 
 ### Web (`apps/web/Dockerfile`)
 
 - **Multi-stage:** Node 20 Alpine (build) → Node 20 (runtime)
 - **Build args:** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN` (baked into bundle at build time)
 - **Port:** 3000
-- **⚠️ Critical path:** Next.js standalone output nests at `apps/web/apps/web/server.js` in monorepos:
+- **Entrypoint:** `node apps/web/apps/web/server.js` (standalone output)
+- **Critical path:** Next.js standalone output nests at `apps/web/apps/web/server.js` in monorepos:
 
 ```dockerfile
 COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
@@ -360,11 +371,11 @@ CMD ["node", "apps/web/apps/web/server.js"]
 
 ## DNS & HTTPS
 
-| Record | Type | Target |
-|--------|------|--------|
-| `www.spotterspace.com` | CNAME | ALB DNS name |
-| `api.spotterspace.com` | CNAME | ALB DNS name |
-| `spotterspace.com` | A (alias) | CloudFront (apex redirect to www) |
+| Record                 | Type      | Target                            |
+| ---------------------- | --------- | --------------------------------- |
+| `www.spotterspace.com` | CNAME     | ALB DNS name                      |
+| `api.spotterspace.com` | CNAME     | ALB DNS name                      |
+| `spotterspace.com`     | A (alias) | CloudFront (apex redirect to www) |
 
 **SSL:** ACM certificate covers `spotterspace.com` + `*.spotterspace.com`, DNS-validated via Route 53.
 
@@ -374,13 +385,13 @@ CMD ["node", "apps/web/apps/web/server.js"]
 
 ## Network & Security Groups
 
-| Resource | ID | Purpose |
-|----------|----|---------|
-| VPC | `vpc-09a6870488b73260e` | 10.0.0.0/20, us-east-1 |
-| Private Subnets | `subnet-082c94f0897298f6e`, `subnet-096b774ed307c85ed` | ECS tasks + RDS |
-| ALB + ECS SG | `sg-08e5864c53710a095` | Self-referencing, shared by ALB and ECS tasks |
-| RDS SG | `sg-0925439b428efdf13` | Allows port 5432 from ECS SG |
-| SM VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0` | Allows port 443 from ECS SG |
+| Resource           | ID                                                     | Purpose                                       |
+| ------------------ | ------------------------------------------------------ | --------------------------------------------- |
+| VPC                | `vpc-09a6870488b73260e`                                | 10.0.0.0/20, us-east-1                        |
+| Private Subnets    | `subnet-082c94f0897298f6e`, `subnet-096b774ed307c85ed` | ECS tasks + RDS                               |
+| ALB + ECS SG       | `sg-08e5864c53710a095`                                 | Self-referencing, shared by ALB and ECS tasks |
+| RDS SG             | `sg-0925439b428efdf13`                                 | Allows port 5432 from ECS SG                  |
+| SM VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0`                                 | Allows port 443 from ECS SG                   |
 
 ---
 
@@ -388,10 +399,10 @@ CMD ["node", "apps/web/apps/web/server.js"]
 
 ### ALB Target Groups
 
-| Service | Target Group | Health Check | Interval |
-|---------|-------------|--------------|----------|
-| API | `spotterspace-dev-api-tg` (`.../105538bfd82988b2`) | `GET /health` | 10s |
-| Web | `spotterspace-dev-web-tg` (`.../53bffb7b973906cb`) | `GET /api/health` | 10s |
+| Service | Target Group                                       | Health Check      | Interval |
+| ------- | -------------------------------------------------- | ----------------- | -------- |
+| API     | `spotterspace-dev-api-tg` (`.../105538bfd82988b2`) | `GET /health`     | 10s      |
+| Web     | `spotterspace-dev-web-tg` (`.../53bffb7b973906cb`) | `GET /api/health` | 10s      |
 
 ### CloudWatch Logs
 
@@ -403,12 +414,12 @@ aws logs tail /ecs/spotterspace-dev/web --since 30m --region us-east-1
 ### Check Target Health
 
 ```bash
-aws elbv2 describe-target-health 
-  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-api-tg/105538bfd82988b2 
+aws elbv2 describe-target-health \
+  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-api-tg/105538bfd82988b2 \
   --region us-east-1
 
-aws elbv2 describe-target-health 
-  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-web-tg/53bffb7b973906cb 
+aws elbv2 describe-target-health \
+  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-web-tg/53bffb7b973906cb \
   --region us-east-1
 ```
 
@@ -426,15 +437,9 @@ aws ecs describe-tasks --cluster spotterspace-cluster --tasks TASK_ARN --region 
 
 ### ECS Redeployment Doesn't Pick Up New Image
 
-**Cause:** Task definition is pinned to a specific tag (e.g., `:v5`) instead of `:latest`.
+**Cause:** Task definition is pinned to a specific tag instead of `:latest`.
 
 **Fix:** Register a new task definition revision pointing to `:latest`. See [Task Definition Management](#task-definition-management).
-
-### CSS/JS 404s on Production Web App
-
-**Cause:** Next.js standalone output nested path mismatch in Dockerfile.
-
-**Fix:** Ensure static files are copied to the correct nested path in `apps/web/Dockerfile`.
 
 ### API Can't Connect to RDS
 
@@ -466,30 +471,17 @@ aws secretsmanager list-secrets --query "SecretList[].Name" --output table
 
 ---
 
-## TODO: Known Issues
-
-1. **GitHub Actions IAM permissions:** The `AWS_ACCESS_KEY_ID` used by GitHub Actions lacks `ecs:UpdateService` and `ecs:DescribeServices` permissions. Add these to the IAM user/policy so the deploy workflow can trigger ECS redeployments automatically (eliminating the manual CloudShell step).
-
-2. **CI lint failure:** ESLint fails on `apps/web/src/app/api/health/route.ts` because the pre-commit hook runs ESLint from the root, which doesn't find the web app's flat config. Needs investigation.
-
-3. **CDK stack is stale:** The CDK infrastructure code (`infrastructure/`) still has old references. The deploy workflow no longer uses CDK. If infrastructure changes are needed, the CDK stack should be updated to reflect the current ECS Fargate architecture.
-
----
-
 ## File Reference
 
-| File | Description |
-|------|-------------|
-| `.github/workflows/deploy.yml` | Deploy workflow (Docker build + push to ECR + ECS redeploy) |
-| `.github/workflows/ci.yml` | CI workflow (lint, typecheck, test, build) |
-| `apps/api/Dockerfile` | API Docker build (multi-stage, Node 20 Alpine) |
-| `apps/api/docker-entrypoint.sh` | API container startup script |
-| `apps/api/src/index.ts` | API entry point (secret loading, migrations, /seed endpoint) |
-| `apps/web/Dockerfile` | Web Docker build (Next.js standalone) |
-| `apps/web/next.config.ts` | Next.js config (standalone output, /api/graphql rewrite, S3 patterns) |
-| `infrastructure/lib/spotterspace-stack.ts` | CDK stack definition (stale — see known issues) |
-| `docker/docker-compose.yml` | Local dev services (Postgres, Redis, LocalStack) |
-| `packages/db/prisma/schema.prisma` | Prisma schema (database models) |
-| `packages/db/prisma/seed.ts` | Database seed (test users, airports, sample data) |
-| `scripts/upsert-superuser.sql` | SQL script to upsert superuser (for direct DB access) |
-| `DEPLOYMENT_STATUS.md` | This file |
+| File                               | Description                                                           |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `.github/workflows/deploy.yml`     | Deploy workflow (Docker build + push to ECR + ECS redeploy)           |
+| `.github/workflows/ci.yml`         | CI workflow (lint → typecheck → test → build)                         |
+| `apps/api/Dockerfile`              | API Docker build (multi-stage, Node 20 Alpine)                        |
+| `apps/api/docker-entrypoint.sh`    | API container startup (runs migrations before server)                 |
+| `apps/api/src/index.ts`            | API entry point (secret loading, migrations, /seed endpoint)          |
+| `apps/web/Dockerfile`              | Web Docker build (Next.js standalone)                                 |
+| `apps/web/next.config.ts`          | Next.js config (standalone output, /api/graphql rewrite, S3 patterns) |
+| `packages/db/prisma/schema.prisma` | Prisma schema (database models)                                       |
+| `packages/db/prisma/seed.ts`       | Database seed (test users, airports, sample data)                     |
+| `DEPLOYMENT_STATUS.md`             | This file                                                             |
