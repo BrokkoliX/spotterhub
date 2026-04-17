@@ -261,8 +261,7 @@ export class SpotterSpaceStack extends Stack {
       containerDefinitions: [
         {
           name: 'api',
-          image: apiEcrRepo.repositoryUri + ':v5',
-          portMappings: [{ containerPort: 4000, protocol: 'tcp' }],
+           image: apiEcrRepo.repositoryUri + ':latest',          portMappings: [{ containerPort: 4000, protocol: 'tcp' }],
           secrets: [
             { name: 'DATABASE_URL', valueFrom: dbUrlSecret.secretArn + ':DATABASE_URL::' },
             { name: 'JWT_SECRET', valueFrom: jwtSecret.secretArn + ':JWT_SECRET::' },
@@ -303,8 +302,7 @@ export class SpotterSpaceStack extends Stack {
       containerDefinitions: [
         {
           name: 'web',
-          image: webEcrRepo.repositoryUri + ':v6',
-          portMappings: [{ containerPort: 3000, protocol: 'tcp' }],
+           image: webEcrRepo.repositoryUri + ':latest',          portMappings: [{ containerPort: 3000, protocol: 'tcp' }],
           environment: [
             { name: 'NODE_ENV', value: 'production' },
             {
