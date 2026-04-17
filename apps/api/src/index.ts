@@ -21,7 +21,7 @@ const PORT = parseInt(process.env.API_PORT ?? '4000', 10);
  */
 async function loadSecrets(): Promise<void> {
   // Only load from AWS if not already configured (local dev)
-  if (process.env.DATABASE_URL && process.env.JWT_SECRET && process.env.RESEND_API_KEY) return;
+  if (process.env.DATABASE_URL && process.env.JWT_SECRET) return;
 
   console.log('Fetching secrets from AWS Secrets Manager...');
 
@@ -31,15 +31,24 @@ async function loadSecrets(): Promise<void> {
     region: process.env.AWS_REGION || process.env.AWS_REGION_NAME || 'us-east-1',
   });
 
-  const [dbResult, jwtResult, resendResult] = await Promise.all([
+  const [dbResult, jwtResult] = await Promise.all([
     client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/DATABASE_URL' })),
     client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/JWT_SECRET' })),
-    client.send(new GetSecretValueCommand({ SecretId: 'spotterhub/RESEND_API_KEY' })),
   ]);
 
   if (dbResult.SecretString) process.env.DATABASE_URL = dbResult.SecretString;
   if (jwtResult.SecretString) process.env.JWT_SECRET = jwtResult.SecretString;
-  if (resendResult.SecretString) process.env.RESEND_API_KEY = resendResult.SecretString;
+
+  // RESEND_API_KEY is optional — email features degrade gracefully without it
+  try {
+    const resendResult = await client.send(
+      new GetSecretValueCommand({ SecretId: 'spotterhub/RESEND_API_KEY' }),
+    );
+    if (resendResult.SecretString) process.env.RESEND_API_KEY = resendResult.SecretString;
+  } catch (err) {
+    console.warn('Could not load RESEND_API_KEY from Secrets Manager — email features disabled', (err as Error).message);
+  }
+
   console.log('Secrets loaded from Secrets Manager');
 }
 
