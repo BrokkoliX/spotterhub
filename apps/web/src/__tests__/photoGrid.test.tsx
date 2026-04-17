@@ -22,7 +22,6 @@ function createMockPhoto(overrides: Partial<PhotoData> = {}): PhotoData {
   return {
     id: 'photo-1',
     caption: 'Boeing 747 at sunset',
-    aircraftType: 'Boeing 747-8',
     airline: 'Lufthansa',
     airportCode: 'EDDF',
     originalUrl: 'https://example.com/photo.jpg',
@@ -50,7 +49,11 @@ function createMockPhoto(overrides: Partial<PhotoData> = {}): PhotoData {
         height: 600,
       },
     ],
-    ...overrides,
+    aircraft: {
+      manufacturer: { name: 'Boeing' },
+      family: { name: '747-8' },
+      variant: { name: '747-8F', iataCode: '748', icaoCode: 'B748' },
+    },
   };
 }
 

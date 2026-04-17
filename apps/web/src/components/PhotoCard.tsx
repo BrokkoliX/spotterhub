@@ -18,7 +18,6 @@ interface PhotoVariant {
 export interface PhotoData {
   id: string;
   caption?: string | null;
-  aircraftType?: string | null;
   airline?: string | null;
   airportCode?: string | null;
   originalUrl: string;
@@ -37,6 +36,12 @@ export interface PhotoData {
     } | null;
   };
   variants: PhotoVariant[];
+  aircraft?: {
+    manufacturer?: { name: string } | null;
+    family?: { name: string } | null;
+    variant?: { name: string; iataCode?: string | null; icaoCode?: string | null } | null;
+    operatorType?: string | null;
+  } | null;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -82,8 +87,12 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
         {photo.caption && <p className={styles.caption}>{photo.caption}</p>}
 
         <div className={styles.meta}>
-          {photo.aircraftType && (
-            <span className={styles.metaItem}>✈ {photo.aircraftType}</span>
+          {(photo.aircraft?.manufacturer?.name || photo.aircraft?.family?.name || photo.aircraft?.variant?.name) && (
+            <span className={styles.metaItem}>✈ {[
+              photo.aircraft?.manufacturer?.name,
+              photo.aircraft?.family?.name,
+              photo.aircraft?.variant?.name,
+            ].filter(Boolean).join(' ')}</span>
           )}
           {photo.airline && (
             <span className={styles.metaItem}>{photo.airline}</span>

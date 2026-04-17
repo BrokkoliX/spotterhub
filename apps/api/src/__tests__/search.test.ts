@@ -18,7 +18,6 @@ let server: Awaited<ReturnType<typeof setupTestServer>>;
 
 async function createTestPhoto(userId: string, overrides: Partial<{
   caption: string;
-  aircraftType: string;
   airline: string;
   airportCode: string;
   tags: string[];
@@ -30,7 +29,6 @@ async function createTestPhoto(userId: string, overrides: Partial<{
       mimeType: 'image/jpeg',
       moderationStatus: 'approved',
       caption: overrides.caption,
-      aircraftTypeName: overrides.aircraftType ?? null,
       airline: overrides.airline,
       airportCode: overrides.airportCode,
     },
@@ -65,7 +63,6 @@ const SEARCH_PHOTOS = `
         node {
           id
           caption
-          aircraftType
           airline
           airportCode
           tags
@@ -117,10 +114,10 @@ describe('searchPhotos', () => {
     expect(data.searchPhotos.edges[0].node.caption).toContain('sunset');
   });
 
-  it('finds photos by aircraft type (case-insensitive)', async () => {
+  it('finds photos by caption keyword (case-insensitive)', async () => {
     const { user } = await createTestUser();
-    await createTestPhoto(user.id, { aircraftType: 'Boeing 747-400' });
-    await createTestPhoto(user.id, { aircraftType: 'Airbus A380' });
+    await createTestPhoto(user.id, { caption: 'Boeing 747-400 on approach' });
+    await createTestPhoto(user.id, { caption: 'Airbus A380 takeoff' });
 
     const res = await server.executeOperation(
       { query: SEARCH_PHOTOS, variables: { query: 'boeing' } },
@@ -129,7 +126,7 @@ describe('searchPhotos', () => {
 
     const data = (res.body as any).singleResult.data;
     expect(data.searchPhotos.totalCount).toBe(1);
-    expect(data.searchPhotos.edges[0].node.aircraftType).toBe('Boeing 747-400');
+    expect(data.searchPhotos.edges[0].node.caption).toContain('Boeing 747-400');
   });
 
   it('finds photos by airline', async () => {

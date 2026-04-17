@@ -52,7 +52,6 @@ const CREATE_PHOTO = `
     createPhoto(input: $input) {
       id
       caption
-      aircraftType
       airline
       airportCode
       originalUrl
@@ -71,7 +70,6 @@ const UPDATE_PHOTO = `
     updatePhoto(id: $id, input: $input) {
       id
       caption
-      aircraftType
       airline
       airportCode
       tags
@@ -90,7 +88,6 @@ const GET_PHOTO = `
     photo(id: $id) {
       id
       caption
-      aircraftType
       moderationStatus
       tags
       user { id username }
@@ -102,14 +99,13 @@ const GET_PHOTO = `
 `;
 
 const GET_PHOTOS = `
-  query Photos($first: Int, $after: String, $userId: ID, $aircraftType: String, $airportCode: String, $tags: [String!]) {
-    photos(first: $first, after: $after, userId: $userId, aircraftType: $aircraftType, airportCode: $airportCode, tags: $tags) {
+  query Photos($first: Int, $after: String, $userId: ID, $airportCode: String, $tags: [String!]) {
+    photos(first: $first, after: $after, userId: $userId, airportCode: $airportCode, tags: $tags) {
       edges {
         cursor
         node {
           id
           caption
-          aircraftType
           airportCode
           tags
         }
@@ -147,7 +143,6 @@ describe('Photo: createPhoto', () => {
             mimeType: 'image/jpeg',
             fileSizeBytes: 1024000,
             caption: 'Beautiful 747 on approach',
-            aircraftType: 'Boeing 747-8',
             airline: 'Lufthansa',
             airportCode: 'KSFO',
             tags: ['747', 'approach', 'sunset'],
@@ -171,7 +166,6 @@ describe('Photo: createPhoto', () => {
     const photo = data.data?.createPhoto as Record<string, unknown>;
     expect(photo).toBeDefined();
     expect(photo.caption).toBe('Beautiful 747 on approach');
-    expect(photo.aircraftType).toBe('Boeing 747-8');
     expect(photo.airline).toBe('Lufthansa');
     expect(photo.airportCode).toBe('KSFO');
     expect(photo.moderationStatus).toBe('approved');
@@ -230,7 +224,6 @@ describe('Photo: updatePhoto', () => {
           id: photo.id,
           input: {
             caption: 'Updated caption',
-            aircraftType: 'Airbus A380',
             airline: 'Emirates',
             airportCode: 'KJFK',
             tags: ['a380', 'jumbo'],
@@ -249,7 +242,6 @@ describe('Photo: updatePhoto', () => {
     expect(data.errors).toBeUndefined();
     const updated = data.data?.updatePhoto as Record<string, unknown>;
     expect(updated.caption).toBe('Updated caption');
-    expect(updated.aircraftType).toBe('Airbus A380');
     expect(updated.airline).toBe('Emirates');
     expect(updated.tags).toEqual(expect.arrayContaining(['a380', 'jumbo']));
   });
@@ -358,7 +350,6 @@ describe('Photo: photo query', () => {
         userId: user.id,
         originalUrl: 'https://example.com/photo.jpg',
         caption: 'A sunny day at the airport',
-        aircraftTypeName: 'Boeing 737-800',
         moderationStatus: 'approved',
         tags: { create: [{ tag: 'boeing' }, { tag: '737' }] },
       },
@@ -382,7 +373,6 @@ describe('Photo: photo query', () => {
     const fetched = data.data?.photo as Record<string, unknown>;
     expect(fetched).toBeDefined();
     expect(fetched.caption).toBe('A sunny day at the airport');
-    expect(fetched.aircraftType).toBe('Boeing 737-800');
     expect(fetched.tags).toEqual(expect.arrayContaining(['boeing', '737']));
   });
 
@@ -467,54 +457,6 @@ describe('Photo: photos feed with pagination and filtering', () => {
 
     expect(page2Photos.edges).toHaveLength(2);
     expect(page2Photos.pageInfo.hasNextPage).toBe(true);
-  });
-
-  it('filters photos by aircraftType', async () => {
-    const { user } = await createTestUser();
-
-    await prisma.photo.createMany({
-      data: [
-        {
-          userId: user.id,
-          originalUrl: 'https://example.com/1.jpg',
-          aircraftTypeName: 'Boeing 747-8',
-          moderationStatus: 'approved',
-        },
-        {
-          userId: user.id,
-          originalUrl: 'https://example.com/2.jpg',
-          aircraftTypeName: 'Airbus A380',
-          moderationStatus: 'approved',
-        },
-        {
-          userId: user.id,
-          originalUrl: 'https://example.com/3.jpg',
-          aircraftTypeName: 'Boeing 737 MAX',
-          moderationStatus: 'approved',
-        },
-      ],
-    });
-
-    const result = await server.executeOperation(
-      {
-        query: GET_PHOTOS,
-        variables: { aircraftType: 'Boeing' },
-      },
-      { contextValue: createTestContext(null) },
-    );
-
-    const data = (
-      result.body as { kind: 'single'; singleResult: { data: Record<string, unknown> } }
-    ).singleResult;
-    const photos = data.data?.photos as {
-      edges: Array<{ node: { aircraftType: string } }>;
-      totalCount: number;
-    };
-
-    expect(photos.totalCount).toBe(2);
-    photos.edges.forEach((edge) => {
-      expect(edge.node.aircraftType).toContain('Boeing');
-    });
   });
 
   it('filters photos by airportCode', async () => {
@@ -800,8 +742,9 @@ describe('Photo: createPhoto variants and location', () => {
       where: { photoId: photo.id as string },
     });
     expect(location).not.toBeNull();
-    expect(location!.displayLatitude).not.toBeCloseTo(location!.rawLatitude, 3);
-    expect(location!.displayLongitude).not.toBeCloseTo(location!.rawLongitude, 3);
+    // rawLatitude/rawLongitude are now optional in schema, but set here since coordinates were provided
+    expect(location!.displayLatitude).not.toBeCloseTo(location!.rawLatitude!, 3);
+    expect(location!.displayLongitude).not.toBeCloseTo(location!.rawLongitude!, 3);
   });
 
   it('sets display coordinates to 0 when privacy is hidden', async () => {

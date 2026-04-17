@@ -142,6 +142,9 @@ export default function ThreadPage() {
   const [replySubmitting, setReplySubmitting] = useState(false);
 
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [collapsedReplies, setCollapsedReplies] = useState<Record<string, boolean>>({});
+  const toggleReplies = (postId: string) =>
+    setCollapsedReplies((prev) => ({ ...prev, [postId]: !prev[postId] }));
   const [editBody, setEditBody] = useState('');
   const [editError, setEditError] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -356,7 +359,13 @@ export default function ThreadPage() {
             {/* Nested replies */}
             {post.replies && post.replies.length > 0 && (
               <div className={styles.replies}>
-                {post.replies.map((reply: ForumPostNode['replies'][number]) => (
+                <button
+                  className={styles.collapseBtn}
+                  onClick={() => toggleReplies(post.id)}
+                >
+                  {collapsedReplies[post.id] ? '▶' : '▼'} {post.replies.length} {post.replies.length === 1 ? 'reply' : 'replies'}
+                </button>
+                {!collapsedReplies[post.id] && post.replies.map((reply: ForumPostNode['replies'][number]) => (
                   editingPostId === reply.id ? (
                     <div key={reply.id} className={styles.reply}>
                       <div className={styles.postHeader}>

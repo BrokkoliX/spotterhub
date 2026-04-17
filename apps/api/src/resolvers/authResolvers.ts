@@ -35,10 +35,10 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 export const authMutationResolvers = {
   signUp: async (
     _parent: unknown,
-    args: { input: { email: string; username: string; password: string } },
+    args: { input: { email: string; username: string; password: string; displayName?: string } },
     ctx: Context,
   ) => {
-    const { email, username, password } = args.input;
+    const { email, username, password, displayName } = args.input;
 
     // Validate username
     const usernameError = validateUsername(username);
@@ -81,7 +81,7 @@ export const authMutationResolvers = {
           emailVerificationToken: verificationToken,
           profile: {
             create: {
-              displayName: username,
+              displayName: args.input.displayName || username,
             },
           },
         },

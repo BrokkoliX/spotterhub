@@ -1,6 +1,11 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 
 import { adminMutationResolvers, adminQueryResolvers } from './resolvers/adminResolvers.js';
+import {
+  aircraftHierarchyFieldResolvers,
+  aircraftHierarchyMutationResolvers,
+  aircraftHierarchyQueryResolvers,
+} from './resolvers/aircraftHierarchyResolvers.js';
 import { aircraftFieldResolvers, aircraftMutationResolvers, aircraftQueryResolvers } from './resolvers/aircraftResolvers.js';
 import {
   airportFieldResolvers,
@@ -13,6 +18,11 @@ import {
   albumQueryResolvers,
 } from './resolvers/albumResolvers.js';
 import { authMutationResolvers } from './resolvers/authResolvers.js';
+import {
+  categoryFieldResolvers,
+  categoryMutationResolvers,
+  categoryQueryResolvers,
+} from './resolvers/categoryResolvers.js';
 import {
   commentFieldResolvers,
   commentMutationResolvers,
@@ -52,12 +62,22 @@ import {
   likeFieldResolvers,
   likeMutationResolvers,
 } from './resolvers/likeResolvers.js';
+import {
+  airlineFieldResolvers,
+  airlineMutationResolvers,
+  airlineQueryResolvers,
+} from './resolvers/airlineResolvers.js';
 import { locationQueryResolvers } from './resolvers/locationResolvers.js';
 import {
   notificationFieldResolvers,
   notificationMutationResolvers,
   notificationQueryResolvers,
 } from './resolvers/notificationResolvers.js';
+import {
+  pendingListItemFieldResolvers,
+  pendingListItemMutationResolvers,
+  pendingListItemQueryResolvers,
+} from './resolvers/pendingListItemResolvers.js';
 import {
   photoFieldResolvers,
   photoMutationResolvers,
@@ -128,6 +148,10 @@ export const resolvers = {
     ...notificationQueryResolvers,
     ...siteSettingsQueryResolvers,
     ...aircraftQueryResolvers,
+    ...aircraftHierarchyQueryResolvers,
+    ...airlineQueryResolvers,
+    ...categoryQueryResolvers,
+    ...pendingListItemQueryResolvers,
   },
 
   Mutation: {
@@ -149,6 +173,10 @@ export const resolvers = {
     ...siteSettingsMutationResolvers,
     ...aircraftMutationResolvers,
     ...airportMutationResolvers,
+    ...aircraftHierarchyMutationResolvers,
+    ...airlineMutationResolvers,
+    ...categoryMutationResolvers,
+    ...pendingListItemMutationResolvers,
   },
 
   User: {
@@ -192,8 +220,17 @@ export const resolvers = {
     ...aircraftFieldResolvers,
   },
 
-  AircraftType: {
-    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
-    updatedAt: (parent: { updatedAt: Date }) => parent.updatedAt.toISOString(),
-  },
+  AircraftManufacturer: aircraftHierarchyFieldResolvers.AircraftManufacturer,
+
+  AircraftFamily: aircraftHierarchyFieldResolvers.AircraftFamily,
+
+  AircraftVariant: aircraftHierarchyFieldResolvers.AircraftVariant,
+
+  Airline: airlineFieldResolvers.Airline,
+
+  PhotoCategory: categoryFieldResolvers.PhotoCategory,
+
+  AircraftSpecificCategory: categoryFieldResolvers.AircraftSpecificCategory,
+
+  PendingListItem: pendingListItemFieldResolvers.PendingListItem,
 };

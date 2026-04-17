@@ -14,7 +14,7 @@ export function Footer() {
         </div>
 
         <nav className={styles.links} aria-label="Legal">
-          <Link href="/impressum">Impressum</Link>
+          <Link href="/legal-notice">Legal Notice</Link>
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/terms">Terms of Service</Link>
           <Link href="/accessibility">Accessibility</Link>

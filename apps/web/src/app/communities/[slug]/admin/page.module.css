@@ -1,0 +1,432 @@
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+
+.page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.backBtn {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+}
+
+.backBtn:hover {
+  color: var(--color-text-primary);
+}
+
+/* ─── Stats ─────────────────────────────────────────────────────────────── */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+}
+
+.statValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Sub-Tabs ─────────────────────────────────────────────────────────── */
+
+.subTabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 20px;
+  gap: 0;
+}
+
+.subTab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.subTab:hover {
+  color: var(--color-text-primary);
+}
+
+.subTabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+/* ─── Search & Filter ───────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  min-width: 140px;
+}
+
+.loadMore {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.15s;
+}
+
+.loadMore:hover {
+  background: var(--color-bg-base);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+}
+
+/* ─── Member List ───────────────────────────────────────────────────────── */
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  transition: background 0.15s;
+}
+
+.memberRow:hover {
+  background: var(--color-bg-base);
+}
+
+.memberAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.memberAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memberInfo {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.memberName {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.memberUsername {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.memberBadges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.roleBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.roleOwner { background: #7c3aed20; color: #7c3aed; border: 1px solid #7c3aed40; }
+.roleAdmin { background: #2563eb20; color: #2563eb; border: 1px solid #2563eb40; }
+.roleModerator { background: #05966920; color: #059669; border: 1px solid #05966940; }
+.roleMember { background: var(--color-bg-base); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
+.statusBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statusActive { background: #05966920; color: #059669; border: 1px solid #05966940; }
+.statusBanned { background: #dc262620; color: #dc2626; border: 1px solid #dc262640; }
+
+.memberMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.memberActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.roleSelect {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+}
+
+.actionBtn {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.actionBtn:hover {
+  background: var(--color-bg-card);
+}
+
+.actionBtnDanger {
+  color: #dc2626;
+  border-color: #dc262640;
+}
+
+.actionBtnDanger:hover {
+  background: #dc262620;
+}
+
+.actionBtnSuccess {
+  color: #059669;
+  border-color: #05966940;
+}
+
+.actionBtnSuccess:hover {
+  background: #05966920;
+}
+
+/* ─── Overview ─────────────────────────────────────────────────────────── */
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.quickActionCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.quickActionTitle {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: 4px;
+}
+
+.quickActionDesc {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+/* ─── Roles Tab ────────────────────────────────────────────────────────── */
+
+.rolesSummary {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.roleSummaryCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.roleSummaryCount {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.roleSummaryLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Moderation Tab ───────────────────────────────────────────────────── */
+
+.modLogEntry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.modLogAction {
+  font-weight: 600;
+  font-size: 0.875rem;
+  min-width: 120px;
+  text-transform: capitalize;
+}
+
+.modLogDetails {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.modLogTime {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+/* ─── Transfer Dialog ──────────────────────────────────────────────────── */
+
+.transferModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.transferCard {
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 440px;
+  width: 90%;
+}
+
+.transferTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.transferDesc {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.transferActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}

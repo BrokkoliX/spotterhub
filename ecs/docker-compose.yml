@@ -19,10 +19,14 @@ services:
       API_PORT: 4000
       DATABASE_URL: "${DATABASE_URL}"
       JWT_SECRET: "${JWT_SECRET}"
+      RESEND_API_KEY: "${RESEND_API_KEY}"
+      FROM_EMAIL: "${FROM_EMAIL:-SpotterSpace <noreply@noreply.spotterspace.com>}"
+      WEB_BASE_URL: "${WEB_BASE_URL:-http://localhost:3000}"
       PHOTOS_BUCKET_NAME: spotterspace-photos
     secrets:
       - DATABASE_URL
       - JWT_SECRET
+      - RESEND_API_KEY
     x-aws-cloudformation:
       Resources:
         TaskDefinition:
@@ -88,6 +92,9 @@ secrets:
     external: true
   JWT_SECRET:
     name: "spotterhub/JWT_SECRET"
+    external: true
+  RESEND_API_KEY:
+    name: "spotterhub/RESEND_API_KEY"
     external: true
 
 x-aws-vpc:

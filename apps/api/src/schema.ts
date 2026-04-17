@@ -39,8 +39,9 @@ export const typeDefs = gql`
   enum FollowTargetType {
     user
     airport
-    aircraft_type
     manufacturer
+    family
+    variant
   }
 
   enum ReportTargetType {
@@ -95,6 +96,16 @@ export const typeDefs = gql`
     hidden
   }
 
+  enum OperatorType {
+    AIRLINE
+    GENERAL_AVIATION
+    MILITARY
+    GOVERNMENT
+    CARGO
+    CHARTER
+    PRIVATE
+  }
+
   type Query {
     """
     Health check — verifies the API is running and the database is reachable.
@@ -125,14 +136,13 @@ export const typeDefs = gql`
 
     """
     Paginated, filterable photo feed. Supports cursor-based pagination
-    and filtering by user, album, aircraft type, airport, and tags.
+    and filtering by user, album, airport, and tags.
     """
     photos(
       first: Int = 20
       after: String
       userId: ID
       albumId: ID
-      aircraftType: String
       airportCode: String
       tags: [String!]
       manufacturer: String
@@ -185,17 +195,12 @@ export const typeDefs = gql`
     airports: [Airport!]!
 
     """
-    List all airports with optional search and pagination. Requires admin role.
+    List all airports with optional search and pagination. Requires admin or superuser role.
     """
     adminAirports(search: String, first: Int = 50, after: String): AirportConnection!
 
     """
-    Export all aircraft types as a flat list. Requires admin role.
-    """
-    exportAircraftTypes: [AircraftType!]!
-
-    """
-    Export all airports as a flat list. Requires admin role.
+    Export all airports as a flat list. Requires admin or superuser role.
     """
     exportAirports: [Airport!]!
 
@@ -212,7 +217,7 @@ export const typeDefs = gql`
     """
     Search aircraft by registration. Used for typeahead on the upload form.
     """
-    aircrafts(search: String, first: Int = 20, after: String): AircraftConnection!
+    aircraftSearch(search: String, first: Int = 20, after: String): AircraftConnection!
 
     """
     Fetch a single aircraft by registration.
@@ -220,9 +225,9 @@ export const typeDefs = gql`
     aircraft(registration: String!): Aircraft
 
     """
-    Search canonical aircraft types from OpenFlights.
+    Paginated list of all aircraft registrations (admin only).
     """
-    aircraftTypes(search: String, first: Int = 20, after: String): AircraftTypeConnection!
+    adminAircraft(search: String, first: Int = 50, after: String): AircraftConnection!
 
     """
     Fetch photos within a geographic bounding box.
@@ -278,12 +283,6 @@ export const typeDefs = gql`
     """
     adminPhotos(moderationStatus: String = "pending", first: Int = 20, after: String): PhotoConnection!
 
-    """
-    Paginated list of aircraft types for admin management.
-    Requires admin or moderator role.
-    """
-    adminAircraftTypes(search: String, first: Int = 50, after: String): AircraftTypeConnection!
-
     # ─── Community Queries ──────────────────────────────────────────────────
 
     """
@@ -305,6 +304,11 @@ export const typeDefs = gql`
     Paginated moderation log for a community. Requires owner or admin role.
     """
     communityModerationLogs(communityId: ID!, action: String, first: Int = 20, after: String): CommunityModerationLogConnection!
+
+    """
+    Paginated, filterable member list for a community. Requires owner or admin role.
+    """
+    communityMembers(communityId: ID!, filter: CommunityMemberFilter): CommunityMemberConnection!
 
     """Fetch site-wide settings (banner, tagline). Returns null if not set."""
     siteSettings: SiteSettings
@@ -344,6 +348,34 @@ export const typeDefs = gql`
 
     """Count of unread notifications for the current user. Returns 0 if unauthenticated."""
     unreadNotificationCount: Int!
+
+    # ─── Aircraft Hierarchy Queries ──────────────────────────────────────────
+
+    """List all aircraft manufacturers with optional search and pagination."""
+    aircraftManufacturers(search: String, first: Int = 20, after: String): AircraftManufacturerConnection!
+
+    """List aircraft families, optionally filtered by manufacturer."""
+    aircraftFamilies(manufacturerId: ID, search: String, first: Int = 20, after: String): AircraftFamilyConnection!
+
+    """List aircraft variants, optionally filtered by family."""
+    aircraftVariants(familyId: ID, search: String, first: Int = 20, after: String): AircraftVariantConnection!
+
+    """List all airlines with optional search and pagination."""
+    airlines(search: String, first: Int = 20, after: String): AirlineConnection!
+
+    """Fetch a single airline by ICAO code for auto-fill."""
+    airline(icaoCode: String!): Airline
+
+    """List all photo categories."""
+    photoCategories: [PhotoCategory!]!
+
+    """List all aircraft-specific categories."""
+    aircraftSpecificCategories: [AircraftSpecificCategory!]!
+
+    # ─── Admin: Pending List Items ───────────────────────────────────────────
+
+    """Paginated list of pending list items for admin review."""
+    pendingListItems(status: String, listType: String, first: Int = 20, after: String): PendingListItemConnection!
   }
 
   type Mutation {
@@ -429,7 +461,7 @@ export const typeDefs = gql`
     unfollowAirport(airportId: ID!): Airport!
 
     """
-    Follow a topic (aircraft_type or manufacturer). Idempotent.
+    Follow a topic (manufacturer, family, or variant). Idempotent.
     Returns the followed topic.
     """
     followTopic(targetType: String!, value: String!): FollowedTopic!
@@ -526,6 +558,16 @@ export const typeDefs = gql`
     """
     updateAircraft(id: ID!, input: UpdateAircraftInput!): Aircraft!
 
+    """
+    Delete an aircraft record. Requires admin or superuser role.
+    """
+    deleteAircraft(id: ID!): Boolean!
+
+    """
+    Upsert an aircraft record by registration. Requires admin or superuser role.
+    """
+    upsertAircraft(input: CreateAircraftInput!): Aircraft!
+
     # ─── Admin Mutations ───────────────────────────────────────────────────
 
     """
@@ -535,13 +577,13 @@ export const typeDefs = gql`
 
     """
     Update a user's account status (active, suspended, banned).
-    Requires admin role.
+    Requires admin or superuser role.
     """
     adminUpdateUserStatus(userId: ID!, status: String!): User!
 
     """
     Update a user's role (user, moderator, admin).
-    Requires admin role.
+    Requires admin or superuser role.
     """
     adminUpdateUserRole(userId: ID!, role: String!): User!
 
@@ -550,28 +592,6 @@ export const typeDefs = gql`
     Requires admin or moderator role.
     """
     adminUpdatePhotoModeration(photoId: ID!, status: String!): Photo!
-
-    """
-    Delete an aircraft type. Fails if any aircraft references this type.
-    Requires admin or superuser role.
-    """
-    deleteAircraftType(id: ID!): Boolean!
-
-    """
-    Create an aircraft type. Requires admin or superuser role.
-    """
-    createAircraftType(input: CreateAircraftTypeInput!): AircraftType!
-
-    """
-    Update an aircraft type. Requires admin or superuser role.
-    """
-    updateAircraftType(id: ID!, input: UpdateAircraftTypeInput!): AircraftType!
-
-    """
-    Upsert an aircraft type by ICAO code. If exists, updates; otherwise creates.
-    Requires admin or superuser role.
-    """
-    upsertAircraftType(input: CreateAircraftTypeInput!): AircraftType!
 
     """
     Create an airport. Requires admin or superuser role.
@@ -612,7 +632,7 @@ export const typeDefs = gql`
     """
     deleteCommunity(id: ID!): Boolean!
 
-    """Update site-wide settings (banner, tagline). Requires admin role."""
+    """Update site-wide settings (banner, tagline). Requires admin or superuser role."""
     updateSiteSettings(input: UpdateSiteSettingsInput!): SiteSettings!
 
     """
@@ -636,6 +656,12 @@ export const typeDefs = gql`
     Requires owner or admin role. Cannot promote above own role.
     """
     updateCommunityMemberRole(communityId: ID!, userId: ID!, role: String!): CommunityMember!
+
+    """
+    Transfer ownership of this community to another member.
+    The previous owner becomes an admin. Requires current owner.
+    """
+    transferCommunityOwnership(communityId: ID!, userId: ID!): Community!
 
     """
     Generate or regenerate the invite code for an invite-only community.
@@ -685,7 +711,7 @@ export const typeDefs = gql`
     """Create a forum category in a community. Requires owner or admin role. Pass communityId: null for global categories (admin only)."""
     createForumCategory(communityId: ID, name: String!, description: String, slug: String): ForumCategory!
 
-    """Create a global forum category (not tied to any community). Requires admin role."""
+    """Create a global forum category (not tied to any community). Requires admin or superuser role."""
     createGlobalForumCategory(name: String!, description: String, slug: String): ForumCategory!
 
     """Update a forum category. Requires owner or admin role."""
@@ -760,6 +786,90 @@ export const typeDefs = gql`
 
     """Verify an email address using the token sent during sign-up."""
     verifyEmail(token: String!): AuthPayload!
+
+    # ─── Aircraft Hierarchy Mutations (Admin) ────────────────────────────────
+
+    """Create an aircraft manufacturer. Requires admin or superuser role."""
+    createManufacturer(input: CreateManufacturerInput!): AircraftManufacturer!
+
+    """Update an aircraft manufacturer. Requires admin or superuser role."""
+    updateManufacturer(id: ID!, input: UpdateManufacturerInput!): AircraftManufacturer!
+
+    """Delete an aircraft manufacturer. Requires admin or superuser role."""
+    deleteManufacturer(id: ID!): Boolean!
+
+    """Upsert an aircraft manufacturer by unique name. Requires admin or superuser role."""
+    upsertManufacturer(input: CreateManufacturerInput!): AircraftManufacturer!
+
+    """Create an aircraft family. Requires admin or superuser role."""
+    createFamily(input: CreateFamilyInput!): AircraftFamily!
+
+    """Update an aircraft family. Requires admin or superuser role."""
+    updateFamily(id: ID!, input: UpdateFamilyInput!): AircraftFamily!
+
+    """Delete an aircraft family. Requires admin or superuser role."""
+    deleteFamily(id: ID!): Boolean!
+
+    """Upsert an aircraft family by unique name. Requires admin or superuser role."""
+    upsertFamily(input: CreateFamilyInput!): AircraftFamily!
+
+    """Create an aircraft variant. Requires admin or superuser role."""
+    createVariant(input: CreateVariantInput!): AircraftVariant!
+
+    """Update an aircraft variant. Requires admin or superuser role."""
+    updateVariant(id: ID!, input: UpdateVariantInput!): AircraftVariant!
+
+    """Delete an aircraft variant. Requires admin or superuser role."""
+    deleteVariant(id: ID!): Boolean!
+
+    """Upsert an aircraft variant by unique name. Requires admin or superuser role."""
+    upsertVariant(input: CreateVariantInput!): AircraftVariant!
+
+    """Create an airline. Requires admin or superuser role."""
+    createAirline(input: CreateAirlineInput!): Airline!
+
+    """Update an airline. Requires admin or superuser role."""
+    updateAirline(id: ID!, input: UpdateAirlineInput!): Airline!
+
+    """Delete an airline. Requires admin or superuser role."""
+    deleteAirline(id: ID!): Boolean!
+
+    """Upsert an airline by unique name. Requires admin or superuser role."""
+    upsertAirline(input: CreateAirlineInput!): Airline!
+
+    """Create a photo category. Requires admin or superuser role."""
+    createPhotoCategory(input: CreatePhotoCategoryInput!): PhotoCategory!
+
+    """Update a photo category. Requires admin or superuser role."""
+    updatePhotoCategory(id: ID!, input: UpdatePhotoCategoryInput!): PhotoCategory!
+
+    """Delete a photo category. Requires admin or superuser role."""
+    deletePhotoCategory(id: ID!): Boolean!
+
+    """Upsert a photo category by unique name. Requires admin or superuser role."""
+    upsertPhotoCategory(input: CreatePhotoCategoryInput!): PhotoCategory!
+
+    """Create an aircraft-specific category. Requires admin or superuser role."""
+    createAircraftSpecificCategory(input: CreateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
+
+    """Update an aircraft-specific category. Requires admin or superuser role."""
+    updateAircraftSpecificCategory(id: ID!, input: UpdateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
+
+    """Delete an aircraft-specific category. Requires admin or superuser role."""
+    deleteAircraftSpecificCategory(id: ID!): Boolean!
+
+    """Upsert an aircraft-specific category by unique name. Requires admin or superuser role."""
+    upsertAircraftSpecificCategory(input: CreateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
+
+    # ─── List Contribution (User) ────────────────────────────────────────────
+
+    """Submit a new item for addition to a lookup list. Requires authentication."""
+    submitListItem(input: SubmitListItemInput!): PendingListItem!
+
+    # ─── List Review (Admin) ────────────────────────────────────────────────
+
+    """Review a pending list item (approve or reject). Requires admin or superuser role."""
+    reviewListItem(id: ID!, status: String!, reviewNote: String): PendingListItem!
   }
 
   # ─── Auth Types ──────────────────────────────────────────────────────────
@@ -771,6 +881,8 @@ export const typeDefs = gql`
     username: String!
     """Password (min 8 characters)."""
     password: String!
+    """Display name shown on your profile."""
+    displayName: String
   }
 
   input SignInInput {
@@ -880,8 +992,6 @@ export const typeDefs = gql`
     albumId: ID
     """Photo caption or description."""
     caption: String
-    """Aircraft type (e.g., 'Boeing 747-8F', 'Airbus A380')."""
-    aircraftType: String
     """Airline name."""
     airline: String
     """Airport ICAO or IATA code where the photo was taken."""
@@ -914,8 +1024,6 @@ export const typeDefs = gql`
     isLikedByMe: Boolean!
     """Linked aircraft record, if any."""
     aircraft: Aircraft
-    """Canonical aircraft type from the OpenFlights database."""
-    aircraftTypeRef: AircraftType
     """The person who took the photo (defaults to uploader)."""
     photographer: User
     """Name of the photographer."""
@@ -924,8 +1032,25 @@ export const typeDefs = gql`
     gearBody: String
     """Lens used."""
     gearLens: String
+    """Full EXIF data as JSON."""
+    exifData: JSON
+    """Photo category (e.g., cabin, cockpit, exterior)."""
+    photoCategory: PhotoCategory
+    """Aircraft-specific category (e.g., vintage, narrowbody)."""
+    aircraftSpecificCategory: AircraftSpecificCategory
+    """Operator ICAO code (e.g., 'AAL' for American Airlines)."""
+    operatorIcao: String
+    """Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.)."""
+    operatorType: OperatorType
+    """Aircraft serial number (MSN)."""
+    msn: String
+    """Aircraft manufacturing date."""
+    manufacturingDate: String
     createdAt: String!
     updatedAt: String!
+
+    """Other photos of the same aircraft (matched by serial number or linked aircraft record)."""
+    similarAircraftPhotos(first: Int = 12, after: String): PhotoConnection!
   }
 
   """A processed image variant (thumbnail, display, etc.)."""
@@ -967,8 +1092,6 @@ export const typeDefs = gql`
     fileSizeBytes: Int!
     """Photo caption or description."""
     caption: String
-    """Aircraft type."""
-    aircraftType: String
     """Airline name."""
     airline: String
     """Airport ICAO or IATA code."""
@@ -985,17 +1108,32 @@ export const typeDefs = gql`
     locationPrivacy: LocationPrivacyMode
     """Link to a structured Aircraft record."""
     aircraftId: ID
-    """Link to a canonical AircraftType (OpenFlights)."""
-    aircraftTypeId: ID
     """Camera body used (from user's gear list)."""
     gearBody: String
     """Lens used (from user's gear list)."""
     gearLens: String
+    """Full EXIF data as JSON."""
+    exifData: JSON
+    """Photo category ID."""
+    photoCategoryId: ID
+    """Aircraft-specific category ID."""
+    aircraftSpecificCategoryId: ID
+    """Operator ICAO code."""
+    operatorIcao: String
+    """Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.)."""
+    operatorType: OperatorType
+    """Aircraft serial number (MSN)."""
+    msn: String
+    """Aircraft manufacturing date."""
+    manufacturingDate: String
+    """Location type: airport, museum, cemetery, airfield, other."""
+    locationType: String
+    """Airport ICAO code for location lookup."""
+    airportIcao: String
   }
 
   input UpdatePhotoInput {
     caption: String
-    aircraftType: String
     airline: String
     airportCode: String
     takenAt: String
@@ -1004,9 +1142,17 @@ export const typeDefs = gql`
     longitude: Float
     locationPrivacy: LocationPrivacyMode
     aircraftId: ID
-    aircraftTypeId: ID
     gearBody: String
     gearLens: String
+    exifData: JSON
+    photoCategoryId: ID
+    aircraftSpecificCategoryId: ID
+    operatorIcao: String
+    operatorType: OperatorType
+    msn: String
+    manufacturingDate: String
+    locationType: String
+    airportIcao: String
   }
 
   # ─── Pagination ──────────────────────────────────────────────────────────
@@ -1039,17 +1185,6 @@ export const typeDefs = gql`
   type AircraftEdge {
     cursor: String!
     node: Aircraft!
-  }
-
-  type AircraftTypeConnection {
-    edges: [AircraftTypeEdge!]!
-    pageInfo: PageInfo!
-    totalCount: Int!
-  }
-
-  type AircraftTypeEdge {
-    cursor: String!
-    node: AircraftType!
   }
 
   type AirportConnection {
@@ -1177,12 +1312,12 @@ export const typeDefs = gql`
     user: User
     """The followed airport (if targetType is 'airport')."""
     airport: Airport
-    """The followed value (if targetType is 'aircraft_type' or 'manufacturer')."""
+    """The followed value (if targetType is 'manufacturer', 'family', or 'variant')."""
     targetValue: String
     createdAt: String!
   }
 
-  """Result of following/unfollowing a topic (aircraft_type or manufacturer)."""
+  """Result of following/unfollowing a topic (manufacturer, family, or variant)."""
   type FollowedTopic {
     targetType: String!
     value: String!
@@ -1297,31 +1432,14 @@ export const typeDefs = gql`
     longitude: Float!
     """Privacy mode: exact, approximate, or hidden."""
     privacyMode: LocationPrivacyMode!
+    """Location type: airport, museum, cemetery, airfield, other."""
+    locationType: String
+    """Country where the photo was taken (resolved from coordinates or airport)."""
+    country: String
     """Associated airport, if any."""
     airport: Airport
     """Associated spotting location, if any."""
     spottingLocation: SpottingLocation
-  }
-
-  """Canonical aircraft type from OpenFlights (type-level, not individual aircraft)."""
-  type AircraftType {
-    id: ID!
-    """IATA aircraft type code (e.g., '738')."""
-    iataCode: String
-    """ICAO aircraft type code (e.g., 'B738')."""
-    icaoCode: String
-    """Manufacturer/vendor name (e.g., 'Boeing')."""
-    vendor: String!
-    """Aircraft model (e.g., '737-86N')."""
-    model: String!
-    """Category: Jet, Propeller, Helicopter, etc."""
-    category: String
-    """Engine type: Jet, Turboprop, Piston, etc."""
-    engineType: String
-    """Number of engines."""
-    engineCount: Int
-    createdAt: String!
-    updatedAt: String!
   }
 
   """A known aircraft with MSN and manufacturing info."""
@@ -1329,54 +1447,46 @@ export const typeDefs = gql`
     id: ID!
     """Registration (tail number)."""
     registration: String!
-    """Aircraft type name (e.g., Boeing 737 MAX 8)."""
-    aircraftType: String!
-    """Canonical aircraft type from OpenFlights."""
-    aircraftTypeRef: AircraftType
     """Airline or operator."""
     airline: String
     """Manufacturer serial number."""
     msn: String
     """Date the aircraft was manufactured."""
     manufacturingDate: String
+    """Aircraft manufacturer."""
+    manufacturer: AircraftManufacturer
+    """Aircraft family."""
+    family: AircraftFamily
+    """Aircraft variant."""
+    variant: AircraftVariant
+    """Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.)."""
+    operatorType: OperatorType
+    """Linked airline record."""
+    airlineRef: Airline
   }
 
   input CreateAircraftInput {
     registration: String!
-    aircraftType: String!
-    aircraftTypeId: ID
     airline: String
     msn: String
     manufacturingDate: String
+    manufacturerId: ID
+    familyId: ID
+    variantId: ID
+    operatorType: OperatorType
+    airlineId: ID
   }
 
   input UpdateAircraftInput {
     registration: String
-    aircraftType: String
-    aircraftTypeId: ID
     airline: String
     msn: String
     manufacturingDate: String
-  }
-
-  input CreateAircraftTypeInput {
-    iataCode: String
-    icaoCode: String!
-    vendor: String!
-    model: String!
-    category: String
-    engineType: String
-    engineCount: Int
-  }
-
-  input UpdateAircraftTypeInput {
-    iataCode: String
-    icaoCode: String
-    vendor: String
-    model: String
-    category: String
-    engineType: String
-    engineCount: Int
+    manufacturerId: ID
+    familyId: ID
+    variantId: ID
+    operatorType: OperatorType
+    airlineId: ID
   }
 
   input CreateAirportInput {
@@ -1560,6 +1670,19 @@ export const typeDefs = gql`
     avatarUrl: String
   }
 
+  input CommunityMemberFilter {
+    """Search by username or display name."""
+    search: String
+    """Filter by community role."""
+    role: [CommunityRole!]
+    """Filter by membership status (active, banned)."""
+    status: [String!]
+    """Pagination page size."""
+    first: Int
+    """Cursor for pagination."""
+    after: String
+  }
+
   # ─── Forum Types ─────────────────────────────────────────────────────────
 
   """A discussion category within a community forum or global forum."""
@@ -1702,6 +1825,84 @@ export const typeDefs = gql`
     coverUrl: String
   }
 
+  # ─── Aircraft Hierarchy Inputs ────────────────────────────────────────────
+
+  input CreateManufacturerInput {
+    name: String!
+    country: String
+  }
+
+  input UpdateManufacturerInput {
+    name: String
+    country: String
+  }
+
+  input CreateFamilyInput {
+    name: String!
+    manufacturerId: ID!
+  }
+
+  input UpdateFamilyInput {
+    name: String
+    manufacturerId: ID
+  }
+
+  input CreateVariantInput {
+    name: String!
+    familyId: ID!
+  }
+
+  input UpdateVariantInput {
+    name: String
+    familyId: ID
+  }
+
+  input CreateAirlineInput {
+    name: String!
+    icaoCode: String
+    iataCode: String
+    country: String
+    callsign: String
+  }
+
+  input UpdateAirlineInput {
+    name: String
+    icaoCode: String
+    iataCode: String
+    country: String
+    callsign: String
+  }
+
+  input CreatePhotoCategoryInput {
+    name: String!
+    label: String!
+    sortOrder: Int
+  }
+
+  input UpdatePhotoCategoryInput {
+    name: String
+    label: String
+    sortOrder: Int
+  }
+
+  input CreateAircraftSpecificCategoryInput {
+    name: String!
+    label: String!
+    sortOrder: Int
+  }
+
+  input UpdateAircraftSpecificCategoryInput {
+    name: String
+    label: String
+    sortOrder: Int
+  }
+
+  input SubmitListItemInput {
+    listType: String!
+    value: String!
+    metadata: JSON
+  }
+
   # ─── Notifications ───────────────────────────────────────────────────────
 
   """An in-app notification for a user."""
@@ -1725,6 +1926,138 @@ export const typeDefs = gql`
   type NotificationConnection {
     edges: [NotificationEdge!]!
     pageInfo: PageInfo!
+  }
+
+  # ─── Aircraft Hierarchy Types ──────────────────────────────────────────────
+
+  """An aircraft manufacturer (e.g., Boeing, Airbus)."""
+  type AircraftManufacturer {
+    id: ID!
+    name: String!
+    country: String
+    families: [AircraftFamily!]!
+    createdAt: String!
+  }
+
+  type AircraftFamily {
+    id: ID!
+    name: String!
+    manufacturer: AircraftManufacturer!
+    variants: [AircraftVariant!]!
+    createdAt: String!
+  }
+
+  type AircraftVariant {
+    id: ID!
+    name: String!
+    family: AircraftFamily!
+    iataCode: String
+    icaoCode: String
+    createdAt: String!
+  }
+
+  type AircraftManufacturerEdge {
+    cursor: String!
+    node: AircraftManufacturer!
+  }
+
+  type AircraftManufacturerConnection {
+    edges: [AircraftManufacturerEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type AircraftFamilyEdge {
+    cursor: String!
+    node: AircraftFamily!
+  }
+
+  type AircraftFamilyConnection {
+    edges: [AircraftFamilyEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type AircraftVariantEdge {
+    cursor: String!
+    node: AircraftVariant!
+  }
+
+  type AircraftVariantConnection {
+    edges: [AircraftVariantEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  # ─── Airline ────────────────────────────────────────────────────────────────
+
+  """An airline or operator."""
+  type Airline {
+    id: ID!
+    name: String!
+    icaoCode: String
+    iataCode: String
+    country: String
+    callsign: String
+    createdAt: String!
+  }
+
+  type AirlineEdge {
+    cursor: String!
+    node: Airline!
+  }
+
+  type AirlineConnection {
+    edges: [AirlineEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  # ─── Photo Categories ─────────────────────────────────────────────────────
+
+  """A photo category for classification (e.g., cabin, cockpit, exterior)."""
+  type PhotoCategory {
+    id: ID!
+    name: String!
+    label: String!
+    sortOrder: Int!
+    createdAt: String!
+  }
+
+  """An aircraft-specific category (e.g., vintage, narrowbody, widebody)."""
+  type AircraftSpecificCategory {
+    id: ID!
+    name: String!
+    label: String!
+    sortOrder: Int!
+    createdAt: String!
+  }
+
+  # ─── Pending List Items ────────────────────────────────────────────────────
+
+  """A user-submitted item awaiting admin review for addition to a lookup list."""
+  type PendingListItem {
+    id: ID!
+    listType: String!
+    value: String!
+    metadata: JSON
+    status: String!
+    reviewNote: String
+    submitter: User!
+    reviewer: User
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type PendingListItemEdge {
+    cursor: String!
+    node: PendingListItem!
+  }
+
+  type PendingListItemConnection {
+    edges: [PendingListItemEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
   }
 
   # ─── Health ──────────────────────────────────────────────────────────────

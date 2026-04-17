@@ -1,4 +1,0 @@
--- Add new moderation action types for community admin powers
--- The enum values 'delete_photo' and 'delete_comment' are handled by the Prisma schema.
--- This is a no-op migration for PostgreSQL since the action column already stores varchar.
--- The new enum values are validated at the application layer.

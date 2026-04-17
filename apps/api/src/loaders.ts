@@ -14,7 +14,6 @@ export interface Loaders {
   photoCommentCount: DataLoader<string, number>;
   photoLocation: DataLoader<string, any>;
   aircraftById: DataLoader<string, any>;
-  aircraftTypeById: DataLoader<string, any>;
   userById: DataLoader<string, any>;
   /** Clear all loader caches — call after mutations that affect counted relationships. */
   clearAll(): void;
@@ -39,7 +38,6 @@ export function createLoaders(prisma: PrismaClient): Loaders {
       loaders.photoCommentCount.clearAll();
       loaders.photoLocation.clearAll();
       loaders.aircraftById.clearAll();
-      loaders.aircraftTypeById.clearAll();
       loaders.userById.clearAll();
     },
 
@@ -138,16 +136,14 @@ export function createLoaders(prisma: PrismaClient): Loaders {
     aircraftById: new DataLoader(async (ids: readonly string[]) => {
       const aircraft = await prisma.aircraft.findMany({
         where: { id: { in: [...ids] } },
+        include: {
+          manufacturer: true,
+          family: true,
+          variant: true,
+          airlineRef: true,
+        },
       });
       const map = new Map(aircraft.map((a) => [a.id, a]));
-      return ids.map((id) => map.get(id) ?? null);
-    }),
-
-    aircraftTypeById: new DataLoader(async (ids: readonly string[]) => {
-      const types = await prisma.aircraftType.findMany({
-        where: { id: { in: [...ids] } },
-      });
-      const map = new Map(types.map((t) => [t.id, t]));
       return ids.map((id) => map.get(id) ?? null);
     }),
 

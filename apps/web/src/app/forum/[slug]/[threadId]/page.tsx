@@ -91,6 +91,11 @@ export default function GlobalForumThreadPage() {
   const { user, ready } = useAuth();
   const router = useRouter();
 
+  // Track which posts have their replies expanded
+  const [collapsedReplies, setCollapsedReplies] = useState<Record<string, boolean>>({});
+  const toggleReplies = (postId: string) =>
+    setCollapsedReplies((prev) => ({ ...prev, [postId]: !prev[postId] }));
+
   const [{ data: threadData, fetching: threadFetching }] = useForumThreadQuery({
     variables: { id: threadId },
     requestPolicy: 'cache-and-network',
@@ -225,7 +230,13 @@ export default function GlobalForumThreadPage() {
               {/* Replies */}
               {post.replies && post.replies.length > 0 && (
                 <div className={styles.replies}>
-                  {post.replies.map((reply) => (
+                  <button
+                    className={styles.collapseBtn}
+                    onClick={() => toggleReplies(post.id)}
+                  >
+                    {collapsedReplies[post.id] ? '▶' : '▼'} {post.replies.length} {post.replies.length === 1 ? 'reply' : 'replies'}
+                  </button>
+                  {!collapsedReplies[post.id] && post.replies.map((reply) => (
                     <div key={reply.id} className={styles.reply}>
                       <div className={styles.postHeader}>
                         <div className={styles.postAvatar} style={{ width: 24, height: 24, fontSize: '0.6875rem' }}>

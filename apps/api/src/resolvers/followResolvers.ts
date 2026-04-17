@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import type { FollowTargetType } from '@prisma/client';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
@@ -184,7 +185,7 @@ export const followMutationResolvers = {
     return airport;
   },
 
-  // ── Topic follows (aircraft_type, manufacturer) ─────────────────────────
+  // ── Topic follows (manufacturer, family, variant) ────────────────────────
 
   followTopic: async (
     _parent: unknown,
@@ -194,13 +195,15 @@ export const followMutationResolvers = {
     const followerId = await resolveUserId(ctx);
     const { targetType, value } = args;
 
-    if (targetType !== 'aircraft_type' && targetType !== 'manufacturer') {
+    const validTopicTypes = ['manufacturer', 'family', 'variant'];
+    if (!validTopicTypes.includes(targetType)) {
       throw new GraphQLError(
-        'targetType must be "aircraft_type" or "manufacturer"',
+        'targetType must be "manufacturer", "family", or "variant"',
         { extensions: { code: 'BAD_USER_INPUT' } },
       );
     }
 
+    const typedTargetType = targetType as FollowTargetType;
     const trimmed = value.trim();
     if (!trimmed) {
       throw new GraphQLError('value cannot be empty', {
@@ -212,7 +215,7 @@ export const followMutationResolvers = {
       where: {
         followerId_targetType_targetValue: {
           followerId,
-          targetType,
+          targetType: typedTargetType,
           targetValue: trimmed,
         },
       },
@@ -221,7 +224,7 @@ export const followMutationResolvers = {
       await ctx.prisma.follow.create({
         data: {
           followerId,
-          targetType,
+          targetType: typedTargetType,
           targetValue: trimmed,
         },
       });
@@ -238,17 +241,19 @@ export const followMutationResolvers = {
     const followerId = await resolveUserId(ctx);
     const { targetType, value } = args;
 
-    if (targetType !== 'aircraft_type' && targetType !== 'manufacturer') {
+    const validTopicTypes = ['manufacturer', 'family', 'variant'];
+    if (!validTopicTypes.includes(targetType)) {
       throw new GraphQLError(
-        'targetType must be "aircraft_type" or "manufacturer"',
+        'targetType must be "manufacturer", "family", or "variant"',
         { extensions: { code: 'BAD_USER_INPUT' } },
       );
     }
 
+    const typedTargetType = targetType as FollowTargetType;
     await ctx.prisma.follow.deleteMany({
       where: {
         followerId,
-        targetType,
+        targetType: typedTargetType,
         targetValue: value.trim(),
       },
     });
@@ -302,21 +307,30 @@ export const followQueryResolvers = {
       });
     }
 
-    const followedAircraftTypes = follows
-      .filter((f) => f.targetType === 'aircraft_type' && f.targetValue)
-      .map((f) => f.targetValue!);
-    if (followedAircraftTypes.length > 0) {
-      orConditions.push({
-        aircraftTypeName: { in: followedAircraftTypes, mode: 'insensitive' },
-      });
-    }
-
     const followedManufacturers = follows
       .filter((f) => f.targetType === 'manufacturer' && f.targetValue)
       .map((f) => f.targetValue!);
     if (followedManufacturers.length > 0) {
       orConditions.push({
-        airline: { in: followedManufacturers, mode: 'insensitive' },
+        aircraft: { manufacturer: { name: { in: followedManufacturers, mode: 'insensitive' } } },
+      });
+    }
+
+    const followedFamilies = follows
+      .filter((f) => f.targetType === 'family' && f.targetValue)
+      .map((f) => f.targetValue!);
+    if (followedFamilies.length > 0) {
+      orConditions.push({
+        aircraft: { family: { name: { in: followedFamilies, mode: 'insensitive' } } },
+      });
+    }
+
+    const followedVariants = follows
+      .filter((f) => f.targetType === 'variant' && f.targetValue)
+      .map((f) => f.targetValue!);
+    if (followedVariants.length > 0) {
+      orConditions.push({
+        aircraft: { variant: { name: { in: followedVariants, mode: 'insensitive' } } },
       });
     }
 

@@ -10,11 +10,25 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
 } from 'react';
 import { useMutation, useQuery } from 'urql';
+import exifr from 'exifr';
 
 import { useAuth } from '@/lib/auth';
-import { CREATE_PHOTO, GET_ME, GET_UPLOAD_URL, SEARCH_AIRCRAFT_TYPES } from '@/lib/queries';
+import {
+  CREATE_PHOTO,
+  GET_ME,
+  GET_UPLOAD_URL,
+  GET_PHOTO_CATEGORIES,
+  GET_AIRCRAFT_SPECIFIC_CATEGORIES,
+  SEARCH_AIRCRAFT_REGISTRATIONS,
+  GET_AIRPORT_BY_ICAO,
+  GET_AIRCRAFT_MANUFACTURERS,
+  GET_AIRCRAFT_FAMILIES,
+  GET_AIRCRAFT_VARIANTS,
+  GET_AIRLINES,
+} from '@/lib/queries';
 import dynamic from 'next/dynamic';
 import AirportPicker, { type Airport } from '@/components/AirportPicker';
 
@@ -36,55 +50,125 @@ export default function UploadPage() {
   const cameraBodies: string[] = meResult.data?.me?.profile?.cameraBodies ?? [];
   const lenses: string[] = meResult.data?.me?.profile?.lenses ?? [];
 
-  // Aircraft typeahead
-  const [aircraftTypeSearch, setAircraftTypeSearch] = useState('');
-  const [aircraftTypeResults, setAircraftTypeResults] = useState<Array<{
-    id: string;
-    manufacturer: string;
-    aircraftName: string;
-    iataCode: string | null;
-    icaoCode: string | null;
-  }>>([]);
-  const [showAircraftTypeDropdown, setShowAircraftTypeDropdown] = useState(false);
-  const aircraftTypeSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Fetch categories
+  const [categoriesResult] = useQuery({ query: GET_PHOTO_CATEGORIES });
+  const photoCategories = categoriesResult.data?.photoCategories ?? [];
+  const [specificCategoriesResult] = useQuery({ query: GET_AIRCRAFT_SPECIFIC_CATEGORIES });
+  const aircraftSpecificCategories = specificCategoriesResult.data?.aircraftSpecificCategories ?? [];
 
-  const [aircraftTypeSearchResult] = useQuery({
-    query: SEARCH_AIRCRAFT_TYPES,
-    variables: { search: aircraftTypeSearch, first: 10 },
-    pause: aircraftTypeSearch.length < 1,
+  // Aircraft hierarchy dropdowns
+  const [manufacturersResult] = useQuery({ query: GET_AIRCRAFT_MANUFACTURERS });
+  const manufacturers = manufacturersResult.data?.aircraftManufacturers?.edges?.map(
+    (e: { node: { id: string; name: string; country: string | null } }) => e.node,
+  ) ?? [];
+
+  const [familiesResult] = useQuery({ query: GET_AIRCRAFT_FAMILIES });
+  const allFamilies = familiesResult.data?.aircraftFamilies?.edges?.map(
+    (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
+      ...e.node,
+      label: `${e.node.name} (${e.node.manufacturer.name})`,
+    }),
+  ) ?? [];
+
+  const [variantsResult] = useQuery({ query: GET_AIRCRAFT_VARIANTS });
+  const allVariants = variantsResult.data?.aircraftVariants?.edges?.map(
+    (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
+      ...e.node,
+      label: `${e.node.name} (${e.node.family.name})`,
+    }),
+  ) ?? [];
+
+  const [airlinesResult] = useQuery({ query: GET_AIRLINES });
+  const airlines = airlinesResult.data?.airlines?.edges?.map(
+    (e: { node: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null } }) => e.node,
+  ) ?? [];
+
+  // Cascaded dropdown state
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState('');
+  const [selectedFamilyId, setSelectedFamilyId] = useState('');
+  const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [selectedAirlineId, setSelectedAirlineId] = useState('');
+
+  // Filtered dropdown lists
+  const filteredFamilies = useMemo(
+    () => (selectedManufacturerId
+      ? allFamilies.filter((f: { manufacturer: { id: string } }) => f.manufacturer.id === selectedManufacturerId)
+      : allFamilies),
+    [selectedManufacturerId, allFamilies],
+  );
+
+  const filteredVariants = useMemo(
+    () => (selectedFamilyId
+      ? allVariants.filter((v: { family: { id: string } }) => v.family.id === selectedFamilyId)
+      : allVariants),
+    [selectedFamilyId, allVariants],
+  );
+
+  // Registration typeahead (for auto-fill)
+  const [registrationSearch, setRegistrationSearch] = useState('');
+  const [registrationResults, setRegistrationResults] = useState<Array<{
+    id: string;
+    registration: string;
+    manufacturer: { id: string; name: string } | null;
+    family: { id: string; name: string } | null;
+    variant: { id: string; name: string; iataCode: string | null; icaoCode: string | null } | null;
+    airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null;
+    msn: string | null;
+    manufacturingDate: string | null;
+    operatorType: string | null;
+  }>>([]);
+  const [showRegistrationDropdown, setShowRegistrationDropdown] = useState(false);
+  const registrationSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [registrationSearchResult] = useQuery({
+    query: SEARCH_AIRCRAFT_REGISTRATIONS,
+    variables: { search: registrationSearch, first: 10 },
+    pause: registrationSearch.length < 1,
   });
 
   useEffect(() => {
-    if (aircraftTypeSearchResult.data?.aircraftTypes?.edges) {
-      setAircraftTypeResults(
-        aircraftTypeSearchResult.data.aircraftTypes.edges.map(
-          (e: { node: { id: string; manufacturer: string; aircraftName: string; iataCode: string | null; icaoCode: string | null } }) => e.node,
+    if (registrationSearchResult.data?.aircraftSearch?.edges) {
+      setRegistrationResults(
+        registrationSearchResult.data.aircraftSearch.edges.map(
+          (e: { node: { id: string; registration: string; manufacturer: { name: string } | null; family: { name: string } | null; variant: { name: string; iataCode: string | null; icaoCode: string | null } | null; airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null; msn: string | null; manufacturingDate: string | null; operatorType: string | null } }) => e.node,
         ),
       );
     } else {
-      setAircraftTypeResults([]);
+      setRegistrationResults([]);
     }
-  }, [aircraftTypeSearchResult.data]);
+  }, [registrationSearchResult.data]);
 
-  // Debounce aircraft type search
-  const handleAircraftTypeSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setAircraftTypeSearch(val);
-    setAircraftTypeId('');
-    if (aircraftTypeSearchRef.current) clearTimeout(aircraftTypeSearchRef.current);
+  const handleRegistrationSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase();
+    setRegistrationSearch(val);
+    if (registrationSearchRef.current) clearTimeout(registrationSearchRef.current);
     if (val.length > 0) {
-      setShowAircraftTypeDropdown(true);
+      setShowRegistrationDropdown(true);
     } else {
-      setShowAircraftTypeDropdown(false);
+      setShowRegistrationDropdown(false);
     }
   };
 
-  const selectAircraftType = (at: { id: string; manufacturer: string; aircraftName: string }) => {
-    setAircraftTypeId(at.id);
-    setAircraftType(`${at.manufacturer} ${at.aircraftName}`);
-    setAircraftTypeSearch(`${at.manufacturer} ${at.aircraftName}`);
-    setShowAircraftTypeDropdown(false);
+  const selectRegistration = (aircraft: typeof registrationResults[0]) => {
+    setRegistrationSearch(aircraft.registration);
+    setShowRegistrationDropdown(false);
+    // Set aircraftId (links to the Aircraft registration record)
+    setAircraftId(aircraft.id);
+    // Capture hierarchy fields
+    if (aircraft.manufacturer) setSelectedManufacturerId(aircraft.manufacturer.id);
+    if (aircraft.family) setSelectedFamilyId(aircraft.family.id);
+    if (aircraft.variant) setSelectedVariantId(aircraft.variant.id);
+    // Capture operatorType, msn, manufacturingDate from the Aircraft record
+    if (aircraft.operatorType) setOperatorType(aircraft.operatorType);
+    if (aircraft.msn) setMsn(aircraft.msn);
+    if (aircraft.manufacturingDate) setManufacturingDate(aircraft.manufacturingDate);
+    // Auto-fill airline from airlineRef
+    if (aircraft.airlineRef) {
+      setSelectedAirlineId(aircraft.airlineRef.icaoCode);
+      setAirlineDisplay(`${aircraft.airlineRef.name} (${[aircraft.airlineRef.iataCode, aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`);
+    }
   };
+
 
   // State
   const [step, setStep] = useState<UploadStep>('select');
@@ -98,9 +182,10 @@ export default function UploadPage() {
 
   // Metadata form
   const [caption, setCaption] = useState('');
-  const [aircraftTypeId, setAircraftTypeId] = useState('');
-  const [aircraftType, setAircraftType] = useState('');
-  const [airline, setAirline] = useState('');
+  const [aircraftId, setAircraftId] = useState('');
+  const [operatorType, setOperatorType] = useState('');
+  const [msn, setMsn] = useState('');
+  const [manufacturingDate, setManufacturingDate] = useState('');
   const [airportCode, setAirportCode] = useState('');
   const [takenAt, setTakenAt] = useState('');
   const [gearBody, setGearBody] = useState('');
@@ -114,6 +199,11 @@ export default function UploadPage() {
   const [locationPrivacy, setLocationPrivacy] = useState('exact');
   const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null);
   const [mapPosition, setMapPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [photoCategoryId, setPhotoCategoryId] = useState('');
+  const [aircraftSpecificCategoryId, setAircraftSpecificCategoryId] = useState('');
+  const [locationType, setLocationType] = useState('');
+  const [exifData, setExifData] = useState<Record<string, unknown> | null>(null);
+  const [airlineDisplay, setAirlineDisplay] = useState(''); // shown below airline dropdown
 
   // Airport picker handler — sets airport code + coordinates
   const handleAirportSelect = (airport: Airport | null) => {
@@ -145,6 +235,28 @@ export default function UploadPage() {
       // Create preview
       const url = URL.createObjectURL(selectedFile);
       setPreview(url);
+
+      // Extract EXIF data
+      try {
+        const exif = await exifr.parse(selectedFile, {
+          tiff: true, exif: true, gps: true,
+          pick: ['Make', 'Model', 'FocalLength', 'FocalLengthIn35mmFormat', 'FNumber', 'ExposureTime', 'ISO', 'DateTimeOriginal'],
+        });
+        if (exif) {
+          setExifData({
+            make: exif.Make ?? null,
+            model: exif.Model ?? null,
+            focalLength: exif.FocalLength ? String(exif.FocalLength) : null,
+            focalLength35mm: exif.FocalLengthIn35mmFormat ? String(exif.FocalLengthIn35mmFormat) : null,
+            aperture: exif.FNumber ? String(exif.FNumber) : null,
+            shutterSpeed: exif.ExposureTime ? String(exif.ExposureTime) : null,
+            iso: exif.ISO ? String(exif.ISO) : null,
+            takenAt: exif.DateTimeOriginal ? exif.DateTimeOriginal.toISOString() : null,
+          });
+        }
+      } catch {
+        // EXIF extraction is best-effort
+      }
 
       // Upload to S3
       setStep('uploading');
@@ -219,13 +331,25 @@ export default function UploadPage() {
     setS3Key(null);
     setStep('select');
     setUploadProgress(0);
-    setAircraftTypeSearch('');
-    setAircraftTypeId('');
     setTakenAt('');
     setGearBody('');
     setGearBodyCustom('');
     setGearLens('');
     setGearLensCustom('');
+    setPhotoCategoryId('');
+    setAircraftSpecificCategoryId('');
+    setOperatorType('');
+    setMsn('');
+    setManufacturingDate('');
+    setAirlineDisplay('');
+    setRegistrationSearch('');
+    setLocationType('');
+    setExifData(null);
+    setAircraftId('');
+    setSelectedManufacturerId('');
+    setSelectedFamilyId('');
+    setSelectedVariantId('');
+    setSelectedAirlineId('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -265,16 +389,23 @@ export default function UploadPage() {
         mimeType: file.type,
         fileSizeBytes: file.size,
         caption: caption || undefined,
-        aircraftType: aircraftType || undefined,
+        aircraftId: aircraftId || undefined,
         airportCode: airportCode || undefined,
         takenAt: takenAt || undefined,
         tags: tags.length > 0 ? tags : undefined,
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
         locationPrivacy: locationPrivacy !== 'exact' ? locationPrivacy : undefined,
-        aircraftTypeId: aircraftTypeId || undefined,
         gearBody: gearBody === '__custom__' ? gearBodyCustom : gearBody || undefined,
         gearLens: gearLens === '__custom__' ? gearLensCustom : gearLens || undefined,
+        photoCategoryId: photoCategoryId || undefined,
+        aircraftSpecificCategoryId: aircraftSpecificCategoryId || undefined,
+        operatorIcao: selectedAirlineId || undefined,
+        operatorType: operatorType ? operatorType.toUpperCase() as string : undefined,
+        msn: msn || undefined,
+        manufacturingDate: manufacturingDate || undefined,
+        locationType: locationType || undefined,
+        exifData: exifData || undefined,
       },
     });
 
@@ -335,9 +466,9 @@ export default function UploadPage() {
                 onClick={() => {
                   clearFile();
                   setCaption('');
-                  setAircraftTypeSearch('');
-                  setAircraftTypeId('');
-                  setAircraftType('');
+                  setOperatorType('');
+                  setMsn('');
+                  setManufacturingDate('');
                   setAirportCode('');
                   setTakenAt('');
                   setGearBody('');
@@ -348,7 +479,18 @@ export default function UploadPage() {
                   setLatitude('');
                   setLongitude('');
                   setLocationPrivacy('exact');
+                  setPhotoCategoryId('');
+                  setAircraftSpecificCategoryId('');
+                  setAirlineDisplay('');
+                  setRegistrationSearch('');
+                  setLocationType('');
+                  setAircraftId('');
+                  setExifData(null);
                   setCreatedPhotoId(null);
+                  setSelectedManufacturerId('');
+                  setSelectedFamilyId('');
+                  setSelectedVariantId('');
+                  setSelectedAirlineId('');
                 }}
                 className="btn btn-secondary btn-lg"
                 type="button"
@@ -453,41 +595,37 @@ export default function UploadPage() {
                 </div>
 
                 <div className="field">
-                  <label htmlFor="aircraftTypeSearch" className="label">
-                    Aircraft Type
+                  <label htmlFor="registration" className="label">
+                    Registration (auto-fill)
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
-                      id="aircraftTypeSearch"
+                      id="registration"
                       type="text"
                       className="input"
-                      value={aircraftTypeSearch}
-                      onChange={handleAircraftTypeSearchChange}
-                      onFocus={() => aircraftTypeSearch.length > 0 && setShowAircraftTypeDropdown(true)}
-                      placeholder="Search aircraft type (e.g. Boeing 747)"
-                      autoComplete="off"
+                      value={registrationSearch}
+                      onChange={handleRegistrationSearchChange}
+                      placeholder="e.g. N12345"
+                      style={{ textTransform: 'uppercase' }}
                     />
-                    {showAircraftTypeDropdown && aircraftTypeResults.length > 0 && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          background: 'var(--color-bg)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 8,
-                          zIndex: 100,
-                          maxHeight: 240,
-                          overflowY: 'auto',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        }}
-                      >
-                        {aircraftTypeResults.map((at) => (
+                    {showRegistrationDropdown && registrationResults.length > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'var(--color-bg)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 8,
+                        zIndex: 100,
+                        maxHeight: 240,
+                        overflowY: 'auto',
+                      }}>
+                        {registrationResults.map((a) => (
                           <button
-                            key={at.id}
+                            key={a.id}
                             type="button"
-                            onClick={() => selectAircraftType(at)}
+                            onClick={() => selectRegistration(a)}
                             style={{
                               display: 'block',
                               width: '100%',
@@ -499,55 +637,160 @@ export default function UploadPage() {
                               borderBottom: '1px solid var(--color-border)',
                             }}
                           >
-                            <span style={{ fontWeight: 600 }}>{at.manufacturer} {at.aircraftName}</span>
-                            <span style={{ marginLeft: 8, color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-                              {at.iataCode ? `IATA: ${at.iataCode}` : ''}
-                              {at.icaoCode ? ` ICAO: ${at.icaoCode}` : ''}
+                            <span style={{ fontWeight: 600 }}>{a.registration}</span>
+                            <span style={{ marginLeft: 8, color: 'var(--color-text-secondary)' }}>
+                              {[a.manufacturer?.name, a.family?.name, a.variant?.name].filter(Boolean).join(' ')}
+                              {a.variant?.iataCode || a.variant?.icaoCode
+                                ? ` (${[a.variant.iataCode, a.variant.icaoCode].filter(Boolean).join('/')})`
+                                : null}
                             </span>
                           </button>
                         ))}
                       </div>
                     )}
-                    {showAircraftTypeDropdown && aircraftTypeSearch.length > 0 && aircraftTypeResults.length === 0 && !aircraftTypeSearchResult.fetching && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          background: 'var(--color-bg)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 8,
-                          zIndex: 100,
-                          padding: '8px 12px',
-                          color: 'var(--color-text-secondary)',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        No aircraft type found
-                      </div>
-                    )}
                   </div>
-                  {aircraftTypeSearchResult.fetching && aircraftTypeSearch.length > 0 && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                      Searching…
-                    </p>
-                  )}
                 </div>
 
-                <div className="field">
-                  <label htmlFor="airline" className="label">
-                    Airline
-                  </label>
-                  <input
-                    id="airline"
-                    type="text"
-                    className="input"
-                    value={airline}
-                    onChange={(e) => setAirline(e.target.value)}
-                    placeholder="e.g. Lufthansa"
-                  />
-                </div>
+                {/* Aircraft Details — collapsible section */}
+                <details className={styles.aircraftDetails}>
+                  <summary className={styles.aircraftDetailsSummary}>
+                    ✈ Aircraft Details
+                  </summary>
+                  <div className={styles.aircraftDetailsBody}>
+                    <div className={styles.aircraftRow}>
+                      <div className="field">
+                        <label htmlFor="manufacturer" className="label">
+                          Manufacturer
+                        </label>
+                        <select
+                          id="manufacturer"
+                          className="input"
+                          value={selectedManufacturerId}
+                          onChange={(e) => {
+                            setSelectedManufacturerId(e.target.value);
+                            setSelectedFamilyId('');
+                            setSelectedVariantId('');
+                          }}
+                        >
+                          <option value="">Select manufacturer…</option>
+                          {manufacturers.map((m: { id: string; name: string }) => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor="family" className="label">
+                          Family
+                        </label>
+                        <select
+                          id="family"
+                          className="input"
+                          value={selectedFamilyId}
+                          onChange={(e) => {
+                            setSelectedFamilyId(e.target.value);
+                            setSelectedVariantId('');
+                          }}
+                          disabled={!selectedManufacturerId}
+                        >
+                          <option value="">Select family…</option>
+                          {filteredFamilies.map((f: { id: string; label: string }) => (
+                            <option key={f.id} value={f.id}>{f.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className={styles.aircraftRow}>
+                      <div className="field">
+                        <label htmlFor="variant" className="label">
+                          Variant
+                        </label>
+                        <select
+                          id="variant"
+                          className="input"
+                          value={selectedVariantId}
+                          onChange={(e) => setSelectedVariantId(e.target.value)}
+                          disabled={!selectedFamilyId}
+                        >
+                          <option value="">Select variant…</option>
+                          {filteredVariants.map((v: { id: string; label: string }) => (
+                            <option key={v.id} value={v.id}>{v.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor="operatorType" className="label">
+                          Operator Type
+                        </label>
+                        <select
+                          id="operatorType"
+                          className="input"
+                          value={operatorType}
+                          onChange={(e) => setOperatorType(e.target.value)}
+                        >
+                          <option value="">Select type…</option>
+                          <option value="airline">Airline</option>
+                          <option value="general_aviation">General Aviation</option>
+                          <option value="military">Military</option>
+                          <option value="government">Government</option>
+                          <option value="cargo">Cargo</option>
+                          <option value="charter">Charter</option>
+                          <option value="private">Private</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className={styles.aircraftRow}>
+                      <div className="field">
+                        <label htmlFor="msn" className="label">
+                          MSN / Serial Number
+                        </label>
+                        <input
+                          id="msn"
+                          type="text"
+                          className="input"
+                          value={msn}
+                          onChange={(e) => setMsn(e.target.value)}
+                          placeholder="e.g. 12345"
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor="manufacturingDate" className="label">
+                          Manufacturing Date
+                        </label>
+                        <input
+                          id="manufacturingDate"
+                          type="date"
+                          className="input"
+                          value={manufacturingDate}
+                          onChange={(e) => setManufacturingDate(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor="airlineRef" className="label">
+                          Airline
+                        </label>
+                        <select
+                          id="airlineRef"
+                          className="input"
+                          value={selectedAirlineId}
+                          onChange={(e) => setSelectedAirlineId(e.target.value)}
+                        >
+                          <option value="">Select airline…</option>
+                          {airlines.map((a: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null }) => (
+                            <option key={a.id} value={a.icaoCode}>
+                              {a.name} ({a.icaoCode}{a.iataCode ? `/${a.iataCode}` : ''})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </details>
 
                 <div className="field">
                   <label htmlFor="takenAt" className="label">
@@ -622,6 +865,42 @@ export default function UploadPage() {
                   </div>
                 </div>
 
+                <div className={styles.gearRow}>
+                  <div className="field">
+                    <label htmlFor="photoCategory" className="label">
+                      Photo Category
+                    </label>
+                    <select
+                      id="photoCategory"
+                      className="input"
+                      value={photoCategoryId}
+                      onChange={(e) => setPhotoCategoryId(e.target.value)}
+                    >
+                      <option value="">Select category…</option>
+                      {photoCategories.map((c: { id: string; name: string; label: string }) => (
+                        <option key={c.id} value={c.id}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="aircraftSpecificCategory" className="label">
+                      Aircraft Type
+                    </label>
+                    <select
+                      id="aircraftSpecificCategory"
+                      className="input"
+                      value={aircraftSpecificCategoryId}
+                      onChange={(e) => setAircraftSpecificCategoryId(e.target.value)}
+                    >
+                      <option value="">Select type…</option>
+                      {aircraftSpecificCategories.map((c: { id: string; name: string; label: string }) => (
+                        <option key={c.id} value={c.id}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div className="field">
                   <label className="label">📍 Airport (optional)</label>
                   <AirportPicker value={selectedAirport} onChange={handleAirportSelect} />
@@ -641,6 +920,26 @@ export default function UploadPage() {
                     </p>
                   )}
                 </div>
+
+                {mapPosition && !selectedAirport && (
+                  <div className="field">
+                    <label htmlFor="locationType" className="label">
+                      Location Type
+                    </label>
+                    <select
+                      id="locationType"
+                      className="input"
+                      value={locationType}
+                      onChange={(e) => setLocationType(e.target.value)}
+                    >
+                      <option value="">Select type…</option>
+                      <option value="museum">Museum</option>
+                      <option value="cemetery">Cemetery</option>
+                      <option value="airfield">Airfield</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                )}
 
                 {(latitude || longitude) && (
                   <div className="field">

@@ -10,15 +10,19 @@
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
-2. [CI/CD Pipeline](#cicd-pipeline)
-3. [Prerequisites & First-Time Setup](#prerequisites--first-time-setup)
-4. [GitHub Secrets & Variables](#github-secrets--variables)
-5. [CDK Infrastructure (IaC)](#cdk-infrastructure-iac)
-6. [Docker Builds](#docker-builds)
-7. [DNS & HTTPS](#dns--https)
-8. [Manual Deployment](#manual-deployment)
-9. [Monitoring & Health Checks](#monitoring--health-checks)
-10. [Troubleshooting](#troubleshooting)
+2. [How to Deploy](#how-to-deploy)
+3. [CI/CD Pipeline](#cicd-pipeline)
+4. [Task Definition Management](#task-definition-management)
+5. [Database Access](#database-access)
+6. [Superuser & Auth](#superuser--auth)
+7. [Secrets Manager](#secrets-manager)
+8. [Docker Builds](#docker-builds)
+9. [DNS & HTTPS](#dns--https)
+10. [Network & Security Groups](#network--security-groups)
+11. [Monitoring & Health Checks](#monitoring--health-checks)
+12. [Troubleshooting](#troubleshooting)
+13. [TODO: Known Issues](#todo-known-issues)
+14. [File Reference](#file-reference)
 
 ---
 
@@ -55,7 +59,7 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
        ▼
 ┌──────────────┐     ┌──────────────┐
 │ RDS Postgres │     │ S3 Bucket    │
-│ spotterspace-db│   │ spotterspace-│
+│ spotterhub-db│     │ spotterspace-│
 │ Port 5432    │     │ photos       │
 └──────────────┘     └──────────────┘
 ```
@@ -69,50 +73,82 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 | API Health | https://api.spotterspace.com/health | ✅ |
 | Apex Redirect | https://spotterspace.com → www | ✅ |
 
+### Key AWS Resources
+
+| Resource | Name / ID |
+|----------|-----------|
+| ECS Cluster | `spotterspace-cluster` |
+| API ECS Service | `spotterspace-dev-api` |
+| Web ECS Service | `spotterspace-dev-web` |
+| API ECR Repo | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api` |
+| Web ECR Repo | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web` |
+| API Task Definition | `spotterspace-dev-api` (rev 11, image: `:latest`) |
+| Web Task Definition | `spotterspace-dev-web` (rev 10, image: `:latest`) |
+| RDS | `spotterhub-db` (PostgreSQL 16.3, db.t3.medium, private subnets) |
+| S3 | `spotterspace-photos` |
+| ALB | `spotterspace-alb` |
+| Secrets Manager | `spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET` |
+| Route 53 Zone | `Z00113712EMKXVCPQFWZW` |
+| VPC | `vpc-09a6870488b73260e` (10.0.0.0/20) |
+
+---
+
+## How to Deploy
+
+### Quick Reference (most common flow)
+
+1. **Push code to `main`** → GitHub Actions automatically builds Docker images and pushes to ECR (~5 min)
+2. **Trigger ECS redeployment** from **AWS CloudShell** (GitHub Actions can't do this yet — see [Known Issues](#todo-known-issues)):
+
+```bash
+# API
+aws ecs update-service --cluster spotterspace-cluster 
+  --service spotterspace-dev-api --force-new-deployment 
+  --region us-east-1 --no-cli-pager
+
+# Web
+aws ecs update-service --cluster spotterspace-cluster 
+  --service spotterspace-dev-web --force-new-deployment 
+  --region us-east-1 --no-cli-pager
+```
+
+3. **Wait 2-3 minutes** for ECS to roll out the new tasks
+4. **Verify** by visiting https://api.spotterspace.com/health and https://www.spotterspace.com
+
+### Deploy Only API or Only Web
+
+Only run the `update-service` command for the service you want to update. GitHub Actions builds both images on every push, so both `:latest` tags are always up to date in ECR.
+
+### Verify Deployment
+
+```bash
+# Check deployment status
+aws ecs describe-services --cluster spotterspace-cluster 
+  --services spotterspace-dev-api spotterspace-dev-web 
+  --region us-east-1 --no-cli-pager 
+  --query 'services[*].{Name:serviceName,Running:runningCount,Desired:desiredCount,Status:deployments[0].rolloutState}'
+
+# Check API
+curl -s https://api.spotterspace.com/health
+
+# Check Web
+curl -s -o /dev/null -w "%{http_code}" https://www.spotterspace.com
+```
+
 ---
 
 ## CI/CD Pipeline
 
-**Everything is managed by GitHub Actions.** Pushing to `main` triggers an automated deploy.
-
 ### Workflow: `.github/workflows/deploy.yml`
 
-**Trigger:** Push to `main` (paths: `apps/**`, `packages/**`, `infrastructure/**`) or manual `workflow_dispatch`.
+**Trigger:** Push to `main` (paths: `apps/**`, `packages/**`, `infrastructure/**`, `.github/workflows/deploy.yml`) or manual `workflow_dispatch`.
 
-```
-┌─────────────────┐
-│  deploy-infra   │  CDK bootstrap + deploy (creates/updates all AWS resources)
-│  (CDK Stack)    │  Outputs: ECS cluster, service ARNs, ECR URIs
-└────────┬────────┘
-         │
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-┌─────────┐ ┌─────────┐
-│deploy-  │ │deploy-  │  Build Docker images → Push to ECR → Force ECS redeployment
-│api      │ │web      │  (run in parallel after infra)
-└─────────┘ └─────────┘
-```
+**Two parallel jobs:**
 
-**Steps per job:**
+1. **deploy-api:** Checkout → AWS auth → ECR login → Docker build & push (`spotterspace-dev-api:latest`) → Force ECS redeployment
+2. **deploy-web:** Checkout → AWS auth → ECR login → Docker build & push (`spotterspace-dev-web:latest`) → Force ECS redeployment
 
-1. **deploy-infra:**
-   - Checkout → Setup Node 20 → Install CDK + infra deps → Build TypeScript
-   - `aws-actions/configure-aws-credentials` for auth
-   - `cdk bootstrap` (idempotent, runs on every deploy)
-   - `cdk deploy SpotterSpace-dev-Stack --require-approval never --outputs-file cdks-outputs.json`
-   - Extract CloudFormation outputs (ECS service ARNs, cluster name) → pass to downstream jobs
-
-2. **deploy-api** (needs deploy-infra):
-   - Checkout → AWS auth → ECR login → Docker Buildx
-   - Build `apps/api/Dockerfile` → push to ECR (`spotterspace-dev-api:latest`)
-   - `aws ecs update-service --force-new-deployment` → ECS pulls new image and registers with ALB target group
-
-3. **deploy-web** (needs deploy-infra):
-   - Checkout → AWS auth → ECR login → Docker Buildx
-   - Build `apps/web/Dockerfile` with build args (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`)
-   - Push to ECR (`spotterspace-dev-web:latest`)
-   - `aws ecs update-service --force-new-deployment` → ECS pulls new image and registers with ALB target group
+**⚠️ The "Force ECS redeployment" step currently fails** due to missing IAM permissions on the GitHub Actions user. Docker images are pushed successfully. See [Known Issues](#todo-known-issues).
 
 ### Workflow: `.github/workflows/ci.yml`
 
@@ -122,173 +158,171 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 Lint → Typecheck → Test (PR only) → Build
 ```
 
-Runs against a PostgreSQL 16 + PostGIS service container. Tests only run on PRs (not on main pushes, since deploy.yml handles main).
+### GitHub Secrets & Variables
 
-### How to Deploy
+**Secrets:**
 
-**Automatic (recommended):** Push/merge to `main`. The deploy workflow handles everything.
+| Secret | Description |
+|--------|-------------|
+| `AWS_ACCESS_KEY_ID` | IAM user access key for deployments |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Mapbox GL JS token for map features |
 
-```bash
-git push origin main
-# or merge a PR into main
-```
-
-**Manual dispatch:** Go to GitHub Actions → "Deploy to AWS" → "Run workflow" → Select stage (`dev`/`prod`).
-
----
-
-## Prerequisites & First-Time Setup
-
-These steps are **one-time setup** and do not need to be repeated on subsequent deploys.
-
-### 1. AWS Resources (created manually, imported by CDK)
-
-| Resource | Details | How to Create |
-|----------|---------|---------------|
-| VPC | `vpc-09a6870488b73260e` (10.0.0.0/20) with public + private subnets + NAT gateway | AWS Console or CDK |
-| RDS PostgreSQL | `spotterspace-db` (PostgreSQL 16.3, db.t3.medium, private subnets) | AWS Console |
-| RDS Security Group | `sg-0925439b428efdf13` (allows 5432 from ECS tasks) | AWS Console |
-| Secrets Manager VPC Endpoint | Security group `sg-0ddf2cd67fa1b09f0` | AWS Console |
-| ECR Repository (api) | `spotterspace-dev-api` | `aws ecr create-repository --repository-name spotterspace-dev-api` |
-| ECR Repository (web) | `spotterspace-dev-web` | `aws ecr create-repository --repository-name spotterspace-dev-web` |
-| Secrets Manager: DATABASE_URL | `spotterspace/DATABASE_URL` (full ARN includes `-fFpNor` suffix) | AWS Console |
-| Secrets Manager: JWT_SECRET | `spotterspace/JWT_SECRET` (full ARN includes `-V8C46k` suffix) | AWS Console |
-| S3 Bucket | `spotterspace-photos` (for photo uploads) | AWS Console |
-| Route 53 Hosted Zone | `Z00113712EMKXVCPQFWZW` for `spotterspace.com` | Created with domain registration |
-
-### 2. Domain Registration
-
-- Domain `spotterspace.com` registered via Amazon Registrar (2026-04-11, expires 2027-04-11)
-- Nameservers automatically point to Route 53 hosted zone `Z00113712EMKXVCPQFWZW`
-- **Important:** After initial registration, DNS propagation can take up to 48 hours. During this window, `DNS_PROBE_FINISHED_NXDOMAIN` errors are expected. Fix: flush local DNS cache (`sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder` on macOS) and/or reboot your router.
-
-### 3. CDK Bootstrap (one-time per account/region)
-
-```bash
-cd infrastructure
-npm install
-npm run build
-cdk bootstrap aws://654654553862/us-east-1 
-  --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
-```
-
-> The deploy workflow also runs `cdk bootstrap` idempotently on every deploy, so this is optional locally.
-
-### 4. Initial ECR Image Push
-
-ECS Fargate requires at least one image in ECR before the first CDK deploy creates the services. Push an initial image manually:
-
-```bash
-# Authenticate to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 654654553862.dkr.ecr.us-east-1.amazonaws.com
-
-# Build and push API
-docker build --platform linux/amd64 -f apps/api/Dockerfile 
-  -t 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:latest .
-docker push 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:latest
-
-# Build and push Web
-docker build --platform linux/amd64 -f apps/web/Dockerfile 
-  --build-arg NEXT_PUBLIC_API_URL=https://api.spotterspace.com/graphql 
-  -t 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web:latest .
-docker push 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web:latest
-```
-
----
-
-## GitHub Secrets & Variables
-
-Configure these in the GitHub repository settings under **Settings → Secrets and variables → Actions**.
-
-### Secrets (sensitive values)
-
-| Secret | Description | Example |
-|--------|-------------|---------|
-| `AWS_ACCESS_KEY_ID` | IAM user access key for deployments | `AKIA...` |
-| `AWS_SECRET_ACCESS_KEY` | IAM user secret key | `wJal...` |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Mapbox GL JS token for map features | `pk.eyJ1...` |
-
-### Variables (non-sensitive configuration)
+**Variables:**
 
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `AWS_ACCOUNT_ID` | `654654553862` | AWS account number |
-| `VPC_ID` | `vpc-09a6870488b73260e` | VPC containing the RDS instance |
-| `DOMAIN_NAME` | `spotterspace.com` | Root domain (enables CloudFront + ACM + Route 53) |
-| `HOSTED_ZONE_ID` | `Z00113712EMKXVCPQFWZW` | Route 53 hosted zone for the domain |
-| `S3_BUCKET_NAME` | `spotterspace-photos` | S3 bucket for photo storage |
-
-> **Note:** If `DOMAIN_NAME` or `HOSTED_ZONE_ID` are empty/unset, the CDK stack will skip CloudFront, ACM certificate, HTTPS listener, and Route 53 record creation — services will only be accessible via the ALB DNS name (`spotterspace-alb-*.us-east-1.elb.amazonaws.com`).
+| `VPC_ID` | `vpc-09a6870488b73260e` | VPC ID |
+| `DOMAIN_NAME` | `spotterspace.com` | Root domain |
+| `HOSTED_ZONE_ID` | `Z00113712EMKXVCPQFWZW` | Route 53 hosted zone |
+| `S3_BUCKET_NAME` | `spotterspace-photos` | S3 bucket for photos |
 
 ---
 
-## CDK Infrastructure (IaC)
+## Task Definition Management
 
-All infrastructure is defined in `infrastructure/lib/spotterspace-stack.ts` and deployed as `SpotterSpace-dev-Stack`.
+ECS task definitions may pin Docker images to specific tags (e.g., `:v5`, `:v6`). If `force-new-deployment` doesn't pick up the latest image, you need to register a new task definition revision pointing to `:latest`.
 
-### CDK-Managed Resources
+### Check Current Image Tag
 
-| Resource | Type | Details |
-|----------|------|---------|
-| ECS Cluster | ECS | `spotterspace-cluster` (Fargate) |
-| API Service | ECS Fargate | `spotterspace-dev-api`, port 4000, private subnets, auto-registered with ALB |
-| Web Service | ECS Fargate | `spotterspace-dev-web`, port 3000, private subnets, auto-registered with ALB |
-| API Target Group | ALB | `spotterspace-dev-api-tg`, port 4000, health check `/health` |
-| Web Target Group | ALB | `spotterspace-dev-web-tg`, port 3000, health check `/api/health` |
-| HTTP Listener | ALB | Port 80, host-based rules: `api.*` → apiTG, default → webTG |
-| HTTPS Listener | ALB | Port 443, host-based rules (if domain configured) |
-| Security Group | EC2 | `sg-08e5864c53710a095` — shared ALB + ECS SG with self-referencing rule |
-| Log Groups | CloudWatch | `/ecs/spotterspace-dev/api`, `/ecs/spotterspace-dev/web` (1 week retention) |
-| Task Execution Role | IAM | `ecsTaskExecutionRole` — ECR pull + CloudWatch logs |
-| Task Role | IAM | `ecsSpotterSpaceTaskRole` — Secrets Manager read + S3 read/write |
-| ACM Certificate | ACM | `*.spotterspace.com` + `spotterspace.com` (DNS-validated via Route 53) |
-| DNS: CNAME (www) | Route 53 | `www.spotterspace.com` → ALB DNS name |
-| DNS: CNAME (api) | Route 53 | `api.spotterspace.com` → ALB DNS name |
+```bash
+aws ecs describe-task-definition --task-definition spotterspace-dev-api 
+  --query 'taskDefinition.containerDefinitions[0].image' 
+  --output text --no-cli-pager
+```
 
-### Imported Resources (not managed by CDK — do not delete)
+If it shows `:latest`, a simple `force-new-deployment` will pull the newest image. If it shows a pinned tag (e.g., `:v5`), follow the steps below.
 
-| Resource | Details |
-|----------|---------|
-| VPC | `vpc-09a6870488b73260e` (10.0.0.0/20, us-east-1) |
-| ALB | `spotterspace-alb` (`spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com`) |
-| ECS Cluster | `spotterspace-cluster` |
-| RDS | `spotterspace-db` (PostgreSQL 16.3, db.t3.medium) |
-| ECR (web) | `spotterspace-dev-web` |
-| ECR (api) | `spotterspace-dev-api` |
-| Secrets Manager | `spotterspace/DATABASE_URL`, `spotterspace/JWT_SECRET` |
-| S3 Bucket | `spotterspace-photos` |
-| ALB Security Group | `sg-08e5864c53710a095` |
-| RDS Security Group | `sg-0925439b428efdf13` |
-| Secrets Manager VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0` |
+### Update API Task Definition
 
-### CDK Environment Variables
+```bash
+# 1. Export current task definition
+aws ecs describe-task-definition 
+  --task-definition spotterspace-dev-api 
+  --query 'taskDefinition' --no-cli-pager > /tmp/td.json
 
-The CDK app (`infrastructure/bin/spotterspace.ts`) reads these env vars:
+# 2. Create clean version with :latest tag (requires jq)
+jq '{family,containerDefinitions,taskRoleArn,executionRoleArn,networkMode,requiresCompatibilities,cpu,memory}' 
+  /tmp/td.json | sed 's|spotterspace-dev-api:[^"]*|spotterspace-dev-api:latest|g' > /tmp/clean-td.json
 
-| Env Var | Required | Default | Description |
-|---------|----------|---------|-------------|
-| `STAGE` | No | `dev` | Deployment stage (`dev` or `prod`) |
-| `DOMAIN_NAME` | No | — | Root domain (gates CloudFront/ACM/Route 53) |
-| `HOSTED_ZONE_ID` | No | — | Route 53 hosted zone ID |
-| `VPC_ID` | No | `vpc-09a6870488b73260e` | VPC for ECS tasks and ALB |
-| `S3_BUCKET_NAME` | No | `spotterspace-photos` | S3 bucket name |
-| `CDK_DEFAULT_ACCOUNT` | Yes | — | AWS account ID |
-| `CDK_DEFAULT_REGION` | No | `us-east-1` | AWS region |
+# 3. Register new revision
+aws ecs register-task-definition 
+  --cli-input-json file:///tmp/clean-td.json 
+  --region us-east-1 --query 'taskDefinition.taskDefinitionArn' 
+  --output text --no-cli-pager
+# → outputs: arn:aws:ecs:...:task-definition/spotterspace-dev-api:NEW_REV
 
-### CloudFormation Outputs
+# 4. Update service with new revision
+aws ecs update-service --cluster spotterspace-cluster 
+  --service spotterspace-dev-api 
+  --task-definition spotterspace-dev-api:NEW_REV 
+  --force-new-deployment --region us-east-1 --no-cli-pager
+```
 
-After deploy, these outputs are available (used by deploy-api and deploy-web jobs):
+### Update Web Task Definition
 
-| Output | Description |
-|--------|-------------|
-| `ClusterName` | ECS cluster name (`spotterspace-cluster`) |
-| `ApiServiceArn` | ECS API service ARN (for `update-service --force-new-deployment`) |
-| `WebServiceArn` | ECS Web service ARN |
-| `ApiTaskDefinitionArn` | API task definition ARN (includes revision number) |
-| `WebTaskDefinitionArn` | Web task definition ARN |
-| `AlbDnsName` | ALB DNS name (`spotterspace-alb-*.us-east-1.elb.amazonaws.com`) |
-| `AlbArn` | ALB ARN |
-| `Stage` | Deployment stage (`dev` or `prod`) |
+Same process, but **omit `taskRoleArn`** (the web task has no task role):
+
+```bash
+# 1. Export
+aws ecs describe-task-definition 
+  --task-definition spotterspace-dev-web 
+  --query 'taskDefinition' --no-cli-pager > /tmp/web-td.json
+
+# 2. Clean — note: no taskRoleArn
+jq '{family,containerDefinitions,executionRoleArn,networkMode,requiresCompatibilities,cpu,memory}' 
+  /tmp/web-td.json | sed 's|spotterspace-dev-web:[^"]*|spotterspace-dev-web:latest|g' > /tmp/clean-web-td.json
+
+# 3. Register
+aws ecs register-task-definition 
+  --cli-input-json file:///tmp/clean-web-td.json 
+  --region us-east-1 --query 'taskDefinition.taskDefinitionArn' 
+  --output text --no-cli-pager
+
+# 4. Deploy
+aws ecs update-service --cluster spotterspace-cluster 
+  --service spotterspace-dev-web 
+  --task-definition spotterspace-dev-web:NEW_REV 
+  --force-new-deployment --region us-east-1 --no-cli-pager
+```
+
+---
+
+## Database Access
+
+- RDS is in **private subnets** — it is **NOT accessible** from CloudShell, the internet, or your local machine
+- Only ECS tasks (running in the same VPC private subnets) can reach it
+- The API container runs **Prisma migrations automatically on startup** (idempotent)
+- To run ad-hoc SQL, you would need to:
+  - Enable **ECS Exec** on the API service and run commands inside the container
+  - Set up a **bastion host** or **VPN** in the VPC
+
+### Connection String
+
+Stored in Secrets Manager as `spotterhub/DATABASE_URL`:
+
+```bash
+aws secretsmanager get-secret-value 
+  --secret-id spotterhub/DATABASE_URL 
+  --query SecretString --output text
+```
+
+Output format: `{"DATABASE_URL":"postgresql://user:pass@spotterhub-db.xxx.us-east-1.rds.amazonaws.com:5432/spotterhub"}`
+
+---
+
+## Superuser & Auth
+
+### Dev Auth Mode
+
+The API uses a dev-mode authentication system (not AWS Cognito):
+- **signUp** mutation creates a user with a SHA-256 hashed password stored as `cognitoSub` (prefix `dev1-`)
+- **signIn** mutation verifies the password by recomputing the hash
+
+### Production Superuser
+
+| Field | Value |
+|-------|-------|
+| Email | `robi_sz@yahoo.com` |
+| Password | `Jerusalem!25` |
+| Role | `superuser` |
+
+### One-Time Seed Endpoint
+
+The API exposes a `POST /seed` endpoint that upserts the superuser. It requires the JWT_SECRET as an auth header:
+
+```bash
+# 1. Get the JWT_SECRET value
+JWT_SECRET=$(aws secretsmanager get-secret-value 
+  --secret-id spotterhub/JWT_SECRET 
+  --query SecretString --output text 
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['JWT_SECRET'])")
+
+# 2. Call /seed
+curl -X POST https://api.spotterspace.com/seed 
+  -H "x-jwt-secret: $JWT_SECRET"
+```
+
+---
+
+## Secrets Manager
+
+| Secret ID | Contents |
+|-----------|----------|
+| `spotterhub/DATABASE_URL` | `{"DATABASE_URL":"postgresql://..."}` |
+| `spotterhub/JWT_SECRET` | `{"JWT_SECRET":"..."}` |
+
+**⚠️ Important:** The prefix is `spotterhub/`, NOT `spotterspace/`.
+
+The API loads these at startup via `@aws-sdk/client-secrets-manager`. They are fetched directly by the app code using the ECS task role — not injected via ECS task definition secrets.
+
+### Retrieve Secrets (from CloudShell)
+
+```bash
+aws secretsmanager get-secret-value --secret-id spotterhub/DATABASE_URL --query SecretString --output text
+aws secretsmanager get-secret-value --secret-id spotterhub/JWT_SECRET --query SecretString --output text
+```
 
 ---
 
@@ -296,260 +330,149 @@ After deploy, these outputs are available (used by deploy-api and deploy-web job
 
 ### API (`apps/api/Dockerfile`)
 
-- **Multi-stage build:** Node 20 Alpine
-- **Build stage:** Copies entire monorepo → `npm install --workspaces --ignore-scripts` → `prisma generate` → `turbo build --filter=@spotterspace/api` → `npm prune --production`
-- **Runtime stage:** Node 20 Alpine, non-root user (`nodeapp:1001`)
-- **Entrypoint:** `apps/api/docker-entrypoint.sh` → runs `node dist/index.js`
+- **Multi-stage:** Node 20 Alpine (build) → Node 20 Alpine (runtime)
+- **Build:** Copies monorepo → `npm install --workspaces --ignore-scripts` → `prisma generate` → `turbo build --filter=@spotterspace/api` → `npm prune --production`
+- **Runtime:** Non-root user (`nodeapp:1001`)
+- **Entrypoint:** `docker-entrypoint.sh` → `node dist/index.js`
 - **Port:** 4000
-- **Health check:** `GET /health` (wget)
-- **Secret loading:** The API app loads `DATABASE_URL` and `JWT_SECRET` from AWS Secrets Manager at startup using `@aws-sdk/client-secrets-manager` (no AWS CLI needed in container)
-- **Prisma migrations:** Handled by the entrypoint — `prisma migrate deploy` runs automatically on startup (idempotent)
+- **Health check:** `wget -qO- http://localhost:4000/health`
+- **Startup sequence:** Load secrets from Secrets Manager → Run Prisma migrations → Start Apollo Server
 
 ### Web (`apps/web/Dockerfile`)
 
-- **Multi-stage build:** Node 20 Alpine (build), Node 20 (runtime)
-- **Build args:** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN` (baked into the Next.js bundle at build time)
-- **Build stage:** Copies workspace files → `npm install` → builds packages (`shared`, `db`, `api`) with `tsc` → `next build` (standalone output)
-- **Runtime stage:** Copies standalone output + static assets
+- **Multi-stage:** Node 20 Alpine (build) → Node 20 (runtime)
+- **Build args:** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN` (baked into bundle at build time)
 - **Port:** 3000
+- **⚠️ Critical path:** Next.js standalone output nests at `apps/web/apps/web/server.js` in monorepos:
 
-**⚠️ Critical: Next.js standalone nested path**
-Next.js standalone output places `server.js` at `standalone/apps/web/server.js` (one level deeper than expected in monorepos). The Dockerfile handles this:
 ```dockerfile
 COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
 COPY --from=builder /app/apps/web/.next/static /app/apps/web/apps/web/.next/static
 CMD ["node", "apps/web/apps/web/server.js"]
 ```
-If static assets (CSS/JS) return 404 in production, this path mapping is likely wrong.
+
+### Key Configuration
+
+- Next.js rewrites `/api/graphql` → `NEXT_PUBLIC_API_URL` (proxy to API server, avoids CORS)
+- The rewrite is defined in `apps/web/next.config.ts`
 
 ---
 
 ## DNS & HTTPS
 
-### Domain Configuration
-
 | Record | Type | Target |
 |--------|------|--------|
-| `www.spotterspace.com` | CNAME | ALB DNS name (`spotterspace-alb-*.us-east-1.elb.amazonaws.com`) |
+| `www.spotterspace.com` | CNAME | ALB DNS name |
 | `api.spotterspace.com` | CNAME | ALB DNS name |
+| `spotterspace.com` | A (alias) | CloudFront (apex redirect to www) |
 
-### How It Works
+**SSL:** ACM certificate covers `spotterspace.com` + `*.spotterspace.com`, DNS-validated via Route 53.
 
-1. **www subdomain**: Route 53 CNAME → ALB → host-based rule → Web target group → ECS Fargate (Next.js)
-2. **api subdomain**: Route 53 CNAME → ALB → host-based rule → API target group → ECS Fargate (Apollo)
-
-### SSL/TLS
-
-- ACM certificate covers `spotterspace.com` + `*.spotterspace.com`
-- Validated via DNS (Route 53 auto-creates validation CNAME records)
-- ALB HTTPS listener (port 443) uses the ACM certificate for `www` and `api` subdomains
-
-### Nameservers
-
-Managed by Route 53 hosted zone `Z00113712EMKXVCPQFWZW`:
-- `ns-461.awsdns-57.com`
-- `ns-522.awsdns-01.net`
-- `ns-1093.awsdns-08.org`
-- `ns-2031.awsdns-61.co.uk`
+**Nameservers:** `ns-461.awsdns-57.com`, `ns-522.awsdns-01.net`, `ns-1093.awsdns-08.org`, `ns-2031.awsdns-61.co.uk`
 
 ---
 
-## Manual Deployment
+## Network & Security Groups
 
-Use these commands only when you need to deploy outside of CI/CD (e.g., hotfix, debugging).
-
-### CDK (Infrastructure only)
-
-```bash
-cd infrastructure
-npm install && npm run build
-
-STAGE=dev 
-DOMAIN_NAME=spotterspace.com 
-HOSTED_ZONE_ID=Z00113712EMKXVCPQFWZW 
-VPC_ID=vpc-09a6870488b73260e 
-S3_BUCKET_NAME=spotterspace-photos 
-CDK_DEFAULT_ACCOUNT=654654553862 
-CDK_DEFAULT_REGION=us-east-1 
-npx cdk deploy SpotterSpace-dev-Stack --require-approval never
-```
-
-### API Image (manual build + deploy)
-
-```bash
-# Authenticate
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 654654553862.dkr.ecr.us-east-1.amazonaws.com
-
-# Build and push (from monorepo root)
-docker build --platform linux/amd64 -f apps/api/Dockerfile 
-  -t 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:latest .
-docker push 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api:latest
-
-# Force ECS to pull new image and redeploy
-aws ecs update-service --cluster spotterspace-cluster \
-  --service spotterspace-dev-api --force-new-deployment --region us-east-1
-```
-
-### Web Image (manual build + deploy)
-
-```bash
-# Build and push (from monorepo root)
-docker build --platform linux/amd64 -f apps/web/Dockerfile 
-  --build-arg NEXT_PUBLIC_API_URL=https://api.spotterspace.com/graphql 
-  --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=<your-token> 
-  -t 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web:latest .
-docker push 654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web:latest
-
-# Force ECS to pull new image and redeploy
-aws ecs update-service --cluster spotterspace-cluster \
-  --service spotterspace-dev-web --force-new-deployment --region us-east-1
-```
+| Resource | ID | Purpose |
+|----------|----|---------|
+| VPC | `vpc-09a6870488b73260e` | 10.0.0.0/20, us-east-1 |
+| Private Subnets | `subnet-082c94f0897298f6e`, `subnet-096b774ed307c85ed` | ECS tasks + RDS |
+| ALB + ECS SG | `sg-08e5864c53710a095` | Self-referencing, shared by ALB and ECS tasks |
+| RDS SG | `sg-0925439b428efdf13` | Allows port 5432 from ECS SG |
+| SM VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0` | Allows port 443 from ECS SG |
 
 ---
 
 ## Monitoring & Health Checks
 
-### ALB Target Group Health Checks
+### ALB Target Groups
 
-| Service | Target Group | Endpoint | Interval | Healthy/Unhealthy Thresholds |
-|---------|-------------|----------|----------|-------------------------------|
-| API | `spotterspace-dev-api-tg` | `GET /health` | 10s | 2 healthy / 3 unhealthy |
-| Web | `spotterspace-dev-web-tg` | `GET /api/health` | 10s | 2 healthy / 3 unhealthy |
+| Service | Target Group | Health Check | Interval |
+|---------|-------------|--------------|----------|
+| API | `spotterspace-dev-api-tg` (`.../105538bfd82988b2`) | `GET /health` | 10s |
+| Web | `spotterspace-dev-web-tg` (`.../53bffb7b973906cb`) | `GET /api/health` | 10s |
 
-### ECS Container Health Checks
-
-| Service | Command | Interval | Retries | Start Period |
-|---------|---------|----------|---------|--------------|
-| API | `wget -qO- http://localhost:4000/health` | 10s | 3 | 30s |
-| Web | `wget -qO- http://localhost:3000/api/health` | 10s | 3 | 30s |
-
-### Verifying Endpoints
+### CloudWatch Logs
 
 ```bash
-# Web
-curl -s -o /dev/null -w "%{http_code}" https://www.spotterspace.com
-
-# API health
-curl -s https://api.spotterspace.com/health
-
-# API GraphQL
-curl -s -X POST https://api.spotterspace.com/graphql 
-  -H "Content-Type: application/json" 
-  -d '{"query":"{ __typename }"}'
-
-# DNS resolution
-dig spotterspace.com A +short
-dig www.spotterspace.com CNAME +short
-dig api.spotterspace.com CNAME +short
-```
-
-### Checking Target Health
-
-```bash
-# API target group health
-aws elbv2 describe-target-health \
-  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-api-tg/105538bfd82988b2 \
-  --region us-east-1
-
-# Web target group health
-aws elbv2 describe-target-health \
-  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-web-tg/53bffb7b973906cb \
-  --region us-east-1
-```
-
-### ECS & CloudWatch Logs
-
-```bash
-# List running tasks
-aws ecs list-tasks --cluster spotterspace-cluster --region us-east-1 --desired-status RUNNING
-
-# Describe a specific task (ENI, health, container status)
-aws ecs describe-tasks --cluster spotterspace-cluster --tasks <task_arn> --region us-east-1
-
-# CloudWatch log groups:
-#   /ecs/spotterspace-dev/api
-#   /ecs/spotterspace-dev/web
-
-# Read recent API logs
 aws logs tail /ecs/spotterspace-dev/api --since 30m --region us-east-1
-
-# Read recent Web logs
 aws logs tail /ecs/spotterspace-dev/web --since 30m --region us-east-1
+```
+
+### Check Target Health
+
+```bash
+aws elbv2 describe-target-health 
+  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-api-tg/105538bfd82988b2 
+  --region us-east-1
+
+aws elbv2 describe-target-health 
+  --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-web-tg/53bffb7b973906cb 
+  --region us-east-1
+```
+
+### ECS Task Status
+
+```bash
+aws ecs list-tasks --cluster spotterspace-cluster --region us-east-1 --desired-status RUNNING --no-cli-pager
+
+aws ecs describe-tasks --cluster spotterspace-cluster --tasks TASK_ARN --region us-east-1 --no-cli-pager
 ```
 
 ---
 
 ## Troubleshooting
 
-### DNS_PROBE_FINISHED_NXDOMAIN
+### ECS Redeployment Doesn't Pick Up New Image
 
-**Cause:** Local DNS cache holds a stale NXDOMAIN response from before the domain was registered.
+**Cause:** Task definition is pinned to a specific tag (e.g., `:v5`) instead of `:latest`.
 
-**Fix:**
-1. Flush local DNS: `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder` (macOS)
-2. Flush browser DNS: Chrome → `chrome://net-internals/#dns` → Clear host cache
-3. Reboot router (clears router DNS cache)
-4. Try alternate DNS: `1.1.1.1` (Cloudflare) or `8.8.8.8` (Google)
+**Fix:** Register a new task definition revision pointing to `:latest`. See [Task Definition Management](#task-definition-management).
 
 ### CSS/JS 404s on Production Web App
 
 **Cause:** Next.js standalone output nested path mismatch in Dockerfile.
 
-**Fix:** Ensure the Dockerfile copies static files to the correct nested path:
-```dockerfile
-COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
-COPY --from=builder /app/apps/web/.next/static /app/apps/web/apps/web/.next/static
-CMD ["node", "apps/web/apps/web/server.js"]
-```
-
-### ALB Health Checks Failing (504 / Target.Timeout)
-
-**Cause:** ECS `CfnService` definitions missing `loadBalancers` config — task IPs are not registered with ALB target groups. **This was fixed in Session 15** (2026-04-15).
-
-**Verify:** Check target health:
-```bash
-aws elbv2 describe-target-health \
-  --target-group-arn <target-group-arn> --region us-east-1
-```
-
-**Fix:** Ensure `loadBalancers` is set on both ECS services in `spotterspace-stack.ts`:
-```typescript
-loadBalancers: [{
-  containerName: 'api',  // or 'web'
-  containerPort: 4000,   // or 3000
-  targetGroupArn: apiTG.ref,  // or webTG.ref
-}],
-```
-
-### ECS Deployment Stuck / Failing
-
-```bash
-# Check service status and events
-aws ecs describe-services --cluster spotterspace-cluster \
-  --services spotterspace-dev-api spotterspace-dev-web --region us-east-1 \
-  --query 'services[*].{Name:serviceName,Status:status,Running:runningCount,Desired:desiredCount,Events:events[0:3]}'
-
-# Force new deployment
-aws ecs update-service --cluster spotterspace-cluster \
-  --service spotterspace-dev-api --force-new-deployment --region us-east-1
-```
-
-### CDK Deploy Fails
-
-- **"Resource already exists":** The CDK stack has drifted. Check AWS Console for manually-created resources conflicting with CDK-managed ones. Import or delete the conflicting resource.
-- **VPC lookup fails:** Ensure `VPC_ID` is correct and `CDK_DEFAULT_ACCOUNT`/`CDK_DEFAULT_REGION` are set (CDK needs them for context lookups).
-- **ACM certificate stuck in validation:** Check Route 53 for the CNAME validation records. If missing, CDK may need a fresh deploy or the hosted zone ID is wrong.
+**Fix:** Ensure static files are copied to the correct nested path in `apps/web/Dockerfile`.
 
 ### API Can't Connect to RDS
 
-- Verify ECS tasks are running in private subnets (`subnet-082c94f0897298f6e`, `subnet-096b774ed307c85ed`) with NAT gateway
-- Check security group `sg-0925439b428efdf13` allows inbound 5432 from ECS security group (`sg-08e5864c53710a095`)
-- Check Secrets Manager contains the correct `DATABASE_URL` with the RDS endpoint
-- Verify the Secrets Manager VPC Endpoint security group (`sg-0ddf2cd67fa1b09f0`) allows inbound 443 from ECS SG
+1. Verify ECS tasks are in private subnets with NAT gateway
+2. Check RDS SG (`sg-0925439b428efdf13`) allows inbound 5432 from ECS SG (`sg-08e5864c53710a095`)
+3. Check Secrets Manager contains the correct `DATABASE_URL` with the RDS endpoint
+4. Verify Secrets Manager VPC Endpoint SG (`sg-0ddf2cd67fa1b09f0`) allows inbound 443 from ECS SG
 
-### Secret Loading Fails
+### CloudShell Can't Connect to RDS
 
-The API loads secrets via ECS task definition `secrets` config (injected as env vars at container start by the ECS agent). The task execution role (`ecsTaskExecutionRole`) must have `secretsmanager:GetSecretValue` permission for both secret ARNs. Check CloudWatch logs at `/ecs/spotterspace-dev/api` for error messages.
+**This is expected.** CloudShell runs outside the VPC. RDS is only accessible from within the VPC (ECS tasks). See [Database Access](#database-access).
+
+### DNS_PROBE_FINISHED_NXDOMAIN
+
+**Fix:** Flush local DNS cache:
+
+```bash
+# macOS
+sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+```
+
+### Secrets Manager: "Secret Not Found"
+
+**Check:** The prefix is `spotterhub/`, NOT `spotterspace/`:
+
+```bash
+aws secretsmanager list-secrets --query "SecretList[].Name" --output table
+```
+
+---
+
+## TODO: Known Issues
+
+1. **GitHub Actions IAM permissions:** The `AWS_ACCESS_KEY_ID` used by GitHub Actions lacks `ecs:UpdateService` and `ecs:DescribeServices` permissions. Add these to the IAM user/policy so the deploy workflow can trigger ECS redeployments automatically (eliminating the manual CloudShell step).
+
+2. **CI lint failure:** ESLint fails on `apps/web/src/app/api/health/route.ts` because the pre-commit hook runs ESLint from the root, which doesn't find the web app's flat config. Needs investigation.
+
+3. **CDK stack is stale:** The CDK infrastructure code (`infrastructure/`) still has old references. The deploy workflow no longer uses CDK. If infrastructure changes are needed, the CDK stack should be updated to reflect the current ECS Fargate architecture.
 
 ---
 
@@ -557,14 +480,16 @@ The API loads secrets via ECS task definition `secrets` config (injected as env 
 
 | File | Description |
 |------|-------------|
-| `infrastructure/bin/spotterspace.ts` | CDK app entry point (reads env vars) |
-| `infrastructure/lib/spotterspace-stack.ts` | Full CDK stack definition (ECS Fargate + ALB) |
-| `infrastructure/TROUBLESHOOTING.md` | ECS/ALB health check issue root cause and resolution |
-| `.github/workflows/deploy.yml` | Deploy workflow (CDK + Docker + ECS) |
+| `.github/workflows/deploy.yml` | Deploy workflow (Docker build + push to ECR + ECS redeploy) |
 | `.github/workflows/ci.yml` | CI workflow (lint, typecheck, test, build) |
 | `apps/api/Dockerfile` | API Docker build (multi-stage, Node 20 Alpine) |
 | `apps/api/docker-entrypoint.sh` | API container startup script |
+| `apps/api/src/index.ts` | API entry point (secret loading, migrations, /seed endpoint) |
 | `apps/web/Dockerfile` | Web Docker build (Next.js standalone) |
-| `apps/web/next.config.ts` | Next.js config (standalone output, S3 remote patterns) |
+| `apps/web/next.config.ts` | Next.js config (standalone output, /api/graphql rewrite, S3 patterns) |
+| `infrastructure/lib/spotterspace-stack.ts` | CDK stack definition (stale — see known issues) |
 | `docker/docker-compose.yml` | Local dev services (Postgres, Redis, LocalStack) |
 | `packages/db/prisma/schema.prisma` | Prisma schema (database models) |
+| `packages/db/prisma/seed.ts` | Database seed (test users, airports, sample data) |
+| `scripts/upsert-superuser.sql` | SQL script to upsert superuser (for direct DB access) |
+| `DEPLOYMENT_STATUS.md` | This file |

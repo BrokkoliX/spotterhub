@@ -30,9 +30,48 @@ env:
   WEB_SERVICE: spotterspace-dev-web
 
 jobs:
+  # ─── Run Database Migrations ────────────────────────────────────────────────
+  migrate:
+    name: Run Prisma Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx turbo run generate --filter=@spotterspace/db
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Fetch DATABASE_URL from Secrets Manager
+        run: |
+          DB_URL=$(aws secretsmanager get-secret-value \
+            --secret-id spotterhub/DATABASE_URL \
+            --query SecretString --output text \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['DATABASE_URL'])")
+          echo "DATABASE_URL=${DB_URL}" >> $GITHUB_ENV
+
+      - name: Run Prisma migrate deploy
+        run: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
+
   # ─── Build and Deploy API to ECS Fargate ───────────────────────────────────
   deploy-api:
     name: Deploy API (ECS Fargate)
+    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,22 +96,25 @@ jobs:
           context: .
           file: apps/api/Dockerfile
           push: true
-          tags: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.API_ECR_REPO }}:latest
+          tags: |
+            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.API_ECR_REPO }}:latest
+            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.API_ECR_REPO }}:${{ github.sha }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
       - name: Force ECS redeployment
         run: |
-          aws ecs update-service 
-            --cluster ${{ env.ECS_CLUSTER }} 
-            --service ${{ env.API_SERVICE }} 
-            --force-new-deployment 
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.API_SERVICE }} \
+            --force-new-deployment \
             --region ${{ env.AWS_REGION }}
           echo "✅ API ECS deployment triggered"
 
   # ─── Build and Deploy Web to ECS Fargate ───────────────────────────────────
   deploy-web:
     name: Deploy Web (ECS Fargate)
+    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -97,7 +139,9 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           push: true
-          tags: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.WEB_ECR_REPO }}:latest
+          tags: |
+            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.WEB_ECR_REPO }}:latest
+            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.WEB_ECR_REPO }}:${{ github.sha }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
           build-args: |
@@ -106,9 +150,9 @@ jobs:
 
       - name: Force ECS redeployment
         run: |
-          aws ecs update-service 
-            --cluster ${{ env.ECS_CLUSTER }} 
-            --service ${{ env.WEB_SERVICE }} 
-            --force-new-deployment 
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WEB_SERVICE }} \
+            --force-new-deployment \
             --region ${{ env.AWS_REGION }}
           echo "✅ Web ECS deployment triggered"

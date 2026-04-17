@@ -13,6 +13,7 @@ export default function SignUpPage() {
 
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export default function SignUpPage() {
     setLoading(true);
 
     const result = await executeMutation({
-      input: { email, username, password },
+      input: { email, username, password, displayName: displayName || undefined },
     });
 
     if (result.error) {
@@ -100,6 +101,22 @@ export default function SignUpPage() {
               maxLength={30}
               pattern="[a-zA-Z0-9_-]+"
               title="Letters, numbers, hyphens, and underscores only"
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="displayName" className="label">
+              Name <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <input
+              id="displayName"
+              type="text"
+              className="input"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              autoComplete="name"
+              placeholder="Alex Avgeek"
+              maxLength={60}
             />
           </div>
 

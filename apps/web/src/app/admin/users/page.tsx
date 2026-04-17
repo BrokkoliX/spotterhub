@@ -65,6 +65,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className={styles.page}>
+      <div className="container">
       <h1 className={styles.title}>Users</h1>
 
       <div className={styles.filters}>
@@ -181,6 +182,7 @@ export default function AdminUsersPage() {
       {users?.pageInfo?.hasNextPage && (
         <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
       )}
+      </div>
     </div>
   );
 }

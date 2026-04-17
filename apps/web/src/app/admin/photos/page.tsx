@@ -54,6 +54,7 @@ export default function AdminPhotosPage() {
 
   return (
     <div className={styles.page}>
+      <div className="container">
       <h1 className={styles.title}>Photo Moderation</h1>
 
       <div className={styles.filters}>
@@ -142,6 +143,7 @@ export default function AdminPhotosPage() {
       {photos?.pageInfo?.hasNextPage && (
         <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
       )}
+      </div>
     </div>
   );
 }

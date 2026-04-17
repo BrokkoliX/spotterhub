@@ -43,10 +43,15 @@ export function makeClient() {
         },
 
         async refreshAuth() {
-          // No refresh token flow yet — clear stale token and redirect to sign-in
+          // No refresh token flow yet — clear stale token and redirect to sign-in.
+          // Only redirect if there is a stored token; on the sign-in page itself,
+          // an UNAUTHENTICATED error means bad credentials, not a expired token.
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            window.location.href = '/sign-in';
+            const token = localStorage.getItem('token');
+            if (token) {
+              localStorage.removeItem('token');
+              window.location.href = '/signin';
+            }
           }
         },
       })),

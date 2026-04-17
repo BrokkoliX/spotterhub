@@ -62,7 +62,7 @@ function parseLine(line: string): PlaneRecord | null {
   return { name, iata, icao };
 }
 
-function splitAircraftName(name: string): { manufacturer: string; aircraftName: string } {
+function splitAircraftName(name: string): { vendor: string; model: string } {
   // Common manufacturer prefixes to try
   const prefixes = [
     'Airbus ',
@@ -116,8 +116,8 @@ function splitAircraftName(name: string): { manufacturer: string; aircraftName: 
   for (const prefix of prefixes) {
     if (name.toLowerCase().startsWith(prefix.toLowerCase())) {
       return {
-        manufacturer: name.slice(0, prefix.length),
-        aircraftName: name.slice(prefix.length).trim(),
+        vendor: name.slice(0, prefix.length),
+        model: name.slice(prefix.length).trim(),
       };
     }
   }
@@ -126,12 +126,12 @@ function splitAircraftName(name: string): { manufacturer: string; aircraftName: 
   const firstSpace = name.indexOf(' ');
   if (firstSpace > 0 && firstSpace < 20) {
     return {
-      manufacturer: name.slice(0, firstSpace),
-      aircraftName: name.slice(firstSpace + 1).trim(),
+      vendor: name.slice(0, firstSpace),
+      model: name.slice(firstSpace + 1).trim(),
     };
   }
 
-  return { manufacturer: 'Unknown', aircraftName: name };
+  return { vendor: 'Unknown', model: name };
 }
 
 async function fetchPlanes(): Promise<PlaneRecord[]> {
@@ -188,7 +188,7 @@ async function seedAircraftTypes() {
   let updated = 0;
 
   for (const [, plane] of byIcao) {
-    const { manufacturer, aircraftName } = splitAircraftName(plane.name);
+    const { vendor, model } = splitAircraftName(plane.name);
 
     const existing = await prisma.aircraftType.findUnique({
       where: { iataCode_icaoCode: { iataCode: '', icaoCode: plane.icao } },
@@ -199,8 +199,8 @@ async function seedAircraftTypes() {
         where: { iataCode_icaoCode: { iataCode: existing.iataCode ?? '', icaoCode: plane.icao } },
         data: {
           iataCode: plane.iata || existing.iataCode,
-          manufacturer,
-          aircraftName,
+          vendor,
+          model,
         },
       });
       updated++;
@@ -209,8 +209,8 @@ async function seedAircraftTypes() {
         data: {
           iataCode: plane.iata || null,
           icaoCode: plane.icao,
-          manufacturer,
-          aircraftName,
+          vendor,
+          model,
           engineType: null,
           engineCount: null,
           category: 'Landplane',

@@ -24,10 +24,13 @@ export const searchQueryResolvers = {
       moderationStatus: { in: ['approved', 'pending'] },
       OR: [
         { caption: { contains: q, mode: 'insensitive' } },
-        { aircraftTypeName: { contains: q, mode: 'insensitive' } },
         { airline: { contains: q, mode: 'insensitive' } },
         { airportCode: { contains: q, mode: 'insensitive' } },
         { tags: { some: { tag: { contains: q, mode: 'insensitive' } } } },
+        { aircraft: { manufacturer: { name: { contains: q, mode: 'insensitive' } } } },
+        { aircraft: { family: { name: { contains: q, mode: 'insensitive' } } } },
+        { aircraft: { variant: { name: { contains: q, mode: 'insensitive' } } } },
+        { aircraft: { registration: { contains: q, mode: 'insensitive' } } },
       ],
     };
 

@@ -1,0 +1,13 @@
+# Sample manufacturers.csv — replace with curated data
+# Format: name,country
+name,country
+Airbus,France
+Boeing,United States
+Embraer,Brazil
+Bombardier,Canada
+ATR,France
+Saab,Sweden
+Fokker,Netherlands
+Dassault Aviation,France
+Gulfstream Aerospace,United States
+Lockheed Martin,United States

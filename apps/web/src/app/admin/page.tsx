@@ -79,11 +79,11 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Moderate uploads</div>
           </div>
         </Link>
-        <Link href="/admin/aircraft-types" className={styles.quickLink}>
-          <span className={styles.quickLinkIcon}>✈️</span>
+        <Link href="/admin/aircraft" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🛩️</span>
           <div>
-            <div className={styles.quickLinkLabel}>Aircraft Types</div>
-            <div className={styles.quickLinkDesc}>Manage aircraft types</div>
+            <div className={styles.quickLinkLabel}>Aircraft</div>
+            <div className={styles.quickLinkDesc}>Individual registrations</div>
           </div>
         </Link>
         <Link href="/admin/airports" className={styles.quickLink}>
@@ -91,6 +91,55 @@ export default function AdminDashboard() {
           <div>
             <div className={styles.quickLinkLabel}>Airports</div>
             <div className={styles.quickLinkDesc}>Manage airports</div>
+          </div>
+        </Link>
+        <Link href="/admin/manufacturers" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🏭</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Manufacturers</div>
+            <div className={styles.quickLinkDesc}>Aircraft manufacturers</div>
+          </div>
+        </Link>
+        <Link href="/admin/families" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>📁</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Families</div>
+            <div className={styles.quickLinkDesc}>Aircraft families</div>
+          </div>
+        </Link>
+        <Link href="/admin/variants" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>✈️</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Variants</div>
+            <div className={styles.quickLinkDesc}>Aircraft variants</div>
+          </div>
+        </Link>
+        <Link href="/admin/airlines" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>✈️</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Airlines</div>
+            <div className={styles.quickLinkDesc}>Airlines &amp; operators</div>
+          </div>
+        </Link>
+        <Link href="/admin/photo-categories" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>📸</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Photo Categories</div>
+            <div className={styles.quickLinkDesc}>Cabin, cockpit, exterior…</div>
+          </div>
+        </Link>
+        <Link href="/admin/aircraft-specific-categories" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🛩️</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Aircraft Categories</div>
+            <div className={styles.quickLinkDesc}>Vintage, narrowbody, widebody…</div>
+          </div>
+        </Link>
+        <Link href="/admin/pending-list-items" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>📋</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Pending List Items</div>
+            <div className={styles.quickLinkDesc}>User-submitted additions</div>
           </div>
         </Link>
       </div>

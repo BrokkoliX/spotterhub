@@ -128,23 +128,20 @@ export default function AdminAirportsPage() {
 
   const processImport = async () => {
     setImportLoading(true);
-    const rows = [...importRows];
-    setImportRows(rows);
+    const pending = importRows.filter((r) => r.status === 'pending');
+    const done = importRows.filter((r) => r.status !== 'pending');
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (row.status !== 'pending') continue;
-
+    for (const row of pending) {
       const lat = parseFloat(row.latitude);
       const lng = parseFloat(row.longitude);
       if (isNaN(lat) || isNaN(lng)) {
-        rows[i] = { ...row, status: 'error', message: 'Invalid coordinates' };
-        setImportRows([...rows]);
+        done.push({ ...row, status: 'error' as const, message: 'Invalid coordinates' });
+        setImportRows([...done]);
         continue;
       }
       if (!row.icaoCode || !row.name) {
-        rows[i] = { ...row, status: 'error', message: 'Missing required field (icaoCode, name)' };
-        setImportRows([...rows]);
+        done.push({ ...row, status: 'error' as const, message: 'Missing required field (icaoCode, name)' });
+        setImportRows([...done]);
         continue;
       }
 
@@ -160,8 +157,8 @@ export default function AdminAirportsPage() {
 
       const res = await upsertAirport({ input });
       const ok = !res.error;
-      rows[i] = { ...row, status: ok ? 'success' : 'error', message: ok ? undefined : 'Failed' };
-      setImportRows([...rows]);
+      done.push({ ...row, status: ok ? 'success' as const : 'error' as const, message: ok ? undefined : 'Failed' });
+      setImportRows([...done]);
     }
 
     setImportLoading(false);

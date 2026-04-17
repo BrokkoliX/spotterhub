@@ -41,6 +41,7 @@ export default function AdminReportsPage() {
 
   return (
     <div className={styles.page}>
+      <div className="container">
       <h1 className={styles.title}>Reports</h1>
 
       <div className={styles.filters}>
@@ -123,6 +124,7 @@ export default function AdminReportsPage() {
       {reports?.pageInfo?.hasNextPage && (
         <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
       )}
+      </div>
     </div>
   );
 }

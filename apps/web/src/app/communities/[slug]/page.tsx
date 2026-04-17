@@ -20,7 +20,7 @@ import {
   UPDATE_COMMUNITY_MEMBER_ROLE,
   UPDATE_COMMUNITY,
 } from '@/lib/queries';
-import type { CommunityQuery, UpdateCommunityInput } from '@/lib/generated/graphql';
+import type { CommunityQuery, UpdateCommunityInput, CommunityVisibility } from '@/lib/generated/graphql';
 import {
   useCommunityQuery,
   useGetCommunityEventsQuery,
@@ -438,6 +438,11 @@ function HeroSection({
             <button className={styles.heroEditBtn} onClick={onEditClick}>
               ✏️ Edit
             </button>
+          )}
+          {isAdmin && (
+            <Link href={`/communities/${community.slug}/admin`} className={styles.heroEditBtn}>
+              🛡️ Admin
+            </Link>
           )}
         </div>
 
@@ -1191,7 +1196,7 @@ function SettingsTab({
   const [name, setName] = useState(community.name);
   const [description, setDescription] = useState(community.description ?? '');
   const [category, setCategory] = useState(community.category ?? 'general');
-  const [visibility, setVisibility] = useState(community.visibility);
+  const [visibility, setVisibility] = useState<string>(community.visibility);
   const [location, setLocation] = useState(community.location ?? '');
   const [bannerUrl, setBannerUrl] = useState(community.bannerUrl ?? '');
   const [avatarUrl, setAvatarUrl] = useState(community.avatarUrl ?? '');
@@ -1210,7 +1215,7 @@ function SettingsTab({
       name,
       description: description || null,
       category,
-      visibility,
+      visibility: visibility as CommunityVisibility,
       location: location || null,
       bannerUrl: bannerUrl || null,
       avatarUrl: avatarUrl || null,

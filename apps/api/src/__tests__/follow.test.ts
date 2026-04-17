@@ -363,8 +363,8 @@ const FOLLOWING_FEED = `
         cursor
         node {
           id
-          aircraftType
           airportCode
+          airline
           user { id username }
         }
       }
@@ -390,14 +390,13 @@ async function createTestAirport(overrides: Partial<{ icaoCode: string; iataCode
   });
 }
 
-async function createTestPhoto(userId: string, overrides: Partial<{ aircraftType: string; airline: string; airportCode: string; caption: string }> = {}) {
+async function createTestPhoto(userId: string, overrides: Partial<{ airline: string; airportCode: string; caption: string }> = {}) {
   const key = `test/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
   return prisma.photo.create({
     data: {
       userId,
       caption: overrides.caption ?? 'Test Photo',
       originalUrl: `https://localhost:4566/spotterspace-photos/${key}`,
-      aircraftTypeName: overrides.aircraftType ?? null,
       airline: overrides.airline ?? null,
       airportCode: overrides.airportCode ?? null,
     },
@@ -705,12 +704,12 @@ describe('followingFeed query', () => {
     expect(feed.edges[0].node.airportCode).toBe('EGLL');
   });
 
-  it('should return photos matching followed aircraft types', async () => {
+  it('should return photos matching followed airlines', async () => {
     const { user, ctx } = await createTestUser();
-    await createTestPhoto(user.id, { aircraftType: 'Boeing 747-400' });
+    await createTestPhoto(user.id, { airline: 'Lufthansa' });
 
     await server.executeOperation(
-      { query: FOLLOW_TOPIC, variables: { targetType: 'aircraft_type', value: 'Boeing 747-400' } },
+      { query: FOLLOW_TOPIC, variables: { targetType: 'airline', value: 'Lufthansa' } },
       { contextValue: ctx },
     );
 
@@ -723,7 +722,7 @@ describe('followingFeed query', () => {
     expect(data.errors).toBeUndefined();
     const feed = data.data?.followingFeed as { totalCount: number; edges: Array<{ node: Record<string, unknown> }> };
     expect(feed.totalCount).toBe(1);
-    expect(feed.edges[0].node.aircraftType).toBe('Boeing 747-400');
+    expect(feed.edges[0].node.airline).toBe('Lufthansa');
   });
 
   it('should return photos matching followed manufacturers', async () => {

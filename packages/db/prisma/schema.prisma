@@ -5,7 +5,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
-  binaryTargets    = ["native", "linux-arm64-openssl-3.0.x", "rhel-openssl-3.0.x"]
+  binaryTargets    = ["native", "linux-arm64-openssl-3.0.x", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -92,8 +92,9 @@ enum ReportStatus {
 enum FollowTargetType {
   user
   airport
-  aircraft_type
   manufacturer
+  family
+  variant
 }
 
 enum CommunityRole {
@@ -119,6 +120,115 @@ enum CommunityTier {
   standard
   large
   enterprise
+}
+
+enum OperatorType {
+  airline
+  general_aviation
+  military
+  government
+  cargo
+  charter
+  private
+}
+
+// ─── Aircraft Hierarchy ───────────────────────────────────────────────────────
+
+model AircraftManufacturer {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  country   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  families AircraftFamily[]
+  aircraft Aircraft[] @relation("RegisteredAircraftManufacturer")
+
+  @@map("aircraft_manufacturers")
+}
+
+model AircraftFamily {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @unique
+  manufacturerId String  @map("manufacturer_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  manufacturer AircraftManufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  variants     AircraftVariant[]
+  aircraft     Aircraft[] @relation("RegisteredAircraftFamily")
+
+  @@map("aircraft_families")
+}
+
+model AircraftVariant {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @unique
+  familyId   String   @map("family_id") @db.Uuid
+  iataCode   String?  @map("iata_code")
+  icaoCode   String?  @map("icao_code")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  family   AircraftFamily @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  aircraft Aircraft[] @relation("RegisteredAircraftVariant")
+
+  @@map("aircraft_variants")
+}
+
+model Airline {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  icaoCode  String?  @unique @map("icao_code")
+  iataCode  String?  @unique @map("iata_code")
+  country   String?
+  callsign  String?  @map("callsign")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  aircraft Aircraft[] @relation("RegisteredAirline")
+
+  @@map("airlines")
+}
+
+model PhotoCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  label     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  photos Photo[]
+
+  @@map("photo_categories")
+}
+
+model AircraftSpecificCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  label     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  photos Photo[]
+
+  @@map("aircraft_specific_categories")
+}
+
+model PendingListItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  listType    String
+  value       String
+  metadata    Json?
+  submittedBy String   @map("submitted_by") @db.Uuid
+  reviewedBy  String?  @map("reviewed_by") @db.Uuid
+  status      String   @default("pending")
+  reviewNote  String?  @map("review_note")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  submitter User  @relation("PendingListItemSubmitter", fields: [submittedBy], references: [id])
+  reviewer  User? @relation("PendingListItemReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([submittedBy])
+  @@index([reviewedBy])
+  @@map("pending_list_items")
 }
 
 // ─── Phase 1a: Core Tables ───────────────────────────────────────────────────
@@ -157,6 +267,8 @@ model User {
   moderatedActions   CommunityModerationLog[] @relation("TargetUser")
   photographedPhotos  Photo[]           @relation("PhotoPhotographer")
   passwordResetTokens PasswordResetToken[]
+  submittedPendingItems PendingListItem[] @relation("PendingListItemSubmitter")
+  reviewedPendingItems PendingListItem[]  @relation("PendingListItemReviewer")
 
   @@map("users")
 }
@@ -233,7 +345,6 @@ model Photo {
   userId               String           @map("user_id") @db.Uuid
   albumId              String?          @map("album_id") @db.Uuid
   caption              String?
-  aircraftTypeName     String?          @map("aircraft_type")
   airline              String?
   airportCode          String?          @map("airport_code")
   takenAt              DateTime?        @map("taken_at")
@@ -247,11 +358,17 @@ model Photo {
   moderationConfidence Float?           @map("moderation_confidence")
   likeCount            Int              @default(0) @map("like_count")
   aircraftId           String?          @map("aircraft_id") @db.Uuid
-  aircraftTypeId       String?          @map("aircraft_type_id") @db.Uuid
   photographerId       String?          @map("photographer_id") @db.Uuid
   photographerName     String?          @map("photographer_name")
   gearBody             String?          @map("gear_body")
   gearLens             String?          @map("gear_lens")
+  exifData             Json?            @map("exif_data")
+  photoCategoryId      String?          @map("photo_category_id") @db.Uuid
+  aircraftSpecificCategoryId String?    @map("aircraft_specific_category_id") @db.Uuid
+  operatorIcao         String?          @map("operator_icao")
+  operatorType         OperatorType?    @map("operator_type")
+  msn                  String?          @map("msn")
+  manufacturingDate    String?          @map("manufacturing_date")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
@@ -265,9 +382,13 @@ model Photo {
   likes        Like[]
   coverOfAlbum Album[]        @relation("AlbumCover")
   aircraft     Aircraft?      @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
-  aircraftType AircraftType?  @relation("PhotoAircraftType", fields: [aircraftTypeId], references: [id], onDelete: SetNull)
   photographer User?          @relation("PhotoPhotographer", fields: [photographerId], references: [id], onDelete: SetNull)
+  photoCategory PhotoCategory? @relation(fields: [photoCategoryId], references: [id], onDelete: SetNull)
+  aircraftSpecificCategory AircraftSpecificCategory? @relation(fields: [aircraftSpecificCategoryId], references: [id], onDelete: SetNull)
 
+  @@index([photoCategoryId])
+  @@index([aircraftSpecificCategoryId])
+  @@index([aircraftId])
   @@map("photos")
 }
 
@@ -298,40 +419,30 @@ model PhotoTag {
   @@map("photo_tags")
 }
 
-/// Canonical aircraft type from OpenFlights (aircraft type, not individual registration).
-model AircraftType {
-  id           String   @id @default(uuid()) @db.Uuid
-  iataCode     String?  @map("iata_code")
-  icaoCode     String?  @map("icao_code")
-  vendor       String   @map("vendor")
-  model        String   @map("model")
-  category     String?  @map("category")
-  engineType   String?  @map("engine_type")
-  engineCount  Int?     @map("engine_count")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  aircraft Aircraft[] @relation("RegisteredAircraftType")
-  photosOfType Photo[] @relation("PhotoAircraftType")
-
-  @@unique([iataCode, icaoCode])
-  @@map("aircraft_types")
-}
-
 model Aircraft {
   id                 String       @id @default(uuid()) @db.Uuid
   registration       String       @unique @map("registration")
-  aircraftType       String       @map("aircraft_type")
-  aircraftTypeId     String?      @map("aircraft_type_id") @db.Uuid
   airline            String?      @map("airline")
   msn                String?      @map("msn")
   manufacturingDate  DateTime?   @map("manufacturing_date")
+  manufacturerId     String?      @map("manufacturer_id") @db.Uuid
+  familyId           String?      @map("family_id") @db.Uuid
+  variantId          String?      @map("variant_id") @db.Uuid
+  operatorType       OperatorType? @map("operator_type")
+  airlineId          String?      @map("airline_id") @db.Uuid
   createdAt          DateTime    @default(now()) @map("created_at")
   updatedAt          DateTime    @updatedAt @map("updated_at")
 
-  aircraftTypeRef AircraftType? @relation("RegisteredAircraftType", fields: [aircraftTypeId], references: [id], onDelete: SetNull)
-  photos Photo[]
+  manufacturer    AircraftManufacturer? @relation("RegisteredAircraftManufacturer", fields: [manufacturerId], references: [id], onDelete: SetNull)
+  family         AircraftFamily?       @relation("RegisteredAircraftFamily", fields: [familyId], references: [id], onDelete: SetNull)
+  variant        AircraftVariant?      @relation("RegisteredAircraftVariant", fields: [variantId], references: [id], onDelete: SetNull)
+  airlineRef     Airline?              @relation("RegisteredAirline", fields: [airlineId], references: [id], onDelete: SetNull)
+  photos         Photo[]
 
+  @@index([manufacturerId])
+  @@index([familyId])
+  @@index([variantId])
+  @@index([airlineId])
   @@map("aircraft")
 }
 
@@ -340,13 +451,15 @@ model Aircraft {
 model PhotoLocation {
   id                 String              @id @default(uuid()) @db.Uuid
   photoId            String              @unique @map("photo_id") @db.Uuid
-  rawLatitude        Float               @map("raw_latitude")
-  rawLongitude       Float               @map("raw_longitude")
+  rawLatitude        Float?              @map("raw_latitude")
+  rawLongitude       Float?              @map("raw_longitude")
   displayLatitude    Float               @map("display_latitude")
-  displayLongitude   Float               @map("display_longitude")
+  displayLongitude  Float               @map("display_longitude")
   privacyMode        LocationPrivacyMode @default(exact) @map("privacy_mode")
   airportId          String?             @map("airport_id") @db.Uuid
   spottingLocationId String?             @map("spotting_location_id") @db.Uuid
+  locationType       String?             @map("location_type")
+  country            String?             @map("country")
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
 

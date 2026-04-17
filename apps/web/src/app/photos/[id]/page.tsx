@@ -59,6 +59,7 @@ export default function PhotoDetailPage({
   }
 
   const photo = data.photo;
+  const exif = photo.exifData as Record<string, unknown> | null;
   const displayVariant = photo.variants.find(
     (v: PhotoVariant) => v.variantType === 'display',
   );
@@ -152,27 +153,32 @@ export default function PhotoDetailPage({
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>Details</h3>
               <ul className={styles.metaList}>
-                {photo.aircraftType && (
+                {!photo.aircraft && photo.operatorIcao && (
                   <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Aircraft</span>
+                    <span className={styles.metaLabel}>Operator</span>
+                    <span className={styles.metaValue}>{photo.operatorIcao}</span>
+                  </li>
+                )}
+                {!photo.aircraft && photo.operatorType && (
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Operator Type</span>
                     <span className={styles.metaValue}>
-                      {photo.aircraftType}
-                      {user && (
-                        <span className={styles.metaFollow}>
-                          <TopicFollowButton
-                            targetType="aircraft_type"
-                            value={photo.aircraftType}
-                            initialIsFollowing={false}
-                          />
-                        </span>
-                      )}
+                      {photo.operatorType.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
                   </li>
                 )}
-                {photo.airline && (
+                {!photo.aircraft && photo.msn && (
                   <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Airline</span>
-                    <span className={styles.metaValue}>{photo.airline}</span>
+                    <span className={styles.metaLabel}>MSN</span>
+                    <span className={styles.metaValue}>{photo.msn}</span>
+                  </li>
+                )}
+                {!photo.aircraft && photo.manufacturingDate && (
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Built</span>
+                    <span className={styles.metaValue}>
+                      {new Date(photo.manufacturingDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                    </span>
                   </li>
                 )}
                 {photo.airportCode && (
@@ -189,6 +195,18 @@ export default function PhotoDetailPage({
                     <span className={styles.metaValue}>
                       {new Date(photo.takenAt).toLocaleDateString()}
                     </span>
+                  </li>
+                )}
+                {photo.photoCategory && (
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Category</span>
+                    <span className={styles.metaValue}>{photo.photoCategory.label}</span>
+                  </li>
+                )}
+                {photo.aircraftSpecificCategory && (
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Aircraft Type</span>
+                    <span className={styles.metaValue}>{photo.aircraftSpecificCategory.label}</span>
                   </li>
                 )}
                 <li className={styles.metaItem}>
@@ -215,17 +233,62 @@ export default function PhotoDetailPage({
                     <span className={styles.metaLabel}>Registration</span>
                     <span className={styles.metaValue}>{photo.aircraft.registration}</span>
                   </li>
-                  {photo.aircraft.msn && (
+                  {photo.aircraft.manufacturer && (
                     <li className={styles.metaItem}>
-                      <span className={styles.metaLabel}>MSN</span>
-                      <span className={styles.metaValue}>{photo.aircraft.msn}</span>
+                      <span className={styles.metaLabel}>Manufacturer</span>
+                      <span className={styles.metaValue}>{photo.aircraft.manufacturer.name}</span>
                     </li>
                   )}
-                  {photo.aircraft.manufacturingDate && (
+                  {photo.aircraft.family && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Family</span>
+                      <span className={styles.metaValue}>{photo.aircraft.family.name}</span>
+                    </li>
+                  )}
+                  {photo.aircraft.variant && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Variant</span>
+                      <span className={styles.metaValue}>
+                        {photo.aircraft.variant.name}
+                        {photo.aircraft.variant.iataCode || photo.aircraft.variant.icaoCode
+                          ? ` (${[photo.aircraft.variant.iataCode, photo.aircraft.variant.icaoCode].filter(Boolean).join('/')})`
+                          : null}
+                      </span>
+                    </li>
+                  )}
+                  {(photo.aircraft?.msn ?? photo.msn) && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>MSN</span>
+                      <span className={styles.metaValue}>{photo.aircraft?.msn ?? photo.msn}</span>
+                    </li>
+                  )}
+                  {(photo.aircraft?.manufacturingDate ?? photo.manufacturingDate) && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Built</span>
                       <span className={styles.metaValue}>
-                        {new Date(photo.aircraft.manufacturingDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                        {new Date(photo.aircraft?.manufacturingDate ?? photo.manufacturingDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                      </span>
+                    </li>
+                  )}
+                  {(photo.aircraft?.operatorType ?? photo.operatorType) && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Operator Type</span>
+                      <span className={styles.metaValue}>
+                        {((photo.aircraft?.operatorType ?? photo.operatorType) ?? '')
+                          .toLowerCase()
+                          .replace(/_/g, ' ')
+                          .replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                      </span>
+                    </li>
+                  )}
+                  {photo.aircraft.airlineRef && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Airline</span>
+                      <span className={styles.metaValue}>
+                        {photo.aircraft.airlineRef.name}
+                        {photo.aircraft.airlineRef.iataCode || photo.aircraft.airlineRef.icaoCode
+                          ? ` (${[photo.aircraft.airlineRef.iataCode, photo.aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`
+                          : null}
                       </span>
                     </li>
                   )}
@@ -309,8 +372,10 @@ export default function PhotoDetailPage({
                       <span className={styles.metaLabel}>Airport</span>
                       <span className={styles.metaValue}>
                         <Link href={`/airports/${photo.location.airport.icaoCode}`}>
-                          {photo.location.airport.name} ({photo.location.airport.iataCode ?? photo.location.airport.icaoCode})
+                          {photo.location.airport.name}
                         </Link>
+                        {photo.location.airport.iataCode && ` (${photo.location.airport.iataCode})`}
+                        {photo.location.airport.icaoCode && ` / ${photo.location.airport.icaoCode}`}
                       </span>
                     </li>
                   )}
@@ -322,10 +387,74 @@ export default function PhotoDetailPage({
                       </span>
                     </li>
                   )}
+                  {photo.location.country && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Country</span>
+                      <span className={styles.metaValue}>{photo.location.country}</span>
+                    </li>
+                  )}
+                  {photo.location.locationType && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Location Type</span>
+                      <span className={styles.metaValue}>{photo.location.locationType}</span>
+                    </li>
+                  )}
                   {photo.location.privacyMode === 'approximate' && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Accuracy</span>
                       <span className={styles.metaValue}>~1 km</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* EXIF Data */}
+            {exif && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>📷 EXIF Data</h3>
+                <ul className={styles.metaList}>
+                  {!!exif.make && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Camera</span>
+                      <span className={styles.metaValue}>
+                        {String(exif.make)} {String(exif.model ?? '')}
+                      </span>
+                    </li>
+                  )}
+                  {!!exif.focalLength && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Focal Length</span>
+                      <span className={styles.metaValue}>
+                        {String(exif.focalLength)}
+                        {!!exif.focalLength35mm && ` (${String(exif.focalLength35mm)}mm equiv.)`}
+                      </span>
+                    </li>
+                  )}
+                  {!!exif.aperture && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Aperture</span>
+                      <span className={styles.metaValue}>f/{String(exif.aperture)}</span>
+                    </li>
+                  )}
+                  {!!exif.shutterSpeed && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Shutter</span>
+                      <span className={styles.metaValue}>{String(exif.shutterSpeed)}s</span>
+                    </li>
+                  )}
+                  {!!exif.iso && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>ISO</span>
+                      <span className={styles.metaValue}>{String(exif.iso)}</span>
+                    </li>
+                  )}
+                  {!!exif.takenAt && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Date Taken</span>
+                      <span className={styles.metaValue}>
+                        {new Date(String(exif.takenAt)).toLocaleString()}
+                      </span>
                     </li>
                   )}
                 </ul>
@@ -341,6 +470,63 @@ export default function PhotoDetailPage({
                     <span key={tag} className="tag">
                       {tag}
                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* More aircraft photos */}
+            {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    gap: 8,
+                  }}
+                >
+                  {photo.similarAircraftPhotos.edges.map(({ node: similar }: { node: { id: string; variants?: { variantType: string; url: string; width: number; height: number }[]; aircraft?: { registration: string; manufacturer?: { name: string } | null; family?: { name: string } | null; variant?: { name: string } | null } | null; user?: { username: string } | null } }) => (
+                    <Link
+                      key={similar.id}
+                      href={`/photos/${similar.id}`}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <div
+                        style={{
+                          borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden',
+                          background: 'var(--color-bg-base)',
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
+                          <img
+                            src={
+                              similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
+                              similar.variants?.[0]?.url ??
+                              ''
+                            }
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                        <div style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                            {similar.aircraft?.registration ?? '—'}
+                          </div>
+                          <div style={{ color: 'var(--color-text-muted)' }}>
+                            {[
+                              similar.aircraft?.manufacturer?.name,
+                              similar.aircraft?.family?.name,
+                              similar.aircraft?.variant?.name,
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               </div>

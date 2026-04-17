@@ -1,4 +1,4 @@
-.page { padding: 32px 0; }
+.page { max-width: var(--max-width); margin: 0 auto; padding: 32px 16px; }
 
 /* ─── Breadcrumb ─────────────────────────────────────────────────────── */
 .breadcrumb { display: flex; gap: 6px; align-items: center; font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: 20px; flex-wrap: wrap; }
@@ -58,6 +58,8 @@
 /* ─── Replies ────────────────────────────────────────────────────────── */
 .replies { margin-left: 32px; display: flex; flex-direction: column; gap: 8px; padding: 8px 0 8px 0; border-left: 2px solid var(--color-border); padding-left: 16px; }
 .reply { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.collapseBtn { background: none; border: none; color: var(--color-text-muted); font-size: 0.8125rem; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); text-align: left; width: 100%; transition: background 0.15s; }
+.collapseBtn:hover { background: var(--color-bg-base); color: var(--color-text-primary); }
 
 /* ─── Reply to indicator ─────────────────────────────────────────────── */
 .replyingTo { padding: 8px 12px; background: color-mix(in srgb, var(--color-accent) 8%, transparent); border-radius: var(--radius-sm); font-size: 0.8125rem; color: var(--color-text-muted); display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }

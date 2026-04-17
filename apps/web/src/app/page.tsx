@@ -7,7 +7,7 @@ import { useQuery } from 'urql';
 import type { PhotoData } from '@/components/PhotoCard';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth';
-import { GET_FOLLOWING_FEED, GET_PHOTOS, GET_SITE_SETTINGS, SEARCH_AIRCRAFT_TYPES, SEARCH_AIRLINES, SEARCH_AIRPORTS, SEARCH_USERS } from '@/lib/queries';
+import { GET_FOLLOWING_FEED, GET_PHOTOS, GET_SITE_SETTINGS, SEARCH_AIRLINES, SEARCH_AIRPORTS, SEARCH_USERS } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -28,11 +28,9 @@ export default function HomePage() {
   const { user } = useAuth();
   const [feedTab, setFeedTab] = useState<FeedTab>('recent');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
-  const [aircraftFilter, setAircraftFilter] = useState('');
   const [airportFilter, setAirportFilter] = useState('');
   const [airlineFilter, setAirlineFilter] = useState('');
   const [photographerFilter, setPhotographerFilter] = useState('');
-  const [debouncedAircraft, setDebouncedAircraft] = useState('');
   const [debouncedAirport, setDebouncedAirport] = useState('');
   const [debouncedAirline, setDebouncedAirline] = useState('');
   const [debouncedPhotographer, setDebouncedPhotographer] = useState('');
@@ -41,20 +39,9 @@ export default function HomePage() {
   const siteBannerUrl = siteData?.siteSettings?.bannerUrl;
   const siteTagline = siteData?.siteSettings?.tagline;
 
-  // Key to force-remount PhotoGrid on filter change
-
-  const aircraftTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const airportTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const airlineTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const photographerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  useEffect(() => {
-    clearTimeout(aircraftTimer.current);
-    aircraftTimer.current = setTimeout(() => {
-      setDebouncedAircraft(aircraftFilter);
-    }, 300);
-    return () => clearTimeout(aircraftTimer.current);
-  }, [aircraftFilter]);
 
   useEffect(() => {
     clearTimeout(airportTimer.current);
@@ -80,17 +67,15 @@ export default function HomePage() {
     return () => clearTimeout(photographerTimer.current);
   }, [photographerFilter]);
 
-  // Force PhotoGrid remount when filters change
   const gridKey = useMemo(
-    () => `${debouncedAircraft}-${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${sortBy}`,
-    [debouncedAircraft, debouncedAirport, debouncedAirline, debouncedPhotographer, sortBy],
+    () => `${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${sortBy}`,
+    [debouncedAirport, debouncedAirline, debouncedPhotographer, sortBy],
   );
 
   const [{ data, fetching }] = useQuery({
     query: GET_PHOTOS,
     variables: {
       first: PAGE_SIZE,
-      aircraftType: debouncedAircraft || undefined,
       airportCode: debouncedAirport || undefined,
       airline: debouncedAirline || undefined,
       photographer: debouncedPhotographer || undefined,
@@ -106,16 +91,6 @@ export default function HomePage() {
     variables: { query: airlineFilter, first: 8 },
     pause: airlineFilter.length < 2,
   });
-
-  // Aircraft type typeahead
-  const [showAircraftDropdown, setShowAircraftDropdown] = useState(false);
-  const [{ data: aircraftData, fetching: aircraftFetching }] = useQuery({
-    query: SEARCH_AIRCRAFT_TYPES,
-    variables: { search: aircraftFilter, first: 8 },
-    pause: aircraftFilter.length < 2,
-  });
-  const aircraftResults: Array<{ id: string; manufacturer: string; aircraftName: string; icaoCode: string | null }> =
-    aircraftData?.aircraftTypes?.edges?.map((e: { node: { id: string; manufacturer: string; aircraftName: string; icaoCode: string | null } }) => e.node) ?? [];
 
   // Airport typeahead
   const [showAirportDropdown, setShowAirportDropdown] = useState(false);
@@ -144,7 +119,6 @@ export default function HomePage() {
       const target = e.target as Element;
       if (!target.closest(`.${styles.filterInputWrap}`)) {
         setShowAirlineDropdown(false);
-        setShowAircraftDropdown(false);
         setShowAirportDropdown(false);
         setShowPhotographerDropdown(false);
       }
@@ -213,48 +187,6 @@ export default function HomePage() {
         {/* Filter Bar */}
         <div className={styles.filterBar}>
           <div className={styles.filterRow}>
-            {/* Aircraft Type — typeahead */}
-            <div className={styles.filterInputWrap} style={{ position: 'relative', flex: 1 }}>
-              <span className={styles.filterIcon}>🔍</span>
-              <input
-                type="text"
-                className={styles.filterInput}
-                placeholder="Aircraft type (e.g. Boeing 747)"
-                value={aircraftFilter}
-                onChange={(e) => {
-                  setAircraftFilter(e.target.value);
-                  setShowAircraftDropdown(e.target.value.length >= 2);
-                }}
-                onFocus={() => aircraftFilter.length >= 2 && setShowAircraftDropdown(true)}
-              />
-              {showAircraftDropdown && (aircraftResults.length > 0 || aircraftFetching) && (
-                <div className={styles.filterDropdown}>
-                  {aircraftFetching && aircraftFilter.length >= 2 ? (
-                    <div className={styles.filterDropdownItem}>Searching…</div>
-                  ) : (
-                    aircraftResults.map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        className={styles.filterDropdownItem}
-                        onClick={() => {
-                          setAircraftFilter(`${a.manufacturer} ${a.aircraftName}`);
-                          setDebouncedAircraft(`${a.manufacturer} ${a.aircraftName}`);
-                          setShowAircraftDropdown(false);
-                        }}
-                      >
-                        {a.manufacturer} {a.aircraftName} {a.icaoCode ? `(${a.icaoCode})` : ''}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-              {showAircraftDropdown && aircraftFilter.length >= 2 && !aircraftFetching && aircraftResults.length === 0 && (
-                <div className={styles.filterDropdown}>
-                  <div className={styles.filterDropdownItem}>No aircraft found</div>
-                </div>
-              )}
-            </div>
             {/* Airport — typeahead */}
             <div className={styles.filterInputWrap} style={{ position: 'relative', flex: 1 }}>
               <span className={styles.filterIcon}>🛫</span>

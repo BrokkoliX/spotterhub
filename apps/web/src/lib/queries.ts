@@ -70,7 +70,6 @@ export const PHOTO_FIELDS = gql`
   fragment PhotoFields on Photo {
     id
     caption
-    aircraftType
     airline
     airportCode
     takenAt
@@ -85,13 +84,23 @@ export const PHOTO_FIELDS = gql`
     commentCount
     isLikedByMe
     createdAt
+    photoCategory { id name label }
+    aircraftSpecificCategory { id name label }
+    operatorIcao
+    operatorType
+    msn
+    manufacturingDate
     aircraft {
       id
       registration
-      aircraftType
       airline
       msn
       manufacturingDate
+      manufacturer { id name }
+      family { id name }
+      variant { id name iataCode icaoCode }
+      operatorType
+      airlineRef { id name icaoCode iataCode }
     }
     photographer {
       id
@@ -122,6 +131,8 @@ export const PHOTO_FIELDS = gql`
       latitude
       longitude
       privacyMode
+      locationType
+      country
       airport {
         id
         icaoCode
@@ -133,6 +144,45 @@ export const PHOTO_FIELDS = gql`
         name
       }
     }
+    exifData
+    similarAircraftPhotos(first: 12) {
+      totalCount
+      edges {
+        cursor
+        node {
+          id
+          caption
+          airportCode
+          takenAt
+          originalUrl
+          originalWidth
+          originalHeight
+          variants {
+            id
+            variantType
+            url
+            width
+            height
+          }
+          aircraft {
+            id
+            registration
+            manufacturer { id name }
+            family { id name }
+            variant { id name iataCode icaoCode }
+          }
+          user {
+            id
+            username
+            profile { displayName avatarUrl }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
   }
 `;
 
@@ -142,7 +192,6 @@ export const GET_PHOTOS = gql`
     $after: String
     $userId: ID
     $albumId: ID
-    $aircraftType: String
     $airportCode: String
     $tags: [String!]
     $manufacturer: String
@@ -155,7 +204,6 @@ export const GET_PHOTOS = gql`
       after: $after
       userId: $userId
       albumId: $albumId
-      aircraftType: $aircraftType
       airportCode: $airportCode
       tags: $tags
       manufacturer: $manufacturer
@@ -490,30 +538,6 @@ export const SEARCH_AIRPORTS = gql`
 `;
 
 // ─── Aircraft ────────────────────────────────────────────────────────────────
-
-export const SEARCH_AIRCRAFT_TYPES = gql`
-  query SearchAircraftTypes($search: String!, $first: Int) {
-    aircraftTypes(search: $search, first: $first) {
-      edges {
-        cursor
-        node {
-          id
-          iataCode
-          icaoCode
-          vendor
-          model
-          category
-          engineType
-          engineCount
-        }
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-    }
-  }
-`;
 
 export const GET_AIRPORTS = gql`
   query Airports {
@@ -910,58 +934,6 @@ export const ADMIN_PHOTOS = gql`
 
 // ─── Admin Reference Data ────────────────────────────────────────────────────
 
-export const ADMIN_AIRCRAFT_TYPES = gql`
-  query AdminAircraftTypes($search: String, $first: Int, $after: String) {
-    adminAircraftTypes(search: $search, first: $first, after: $after) {
-      edges {
-        cursor
-        node {
-          id
-          iataCode
-          icaoCode
-          vendor
-          model
-          category
-          engineType
-          engineCount
-        }
-      }
-      pageInfo { hasNextPage endCursor }
-      totalCount
-    }
-  }
-`;
-
-export const DELETE_AIRCRAFT_TYPE = gql`
-  mutation DeleteAircraftType($id: ID!) {
-    deleteAircraftType(id: $id)
-  }
-`;
-
-export const CREATE_AIRCRAFT_TYPE = gql`
-  mutation CreateAircraftType($input: CreateAircraftTypeInput!) {
-    createAircraftType(input: $input) {
-      id
-    }
-  }
-`;
-
-export const UPDATE_AIRCRAFT_TYPE = gql`
-  mutation UpdateAircraftType($id: ID!, $input: UpdateAircraftTypeInput!) {
-    updateAircraftType(id: $id, input: $input) {
-      id
-    }
-  }
-`;
-
-export const UPSERT_AIRCRAFT_TYPE = gql`
-  mutation UpsertAircraftType($input: CreateAircraftTypeInput!) {
-    upsertAircraftType(input: $input) {
-      id
-    }
-  }
-`;
-
 export const ADMIN_AIRPORTS = gql`
   query AdminAirports($search: String, $first: Int, $after: String) {
     adminAirports(search: $search, first: $first, after: $after) {
@@ -983,21 +955,6 @@ export const ADMIN_AIRPORTS = gql`
         endCursor
       }
       totalCount
-    }
-  }
-`;
-
-export const EXPORT_AIRCRAFT_TYPES = gql`
-  query ExportAircraftTypes {
-    exportAircraftTypes {
-      id
-      iataCode
-      icaoCode
-      vendor
-      model
-      category
-      engineType
-      engineCount
     }
   }
 `;
@@ -1220,6 +1177,47 @@ export const UPDATE_COMMUNITY_MEMBER_ROLE = gql`
       id
       role
       status
+    }
+  }
+`;
+
+export const TRANSFER_COMMUNITY_OWNERSHIP = gql`
+  mutation TransferCommunityOwnership($communityId: ID!, $userId: ID!) {
+    transferCommunityOwnership(communityId: $communityId, userId: $userId) {
+      id
+      owner {
+        id
+        username
+      }
+    }
+  }
+`;
+
+export const GET_COMMUNITY_MEMBERS = gql`
+  query GetCommunityMembers($communityId: ID!, $filter: CommunityMemberFilter) {
+    communityMembers(communityId: $communityId, filter: $filter) {
+      totalCount
+      edges {
+        cursor
+        node {
+          id
+          role
+          status
+          joinedAt
+          user {
+            id
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
@@ -1581,6 +1579,610 @@ export const MARK_ALL_NOTIFICATIONS_READ = gql`
 export const DELETE_NOTIFICATION = gql`
   mutation DeleteNotification($id: ID!) {
     deleteNotification(id: $id)
+  }
+`;
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+export const GET_PHOTO_CATEGORIES = gql`
+  query PhotoCategories {
+    photoCategories {
+      id
+      name
+      label
+      sortOrder
+    }
+  }
+`;
+
+export const GET_AIRCRAFT_SPECIFIC_CATEGORIES = gql`
+  query AircraftSpecificCategories {
+    aircraftSpecificCategories {
+      id
+      name
+      label
+      sortOrder
+    }
+  }
+`;
+
+// ─── Aircraft Hierarchy ────────────────────────────────────────────────────────
+
+export const SEARCH_AIRCRAFT_REGISTRATIONS = gql`
+  query SearchAircraftRegistrations($search: String!, $first: Int) {
+    aircraftSearch(search: $search, first: $first) {
+      edges {
+        node {
+          id
+          registration
+          manufacturer { id name }
+          family { id name }
+          variant { id name iataCode icaoCode }
+          airlineRef { id name icaoCode iataCode country }
+          msn
+          manufacturingDate
+          operatorType
+        }
+      }
+    }
+  }
+`;
+
+export const GET_AIRCRAFT_MANUFACTURERS = gql`
+  query AircraftManufacturers($search: String, $first: Int) {
+    aircraftManufacturers(search: $search, first: $first) {
+      edges {
+        node {
+          id
+          name
+          country
+        }
+      }
+    }
+  }
+`;
+
+export const GET_AIRCRAFT_FAMILIES = gql`
+  query AircraftFamilies($manufacturerId: ID, $search: String, $first: Int) {
+    aircraftFamilies(manufacturerId: $manufacturerId, search: $search, first: $first) {
+      edges {
+        node {
+          id
+          name
+          manufacturer { id name }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_AIRCRAFT_VARIANTS = gql`
+  query AircraftVariants($familyId: ID, $search: String, $first: Int) {
+    aircraftVariants(familyId: $familyId, search: $search, first: $first) {
+      edges {
+        node {
+          id
+          name
+          iataCode
+          icaoCode
+          family { id name }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_AIRLINES = gql`
+  query AircraftAirlines($search: String, $first: Int) {
+    airlines(search: $search, first: $first) {
+      edges {
+        node {
+          id
+          name
+          icaoCode
+          iataCode
+          country
+        }
+      }
+    }
+  }
+`;
+
+export const GET_AIRCRAFT_BY_REGISTRATION = gql`
+  query AircraftByRegistration($registration: String!) {
+    aircraft(registration: $registration) {
+      id
+      registration
+      manufacturer { id name }
+      family { id name }
+      variant { id name iataCode icaoCode }
+      airlineRef { id name icaoCode iataCode country callsign }
+      msn
+      manufacturingDate
+      operatorType
+    }
+  }
+`;
+
+export const ADMIN_AIRCRAFT = gql`
+  query AdminAircraft($search: String, $first: Int, $after: String) {
+    adminAircraft(search: $search, first: $first, after: $after) {      edges {
+        cursor
+        node {
+          id
+          registration
+          msn
+          manufacturingDate
+          operatorType
+          manufacturer { id name }
+          family { id name }
+          variant { id name iataCode icaoCode }
+          airlineRef { id name icaoCode iataCode }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_AIRCRAFT = gql`
+  mutation CreateAircraft($input: CreateAircraftInput!) {
+    createAircraft(input: $input) { id }
+  }
+`;
+
+export const UPDATE_AIRCRAFT = gql`
+  mutation UpdateAircraft($id: ID!, $input: UpdateAircraftInput!) {
+    updateAircraft(id: $id, input: $input) { id }
+  }
+`;
+
+export const DELETE_AIRCRAFT = gql`
+  mutation DeleteAircraft($id: ID!) {
+    deleteAircraft(id: $id)
+  }
+`;
+
+export const UPSERT_AIRCRAFT = gql`
+  mutation UpsertAircraft($input: CreateAircraftInput!) {
+    upsertAircraft(input: $input) { id }
+  }
+`;
+
+export const EXPORT_AIRCRAFT = gql`
+  query ExportAircraft {
+    adminAircraft(first: 10000) {      edges {
+        node {
+          id
+          registration
+          msn
+          manufacturingDate
+          operatorType
+          manufacturer { id name }
+          family { id name }
+          variant { id name iataCode icaoCode }
+          airlineRef { id name icaoCode iataCode }
+        }
+      }
+    }
+  }
+`;
+
+// ─── Airlines ─────────────────────────────────────────────────────────────────
+
+export const SEARCH_AIRLINES_BY_ICAO = gql`
+  query SearchAirlinesByIcao($icaoCode: String!) {
+    airline(icaoCode: $icaoCode) {
+      id
+      name
+      icaoCode
+      iataCode
+      country
+      callsign
+    }
+  }
+`;
+
+export const SEARCH_AIRLINES_PAGINATED = gql`
+  query SearchAirlinesPaginated($search: String!, $first: Int) {
+    airlines(search: $search, first: $first) {
+      edges {
+        node {
+          id
+          name
+          icaoCode
+          iataCode
+          country
+          callsign
+        }
+      }
+    }
+  }
+`;
+
+// ─── Airports ─────────────────────────────────────────────────────────────────
+
+export const GET_AIRPORT_BY_ICAO = gql`
+  query AirportByIcao($icaoCode: String!) {
+    airport(code: $icaoCode) {
+      id
+      icaoCode
+      iataCode
+      name
+      city
+      country
+      latitude
+      longitude
+    }
+  }
+`;
+
+// ─── List Contributions ─────────────────────────────────────────────────────────
+
+export const SUBMIT_LIST_ITEM = gql`
+  mutation SubmitListItem($input: SubmitListItemInput!) {
+    submitListItem(input: $input) {
+      id
+      listType
+      value
+      status
+    }
+  }
+`;
+
+// ─── Admin Aircraft Hierarchy ──────────────────────────────────────────────────
+
+export const ADMIN_MANUFACTURERS = gql`
+  query AdminManufacturers($search: String, $first: Int, $after: String) {
+    aircraftManufacturers(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          country
+          createdAt
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_MANUFACTURER = gql`
+  mutation CreateManufacturer($input: CreateManufacturerInput!) {
+    createManufacturer(input: $input) { id }
+  }
+`;
+
+export const UPDATE_MANUFACTURER = gql`
+  mutation UpdateManufacturer($id: ID!, $input: UpdateManufacturerInput!) {
+    updateManufacturer(id: $id, input: $input) { id }
+  }
+`;
+
+export const DELETE_MANUFACTURER = gql`
+  mutation DeleteManufacturer($id: ID!) {
+    deleteManufacturer(id: $id)
+  }
+`;
+
+export const UPSERT_MANUFACTURER = gql`
+  mutation UpsertManufacturer($input: CreateManufacturerInput!) {
+    upsertManufacturer(input: $input) { id }
+  }
+`;
+
+export const ADMIN_FAMILIES = gql`
+  query AdminFamilies($search: String, $first: Int, $after: String) {
+    aircraftFamilies(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          manufacturer { id name }
+          createdAt
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_FAMILY = gql`
+  mutation CreateFamily($input: CreateFamilyInput!) {
+    createFamily(input: $input) { id }
+  }
+`;
+
+export const UPDATE_FAMILY = gql`
+  mutation UpdateFamily($id: ID!, $input: UpdateFamilyInput!) {
+    updateFamily(id: $id, input: $input) { id }
+  }
+`;
+
+export const DELETE_FAMILY = gql`
+  mutation DeleteFamily($id: ID!) {
+    deleteFamily(id: $id)
+  }
+`;
+
+export const UPSERT_FAMILY = gql`
+  mutation UpsertFamily($input: CreateFamilyInput!) {
+    upsertFamily(input: $input) { id }
+  }
+`;
+
+export const DELETE_VARIANT = gql`
+  mutation DeleteVariant($id: ID!) {
+    deleteVariant(id: $id)
+  }
+`;
+
+export const ADMIN_VARIANTS = gql`
+  query AdminVariants($search: String, $first: Int, $after: String) {
+    aircraftVariants(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          family { id name manufacturer { id name } }
+          iataCode
+          icaoCode
+          createdAt
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_VARIANT = gql`
+  mutation CreateVariant($input: CreateVariantInput!) {
+    createVariant(input: $input) { id }
+  }
+`;
+
+export const UPDATE_VARIANT = gql`
+  mutation UpdateVariant($id: ID!, $input: UpdateVariantInput!) {
+    updateVariant(id: $id, input: $input) { id }
+  }
+`;
+
+export const UPSERT_VARIANT = gql`
+  mutation UpsertVariant($input: CreateVariantInput!) {
+    upsertVariant(input: $input) { id }
+  }
+`;
+
+// ─── Admin Airlines ─────────────────────────────────────────────────────────────
+
+export const ADMIN_AIRLINES = gql`
+  query AdminAirlines($search: String, $first: Int, $after: String) {
+    airlines(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          icaoCode
+          iataCode
+          country
+          callsign
+          createdAt
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_AIRLINE = gql`
+  mutation CreateAirline($input: CreateAirlineInput!) {
+    createAirline(input: $input) { id }
+  }
+`;
+
+export const UPDATE_AIRLINE = gql`
+  mutation UpdateAirline($id: ID!, $input: UpdateAirlineInput!) {
+    updateAirline(id: $id, input: $input) { id }
+  }
+`;
+
+export const DELETE_AIRLINE = gql`
+  mutation DeleteAirline($id: ID!) {
+    deleteAirline(id: $id)
+  }
+`;
+
+export const UPSERT_AIRLINE = gql`
+  mutation UpsertAirline($input: CreateAirlineInput!) {
+    upsertAirline(input: $input) { id }
+  }
+`;
+
+// ─── Admin Photo Categories ────────────────────────────────────────────────────
+
+export const ADMIN_PHOTO_CATEGORIES = gql`
+  query AdminPhotoCategories($first: Int) {
+    photoCategories {
+      id
+      name
+      label
+      sortOrder
+      createdAt
+    }
+  }
+`;
+
+export const CREATE_PHOTO_CATEGORY = gql`
+  mutation CreatePhotoCategory($input: CreatePhotoCategoryInput!) {
+    createPhotoCategory(input: $input) { id }
+  }
+`;
+
+export const UPDATE_PHOTO_CATEGORY = gql`
+  mutation UpdatePhotoCategory($id: ID!, $input: UpdatePhotoCategoryInput!) {
+    updatePhotoCategory(id: $id, input: $input) { id }
+  }
+`;
+
+export const DELETE_PHOTO_CATEGORY = gql`
+  mutation DeletePhotoCategory($id: ID!) {
+    deletePhotoCategory(id: $id)
+  }
+`;
+
+export const UPSERT_PHOTO_CATEGORY = gql`
+  mutation UpsertPhotoCategory($input: CreatePhotoCategoryInput!) {
+    upsertPhotoCategory(input: $input) { id }
+  }
+`;
+
+// ─── Admin Aircraft Specific Categories ───────────────────────────────────────
+
+export const ADMIN_AIRCRAFT_SPECIFIC_CATEGORIES = gql`
+  query AdminAircraftSpecificCategories($first: Int) {
+    aircraftSpecificCategories {
+      id
+      name
+      label
+      sortOrder
+      createdAt
+    }
+  }
+`;
+
+export const CREATE_AIRCRAFT_SPECIFIC_CATEGORY = gql`
+  mutation CreateAircraftSpecificCategory($input: CreateAircraftSpecificCategoryInput!) {
+    createAircraftSpecificCategory(input: $input) { id }
+  }
+`;
+
+export const UPDATE_AIRCRAFT_SPECIFIC_CATEGORY = gql`
+  mutation UpdateAircraftSpecificCategory($id: ID!, $input: UpdateAircraftSpecificCategoryInput!) {
+    updateAircraftSpecificCategory(id: $id, input: $input) { id }
+  }
+`;
+
+export const DELETE_AIRCRAFT_SPECIFIC_CATEGORY = gql`
+  mutation DeleteAircraftSpecificCategory($id: ID!) {
+    deleteAircraftSpecificCategory(id: $id)
+  }
+`;
+
+export const UPSERT_AIRCRAFT_SPECIFIC_CATEGORY = gql`
+  mutation UpsertAircraftSpecificCategory($input: CreateAircraftSpecificCategoryInput!) {
+    upsertAircraftSpecificCategory(input: $input) { id }
+  }
+`;
+
+// ─── Admin Pending List Items ───────────────────────────────────────────────────
+
+export const ADMIN_PENDING_LIST_ITEMS = gql`
+  query AdminPendingListItems($status: String, $first: Int, $after: String) {
+    pendingListItems(status: $status, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          listType
+          value
+          metadata
+          status
+          reviewNote
+          submitter { id username }
+          reviewer { id username }
+          createdAt
+          updatedAt
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const REVIEW_LIST_ITEM = gql`
+  mutation ReviewListItem($id: ID!, $status: String!, $reviewNote: String) {
+    reviewListItem(id: $id, status: $status, reviewNote: $reviewNote) {
+      id
+      status
+      reviewNote
+      reviewer { id username }
+      updatedAt
+    }
+  }
+`;
+
+// ─── Export Queries ───────────────────────────────────────────────────────────
+
+export const EXPORT_MANUFACTURERS = gql`
+  query ExportManufacturers {
+    aircraftManufacturers(first: 10000) {
+      edges {
+        node { id name country }
+      }
+    }
+  }
+`;
+
+export const EXPORT_FAMILIES = gql`
+  query ExportFamilies {
+    aircraftFamilies(first: 10000) {
+      edges {
+        node { id name manufacturer { id name } }
+      }
+    }
+  }
+`;
+
+export const EXPORT_VARIANTS = gql`
+  query ExportVariants {
+    aircraftVariants(first: 10000) {
+      edges {
+        node {
+          id
+          name
+          family { id name manufacturer { id name } }
+          iataCode
+          icaoCode
+        }
+      }
+    }
+  }
+`;
+
+export const EXPORT_AIRLINES = gql`
+  query ExportAirlines {
+    airlines(first: 10000) {
+      edges {
+        node { id name icaoCode iataCode country callsign }
+      }
+    }
+  }
+`;
+
+export const EXPORT_PHOTO_CATEGORIES = gql`
+  query ExportPhotoCategories {
+    photoCategories {
+      id name label sortOrder
+    }
+  }
+`;
+
+export const EXPORT_AIRCRAFT_SPECIFIC_CATEGORIES = gql`
+  query ExportAircraftSpecificCategories {
+    aircraftSpecificCategories {
+      id name label sortOrder
+    }
   }
 `;
 

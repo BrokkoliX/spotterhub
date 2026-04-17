@@ -167,6 +167,80 @@ export const communityQueryResolvers = {
     });
     return memberships.map((m) => m.community);
   },
+
+  communityMembers: async (
+    _parent: unknown,
+    args: { communityId: string; filter?: { search?: string; role?: string[]; status?: string[]; first?: number; after?: string } },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+    const isSuperuser = dbUser.role === 'superuser';
+
+    // Verify caller is admin/owner
+    const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
+    if (!isSuperuser && (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))) {
+      throw new GraphQLError('Only community owners and admins can view the member list', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const take = Math.min(args.filter?.first ?? 50, 100);
+    const where: Record<string, unknown> = { communityId: args.communityId };
+
+    if (args.filter?.search) {
+      const search = args.filter.search;
+      where.user = {
+        OR: [
+          { username: { contains: search, mode: 'insensitive' } },
+          { profile: { displayName: { contains: search, mode: 'insensitive' } } },
+        ],
+      };
+    }
+
+    if (args.filter?.role && args.filter.role.length > 0) {
+      where.role = { in: args.filter.role };
+    }
+
+    if (args.filter?.status && args.filter.status.length > 0) {
+      where.status = { in: args.filter.status };
+    } else {
+      // Default: show active + banned members
+      where.status = { in: ['active', 'banned'] };
+    }
+
+    if (args.filter?.after) {
+      const cursorMember = await ctx.prisma.communityMember.findUnique({
+        where: { id: args.filter.after },
+      });
+      if (cursorMember) {
+        where.joinedAt = { lt: cursorMember.joinedAt };
+      }
+    }
+
+    const [items, totalCount] = await Promise.all([
+      ctx.prisma.communityMember.findMany({
+        where,
+        orderBy: { joinedAt: 'desc' },
+        take: take + 1,
+      }),
+      ctx.prisma.communityMember.count({ where }),
+    ]);
+
+    const hasNextPage = items.length > take;
+    const edges = items.slice(0, take).map((m) => ({
+      cursor: m.id,
+      node: m,
+    }));
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      },
+      totalCount,
+    };
+  },
 };
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
@@ -514,6 +588,59 @@ export const communityMutationResolvers = {
       where: { id: targetMembership.id },
       data: { role: newRole },
     });
+  },
+
+  transferCommunityOwnership: async (
+    _parent: unknown,
+    args: { communityId: string; userId: string },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+    const community = await ctx.prisma.community.findUnique({ where: { id: args.communityId } });
+    if (!community) {
+      throw new GraphQLError('Community not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    // Only current owner can transfer
+    if (community.ownerId !== dbUser.id) {
+      throw new GraphQLError('Only the community owner can transfer ownership', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Target must be an active member of the community
+    const targetMembership = await getMembership(ctx, args.communityId, args.userId);
+    if (!targetMembership || targetMembership.status !== 'active') {
+      throw new GraphQLError('Target user is not an active member of this community', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    // Cannot transfer to self
+    if (args.userId === dbUser.id) {
+      throw new GraphQLError('Cannot transfer ownership to yourself', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    // Transfer ownership in a transaction: update ownerId, demote old owner to admin
+    await ctx.prisma.$transaction([
+      ctx.prisma.community.update({
+        where: { id: args.communityId },
+        data: { ownerId: args.userId },
+      }),
+      ctx.prisma.communityMember.update({
+        where: { id: targetMembership.id },
+        data: { role: 'owner' },
+      }),
+      // Demote old owner to admin (they were the owner, now become admin)
+      ctx.prisma.communityMember.update({
+        where: { communityId_userId: { communityId: args.communityId, userId: dbUser.id } },
+        data: { role: 'admin' },
+      }),
+    ]);
+
+    return ctx.prisma.community.findUnique({ where: { id: args.communityId } });
   },
 
   generateInviteCode: async (

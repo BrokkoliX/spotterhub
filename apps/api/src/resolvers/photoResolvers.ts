@@ -45,7 +45,6 @@ export interface PhotosArgs {
   after?: string;
   userId?: string;
   albumId?: string;
-  aircraftType?: string;
   airportCode?: string;
   tags?: string[];
   manufacturer?: string;
@@ -59,7 +58,6 @@ export interface CreatePhotoInput {
   mimeType: string;
   fileSizeBytes: number;
   caption?: string;
-  aircraftType?: string;
   airline?: string;
   airportCode?: string;
   takenAt?: string;
@@ -68,14 +66,21 @@ export interface CreatePhotoInput {
   longitude?: number;
   locationPrivacy?: string;
   aircraftId?: string;
-  aircraftTypeId?: string;
   gearBody?: string;
   gearLens?: string;
+  exifData?: unknown;
+  photoCategoryId?: string;
+  aircraftSpecificCategoryId?: string;
+  operatorIcao?: string;
+  operatorType?: string;
+  msn?: string;
+  manufacturingDate?: string;
+  locationType?: string;
+  airportIcao?: string;
 }
 
 export interface UpdatePhotoInput {
   caption?: string;
-  aircraftType?: string;
   airline?: string;
   airportCode?: string;
   takenAt?: string;
@@ -84,22 +89,35 @@ export interface UpdatePhotoInput {
   longitude?: number;
   locationPrivacy?: string;
   aircraftId?: string;
-  aircraftTypeId?: string;
   gearBody?: string;
   gearLens?: string;
+  exifData?: unknown;
+  photoCategoryId?: string;
+  aircraftSpecificCategoryId?: string;
+  operatorIcao?: string;
+  operatorType?: string;
+  msn?: string;
+  manufacturingDate?: string;
+  locationType?: string;
+  airportIcao?: string;
 }
 
 export interface PhotoParent {
   id: string;
   userId: string;
-  aircraftTypeName?: string | null;
   aircraftId?: string | null;
-  aircraftTypeId?: string | null;
   photographerId?: string | null;
   photographerName?: string | null;
   gearBody?: string | null;
   gearLens?: string | null;
   takenAt?: Date | null;
+  exifData?: unknown | null;
+  photoCategoryId?: string | null;
+  aircraftSpecificCategoryId?: string | null;
+  operatorIcao?: string | null;
+  operatorType?: string | null;
+  msn?: string | null;
+  manufacturingDate?: string | null;
 }
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
@@ -108,7 +126,15 @@ export const photoQueryResolvers = {
   photo: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     return ctx.prisma.photo.findUnique({
       where: { id: args.id },
-      include: { user: true, variants: true, tags: true },
+      include: {
+        user: true,
+        variants: true,
+        tags: true,
+        aircraft: { include: { manufacturer: true, family: true, variant: true, airlineRef: true } },
+        location: { include: { airport: true, spottingLocation: true } },
+        photoCategory: true,
+        aircraftSpecificCategory: true,
+      },
     });
   },
 
@@ -129,24 +155,12 @@ export const photoQueryResolvers = {
     if (args.albumId) {
       where.albumId = args.albumId;
     }
-    if (args.aircraftType) {
-      where.aircraftTypeName = { contains: args.aircraftType, mode: 'insensitive' };
-    }
     if (args.airportCode) {
       where.airportCode = { equals: args.airportCode, mode: 'insensitive' };
     }
     if (args.tags && args.tags.length > 0) {
       where.tags = {
         some: { tag: { in: args.tags } },
-      };
-    }
-    if (args.manufacturer) {
-      // Manufacturer is derived: aircraftTypeName starts with manufacturer name
-      // e.g. "Boeing 747" -> manufacturer "Boeing"
-      where.aircraftTypeName = {
-        ...((where.aircraftTypeName as object) || {}),
-        startsWith: args.manufacturer,
-        mode: 'insensitive',
       };
     }
     if (args.airline) {
@@ -179,7 +193,15 @@ export const photoQueryResolvers = {
         where,
         orderBy,
         take: take + 1,
-        include: { user: true, variants: true, tags: true },
+        include: {
+          user: true,
+          variants: true,
+          tags: true,
+          aircraft: { include: { manufacturer: true, family: true, variant: true, airlineRef: true } },
+          location: { include: { airport: true, spottingLocation: true } },
+          photoCategory: true,
+          aircraftSpecificCategory: true,
+        },
       }),
       ctx.prisma.photo.count({ where }),
     ]);
@@ -251,7 +273,6 @@ export const photoMutationResolvers = {
       data: {
         userId: user.id,
         caption: input.caption,
-        aircraftTypeName: input.aircraftType,
         airline: input.airline,
         airportCode: input.airportCode,
         takenAt: input.takenAt ? new Date(input.takenAt) : null,
@@ -261,9 +282,17 @@ export const photoMutationResolvers = {
         photographerId,
         photographerName,
         aircraftId: input.aircraftId ?? null,
-        aircraftTypeId: input.aircraftTypeId ?? null,
         gearBody: input.gearBody ?? null,
         gearLens: input.gearLens ?? null,
+        exifData: input.exifData ?? undefined,
+        photoCategoryId: input.photoCategoryId ?? null,
+        aircraftSpecificCategoryId: input.aircraftSpecificCategoryId ?? null,
+        operatorIcao: input.operatorIcao ?? null,
+        operatorType: input.operatorType
+          ? (input.operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private')
+          : null,
+        msn: input.msn ?? null,
+        manufacturingDate: input.manufacturingDate ?? null,
         // In dev, auto-approve; in production, start as pending
         moderationStatus: process.env.NODE_ENV === 'production' ? 'pending' : 'approved',
         tags: input.tags
@@ -307,15 +336,18 @@ export const photoMutationResolvers = {
       const privacyMode = input.locationPrivacy ?? 'exact';
       const { displayLat, displayLng } = applyPrivacy(input.latitude, input.longitude, privacyMode);
 
-      // Find associated airport by code if provided
+      // Find associated airport by airportIcao or airportCode
       let airportId: string | null = null;
-      if (input.airportCode) {
-        const code = input.airportCode.trim().toUpperCase();
+      let country: string | null = null;
+      const lookupCode = (input.airportIcao ?? input.airportCode ?? '').trim().toUpperCase();
+      if (lookupCode) {
         const airport = await ctx.prisma.airport.findFirst({
-          where: { OR: [{ icaoCode: code }, { iataCode: code }] },
-          select: { id: true },
+          where: { OR: [{ icaoCode: lookupCode }, { iataCode: lookupCode }] },
         });
-        if (airport) airportId = airport.id;
+        if (airport) {
+          airportId = airport.id;
+          country = airport.country;
+        }
       }
 
       await ctx.prisma.photoLocation.create({
@@ -327,6 +359,8 @@ export const photoMutationResolvers = {
           displayLongitude: displayLng,
           privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
           airportId,
+          locationType: input.locationType ?? (airportId ? 'airport' : null),
+          country,
         },
       });
     }
@@ -377,10 +411,17 @@ export const photoMutationResolvers = {
       longitude,
       locationPrivacy,
       aircraftId,
-      aircraftTypeId,
-      aircraftType,
       gearBody,
       gearLens,
+      exifData,
+      photoCategoryId,
+      aircraftSpecificCategoryId,
+      operatorIcao,
+      operatorType,
+      msn,
+      manufacturingDate,
+      locationType,
+      airportIcao,
       ...rest
     } = args.input;
 
@@ -403,6 +444,20 @@ export const photoMutationResolvers = {
         const privacyMode = locationPrivacy ?? 'exact';
         const { displayLat, displayLng } = applyPrivacy(latitude, longitude, privacyMode);
 
+        // Find associated airport by airportIcao or airportCode
+        let airportId: string | null = null;
+        let country: string | null = null;
+        const lookupCode = (airportIcao ?? '').trim().toUpperCase();
+        if (lookupCode) {
+          const airport = await ctx.prisma.airport.findFirst({
+            where: { OR: [{ icaoCode: lookupCode }, { iataCode: lookupCode }] },
+          });
+          if (airport) {
+            airportId = airport.id;
+            country = airport.country;
+          }
+        }
+
         await ctx.prisma.photoLocation.upsert({
           where: { photoId: args.id },
           update: {
@@ -411,6 +466,9 @@ export const photoMutationResolvers = {
             displayLatitude: displayLat,
             displayLongitude: displayLng,
             privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
+            ...(airportId !== undefined && { airportId }),
+            ...(locationType !== undefined && { locationType: locationType ?? null }),
+            ...(country !== undefined && { country }),
           },
           create: {
             photoId: args.id,
@@ -419,6 +477,9 @@ export const photoMutationResolvers = {
             displayLatitude: displayLat,
             displayLongitude: displayLng,
             privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
+            airportId,
+            locationType: locationType ?? (airportId ? 'airport' : null),
+            country,
           },
         });
       } else {
@@ -433,10 +494,17 @@ export const photoMutationResolvers = {
         ...rest,
         ...(takenAt !== undefined && { takenAt: takenAt ? new Date(takenAt) : null }),
         ...(aircraftId !== undefined && { aircraftId: aircraftId ?? null }),
-        ...(aircraftTypeId !== undefined && { aircraftTypeId: aircraftTypeId ?? null }),
-        ...(aircraftType !== undefined && { aircraftTypeName: aircraftType }),
         ...(gearBody !== undefined && { gearBody: gearBody ?? null }),
         ...(gearLens !== undefined && { gearLens: gearLens ?? null }),
+        ...(exifData !== undefined && { exifData: exifData ?? undefined }),
+        ...(photoCategoryId !== undefined && { photoCategoryId: photoCategoryId ?? null }),
+        ...(aircraftSpecificCategoryId !== undefined && {
+          aircraftSpecificCategoryId: aircraftSpecificCategoryId ?? null,
+        }),
+        ...(operatorIcao !== undefined && { operatorIcao: operatorIcao ?? null }),
+        ...(operatorType !== undefined && { operatorType: operatorType ? operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private' : null }),
+        ...(msn !== undefined && { msn: msn ?? null }),
+        ...(manufacturingDate !== undefined && { manufacturingDate: manufacturingDate ?? null }),
       },
       include: { user: true, variants: true, tags: true },
     });
@@ -519,6 +587,8 @@ export const photoFieldResolvers = {
       latitude: loc.displayLatitude,
       longitude: loc.displayLongitude,
       privacyMode: loc.privacyMode,
+      locationType: loc.locationType,
+      country: loc.country,
       airport: loc.airport,
       spottingLocation: loc.spottingLocation,
     };
@@ -533,13 +603,6 @@ export const photoFieldResolvers = {
     return ctx.loaders.aircraftById.load(parent.aircraftId);
   },
 
-  aircraftType: (parent: PhotoParent) => parent.aircraftTypeName ?? null,
-
-  aircraftTypeRef: (parent: PhotoParent, _args: unknown, ctx: Context) => {
-    if (!parent.aircraftTypeId) return null;
-    return ctx.loaders.aircraftTypeById.load(parent.aircraftTypeId);
-  },
-
   photographer: (
     parent: PhotoParent & { photographerId?: string | null },
     _args: unknown,
@@ -550,4 +613,87 @@ export const photoFieldResolvers = {
   },
 
   takenAt: (parent: { takenAt: Date | null }) => parent.takenAt?.toISOString() ?? null,
+
+  createdAt: (parent: { createdAt: Date | null }) => parent.createdAt?.toISOString() ?? null,
+
+  operatorType: (parent: { operatorType: string | null }) =>
+    parent.operatorType
+      ? (parent.operatorType.toUpperCase() as 'AIRLINE' | 'GENERAL_AVIATION' | 'MILITARY' | 'GOVERNMENT' | 'CARGO' | 'CHARTER' | 'PRIVATE')
+      : null,
+
+  exifData: (parent: PhotoParent) => parent.exifData ?? null,
+
+  photoCategory: (parent: PhotoParent, _args: unknown, ctx: Context) => {
+    if (!parent.photoCategoryId) return null;
+    return ctx.prisma.photoCategory.findUnique({ where: { id: parent.photoCategoryId } });
+  },
+
+  aircraftSpecificCategory: (parent: PhotoParent, _args: unknown, ctx: Context) => {
+    if (!parent.aircraftSpecificCategoryId) return null;
+    return ctx.prisma.aircraftSpecificCategory.findUnique({
+      where: { id: parent.aircraftSpecificCategoryId },
+    });
+  },
+
+  operatorIcao: (parent: PhotoParent) => parent.operatorIcao ?? null,
+
+  similarAircraftPhotos: async (
+    parent: PhotoParent,
+    args: { first?: number; after?: string },
+    ctx: Context,
+  ) => {
+    const take = Math.min(args.first ?? 12, 30);
+
+    // Match by aircraftId if linked, otherwise by msn + manufacturerId
+    const where: Record<string, unknown> = {
+      id: { not: parent.id },
+      moderationStatus: 'approved',
+    };
+
+    if (parent.aircraftId) {
+      where.aircraftId = parent.aircraftId;
+    } else if (parent.msn) {
+      where.msn = parent.msn;
+    } else {
+      // No aircraft linked and no msn — return empty
+      return {
+        edges: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+        totalCount: 0,
+      };
+    }
+
+    if (args.after) {
+      const cursorPhoto = await ctx.prisma.photo.findUnique({ where: { id: args.after } });
+      if (cursorPhoto) {
+        where.createdAt = { lt: cursorPhoto.createdAt };
+      }
+    }
+
+    const [items, totalCount] = await Promise.all([
+      ctx.prisma.photo.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: take + 1,
+        include: {
+          user: { include: { profile: true } },
+          variants: true,
+          aircraft: { include: { manufacturer: true, family: true, variant: true } },
+        },
+      }),
+      ctx.prisma.photo.count({ where }),
+    ]);
+
+    const hasNextPage = items.length > take;
+    const edges = items.slice(0, take).map((p) => ({
+      cursor: p.id,
+      node: p,
+    }));
+
+    return {
+      edges,
+      pageInfo: { hasNextPage, endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null },
+      totalCount,
+    };
+  },
 };
