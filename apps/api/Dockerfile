@@ -19,6 +19,9 @@ RUN npx turbo run build --filter=@spotterspace/api
 # Prune devDependencies from production image
 RUN npm prune --production --workspace=@spotterspace/api
 
+# Reinstall prisma CLI (needed at runtime for migrate deploy in entrypoint)
+RUN npm install prisma --no-save
+
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
 
@@ -46,9 +49,8 @@ ENV API_PORT=4000
 
 EXPOSE 4000
 
-# Health check
-HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
+# Health check (start-period accounts for migration time on cold starts)
+HEALTHCHECK --interval=20s --timeout=5s --start-period=60s --retries=3 \
   CMD wget -qO- http://localhost:4000/health || exit 1
 
 ENTRYPOINT ["sh", "/docker-entrypoint.sh"]
-# trigger
