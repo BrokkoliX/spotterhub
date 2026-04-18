@@ -12,7 +12,7 @@ export const aircraftHierarchyQueryResolvers = {
     args: { search?: string; first?: number; after?: string },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const take = Math.min(args.first ?? 20, 10000);
 
     const where: Record<string, unknown> = {};
     if (args.search) {
@@ -63,7 +63,7 @@ export const aircraftHierarchyQueryResolvers = {
     args: { manufacturerId?: string; search?: string; first?: number; after?: string },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const take = Math.min(args.first ?? 20, 10000);
 
     const where: Record<string, unknown> = {};
     if (args.manufacturerId) {
@@ -114,7 +114,7 @@ export const aircraftHierarchyQueryResolvers = {
     args: { familyId?: string; search?: string; first?: number; after?: string },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const take = Math.min(args.first ?? 20, 10000);
 
     const where: Record<string, unknown> = {};
     if (args.familyId) {
