@@ -4,6 +4,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
+import SearchableSelect from '@/components/SearchableSelect';
 import {
   ADMIN_AIRCRAFT,
   ADMIN_AIRLINES,
@@ -91,25 +92,25 @@ export default function AdminAircraftPage() {
 
   const [manufacturersResult] = useQuery({
     query: ADMIN_MANUFACTURERS,
-    variables: { first: 500 },
+    variables: { first: 10000 },
     pause: !isAdmin,
   });
 
   const [familiesResult] = useQuery({
     query: ADMIN_FAMILIES,
-    variables: { first: 500 },
+    variables: { first: 10000 },
     pause: !isAdmin,
   });
 
   const [variantsResult] = useQuery({
     query: ADMIN_VARIANTS,
-    variables: { first: 500 },
+    variables: { first: 10000 },
     pause: !isAdmin,
   });
 
   const [airlinesResult] = useQuery({
     query: ADMIN_AIRLINES,
-    variables: { first: 500 },
+    variables: { first: 10000 },
     pause: !isAdmin,
   });
 
@@ -395,45 +396,34 @@ export default function AdminAircraftPage() {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturer</label>
-                  <select
-                    className="input"
+                  <SearchableSelect
+                    options={allManufacturers.map((m: { id: string; name: string }) => ({ id: m.id, label: m.name }))}
                     value={formData.manufacturerId}
-                    onChange={(e) => setFormData({ ...formData, manufacturerId: e.target.value })}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">Select manufacturer…</option>
-                    {allManufacturers.map((m: { id: string; name: string }) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                    onChange={(id) => {
+                      setFormData({ ...formData, manufacturerId: id, familyId: '', variantId: '' });
+                    }}
+                    placeholder="Search manufacturer…"
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Family</label>
-                  <select
-                    className="input"
+                  <SearchableSelect
+                    options={allFamilies.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
                     value={formData.familyId}
-                    onChange={(e) => setFormData({ ...formData, familyId: e.target.value })}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">Select family…</option>
-                    {allFamilies.map((f: { id: string; label: string }) => (
-                      <option key={f.id} value={f.id}>{f.label}</option>
-                    ))}
-                  </select>
+                    onChange={(id) => {
+                      setFormData({ ...formData, familyId: id, variantId: '' });
+                    }}
+                    placeholder="Search family…"
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Variant</label>
-                  <select
-                    className="input"
+                  <SearchableSelect
+                    options={allVariants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
                     value={formData.variantId}
-                    onChange={(e) => setFormData({ ...formData, variantId: e.target.value })}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">Select variant…</option>
-                    {allVariants.map((v: { id: string; label: string }) => (
-                      <option key={v.id} value={v.id}>{v.label}</option>
-                    ))}
-                  </select>
+                    onChange={(id) => setFormData({ ...formData, variantId: id })}
+                    placeholder="Search variant…"
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Operator Type</label>
@@ -451,17 +441,12 @@ export default function AdminAircraftPage() {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Airline</label>
-                  <select
-                    className="input"
+                  <SearchableSelect
+                    options={allAirlines.map((a: { id: string; label: string }) => ({ id: a.id, label: a.label }))}
                     value={formData.airlineId}
-                    onChange={(e) => setFormData({ ...formData, airlineId: e.target.value })}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">Select airline…</option>
-                    {allAirlines.map((a: { id: string; label: string }) => (
-                      <option key={a.id} value={a.id}>{a.label}</option>
-                    ))}
-                  </select>
+                    onChange={(id) => setFormData({ ...formData, airlineId: id })}
+                    placeholder="Search airline…"
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>MSN</label>

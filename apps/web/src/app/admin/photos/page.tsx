@@ -46,10 +46,17 @@ export default function AdminPhotosPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const photos = data?.adminPhotos;
+  const hasNextPage = photos?.pageInfo?.hasNextPage;
+  const endCursor = photos?.pageInfo?.endCursor;
 
   const handleModeration = async (photoId: string, status: string) => {
     await updateModeration({ photoId, status });
     reexecute({ requestPolicy: 'network-only' });
+  };
+
+  const loadMore = () => {
+    if (!endCursor) return;
+    reexecute({ requestPolicy: 'network-only', variables: { moderationStatus: statusFilter || undefined, first: PAGE_SIZE, after: endCursor } });
   };
 
   return (
@@ -140,8 +147,8 @@ export default function AdminPhotosPage() {
         <div className={styles.loading}>No photos found</div>
       )}
 
-      {photos?.pageInfo?.hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
+      {hasNextPage && (
+        <button className={`btn btn-secondary ${styles.loadMore}`} onClick={loadMore} disabled={fetching}>Load more</button>
       )}
       </div>
     </div>

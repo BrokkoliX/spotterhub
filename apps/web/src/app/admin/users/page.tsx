@@ -52,6 +52,8 @@ export default function AdminUsersPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const users = data?.adminUsers;
+  const hasNextPage = users?.pageInfo?.hasNextPage;
+  const endCursor = users?.pageInfo?.endCursor;
 
   const handleRoleChange = async (userId: string, role: string) => {
     await updateRole({ userId, role });
@@ -61,6 +63,11 @@ export default function AdminUsersPage() {
   const handleStatusChange = async (userId: string, status: string) => {
     await updateStatus({ userId, status });
     reexecute({ requestPolicy: 'network-only' });
+  };
+
+  const loadMore = () => {
+    if (!endCursor) return;
+    reexecute({ requestPolicy: 'network-only', variables: { role: roleFilter || undefined, status: statusFilter || undefined, search: search || undefined, first: PAGE_SIZE, after: endCursor } });
   };
 
   return (
@@ -176,8 +183,8 @@ export default function AdminUsersPage() {
         <div className={styles.loading}>No users found</div>
       )}
 
-      {users?.pageInfo?.hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
+      {hasNextPage && (
+        <button className={`btn btn-secondary ${styles.loadMore}`} onClick={loadMore} disabled={fetching}>Load more</button>
       )}
       </div>
     </div>

@@ -33,10 +33,17 @@ export default function AdminReportsPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const reports = data?.adminReports;
+  const hasNextPage = reports?.pageInfo?.hasNextPage;
+  const endCursor = reports?.pageInfo?.endCursor;
 
   const handleResolve = async (id: string, action: string) => {
     await resolveReport({ id, action });
     reexecute({ requestPolicy: 'network-only' });
+  };
+
+  const loadMore = () => {
+    if (!endCursor) return;
+    reexecute({ requestPolicy: 'network-only', variables: { status: statusFilter || undefined, first: PAGE_SIZE, after: endCursor } });
   };
 
   return (
@@ -121,8 +128,8 @@ export default function AdminReportsPage() {
         <div className={styles.loading}>No reports found</div>
       )}
 
-      {reports?.pageInfo?.hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`}>Load more</button>
+      {hasNextPage && (
+        <button className={`btn btn-secondary ${styles.loadMore}`} onClick={loadMore} disabled={fetching}>Load more</button>
       )}
       </div>
     </div>

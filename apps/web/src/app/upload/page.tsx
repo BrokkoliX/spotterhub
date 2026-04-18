@@ -16,6 +16,7 @@ import { useMutation, useQuery } from 'urql';
 import exifr from 'exifr';
 
 import { useAuth } from '@/lib/auth';
+import SearchableSelect from '@/components/SearchableSelect';
 import {
   CREATE_PHOTO,
   GET_ME,
@@ -57,12 +58,12 @@ export default function UploadPage() {
   const aircraftSpecificCategories = specificCategoriesResult.data?.aircraftSpecificCategories ?? [];
 
   // Aircraft hierarchy dropdowns
-  const [manufacturersResult] = useQuery({ query: GET_AIRCRAFT_MANUFACTURERS });
+  const [manufacturersResult] = useQuery({ query: GET_AIRCRAFT_MANUFACTURERS, variables: { first: 10000 } });
   const manufacturers = manufacturersResult.data?.aircraftManufacturers?.edges?.map(
     (e: { node: { id: string; name: string; country: string | null } }) => e.node,
   ) ?? [];
 
-  const [familiesResult] = useQuery({ query: GET_AIRCRAFT_FAMILIES });
+  const [familiesResult] = useQuery({ query: GET_AIRCRAFT_FAMILIES, variables: { first: 10000 } });
   const allFamilies = familiesResult.data?.aircraftFamilies?.edges?.map(
     (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
       ...e.node,
@@ -70,7 +71,7 @@ export default function UploadPage() {
     }),
   ) ?? [];
 
-  const [variantsResult] = useQuery({ query: GET_AIRCRAFT_VARIANTS });
+  const [variantsResult] = useQuery({ query: GET_AIRCRAFT_VARIANTS, variables: { first: 10000 } });
   const allVariants = variantsResult.data?.aircraftVariants?.edges?.map(
     (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
       ...e.node,
@@ -78,7 +79,7 @@ export default function UploadPage() {
     }),
   ) ?? [];
 
-  const [airlinesResult] = useQuery({ query: GET_AIRLINES });
+  const [airlinesResult] = useQuery({ query: GET_AIRLINES, variables: { first: 10000 } });
   const airlines = airlinesResult.data?.airlines?.edges?.map(
     (e: { node: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null } }) => e.node,
   ) ?? [];
@@ -662,42 +663,31 @@ export default function UploadPage() {
                         <label htmlFor="manufacturer" className="label">
                           Manufacturer
                         </label>
-                        <select
-                          id="manufacturer"
-                          className="input"
+                        <SearchableSelect
+                          options={manufacturers.map((m: { id: string; name: string }) => ({ id: m.id, label: m.name }))}
                           value={selectedManufacturerId}
-                          onChange={(e) => {
-                            setSelectedManufacturerId(e.target.value);
+                          onChange={(id) => {
+                            setSelectedManufacturerId(id);
                             setSelectedFamilyId('');
                             setSelectedVariantId('');
                           }}
-                        >
-                          <option value="">Select manufacturer…</option>
-                          {manufacturers.map((m: { id: string; name: string }) => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
-                        </select>
+                          placeholder="Search manufacturer…"
+                        />
                       </div>
 
                       <div className="field">
                         <label htmlFor="family" className="label">
                           Family
                         </label>
-                        <select
-                          id="family"
-                          className="input"
+                        <SearchableSelect
+                          options={filteredFamilies.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
                           value={selectedFamilyId}
-                          onChange={(e) => {
-                            setSelectedFamilyId(e.target.value);
+                          onChange={(id) => {
+                            setSelectedFamilyId(id);
                             setSelectedVariantId('');
                           }}
-                          disabled={!selectedManufacturerId}
-                        >
-                          <option value="">Select family…</option>
-                          {filteredFamilies.map((f: { id: string; label: string }) => (
-                            <option key={f.id} value={f.id}>{f.label}</option>
-                          ))}
-                        </select>
+                          placeholder="Search family…"
+                        />
                       </div>
                     </div>
 
@@ -706,18 +696,12 @@ export default function UploadPage() {
                         <label htmlFor="variant" className="label">
                           Variant
                         </label>
-                        <select
-                          id="variant"
-                          className="input"
+                        <SearchableSelect
+                          options={filteredVariants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
                           value={selectedVariantId}
-                          onChange={(e) => setSelectedVariantId(e.target.value)}
-                          disabled={!selectedFamilyId}
-                        >
-                          <option value="">Select variant…</option>
-                          {filteredVariants.map((v: { id: string; label: string }) => (
-                            <option key={v.id} value={v.id}>{v.label}</option>
-                          ))}
-                        </select>
+                          onChange={(id) => setSelectedVariantId(id)}
+                          placeholder="Search variant…"
+                        />
                       </div>
 
                       <div className="field">
@@ -774,19 +758,15 @@ export default function UploadPage() {
                         <label htmlFor="airlineRef" className="label">
                           Airline
                         </label>
-                        <select
-                          id="airlineRef"
-                          className="input"
+                        <SearchableSelect
+                          options={airlines.map((a: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null }) => ({
+                            id: a.icaoCode,
+                            label: `${a.name} (${a.icaoCode}${a.iataCode ? `/${a.iataCode}` : ''})`,
+                          }))}
                           value={selectedAirlineId}
-                          onChange={(e) => setSelectedAirlineId(e.target.value)}
-                        >
-                          <option value="">Select airline…</option>
-                          {airlines.map((a: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null }) => (
-                            <option key={a.id} value={a.icaoCode}>
-                              {a.name} ({a.icaoCode}{a.iataCode ? `/${a.iataCode}` : ''})
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(id) => setSelectedAirlineId(id)}
+                          placeholder="Search airline…"
+                        />
                       </div>
                     </div>
                   </div>
@@ -870,34 +850,24 @@ export default function UploadPage() {
                     <label htmlFor="photoCategory" className="label">
                       Photo Category
                     </label>
-                    <select
-                      id="photoCategory"
-                      className="input"
+                    <SearchableSelect
+                      options={photoCategories.map((c: { id: string; name: string; label: string }) => ({ id: c.id, label: c.label }))}
                       value={photoCategoryId}
-                      onChange={(e) => setPhotoCategoryId(e.target.value)}
-                    >
-                      <option value="">Select category…</option>
-                      {photoCategories.map((c: { id: string; name: string; label: string }) => (
-                        <option key={c.id} value={c.id}>{c.label}</option>
-                      ))}
-                    </select>
+                      onChange={(id) => setPhotoCategoryId(id)}
+                      placeholder="Search category…"
+                    />
                   </div>
 
                   <div className="field">
                     <label htmlFor="aircraftSpecificCategory" className="label">
                       Aircraft Type
                     </label>
-                    <select
-                      id="aircraftSpecificCategory"
-                      className="input"
+                    <SearchableSelect
+                      options={aircraftSpecificCategories.map((c: { id: string; name: string; label: string }) => ({ id: c.id, label: c.label }))}
                       value={aircraftSpecificCategoryId}
-                      onChange={(e) => setAircraftSpecificCategoryId(e.target.value)}
-                    >
-                      <option value="">Select type…</option>
-                      {aircraftSpecificCategories.map((c: { id: string; name: string; label: string }) => (
-                        <option key={c.id} value={c.id}>{c.label}</option>
-                      ))}
-                    </select>
+                      onChange={(id) => setAircraftSpecificCategoryId(id)}
+                      placeholder="Search aircraft type…"
+                    />
                   </div>
                 </div>
 
