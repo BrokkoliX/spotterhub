@@ -84,6 +84,9 @@ async function main() {
 
   const app = express();
 
+  // Trust the ALB/reverse proxy so express-rate-limit uses X-Forwarded-For correctly
+  app.set('trust proxy', 1);
+
   // ─── Rate Limiting ───────────────────────────────────────────────────────
   const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
