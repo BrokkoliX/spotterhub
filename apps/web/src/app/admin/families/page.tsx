@@ -58,7 +58,7 @@ export default function AdminFamiliesPage() {
 
   const [manufacturersResult] = useQuery({
     query: ADMIN_MANUFACTURERS,
-    variables: { first: 500 },
+    variables: { first: 10000 },
     pause: !isAdmin,
   });
 

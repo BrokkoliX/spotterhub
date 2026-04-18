@@ -58,7 +58,7 @@ export default function AdminVariantsPage() {
 
   const [familiesResult] = useQuery({
     query: ADMIN_FAMILIES,
-    variables: { first: 500 },
+    variables: { first: 10000 },
     pause: !isAdmin || !showForm,
   });
 

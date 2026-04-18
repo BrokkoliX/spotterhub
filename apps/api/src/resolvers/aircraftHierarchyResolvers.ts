@@ -36,8 +36,7 @@ export const aircraftHierarchyQueryResolvers = {
       ctx.prisma.aircraftManufacturer.findMany({
         where,
         orderBy: { name: 'asc' },
-        take,
-        include: { families: { include: { variants: true } } },
+        take: take + 1,
       }),
       ctx.prisma.aircraftManufacturer.count({ where }),
     ]);
@@ -87,7 +86,7 @@ export const aircraftHierarchyQueryResolvers = {
       ctx.prisma.aircraftFamily.findMany({
         where,
         orderBy: { name: 'asc' },
-        take,
+        take: take + 1,
         include: { manufacturer: true, variants: true },
       }),
       ctx.prisma.aircraftFamily.count({ where }),
@@ -138,7 +137,7 @@ export const aircraftHierarchyQueryResolvers = {
       ctx.prisma.aircraftVariant.findMany({
         where,
         orderBy: { name: 'asc' },
-        take,
+        take: take + 1,
         include: { family: { include: { manufacturer: true } } },
       }),
       ctx.prisma.aircraftVariant.count({ where }),
