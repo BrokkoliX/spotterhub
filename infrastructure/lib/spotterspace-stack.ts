@@ -93,6 +93,12 @@ export class SpotterSpaceStack extends Stack {
       'arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/JWT_SECRET-V8C46k',
     );
 
+    const resendSecret = secretsmanager.Secret.fromSecretCompleteArn(
+      this,
+      'ResendSecret',
+      'arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/RESEND_API_KEY-H26Fqt',
+    );
+
     // ─── ECR Repos ─────────────────────────────────────────────────────────
     const webEcrRepo = ecr.Repository.fromRepositoryName(this, 'WebEcrRepo', `spotterspace-${stage}-web`);
     const apiEcrRepo = ecr.Repository.fromRepositoryName(this, 'ApiEcrRepo', `spotterspace-${stage}-api`);
