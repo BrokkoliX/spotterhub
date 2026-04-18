@@ -251,7 +251,7 @@ export default function UploadPage() {
             aperture: exif.FNumber ? String(exif.FNumber) : null,
             shutterSpeed: exif.ExposureTime ? String(exif.ExposureTime) : null,
             iso: exif.ISO ? String(exif.ISO) : null,
-            takenAt: exif.DateTimeOriginal ? exif.DateTimeOriginal.toISOString() : null,
+            takenAt: exif.DateTimeOriginal ? exif.DateTimeOriginal.toISOString().split('T')[0] : null,
           });
         }
       } catch {
@@ -383,31 +383,31 @@ export default function UploadPage() {
     setStep('creating');
     setError(null);
 
-    const result = await createPhoto({
-      input: {
-        s3Key,
-        mimeType: file.type,
-        fileSizeBytes: file.size,
-        caption: caption || undefined,
-        aircraftId: aircraftId || undefined,
-        airportCode: airportCode || undefined,
-        takenAt: takenAt || undefined,
-        tags: tags.length > 0 ? tags : undefined,
-        latitude: latitude ? parseFloat(latitude) : undefined,
-        longitude: longitude ? parseFloat(longitude) : undefined,
-        locationPrivacy: locationPrivacy !== 'exact' ? locationPrivacy : undefined,
-        gearBody: gearBody === '__custom__' ? gearBodyCustom : gearBody || undefined,
-        gearLens: gearLens === '__custom__' ? gearLensCustom : gearLens || undefined,
-        photoCategoryId: photoCategoryId || undefined,
-        aircraftSpecificCategoryId: aircraftSpecificCategoryId || undefined,
-        operatorIcao: selectedAirlineId || undefined,
-        operatorType: operatorType ? operatorType.toUpperCase() as string : undefined,
-        msn: msn || undefined,
-        manufacturingDate: manufacturingDate || undefined,
-        locationType: locationType || undefined,
-        exifData: exifData || undefined,
-      },
-    });
+    const input: Record<string, unknown> = {
+      s3Key,
+      mimeType: file.type,
+      fileSizeBytes: file.size,
+    };
+    if (caption) input.caption = caption;
+    if (aircraftId) input.aircraftId = aircraftId;
+    if (airportCode) input.airportCode = airportCode;
+    if (takenAt) input.takenAt = takenAt;
+    if (tags.length > 0) input.tags = tags;
+    if (latitude) input.latitude = parseFloat(latitude);
+    if (longitude) input.longitude = parseFloat(longitude);
+    if (locationPrivacy !== 'exact') input.locationPrivacy = locationPrivacy;
+    if (gearBody === '__custom__' ? gearBodyCustom : gearBody) input.gearBody = gearBody === '__custom__' ? gearBodyCustom : gearBody;
+    if (gearLens === '__custom__' ? gearLensCustom : gearLens) input.gearLens = gearLens === '__custom__' ? gearLensCustom : gearLens;
+    if (photoCategoryId) input.photoCategoryId = photoCategoryId;
+    if (aircraftSpecificCategoryId) input.aircraftSpecificCategoryId = aircraftSpecificCategoryId;
+    if (selectedAirlineId) input.operatorIcao = selectedAirlineId;
+    if (operatorType) input.operatorType = operatorType.toUpperCase();
+    if (msn) input.msn = msn;
+    if (manufacturingDate) input.manufacturingDate = manufacturingDate;
+    if (locationType) input.locationType = locationType;
+    if (exifData && Object.keys(exifData).length > 0) input.exifData = exifData;
+
+    const result = await createPhoto({ input });
 
     if (result.error) {
       setError(
@@ -798,7 +798,7 @@ export default function UploadPage() {
                   </label>
                   <input
                     id="takenAt"
-                    type="datetime-local"
+                    type="date"
                     className="input"
                     value={takenAt}
                     onChange={(e) => setTakenAt(e.target.value)}
