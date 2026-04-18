@@ -158,8 +158,16 @@ async function main() {
     res.json({ ok: true, user: { id: user.id, email: user.email, role: user.role } });
   });
 
+  const adminRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5000,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  });
+
   // Admin endpoint to manually verify a user's email (protected by JWT_SECRET header).
-  app.post('/admin/verify-email', express.json(), async (req, res) => {
+  app.post('/admin/verify-email', adminRateLimiter, express.json(), async (req, res) => {
     const authHeader = req.headers['x-jwt-secret'];
     if (authHeader !== process.env.JWT_SECRET) {
       return res.status(401).json({ error: 'Unauthorized' });
