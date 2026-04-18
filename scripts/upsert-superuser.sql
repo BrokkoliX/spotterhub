@@ -6,7 +6,7 @@
 --   email:    robi_sz@yahoo.com
 --   password: superpass123
 
-INSERT INTO "User" (id, "cognitoSub", email, username, role, status, "createdAt", "updatedAt")
+INSERT INTO "User" (id, "cognitoSub", email, username, role, status, "emailVerified", "createdAt", "updatedAt")
 VALUES (
   gen_random_uuid(),
   'dev1-623683303765a52924e16c6e9149bedc',
@@ -14,10 +14,12 @@ VALUES (
   'robi_sz',
   'superuser',
   'active',
+  true,
   NOW(),
   NOW()
 )
 ON CONFLICT (email) DO UPDATE
   SET "cognitoSub" = EXCLUDED."cognitoSub",
       role = EXCLUDED.role,
+      "emailVerified" = true,
       "updatedAt" = NOW();

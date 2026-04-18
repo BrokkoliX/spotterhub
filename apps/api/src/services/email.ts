@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM_EMAIL = process.env.FROM_EMAIL ?? 'SpotterSpace <noreply@spotterspace.com>';
+const FROM_EMAIL = process.env.FROM_EMAIL ?? 'SpotterSpace <noreply@noreply.spotterspace.com>';
 
 /** Escape HTML special characters to prevent injection in email templates. */
 function escapeHtml(str: string): string {

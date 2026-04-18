@@ -141,7 +141,7 @@ async function main() {
     const sub = randomUUID();
     const user = await prisma.user.upsert({
       where: { email },
-      update: { cognitoSub: sub, passwordHash, role: 'superuser' },
+      update: { cognitoSub: sub, passwordHash, role: 'superuser', emailVerified: true },
       create: {
         cognitoSub: sub,
         passwordHash,

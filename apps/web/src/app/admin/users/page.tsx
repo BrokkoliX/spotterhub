@@ -29,7 +29,7 @@ const STATUS_BADGE: Record<string, string> = {
 export default function AdminUsersPage() {
   const { user, ready } = useAuth();
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
-  const canManage = user?.role === 'admin';
+  const canManage = user?.role === 'admin' || user?.role === 'superuser';
 
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -135,23 +135,20 @@ export default function AdminUsersPage() {
                 <td>{new Date(node.createdAt).toLocaleDateString()}</td>
                 {canManage && (
                   <td>
-                    {node.role === 'user' && (
-                      <button
-                        className={styles.actionBtn}
-                        onClick={() => handleRoleChange(node.id, 'moderator')}
-                      >
-                        → Mod
-                      </button>
-                    )}
-                    {node.role === 'moderator' && (
-                      <button
-                        className={styles.actionBtn}
-                        onClick={() => handleRoleChange(node.id, 'user')}
-                      >
-                        → User
-                      </button>
-                    )}
-                    {node.status === 'active' && node.role !== 'admin' && (
+                    <select
+                      className={styles.filterSelect}
+                      value={node.role}
+                      onChange={(e) => handleRoleChange(node.id, e.target.value)}
+                      disabled={node.role === 'superuser' && user?.role !== 'superuser'}
+                    >
+                      <option value="user">User</option>
+                      <option value="moderator">Moderator</option>
+                      <option value="admin">Admin</option>
+                      {(node.role === 'superuser' || user?.role === 'superuser') && (
+                        <option value="superuser">Superuser</option>
+                      )}
+                    </select>
+                    {node.status === 'active' && node.role !== 'admin' && node.role !== 'superuser' && (
                       <button
                         className={styles.actionBtnDanger}
                         onClick={() => handleStatusChange(node.id, 'suspended')}
