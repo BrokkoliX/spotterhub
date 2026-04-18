@@ -49,7 +49,10 @@ async function loadSecrets(): Promise<void> {
       );
       if (resendResult.SecretString) process.env.RESEND_API_KEY = resendResult.SecretString;
     } catch (err) {
-      console.warn('Could not load RESEND_API_KEY — email features disabled:', (err as Error).message);
+      console.warn(
+        'Could not load RESEND_API_KEY — email features disabled:',
+        (err as Error).message,
+      );
     }
   }
 
@@ -90,10 +93,10 @@ async function main() {
   // ─── Rate Limiting ───────────────────────────────────────────────────────
   const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 20, // 20 attempts per window
+    limit: 5000, // 5000 requests per window (upsert-heavy admin imports)
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'Too many attempts, please try again later' },
+    message: { error: 'Too many requests, please try again later' },
     // Only apply to auth-related GraphQL mutations
     skip: (req) => {
       const body = req.body as { query?: string } | undefined;
@@ -169,7 +172,10 @@ async function main() {
       where: { email },
       data: { emailVerified: true, emailVerificationToken: null },
     });
-    res.json({ ok: true, user: { id: user.id, email: user.email, emailVerified: user.emailVerified } });
+    res.json({
+      ok: true,
+      user: { id: user.id, email: user.email, emailVerified: user.emailVerified },
+    });
   });
 
   const allowedOrigins = [
