@@ -155,6 +155,23 @@ async function main() {
     res.json({ ok: true, user: { id: user.id, email: user.email, role: user.role } });
   });
 
+  // Admin endpoint to manually verify a user's email (protected by JWT_SECRET header).
+  app.post('/admin/verify-email', express.json(), async (req, res) => {
+    const authHeader = req.headers['x-jwt-secret'];
+    if (authHeader !== process.env.JWT_SECRET) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { email } = req.body ?? {};
+    if (!email) {
+      return res.status(400).json({ error: 'email is required' });
+    }
+    const user = await prisma.user.update({
+      where: { email },
+      data: { emailVerified: true, emailVerificationToken: null },
+    });
+    res.json({ ok: true, user: { id: user.id, email: user.email, emailVerified: user.emailVerified } });
+  });
+
   const allowedOrigins = [
     process.env.WEB_BASE_URL ?? 'http://localhost:3000',
     // Allow www and non-www variants in production
