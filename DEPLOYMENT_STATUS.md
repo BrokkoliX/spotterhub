@@ -300,7 +300,7 @@ The API uses a dev-mode authentication system (not AWS Cognito):
 
 ### One-Time Seed Endpoint
 
-The API exposes a `POST /seed` endpoint that upserts the superuser. It requires the JWT_SECRET as an auth header:
+The API exposes a `POST /seed` endpoint that upserts the superuser. It requires the JWT_SECRET as an auth header and a JSON body with `email`, `username`, and `password`:
 
 ```bash
 # 1. Get the JWT_SECRET value
@@ -311,7 +311,27 @@ JWT_SECRET=$(aws secretsmanager get-secret-value \
 
 # 2. Call /seed
 curl -X POST https://api.spotterspace.com/seed \
-  -H "x-jwt-secret: $JWT_SECRET"
+  -H "x-jwt-secret: $JWT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"robi_sz@yahoo.com","username":"robi_sz","password":"Jerusalem!25"}'
+```
+
+The upsert sets `emailVerified: true` on both create and update, so re-running `/seed` will also fix a superuser whose email was not previously verified.
+
+### Admin: Verify Email
+
+The API exposes a `POST /admin/verify-email` endpoint to manually mark any user's email as verified. Protected by JWT_SECRET:
+
+```bash
+JWT_SECRET=$(aws secretsmanager get-secret-value \
+  --secret-id spotterhub/JWT_SECRET \
+  --query SecretString --output text \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['JWT_SECRET'])")
+
+curl -X POST https://api.spotterspace.com/admin/verify-email \
+  -H "x-jwt-secret: $JWT_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
 ```
 
 ---
@@ -473,15 +493,15 @@ aws secretsmanager list-secrets --query "SecretList[].Name" --output table
 
 ## File Reference
 
-| File                               | Description                                                           |
-| ---------------------------------- | --------------------------------------------------------------------- |
-| `.github/workflows/deploy.yml`     | Deploy workflow (Docker build + push to ECR + ECS redeploy)           |
-| `.github/workflows/ci.yml`         | CI workflow (lint → typecheck → test → build)                         |
-| `apps/api/Dockerfile`              | API Docker build (multi-stage, Node 20 Alpine)                        |
-| `apps/api/docker-entrypoint.sh`    | API container startup (runs migrations before server)                 |
-| `apps/api/src/index.ts`            | API entry point (secret loading, migrations, /seed endpoint)          |
-| `apps/web/Dockerfile`              | Web Docker build (Next.js standalone)                                 |
-| `apps/web/next.config.ts`          | Next.js config (standalone output, /api/graphql rewrite, S3 patterns) |
-| `packages/db/prisma/schema.prisma` | Prisma schema (database models)                                       |
-| `packages/db/prisma/seed.ts`       | Database seed (test users, airports, sample data)                     |
-| `DEPLOYMENT_STATUS.md`             | This file                                                             |
+| File                               | Description                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `.github/workflows/deploy.yml`     | Deploy workflow (Docker build + push to ECR + ECS redeploy)                         |
+| `.github/workflows/ci.yml`         | CI workflow (lint → typecheck → test → build)                                       |
+| `apps/api/Dockerfile`              | API Docker build (multi-stage, Node 20 Alpine)                                      |
+| `apps/api/docker-entrypoint.sh`    | API container startup (runs migrations before server)                               |
+| `apps/api/src/index.ts`            | API entry point (secret loading, migrations, /seed & /admin/verify-email endpoints) |
+| `apps/web/Dockerfile`              | Web Docker build (Next.js standalone)                                               |
+| `apps/web/next.config.ts`          | Next.js config (standalone output, /api/graphql rewrite, S3 patterns)               |
+| `packages/db/prisma/schema.prisma` | Prisma schema (database models)                                                     |
+| `packages/db/prisma/seed.ts`       | Database seed (test users, airports, sample data)                                   |
+| `DEPLOYMENT_STATUS.md`             | This file                                                                           |
