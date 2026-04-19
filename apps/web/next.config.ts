@@ -18,11 +18,11 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "localhost",
         port: "4566",
-        pathname: "/spotterspace-photos/**",
+        pathname: "/spotterhub-photos/**",
       },
       {
         protocol: "https",
-        hostname: "spotterspace-photos.s3.us-east-1.amazonaws.com",
+        hostname: "d2ur47prd8ljwz.cloudfront.net",
         pathname: "/**",
       },
     ],

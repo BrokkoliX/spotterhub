@@ -174,7 +174,8 @@ export function getObjectUrl(key: string): string {
   if (S3_ENDPOINT) {
     return `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
   }
-  return `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`;
+  // Use CloudFront for prod reads (serves via CDN with proper caching headers)
+  return `https://d2ur47prd8ljwz.cloudfront.net/${key}`;
 }
 
 function mimeTypeToExtension(mimeType: string): string {
