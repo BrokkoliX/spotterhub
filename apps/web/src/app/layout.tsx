@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: 'SpotterSpace — Aviation Photography Community',
   description:
     'The premier platform for aviation photographers to share, discover, and connect.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
