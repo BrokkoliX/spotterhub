@@ -206,6 +206,17 @@ export default function UploadPage() {
   const [exifData, setExifData] = useState<Record<string, unknown> | null>(null);
   const [airlineDisplay, setAirlineDisplay] = useState(''); // shown below airline dropdown
 
+  // Try to get device location on mount to set initial map center
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setMapPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {}, // silently ignore — keep default center
+    );
+  }, []);
+
   // Airport picker handler — sets airport code + coordinates
   const handleAirportSelect = (airport: Airport | null) => {
     setSelectedAirport(airport);
