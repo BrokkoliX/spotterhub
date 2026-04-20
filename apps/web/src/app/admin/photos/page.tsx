@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useMutation } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { ADMIN_UPDATE_PHOTO_MODERATION } from '@/lib/queries';
+import { APPROVE_PHOTO, REJECT_PHOTO } from '@/lib/queries';
 import type { AdminPhotosQuery } from '@/lib/generated/graphql';
 import { useAdminPhotosQuery } from '@/lib/generated/graphql';
 
@@ -40,7 +40,8 @@ export default function AdminPhotosPage() {
     pause: !isAdmin,
   });
 
-  const [, updateModeration] = useMutation(ADMIN_UPDATE_PHOTO_MODERATION);
+  const [, approvePhoto] = useMutation(APPROVE_PHOTO);
+  const [, rejectPhoto] = useMutation(REJECT_PHOTO);
 
   if (!ready) return <div className={styles.loading}>Loading…</div>;
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
@@ -49,8 +50,13 @@ export default function AdminPhotosPage() {
   const hasNextPage = photos?.pageInfo?.hasNextPage;
   const endCursor = photos?.pageInfo?.endCursor;
 
-  const handleModeration = async (photoId: string, status: string) => {
-    await updateModeration({ photoId, status });
+  const handleApprove = async (photoId: string) => {
+    await approvePhoto({ photoId });
+    reexecute({ requestPolicy: 'network-only' });
+  };
+
+  const handleReject = async (photoId: string) => {
+    await rejectPhoto({ photoId });
     reexecute({ requestPolicy: 'network-only' });
   };
 
@@ -123,7 +129,7 @@ export default function AdminPhotosPage() {
                   {node.moderationStatus !== 'approved' && (
                     <button
                       className={styles.actionBtnSuccess}
-                      onClick={() => handleModeration(node.id, 'approved')}
+                      onClick={() => handleApprove(node.id)}
                     >
                       Approve
                     </button>
@@ -131,7 +137,7 @@ export default function AdminPhotosPage() {
                   {node.moderationStatus !== 'rejected' && (
                     <button
                       className={styles.actionBtnDanger}
-                      onClick={() => handleModeration(node.id, 'rejected')}
+                      onClick={() => handleReject(node.id)}
                     >
                       Reject
                     </button>

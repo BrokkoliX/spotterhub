@@ -1054,6 +1054,24 @@ export const ADMIN_UPDATE_PHOTO_MODERATION = gql`
   }
 `;
 
+export const APPROVE_PHOTO = gql`
+  mutation ApprovePhoto($photoId: ID!) {
+    approvePhoto(photoId: $photoId) {
+      id
+      moderationStatus
+    }
+  }
+`;
+
+export const REJECT_PHOTO = gql`
+  mutation RejectPhoto($photoId: ID!, $reason: String) {
+    rejectPhoto(photoId: $photoId, reason: $reason) {
+      id
+      moderationStatus
+    }
+  }
+`;
+
 // ─── Communities ─────────────────────────────────────────────────────────
 
 export const GET_COMMUNITY = gql`

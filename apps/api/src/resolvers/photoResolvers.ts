@@ -1,7 +1,7 @@
 import { validateUpload } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
-import { requireAuth } from '../auth/requireAuth.js';
+import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { generateVariants } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
@@ -143,7 +143,7 @@ export const photoQueryResolvers = {
 
     // Build filter conditions
     const where: Record<string, unknown> = {
-      moderationStatus: { in: ['approved', 'pending'] },
+      moderationStatus: 'approved',
     };
 
     if (args.after) {
@@ -505,6 +505,39 @@ export const photoMutationResolvers = {
         ...(operatorType !== undefined && { operatorType: operatorType ? operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private' : null }),
         ...(msn !== undefined && { msn: msn ?? null }),
         ...(manufacturingDate !== undefined && { manufacturingDate: manufacturingDate ?? null }),
+      },
+      include: { user: true, variants: true, tags: true },
+    });
+  },
+
+  approvePhoto: async (_parent: unknown, args: { photoId: string }, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const photo = await ctx.prisma.photo.findUnique({ where: { id: args.photoId } });
+    if (!photo) {
+      throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    return ctx.prisma.photo.update({
+      where: { id: args.photoId },
+      data: { moderationStatus: 'approved' },
+      include: { user: true, variants: true, tags: true },
+    });
+  },
+
+  rejectPhoto: async (_parent: unknown, args: { photoId: string; reason?: string }, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const photo = await ctx.prisma.photo.findUnique({ where: { id: args.photoId } });
+    if (!photo) {
+      throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    return ctx.prisma.photo.update({
+      where: { id: args.photoId },
+      data: {
+        moderationStatus: 'rejected',
+        ...(args.reason && { moderationLabels: { reason: args.reason } }),
       },
       include: { user: true, variants: true, tags: true },
     });

@@ -594,6 +594,17 @@ export const typeDefs = gql`
     adminUpdatePhotoModeration(photoId: ID!, status: String!): Photo!
 
     """
+    Approve a pending photo, making it visible in the public feed.
+    Requires admin or moderator role.
+    """
+    approvePhoto(photoId: ID!): Photo!
+
+    """
+    Reject a pending photo. Requires admin or moderator role.
+    """
+    rejectPhoto(photoId: ID!, reason: String): Photo!
+
+    """
     Create an airport. Requires admin or superuser role.
     """
     createAirport(input: CreateAirportInput!): Airport!
