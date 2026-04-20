@@ -48,7 +48,7 @@ export const locationQueryResolvers = {
       WHERE pl.display_latitude BETWEEN ${args.swLat} AND ${args.neLat}
         AND pl.display_longitude BETWEEN ${args.swLng} AND ${args.neLng}
         AND pl.privacy_mode != 'hidden'
-        AND p.moderation_status IN ('approved', 'pending')
+        AND p.moderation_status = 'approved'
       ORDER BY p.created_at DESC
       LIMIT ${limit}
     `;
@@ -81,7 +81,7 @@ export const locationQueryResolvers = {
       JOIN photos p ON p.id = pl.photo_id
       LEFT JOIN photo_variants pv ON pv.photo_id = p.id AND pv.variant_type = 'thumbnail'
       WHERE pl.privacy_mode != 'hidden'
-        AND p.moderation_status IN ('approved', 'pending')
+        AND p.moderation_status = 'approved'
         AND ST_DWithin(
           ST_SetSRID(ST_MakePoint(pl.display_longitude, pl.display_latitude), 4326)::geography,
           ST_SetSRID(ST_MakePoint(${args.longitude}, ${args.latitude}), 4326)::geography,

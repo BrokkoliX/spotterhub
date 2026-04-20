@@ -21,7 +21,7 @@ export const searchQueryResolvers = {
     }
 
     const where: Record<string, unknown> = {
-      moderationStatus: { in: ['approved', 'pending'] },
+      moderationStatus: 'approved',
       OR: [
         { caption: { contains: q, mode: 'insensitive' } },
         { airline: { contains: q, mode: 'insensitive' } },
@@ -122,7 +122,7 @@ export const searchQueryResolvers = {
     const airlines = await ctx.prisma.photo.findMany({
       where: {
         airline: { contains: q, mode: 'insensitive' },
-        moderationStatus: { in: ['approved', 'pending'] },
+        moderationStatus: 'approved',
       },
       select: { airline: true },
       distinct: ['airline'],

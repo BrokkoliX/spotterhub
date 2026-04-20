@@ -339,7 +339,7 @@ export const followQueryResolvers = {
     }
 
     const where: Record<string, unknown> = {
-      moderationStatus: { in: ['approved', 'pending'] },
+      moderationStatus: 'approved',
       OR: orConditions,
     };
 

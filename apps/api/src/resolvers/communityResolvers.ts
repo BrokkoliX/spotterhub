@@ -947,7 +947,7 @@ export const communityFieldResolvers = {
     if (isSuperuser) {
       // Superuser: bypass membership filter, show all approved photos
       const where: Record<string, unknown> = {
-        moderationStatus: { in: ['approved', 'pending'] },
+        moderationStatus: 'approved',
       };
       if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
 
@@ -989,7 +989,7 @@ export const communityFieldResolvers = {
 
     const where: Record<string, unknown> = {
       userId: { in: userIds },
-      moderationStatus: { in: ['approved', 'pending'] },
+      moderationStatus: 'approved',
     };
 
     if (args.after) {
