@@ -12,9 +12,8 @@ const API_URL =
  * Creates a urql GraphQL client with auth exchange.
  *
  * The auth exchange handles:
- * - Reading the JWT from localStorage and attaching it to requests
- * - Detecting UNAUTHENTICATED errors and clearing stale tokens
- * - Redirecting to sign-in when the token has expired
+ * - Cookie-based auth: HttpOnly cookies are automatically sent with same-origin requests
+ * - Detecting UNAUTHENTICATED errors and redirecting to sign-in
  *
  * In the browser, requests go through the Next.js rewrite proxy to avoid CORS.
  * During SSR, requests go directly to the API.
@@ -22,18 +21,20 @@ const API_URL =
 export function makeClient() {
   return createClient({
     url: API_URL,
+    fetchOptions: {
+      credentials: 'include', // Send cookies with same-origin requests
+    },
     exchanges: [
       cacheExchange,
       authExchange(async (utils) => ({
         addAuthToOperation(operation) {
-          const token =
-            typeof window !== 'undefined'
-              ? localStorage.getItem('token')
-              : null;
-          if (!token) return operation;
-          return utils.appendHeaders(operation, {
-            Authorization: `Bearer ${token}`,
-          });
+          // Token is stored in HttpOnly cookie — browser sends it automatically.
+          // For programmatic access (SSR, etc.), also check a non-HttpOnly fallback.
+          if (typeof window !== 'undefined') {
+            // Browser: cookie is sent automatically via credentials: 'include'
+            return operation;
+          }
+          return operation;
         },
 
         didAuthError(error) {
@@ -43,15 +44,9 @@ export function makeClient() {
         },
 
         async refreshAuth() {
-          // No refresh token flow yet — clear stale token and redirect to sign-in.
-          // Only redirect if there is a stored token; on the sign-in page itself,
-          // an UNAUTHENTICATED error means bad credentials, not a expired token.
+          // Redirect to sign-in on auth errors — cookie may have expired.
           if (typeof window !== 'undefined') {
-            const token = localStorage.getItem('token');
-            if (token) {
-              localStorage.removeItem('token');
-              window.location.href = '/signin';
-            }
+            window.location.href = '/signin';
           }
         },
       })),
@@ -66,6 +61,7 @@ export function makeClient() {
                 ...(typeof operation.context.fetchOptions === 'function'
                   ? operation.context.fetchOptions()
                   : operation.context.fetchOptions),
+                credentials: 'include',
                 headers: {
                   ...(typeof operation.context.fetchOptions === 'function'
                     ? operation.context.fetchOptions()

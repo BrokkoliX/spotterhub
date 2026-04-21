@@ -145,6 +145,12 @@ export const authMutationResolvers = {
     }
 
     const token = signToken({ sub: user.cognitoSub, email, username: user.username });
+
+    // Set HttpOnly cookie for browser clients
+    ctx.res?.setHeader('Set-Cookie', [
+      `access_token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+    ]);
+
     return { token, user };
   },
 
@@ -241,6 +247,11 @@ export const authMutationResolvers = {
       username: updatedUser.username,
     });
 
+    // Set HttpOnly cookie for browser clients
+    ctx.res?.setHeader('Set-Cookie', [
+      `access_token=${newToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+    ]);
+
     return { token: newToken, user: updatedUser };
   },
 
@@ -275,6 +286,11 @@ export const authMutationResolvers = {
       email: user.email,
       username: user.username,
     });
+
+    // Set HttpOnly cookie for browser clients
+    ctx.res?.setHeader('Set-Cookie', [
+      `access_token=${jwt}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+    ]);
 
     return { token: jwt, user: updatedUser };
   },

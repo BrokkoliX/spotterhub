@@ -3,17 +3,14 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
-import { useMutation } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import { SIGN_IN } from '@/lib/queries';
 
 import styles from './page.module.css';
 
 export default function SignInPage() {
   const router = useRouter();
   const { signIn } = useAuth();
-  const [, executeMutation] = useMutation(SIGN_IN);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,17 +22,13 @@ export default function SignInPage() {
     setError(null);
     setLoading(true);
 
-    const result = await executeMutation({ input: { email, password } });
-
-    if (result.error) {
-      setError(result.error.graphQLErrors[0]?.message ?? 'Sign in failed');
+    try {
+      await signIn(email, password);
+      router.push('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
       setLoading(false);
-      return;
     }
-
-    const { token, user } = result.data.signIn;
-    signIn(token, user);
-    router.push('/');
   };
 
   return (

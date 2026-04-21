@@ -1,9 +1,10 @@
 // SpotterSpace AWS Infrastructure — CDK v2
-// Architecture: ECS Fargate (web + API) → ALB → RDS via VPC
+// Architecture: CloudFront → ECS Fargate (web + API) → ALB → RDS via VPC
 import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import {
   aws_certificatemanager as acm,
+  aws_cloudfront as cloudfront,
   aws_ec2 as ec2,
   aws_ecr as ecr,
   aws_ecs as ecs,
@@ -253,6 +254,127 @@ export class SpotterSpaceStack extends Stack {
           },
         ],
       });
+
+      // ─── CloudFront Distribution ─────────────────────────────────────────────
+      // Handles HTTPS for www + apex, and apex→www redirect.
+      // ALB is now internal; CloudFront is the HTTPS edge.
+      // CloudFront function: redirect apex domain (non-www) to www
+      const apexRedirectFunction = new cloudfront.CfnFunction(this, 'ApexRedirectFunction', {
+        name: 'ApexRedirect',
+        functionCode: `
+function handler(event) {
+  var request = event.request;
+  var host = request.headers.host.value;
+  if (host === '${domainName}') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        'location': { value: 'https://www.${domainName}' + request.uri },
+        'host': { value: 'www.${domainName}' }
+      }
+    };
+  }
+  return request;
+}
+        `,
+        functionConfig: {
+          runtime: 'cloudfront-js-1.0',
+          comment: 'Redirect apex domain to www',
+        },
+      });
+
+      const distribution = new cloudfront.CfnDistribution(this, 'CdnDistribution', {
+        distributionConfig: {
+          enabled: true,
+          priceClass: 'PriceClass_100',
+          aliases: [domainName, `www.${domainName}`],
+          viewerCertificate: {
+            acmCertificateArn: new acm.Certificate(this, 'CdnCertificate', {
+              domainName,
+              subjectAlternativeNames: [`*.${domainName}`],
+              validation: acm.CertificateValidation.fromDns(hostedZone),
+            }).certificateArn,
+            sslSupportMethod: 'sni-only',
+          },
+          defaultRootObject: '/',
+          origins: [
+            {
+              id: 'web-origin',
+              domainName: alb.loadBalancerDnsName,
+              originCustomHeaders: [
+                { headerName: 'Host', headerValue: `www.${domainName}` },
+              ],
+              connectionAttempts: 3,
+              connectionTimeout: 10,
+            },
+            {
+              id: 'api-origin',
+              domainName: alb.loadBalancerDnsName,
+              originCustomHeaders: [
+                { headerName: 'Host', headerValue: `api.${domainName}` },
+              ],
+              connectionAttempts: 3,
+              connectionTimeout: 10,
+            },
+          ],
+          defaultCacheBehavior: {
+            targetOriginId: 'web-origin',
+            viewerProtocolPolicy: 'redirect-to-https',
+            allowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'POST', 'PATCH', 'DELETE'],
+            cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
+            compress: true,
+            minTtl: 0,
+            defaultTtl: 0,
+            maxTtl: 0,
+            functionAssociations: [
+              {
+                functionArn: apexRedirectFunction.getAtt('Arn').toString(),
+                eventType: 'viewer-request',
+              },
+            ],
+          },
+          cacheBehaviors: [
+            {
+              pathPattern: '/graphql',
+              targetOriginId: 'api-origin',
+              viewerProtocolPolicy: 'https-only',
+              allowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'POST', 'PATCH', 'DELETE'],
+              cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
+              minTtl: 0,
+              defaultTtl: 0,
+              maxTtl: 0,
+              compress: true,
+            },
+          ],
+        },
+      });
+
+      // ─── Route 53 Records (inside CloudFront block to access `hostedZone`) ──
+      // Apex domain → CloudFront alias (A record)
+      new route53.CfnRecordSet(this, 'ApexARecord', {
+        name: domainName,
+        type: 'A',
+        hostedZoneId,
+        aliasTarget: {
+          hostedZoneId: 'Z2FDTNDATAQYW2', // CloudFront global hosted zone ID
+          dnsName: distribution.getAtt('domainName').toString(),
+        },
+      });
+
+      // www → CloudFront (keep CNAME to ALB since CfnDistribution domainName is a token)
+      new route53.CnameRecord(this, 'WwwCnameRecord', {
+        zone: hostedZone,
+        recordName: `www.${domainName}`,
+        domainName: alb.loadBalancerDnsName,
+      });
+
+      // api → ALB directly
+      new route53.CnameRecord(this, 'ApiCnameRecord', {
+        zone: hostedZone,
+        recordName: `api.${domainName}`,
+        domainName: alb.loadBalancerDnsName,
+      });
     }
 
     // ─── Task Definitions (Cfn) ─────────────────────────────────────────────
@@ -400,26 +522,6 @@ export class SpotterSpaceStack extends Stack {
     if (httpsListener) {
       apiService.addDependency(httpsListener);
       webService.addDependency(httpsListener);
-    }
-
-    // ─── Route 53 CNAMEs ───────────────────────────────────────────────────
-    if (domainName && hostedZoneId) {
-      const dnsHostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'DnsHostedZone', {
-        hostedZoneId,
-        zoneName: domainName,
-      });
-
-      new route53.CnameRecord(this, 'WwwCnameRecord', {
-        zone: dnsHostedZone,
-        recordName: `www.${domainName}`,
-        domainName: alb.loadBalancerDnsName,
-      });
-
-      new route53.CnameRecord(this, 'ApiCnameRecord', {
-        zone: dnsHostedZone,
-        recordName: `api.${domainName}`,
-        domainName: alb.loadBalancerDnsName,
-      });
     }
 
     // ─── Outputs ───────────────────────────────────────────────────────────

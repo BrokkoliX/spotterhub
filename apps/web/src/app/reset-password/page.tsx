@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { useMutation } from 'urql';
 
-import { useAuth } from '@/lib/auth';
 import { RESET_PASSWORD } from '@/lib/queries';
 
 import styles from './page.module.css';
@@ -14,7 +13,6 @@ function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
-  const { signIn } = useAuth();
   const [, executeMutation] = useMutation(RESET_PASSWORD);
 
   const [password, setPassword] = useState('');
@@ -54,8 +52,7 @@ function ResetPasswordContent() {
     }
 
     setSuccess(true);
-    const { token: newToken, user } = result.data.resetPassword;
-    signIn(newToken, user);
+    // resetPassword sets the HttpOnly cookie; redirect to home
     setTimeout(() => router.push('/'), 1500);
   };
 

@@ -22,7 +22,7 @@ export async function teardownTestServer(server: ApolloServer<Context>): Promise
 // ─── Context helpers ──────────────────────────────────────────────────────────
 
 export function createTestContext(user: Context['user'] = null): Context {
-  return { prisma, user, loaders: createLoaders(prisma) };
+  return { prisma, user, loaders: createLoaders(prisma), res: {} as Context['res'] };
 }
 
 export async function createTestUser(

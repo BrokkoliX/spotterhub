@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { useMutation } from 'urql';
 
-import { useAuth } from '@/lib/auth';
 import { VERIFY_EMAIL } from '@/lib/queries';
 
 import styles from '../signin/page.module.css';
@@ -13,7 +12,6 @@ import styles from '../signin/page.module.css';
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuth();
   const [, executeMutation] = useMutation(VERIFY_EMAIL);
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -39,12 +37,13 @@ function VerifyEmailContent() {
           return;
         }
 
-        const { token: jwt, user } = result.data.verifyEmail;
-        signIn(jwt, user);
+        // The verifyEmail mutation sets the HttpOnly cookie. Navigate to home
+        // and the AuthProvider will rehydrate from the cookie on next load.
         // eslint-disable-next-line react-hooks/set-state-in-effect -- async mutation result requires setState in effect
         setStatus('success');
+        router.push('/');
       });
-  }, [searchParams, executeMutation, signIn]);
+  }, [searchParams, executeMutation, router]);
 
   if (status === 'loading') {
     return (

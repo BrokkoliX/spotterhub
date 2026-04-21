@@ -468,6 +468,7 @@ model PhotoLocation {
   spottingLocation SpottingLocation? @relation(fields: [spottingLocationId], references: [id], onDelete: SetNull)
 
   // Note: PostGIS geometry column and spatial index added via raw SQL migration
+  @@index([displayLatitude, displayLongitude])
   @@map("photo_locations")
 }
 

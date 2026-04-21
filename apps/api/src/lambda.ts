@@ -108,6 +108,7 @@ export const handler = async (event: {
       prisma: (await import('@spotterspace/db')).prisma,
       user: null, // Will be populated by createContext logic below
       loaders: null as unknown as import('./loaders.js').Loaders,
+      res: {} as Context['res'],
     };
 
     // Decode JWT if present

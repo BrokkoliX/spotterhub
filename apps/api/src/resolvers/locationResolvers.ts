@@ -70,6 +70,8 @@ export const locationQueryResolvers = {
     const limit = Math.min(args.first ?? 50, 200);
     const radius = args.radiusMeters ?? 5000;
 
+    // Uses the pre-computed `geom` geography column (added via raw SQL migration)
+    // which has a PostGIS GIST spatial index for fast distance queries.
     const rows = await ctx.prisma.$queryRaw<RawPhotoMarker[]>`
       SELECT
         pl.id,
@@ -83,12 +85,12 @@ export const locationQueryResolvers = {
       WHERE pl.privacy_mode != 'hidden'
         AND p.moderation_status = 'approved'
         AND ST_DWithin(
-          ST_SetSRID(ST_MakePoint(pl.display_longitude, pl.display_latitude), 4326)::geography,
+          pl.geom,
           ST_SetSRID(ST_MakePoint(${args.longitude}, ${args.latitude}), 4326)::geography,
           ${radius}
         )
       ORDER BY ST_Distance(
-        ST_SetSRID(ST_MakePoint(pl.display_longitude, pl.display_latitude), 4326)::geography,
+        pl.geom,
         ST_SetSRID(ST_MakePoint(${args.longitude}, ${args.latitude}), 4326)::geography
       )
       LIMIT ${limit}

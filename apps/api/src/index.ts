@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import { prisma } from '@spotterspace/db';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -89,6 +90,9 @@ async function main() {
 
   // Trust the ALB/reverse proxy so express-rate-limit uses X-Forwarded-For correctly
   app.set('trust proxy', 1);
+
+  // Parse cookies for auth context
+  app.use(cookieParser());
 
   // ─── Rate Limiting ───────────────────────────────────────────────────────
   const authRateLimiter = rateLimit({
