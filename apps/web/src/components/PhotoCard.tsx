@@ -150,7 +150,7 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
         </div>
 
         {/* Back face */}
-        <div className={`${styles.cardFace} ${styles.cardBack}`}>
+        <Link href={`/photos/${photo.id}`} className={`${styles.cardFace} ${styles.cardBack}`}>
           {photo.caption && (
             <p className={styles.backCaption}>{photo.caption}</p>
           )}
@@ -179,7 +179,7 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
             </span>
           </div>
           <p className={styles.backDate}>Tap to see full details</p>
-        </div>
+        </Link>
       </div>
     </article>
   );
