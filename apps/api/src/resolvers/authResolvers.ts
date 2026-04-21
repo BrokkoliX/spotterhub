@@ -12,22 +12,59 @@ import {
   sendVerificationEmail,
 } from '../services/email.js';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const BCRYPT_ROUNDS = 12;
+const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour in seconds
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 
-/**
- * Hashes a password using bcrypt with a per-user salt.
- */
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-/**
- * Verifies a password against a bcrypt hash.
- */
 async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
+}
+
+/**
+ * Creates a refresh token record in the DB and returns the raw token string.
+ */
+async function createRefreshToken(
+  prisma: Context['prisma'],
+  userId: string,
+): Promise<string> {
+  const token = randomBytes(48).toString('base64url');
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000);
+  await prisma.refreshToken.create({
+    data: { token, userId, expiresAt },
+  });
+  return token;
+}
+
+/**
+ * Issues a new short-lived access token + rotates the refresh token cookie.
+ * Called on sign-in, token refresh, and session extension.
+ */
+async function issueSession(
+  ctx: Context,
+  user: { id: string; cognitoSub: string; email: string; username: string },
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const accessToken = signToken({ sub: user.cognitoSub, email: user.email, username: user.username });
+  const refreshToken = await createRefreshToken(ctx.prisma, user.id);
+
+  // Access token: short-lived HttpOnly cookie (1 hour)
+  ctx.res?.setHeader('Set-Cookie', [
+    `access_token=${accessToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}`,
+  ]);
+
+  // Refresh token: long-lived HttpOnly cookie (7 days), used to obtain new access tokens
+  ctx.res?.setHeader('Set-Cookie', [
+    `refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}`,
+  ]);
+
+  return { accessToken, refreshToken };
 }
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
@@ -40,7 +77,6 @@ export const authMutationResolvers = {
   ) => {
     const { email, username, password, displayName } = args.input;
 
-    // Validate username
     const usernameError = validateUsername(username);
     if (usernameError) {
       throw new GraphQLError(usernameError, {
@@ -48,14 +84,12 @@ export const authMutationResolvers = {
       });
     }
 
-    // Validate password
     if (password.length < 8) {
       throw new GraphQLError('Password must be at least 8 characters', {
         extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
-    // Check for existing user
     const existing = await ctx.prisma.user.findFirst({
       where: { OR: [{ email }, { username }] },
     });
@@ -144,14 +178,78 @@ export const authMutationResolvers = {
       });
     }
 
-    const token = signToken({ sub: user.cognitoSub, email, username: user.username });
+    const { accessToken, refreshToken } = await issueSession(ctx, {
+      id: user.id,
+      cognitoSub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
-    // Set HttpOnly cookie for browser clients
+    return { token: accessToken, refreshToken, user };
+  },
+
+  /**
+   * Exchange a valid refresh_token cookie for a new short-lived access token.
+   * Implements token rotation: the old refresh token is deleted and a new one is issued.
+   */
+  refreshToken: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } })
+      .cookies?.refresh_token;
+
+    if (!refreshTokenStr) {
+      throw new GraphQLError('Refresh token required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    const record = await ctx.prisma.refreshToken.findUnique({
+      where: { token: refreshTokenStr },
+      include: { user: { include: { profile: true } } },
+    });
+
+    if (!record || record.expiresAt < new Date()) {
+      throw new GraphQLError('Refresh token expired or invalid', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    const user = record.user;
+
+    if (user.status !== 'active') {
+      throw new GraphQLError('Your account has been suspended or banned', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Rotate: delete old refresh token, issue new session
+    await ctx.prisma.refreshToken.delete({ where: { id: record.id } });
+
+    const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {
+      id: user.id,
+      cognitoSub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    return { token: accessToken, refreshToken: newRefreshToken, user };
+  },
+
+  signOut: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } })
+      .cookies?.refresh_token;
+
+    if (refreshTokenStr) {
+      await ctx.prisma.refreshToken.deleteMany({
+        where: { token: refreshTokenStr },
+      });
+    }
+
     ctx.res?.setHeader('Set-Cookie', [
-      `access_token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
+      `access_token=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`,
+      `refresh_token=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`,
     ]);
 
-    return { token, user };
+    return true;
   },
 
   requestPasswordReminder: async (_parent: unknown, args: { email: string }, ctx: Context) => {
@@ -164,7 +262,6 @@ export const authMutationResolvers = {
       });
     }
 
-    // Always return true — don't reveal whether user exists
     return true;
   },
 
@@ -174,7 +271,7 @@ export const authMutationResolvers = {
     const user = await ctx.prisma.user.findUnique({ where: { email } });
     if (user) {
       const token = randomBytes(32).toString('base64url');
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
       await ctx.prisma.passwordResetToken.create({
         data: { userId: user.id, token, expiresAt },
@@ -186,7 +283,6 @@ export const authMutationResolvers = {
       });
     }
 
-    // Always return true — don't reveal whether user exists
     return true;
   },
 
@@ -235,24 +331,19 @@ export const authMutationResolvers = {
       include: { profile: true },
     });
 
-    // Mark token as used
     await ctx.prisma.passwordResetToken.update({
       where: { id: resetToken.id },
       data: { usedAt: new Date() },
     });
 
-    const newToken = signToken({
-      sub: newSub,
+    const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {
+      id: updatedUser.id,
+      cognitoSub: newSub,
       email: updatedUser.email,
       username: updatedUser.username,
     });
 
-    // Set HttpOnly cookie for browser clients
-    ctx.res?.setHeader('Set-Cookie', [
-      `access_token=${newToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
-    ]);
-
-    return { token: newToken, user: updatedUser };
+    return { token: accessToken, refreshToken: newRefreshToken, user: updatedUser };
   },
 
   verifyEmail: async (_parent: unknown, args: { token: string }, ctx: Context) => {
@@ -281,17 +372,13 @@ export const authMutationResolvers = {
       include: { profile: true },
     });
 
-    const jwt = signToken({
-      sub: user.cognitoSub,
-      email: user.email,
-      username: user.username,
+    const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {
+      id: updatedUser.id,
+      cognitoSub: user.cognitoSub,
+      email: updatedUser.email,
+      username: updatedUser.username,
     });
 
-    // Set HttpOnly cookie for browser clients
-    ctx.res?.setHeader('Set-Cookie', [
-      `access_token=${jwt}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`,
-    ]);
-
-    return { token: jwt, user: updatedUser };
+    return { token: accessToken, refreshToken: newRefreshToken, user: updatedUser };
   },
 };

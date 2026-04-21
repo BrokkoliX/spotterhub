@@ -109,6 +109,7 @@ export const handler = async (event: {
       user: null, // Will be populated by createContext logic below
       loaders: null as unknown as import('./loaders.js').Loaders,
       res: {} as Context['res'],
+      req: {} as Context['req'],
     };
 
     // Decode JWT if present

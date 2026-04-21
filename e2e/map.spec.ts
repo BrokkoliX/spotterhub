@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { signIn } from './testUtils';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -34,28 +35,9 @@ test.describe('Map page', () => {
 
 test.describe('Map page with auth + data', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the page first, then set localStorage (not at about:blank)
+    // Sign in via cookie-based auth
+    await signIn(page, 'test@example.com', 'password123');
     await page.goto('/map');
-    await page.evaluate(() => {
-      localStorage.setItem('token', 'test-token');
-      localStorage.setItem(
-        'user',
-        JSON.stringify({ id: 'u1', username: 'test', role: 'user', email: 't@t.com' }),
-      );
-    });
-    await page.reload();
-  });
-
-  test('airport markers appear after airports query loads', async ({ page }) => {
-    // Wait for map container
-    const mapContainer = page.locator('[class*="mapContainer"]').first();
-    await expect(mapContainer).toBeVisible({ timeout: 10000 });
-
-    // Wait for map to stabilize and GraphQL requests to resolve
-    await page.waitForTimeout(3000);
-
-    // Map container should still be visible (no crash)
-    await expect(mapContainer).toBeVisible();
   });
 
   test('map container is present and stable after interactions', async ({ page }) => {

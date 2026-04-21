@@ -21,8 +21,27 @@ export async function teardownTestServer(server: ApolloServer<Context>): Promise
 
 // ─── Context helpers ──────────────────────────────────────────────────────────
 
+// Minimal mock for ServerResponse with setHeader
+const mockRes = {
+  setHeader: (name: string, value: string | string[]) => {
+    // no-op in tests
+  },
+  getHeader: () => undefined,
+  removeHeader: () => {},
+  statusCode: 200,
+  statusMessage: '',
+  end: () => {},
+  write: () => false,
+  once: () => {},
+  addListener: () => {},
+  emit: () => false,
+  on: () => {},
+  appendHeader: () => mockRes as unknown as import('node:http').ServerResponse,
+  flushHeaders: () => mockRes as unknown as import('node:http').ServerResponse,
+} as unknown as import('node:http').ServerResponse;
+
 export function createTestContext(user: Context['user'] = null): Context {
-  return { prisma, user, loaders: createLoaders(prisma), res: {} as Context['res'] };
+  return { prisma, user, loaders: createLoaders(prisma), res: mockRes, req: {} as Context['req'] };
 }
 
 export async function createTestUser(
@@ -71,6 +90,7 @@ export async function cleanDatabase(): Promise<void> {
   await prisma.spottingLocation.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.airport.deleteMany();
+  await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 }
 

@@ -39,16 +39,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 401 });
   }
 
-  const { token, user } = data.data.signIn;
+  const { token, refreshToken, user } = data.data.signIn;
 
   const response = NextResponse.json({ user });
   response.cookies.set('access_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: 60 * 60, // 1 hour (short-lived access token)
     path: '/',
   });
+  if (refreshToken) {
+    response.cookies.set('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/',
+    });
+  }
 
   return response;
 }

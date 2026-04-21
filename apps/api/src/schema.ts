@@ -392,6 +392,18 @@ export const typeDefs = gql`
     signIn(input: SignInInput!): AuthPayload!
 
     """
+    Exchange a valid refresh_token HttpOnly cookie for a new short-lived access token.
+    Implements token rotation: the old refresh token is deleted and a new one is issued.
+    """
+    refreshToken: AuthPayload!
+
+    """
+    Sign out: clears the access_token and refresh_token HttpOnly cookies,
+    and invalidates the refresh token in the database.
+    """
+    signOut: Boolean!
+
+    """
     Update the authenticated user's profile.
     Creates a profile if one does not exist yet.
     """
@@ -904,12 +916,14 @@ export const typeDefs = gql`
   }
 
   """
-  Returned after successful authentication. Contains the JWT token
-  and the authenticated user record.
+  Returned after successful authentication. Contains the short-lived JWT access token,
+  the refresh token (opaque token in HttpOnly cookie), and the authenticated user record.
   """
   type AuthPayload {
-    """JWT access token for subsequent authenticated requests."""
+    """Short-lived JWT access token (1 hour). Sent via HttpOnly cookie on browser requests."""
     token: String!
+    """Opaque refresh token — stored in DB and sent via HttpOnly cookie. Used to obtain new access tokens."""
+    refreshToken: String
     """The authenticated user."""
     user: User!
   }

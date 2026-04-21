@@ -17,6 +17,7 @@ export interface Context {
   user: AuthUser | null;
   loaders: Loaders;
   res: ServerResponse;
+  req: StandaloneServerContextFunctionArgument['req'];
 }
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-do-not-use-in-production';
@@ -53,5 +54,5 @@ export async function createContext({
     }
   }
 
-  return { prisma, user, loaders: createLoaders(prisma), res };
+  return { prisma, user, loaders: createLoaders(prisma), res, req };
 }

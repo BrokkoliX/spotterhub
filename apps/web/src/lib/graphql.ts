@@ -44,8 +44,19 @@ export function makeClient() {
         },
 
         async refreshAuth() {
-          // Redirect to sign-in on auth errors — cookie may have expired.
+          // Call the refresh endpoint to get a new short-lived access token
           if (typeof window !== 'undefined') {
+            try {
+              const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+              if (res.ok) {
+                // Cookie is updated by the refresh route — just re-fetch /api/auth/me
+                // to confirm the session is active, then retry the failed operation
+                await fetch('/api/auth/me', { credentials: 'include' });
+                return; // urql will retry the operation automatically
+              }
+            } catch {
+              // refresh failed — redirect to sign-in
+            }
             window.location.href = '/signin';
           }
         },
