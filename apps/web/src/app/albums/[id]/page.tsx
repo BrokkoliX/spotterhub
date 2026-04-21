@@ -13,6 +13,7 @@ import {
   DELETE_ALBUM,
   GET_ALBUM,
   GET_PHOTOS,
+  REMOVE_PHOTOS_FROM_ALBUM,
   UPDATE_ALBUM,
 } from '@/lib/queries';
 
@@ -34,6 +35,8 @@ export default function AlbumDetailPage({
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showAddPhotos, setShowAddPhotos] = useState(false);
+  const [showRemovePhotos, setShowRemovePhotos] = useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editPublic, setEditPublic] = useState(true);
@@ -53,6 +56,7 @@ export default function AlbumDetailPage({
 
   const [, updateAlbum] = useMutation(UPDATE_ALBUM);
   const [deleteResult, deleteAlbum] = useMutation(DELETE_ALBUM);
+  const [removeResult, removePhotosFromAlbum] = useMutation(REMOVE_PHOTOS_FROM_ALBUM);
 
   const album = albumResult.data?.album;
   const connection = photosResult.data?.photos;
@@ -124,6 +128,23 @@ export default function AlbumDetailPage({
     reexecutePhotosQuery({ requestPolicy: 'network-only' });
   };
 
+  const handleRemovePhotos = async () => {
+    if (selectedPhotoIds.size === 0) return;
+    const res = await removePhotosFromAlbum({
+      albumId: id,
+      photoIds: [...selectedPhotoIds],
+    });
+    if (!res.error) {
+      setAllPhotos((prev) =>
+        prev.filter((p) => !selectedPhotoIds.has(p.id)),
+      );
+      setSelectedPhotoIds(new Set());
+      setShowRemovePhotos(false);
+      reexecuteAlbumQuery({ requestPolicy: 'network-only' });
+      reexecutePhotosQuery({ requestPolicy: 'network-only' });
+    }
+  };
+
   // ─── Loading / Not Found ────────────────────────────────────────────────
 
   if (albumResult.fetching) {
@@ -183,6 +204,14 @@ export default function AlbumDetailPage({
                 >
                   {isCommunityAlbum ? '+ Add from My Photos' : '+ Add Photos'}
                 </button>
+                {!isCommunityAlbum && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowRemovePhotos((v) => !v)}
+                  >
+                    {showRemovePhotos ? 'Cancel' : '− Remove Photos'}
+                  </button>
+                )}
               </div>
             )}
             {canManageAlbum && (
@@ -237,11 +266,34 @@ export default function AlbumDetailPage({
 
         {/* Photos */}
         <div className={styles.section}>
+          {showRemovePhotos && selectedPhotoIds.size > 0 && (
+            <div className={styles.removeBar}>
+              <span>{selectedPhotoIds.size} photo{selectedPhotoIds.size !== 1 ? 's' : ''} selected</span>
+              <button
+                className={`btn btn-primary ${styles.dangerBtn}`}
+                onClick={handleRemovePhotos}
+                disabled={removeResult.fetching}
+              >
+                {removeResult.fetching ? 'Removing…' : 'Remove Selected'}
+              </button>
+            </div>
+          )}
           <PhotoGrid
             photos={photos}
             hasNextPage={connection?.pageInfo?.hasNextPage ?? false}
             loading={photosResult.fetching}
             onLoadMore={handleLoadMore}
+            viewMode={showRemovePhotos ? 'list' : 'grid'}
+            selectable={showRemovePhotos}
+            selectedIds={selectedPhotoIds}
+            onToggleSelect={(id) => {
+              setSelectedPhotoIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              });
+            }}
             emptyMessage="No photos in this album yet"
           />
         </div>

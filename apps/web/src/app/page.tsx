@@ -7,7 +7,17 @@ import { useQuery } from 'urql';
 import type { PhotoData } from '@/components/PhotoCard';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth';
-import { GET_FOLLOWING_FEED, GET_PHOTOS, GET_SITE_SETTINGS, SEARCH_AIRLINES, SEARCH_AIRPORTS, SEARCH_USERS } from '@/lib/queries';
+import {
+  GET_AIRCRAFT_FAMILIES,
+  GET_AIRCRAFT_MANUFACTURERS,
+  GET_AIRCRAFT_VARIANTS,
+  GET_FOLLOWING_FEED,
+  GET_PHOTOS,
+  GET_SITE_SETTINGS,
+  SEARCH_AIRLINES,
+  SEARCH_AIRPORTS,
+  SEARCH_USERS,
+} from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -31,9 +41,15 @@ export default function HomePage() {
   const [airportFilter, setAirportFilter] = useState('');
   const [airlineFilter, setAirlineFilter] = useState('');
   const [photographerFilter, setPhotographerFilter] = useState('');
+  const [manufacturerFilter, setManufacturerFilter] = useState('');
+  const [familyFilter, setFamilyFilter] = useState('');
+  const [variantFilter, setVariantFilter] = useState('');
   const [debouncedAirport, setDebouncedAirport] = useState('');
   const [debouncedAirline, setDebouncedAirline] = useState('');
   const [debouncedPhotographer, setDebouncedPhotographer] = useState('');
+  const [debouncedManufacturer, setDebouncedManufacturer] = useState('');
+  const [debouncedFamily, setDebouncedFamily] = useState('');
+  const [debouncedVariant, setDebouncedVariant] = useState('');
 
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
   const siteBannerUrl = siteData?.siteSettings?.bannerUrl;
@@ -42,6 +58,10 @@ export default function HomePage() {
   const airportTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const airlineTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const photographerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const manufacturerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const familyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const variantTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     clearTimeout(airportTimer.current);
@@ -67,9 +87,33 @@ export default function HomePage() {
     return () => clearTimeout(photographerTimer.current);
   }, [photographerFilter]);
 
+  useEffect(() => {
+    clearTimeout(manufacturerTimer.current);
+    manufacturerTimer.current = setTimeout(() => {
+      setDebouncedManufacturer(manufacturerFilter);
+    }, 300);
+    return () => clearTimeout(manufacturerTimer.current);
+  }, [manufacturerFilter]);
+
+  useEffect(() => {
+    clearTimeout(familyTimer.current);
+    familyTimer.current = setTimeout(() => {
+      setDebouncedFamily(familyFilter);
+    }, 300);
+    return () => clearTimeout(familyTimer.current);
+  }, [familyFilter]);
+
+  useEffect(() => {
+    clearTimeout(variantTimer.current);
+    variantTimer.current = setTimeout(() => {
+      setDebouncedVariant(variantFilter);
+    }, 300);
+    return () => clearTimeout(variantTimer.current);
+  }, [variantFilter]);
+
   const gridKey = useMemo(
-    () => `${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${sortBy}`,
-    [debouncedAirport, debouncedAirline, debouncedPhotographer, sortBy],
+    () => `${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${debouncedManufacturer}-${debouncedFamily}-${debouncedVariant}-${sortBy}`,
+    [debouncedAirport, debouncedAirline, debouncedPhotographer, debouncedManufacturer, debouncedFamily, debouncedVariant, sortBy],
   );
 
   const [{ data, fetching }] = useQuery({
@@ -79,6 +123,9 @@ export default function HomePage() {
       airportCode: debouncedAirport || undefined,
       airline: debouncedAirline || undefined,
       photographer: debouncedPhotographer || undefined,
+      manufacturer: debouncedManufacturer || undefined,
+      family: debouncedFamily || undefined,
+      variant: debouncedVariant || undefined,
       sortBy: sortBy !== 'recent' ? sortBy : undefined,
     },
     pause: feedTab !== 'recent',
@@ -113,6 +160,36 @@ export default function HomePage() {
   const photographerResults: Array<{ id: string; username: string; profile?: { displayName?: string | null } }> =
     photographerData?.searchUsers?.edges?.map((e: { node: { id: string; username: string; profile?: { displayName?: string | null } } }) => e.node) ?? [];
 
+  // Manufacturer typeahead
+  const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
+  const [{ data: manufacturerData, fetching: manufacturerFetching }] = useQuery({
+    query: GET_AIRCRAFT_MANUFACTURERS,
+    variables: { search: manufacturerFilter, first: 8 },
+    pause: manufacturerFilter.length < 2,
+  });
+  const manufacturerResults: Array<{ id: string; name: string }> =
+    manufacturerData?.aircraftManufacturers?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
+
+  // Family typeahead (cascading — filtered by selected manufacturer)
+  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
+  const [{ data: familyData, fetching: familyFetching }] = useQuery({
+    query: GET_AIRCRAFT_FAMILIES,
+    variables: { manufacturerId: debouncedManufacturer ? undefined : undefined, search: familyFilter, first: 8 },
+    pause: familyFilter.length < 2,
+  });
+  const familyResults: Array<{ id: string; name: string }> =
+    familyData?.aircraftFamilies?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
+
+  // Variant typeahead
+  const [showVariantDropdown, setShowVariantDropdown] = useState(false);
+  const [{ data: variantData, fetching: variantFetching }] = useQuery({
+    query: GET_AIRCRAFT_VARIANTS,
+    variables: { search: variantFilter, first: 8 },
+    pause: variantFilter.length < 2,
+  });
+  const variantResults: Array<{ id: string; name: string }> =
+    variantData?.aircraftVariants?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
+
   // Click outside to close all dropdowns
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -121,6 +198,9 @@ export default function HomePage() {
         setShowAirlineDropdown(false);
         setShowAirportDropdown(false);
         setShowPhotographerDropdown(false);
+        setShowManufacturerDropdown(false);
+        setShowFamilyDropdown(false);
+        setShowVariantDropdown(false);
       }
     };
     document.addEventListener('click', handleClick);
@@ -313,9 +393,137 @@ export default function HomePage() {
                 </div>
               )}
             </div>
+            {/* Manufacturer — typeahead */}
+            <div className={styles.filterInputWrap} style={{ position: 'relative', flex: 1 }}>
+              <span className={styles.filterIcon}>🛩️</span>
+              <input
+                type="text"
+                className={styles.filterInput}
+                placeholder="Manufacturer"
+                value={manufacturerFilter}
+                onChange={(e) => {
+                  setManufacturerFilter(e.target.value);
+                  setShowManufacturerDropdown(e.target.value.length >= 2);
+                  setFamilyFilter('');
+                  setVariantFilter('');
+                }}
+                onFocus={() => manufacturerFilter.length >= 2 && setShowManufacturerDropdown(true)}
+              />
+              {showManufacturerDropdown && (manufacturerResults.length > 0 || manufacturerFetching) && (
+                <div className={styles.filterDropdown}>
+                  {manufacturerFetching && manufacturerFilter.length >= 2 ? (
+                    <div className={styles.filterDropdownItem}>Searching…</div>
+                  ) : (
+                    manufacturerResults.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={styles.filterDropdownItem}
+                        onClick={() => {
+                          setManufacturerFilter(m.name);
+                          setDebouncedManufacturer(m.name);
+                          setShowManufacturerDropdown(false);
+                        }}
+                      >
+                        {m.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {showManufacturerDropdown && manufacturerFilter.length >= 2 && !manufacturerFetching && manufacturerResults.length === 0 && (
+                <div className={styles.filterDropdown}>
+                  <div className={styles.filterDropdownItem}>No manufacturers found</div>
+                </div>
+              )}
+            </div>
+            {/* Family — typeahead */}
+            <div className={styles.filterInputWrap} style={{ position: 'relative', flex: 1 }}>
+              <span className={styles.filterIcon}>✈️</span>
+              <input
+                type="text"
+                className={styles.filterInput}
+                placeholder="Family (e.g. 737)"
+                value={familyFilter}
+                onChange={(e) => {
+                  setFamilyFilter(e.target.value);
+                  setShowFamilyDropdown(e.target.value.length >= 2);
+                }}
+                onFocus={() => familyFilter.length >= 2 && setShowFamilyDropdown(true)}
+              />
+              {showFamilyDropdown && (familyResults.length > 0 || familyFetching) && (
+                <div className={styles.filterDropdown}>
+                  {familyFetching && familyFilter.length >= 2 ? (
+                    <div className={styles.filterDropdownItem}>Searching…</div>
+                  ) : (
+                    familyResults.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className={styles.filterDropdownItem}
+                        onClick={() => {
+                          setFamilyFilter(f.name);
+                          setDebouncedFamily(f.name);
+                          setShowFamilyDropdown(false);
+                        }}
+                      >
+                        {f.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {showFamilyDropdown && familyFilter.length >= 2 && !familyFetching && familyResults.length === 0 && (
+                <div className={styles.filterDropdown}>
+                  <div className={styles.filterDropdownItem}>No families found</div>
+                </div>
+              )}
+            </div>
+            {/* Variant — typeahead */}
+            <div className={styles.filterInputWrap} style={{ position: 'relative', flex: 1 }}>
+              <span className={styles.filterIcon}>🔧</span>
+              <input
+                type="text"
+                className={styles.filterInput}
+                placeholder="Variant (e.g. 8MAX)"
+                value={variantFilter}
+                onChange={(e) => {
+                  setVariantFilter(e.target.value);
+                  setShowVariantDropdown(e.target.value.length >= 2);
+                }}
+                onFocus={() => variantFilter.length >= 2 && setShowVariantDropdown(true)}
+              />
+              {showVariantDropdown && (variantResults.length > 0 || variantFetching) && (
+                <div className={styles.filterDropdown}>
+                  {variantFetching && variantFilter.length >= 2 ? (
+                    <div className={styles.filterDropdownItem}>Searching…</div>
+                  ) : (
+                    variantResults.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        className={styles.filterDropdownItem}
+                        onClick={() => {
+                          setVariantFilter(v.name);
+                          setDebouncedVariant(v.name);
+                          setShowVariantDropdown(false);
+                        }}
+                      >
+                        {v.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {showVariantDropdown && variantFilter.length >= 2 && !variantFetching && variantResults.length === 0 && (
+                <div className={styles.filterDropdown}>
+                  <div className={styles.filterDropdownItem}>No variants found</div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Sort Pills */}
+          {/* Sort Pills + View Toggle */}
           <div className={styles.sortPills}>
             {SORT_OPTIONS.map((opt) => (
               <button
@@ -328,6 +536,24 @@ export default function HomePage() {
                 <span>{opt.label}</span>
               </button>
             ))}
+            <div className={styles.viewToggle}>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.viewToggleActive : ''}`}
+                onClick={() => setViewMode('grid')}
+                title="Grid view"
+              >
+                ▦
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${viewMode === 'list' ? styles.viewToggleActive : ''}`}
+                onClick={() => setViewMode('list')}
+                title="List view"
+              >
+                ☰
+              </button>
+            </div>
           </div>
         </div>
 
@@ -367,6 +593,7 @@ export default function HomePage() {
             hasNextPage={connection?.pageInfo?.hasNextPage ?? false}
             loading={isLoading}
             onLoadMore={() => {}}
+            viewMode={viewMode}
             emptyMessage={
               feedTab === 'following'
                 ? 'No photos yet. Follow users, airports, or topics to build your feed!'

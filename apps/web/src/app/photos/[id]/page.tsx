@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { use, useState } from 'react';
-import { useQuery } from 'urql';
+import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
 import { CommentSection } from '@/components/CommentSection';
@@ -10,7 +11,7 @@ import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { ReportButton } from '@/components/ReportButton';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
-import { GET_PHOTO } from '@/lib/queries';
+import { GET_PHOTO, DELETE_PHOTO } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -28,9 +29,23 @@ export default function PhotoDetailPage({
 }) {
   const { id } = use(params);
   const { user } = useAuth();
+  const router = useRouter();
   const [result] = useQuery({ query: GET_PHOTO, variables: { id } });
   const { data, fetching, error } = result;
+  const [{ fetching: deleting }, deletePhoto] = useMutation(DELETE_PHOTO);
   const [imgError, setImgError] = useState(false);
+
+  const isOwner = user?.id === data?.photo?.user?.id;
+  const isPrivileged = user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser';
+  const canDelete = isOwner || isPrivileged;
+
+  const handleDelete = async () => {
+    if (!confirm('Delete this photo? This cannot be undone.')) return;
+    const res = await deletePhoto({ photoId: id });
+    if (res.data?.deletePhoto) {
+      router.push('/');
+    }
+  };
 
   if (fetching) {
     return (
@@ -145,6 +160,16 @@ export default function PhotoDetailPage({
                   />
                   <span className={styles.stat}>💬 {photo.commentCount}</span>
                   <ReportButton targetType="photo" targetId={photo.id} />
+                  {canDelete && (
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      title="Delete photo"
+                    >
+                      🗑️ {deleting ? 'Deleting…' : 'Delete'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

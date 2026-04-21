@@ -146,6 +146,8 @@ export const typeDefs = gql`
       airportCode: String
       tags: [String!]
       manufacturer: String
+      family: String
+      variant: String
       airline: String
       photographer: String
       sortBy: PhotoSortBy

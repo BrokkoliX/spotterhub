@@ -194,6 +194,8 @@ export const GET_PHOTOS = gql`
     $airportCode: String
     $tags: [String!]
     $manufacturer: String
+    $family: String
+    $variant: String
     $airline: String
     $photographer: String
     $sortBy: PhotoSortBy
@@ -206,6 +208,8 @@ export const GET_PHOTOS = gql`
       airportCode: $airportCode
       tags: $tags
       manufacturer: $manufacturer
+      family: $family
+      variant: $variant
       airline: $airline
       photographer: $photographer
       sortBy: $sortBy
@@ -251,6 +255,12 @@ export const CREATE_PHOTO = gql`
     }
   }
   ${PHOTO_FIELDS}
+`;
+
+export const DELETE_PHOTO = gql`
+  mutation DeletePhoto($photoId: ID!) {
+    deletePhoto(id: $photoId)
+  }
 `;
 
 export const LIKE_PHOTO = gql`

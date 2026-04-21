@@ -48,6 +48,8 @@ export interface PhotosArgs {
   airportCode?: string;
   tags?: string[];
   manufacturer?: string;
+  family?: string;
+  variant?: string;
   airline?: string;
   photographer?: string;
   sortBy?: PhotoSortBy;
@@ -168,6 +170,25 @@ export const photoQueryResolvers = {
     }
     if (args.photographer) {
       where.photographerName = { contains: args.photographer, mode: 'insensitive' };
+    }
+
+    // Aircraft hierarchy filters — manufacturer was declared but never applied
+    if (args.manufacturer) {
+      where.aircraft = {
+        manufacturer: { name: { contains: args.manufacturer, mode: 'insensitive' } },
+      };
+    }
+    if (args.family) {
+      where.aircraft = {
+        ...((where.aircraft as Record<string, unknown>) || {}),
+        family: { name: { contains: args.family, mode: 'insensitive' } },
+      };
+    }
+    if (args.variant) {
+      where.aircraft = {
+        ...((where.aircraft as Record<string, unknown>) || {}),
+        variant: { name: { contains: args.variant, mode: 'insensitive' } },
+      };
     }
 
     // Determine sort order
@@ -560,12 +581,15 @@ export const photoMutationResolvers = {
     if (!photo) {
       throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
     }
-    if (photo.userId !== user.id) {
-      throw new GraphQLError('You can only delete your own photos', {
-        extensions: { code: 'FORBIDDEN' },
-      });
+
+    // Owner can always delete their own photos
+    if (photo.userId === user.id) {
+      await ctx.prisma.photo.delete({ where: { id: args.id } });
+      return true;
     }
 
+    // Admin/moderator/superuser can delete any photo
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
     await ctx.prisma.photo.delete({ where: { id: args.id } });
     return true;
   },

@@ -37,6 +37,7 @@ export interface PhotoData {
   };
   variants: PhotoVariant[];
   aircraft?: {
+    registration?: string | null;
     manufacturer?: { name: string } | null;
     family?: { name: string } | null;
     variant?: { name: string; iataCode?: string | null; icaoCode?: string | null } | null;
