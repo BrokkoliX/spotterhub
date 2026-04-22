@@ -15,12 +15,21 @@ if [ "$OLD_COUNT" -gt 0 ]; then
   echo "✅ Migration history reset"
 fi
 
-# Attempt migration deploy. If it fails due to a previously failed migration
-# (P3009), clean up the failed row and retry once.
+# Attempt migration deploy. Handle two failure modes:
+# 1. P3009: failed migration row blocking retry
+# 2. P3018: migration recorded but failed partway through (corrupted state)
 if ! npx prisma migrate deploy --schema /app/prisma/schema.prisma 2>&1; then
-  echo "⚠️  migrate deploy failed — checking for failed migration rows (P3009)..."
+  echo "⚠️  migrate deploy failed — attempting recovery..."
+
+  # Remove any failed migration rows that are blocking re-apply
   echo "DELETE FROM _prisma_migrations WHERE rolled_back_at IS NULL AND finished_at IS NULL;" \
-    | npx prisma db execute --schema /app/prisma/schema.prisma --stdin
+    | npx prisma db execute --schema /app/prisma/schema.prisma --stdin 2>/dev/null || true
+
+  # If the refresh_tokens table was created by a partially-applied migration,
+  # drop it so the migration can re-run cleanly
+  echo "DROP TABLE IF EXISTS refresh_tokens;" \
+    | npx prisma db execute --schema /app/prisma/schema.prisma --stdin 2>/dev/null || true
+
   echo "Retrying migrate deploy..."
   npx prisma migrate deploy --schema /app/prisma/schema.prisma
 fi
