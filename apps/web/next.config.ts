@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
         hostname: "d2ur47prd8ljwz.cloudfront.net",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? "d2ur47prd8ljwz.cloudfront.net",
+        pathname: "/**",
+      },
     ],
   },
 };

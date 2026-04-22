@@ -128,6 +128,8 @@ jobs:
             BUILDKIT_INLINE_CACHE=1
             NEXT_PUBLIC_API_URL=https://api.${{ vars.DOMAIN_NAME || 'spotterspace.com' }}/graphql
             NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
+            NEXT_PUBLIC_S3_IMAGES_HOST=${{ vars.S3_IMAGES_HOST || 'https://d2ur47prd8ljwz.cloudfront.net' }}
+            NEXT_PUBLIC_S3_BUCKET=${{ vars.S3_BUCKET_NAME || 'spotterspace-photos' }}
 
       - name: Update Web task definition and deploy
         env:

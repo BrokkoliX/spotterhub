@@ -14,8 +14,8 @@ import {
 
 import styles from './page.module.css';
 
-const S3_ENDPOINT = 'http://localhost:4566';
-const S3_BUCKET = 'spotterspace-photos';
+const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
 
 export default function SiteSettingsPage() {
   const { user, ready } = useAuth();
@@ -72,7 +72,7 @@ export default function SiteSettingsPage() {
           headers: { 'Content-Type': file.type },
         });
         if (!uploadRes.ok) throw new Error('Upload failed');
-        setBannerUrl(`${S3_ENDPOINT}/${S3_BUCKET}/${key}`);
+        setBannerUrl(`${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Banner upload failed');
       } finally {

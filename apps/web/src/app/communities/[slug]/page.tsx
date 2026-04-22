@@ -136,9 +136,9 @@ export default function CommunityPage() {
         return;
       }
       // Save the S3 object URL as the banner
-      const S3_ENDPOINT = 'http://localhost:4566';
-      const S3_BUCKET = 'spotterspace-photos';
-      const bannerUrl = `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
+      const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+      const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
+      const bannerUrl = `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
       await updateCommunity({
         id: community.id,
         input: { bannerUrl, avatarUrl: community.avatarUrl ?? null },
@@ -271,9 +271,9 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              const S3_ENDPOINT = 'http://localhost:4566';
-              const S3_BUCKET = 'spotterspace-photos';
-              return `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
+              const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+              const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
+              return `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
             }}
             onAvatarUpload={async (file: File) => {
               const urlResult = await getUploadUrl({
@@ -289,9 +289,9 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              const S3_ENDPOINT = 'http://localhost:4566';
-              const S3_BUCKET = 'spotterspace-photos';
-              return `${S3_ENDPOINT}/${S3_BUCKET}/${key}`;
+              const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+              const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
+              return `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
             }}
             onDelete={async () => {
               if (
