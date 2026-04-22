@@ -55,6 +55,7 @@ export default function SearchableSelect({
 
   useEffect(() => {
     // Close dropdown when results come back (user can still type to refine)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!isLoading) setOpen((prev) => (prev || query.length > 0 ? prev : false));
   }, [isLoading, query.length]);
 

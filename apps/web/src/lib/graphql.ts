@@ -26,7 +26,7 @@ export function makeClient() {
     },
     exchanges: [
       cacheExchange,
-      authExchange(async (utils) => ({
+      authExchange(async () => ({
         addAuthToOperation(operation) {
           // Token is stored in HttpOnly cookie — browser sends it automatically.
           // For programmatic access (SSR, etc.), also check a non-HttpOnly fallback.

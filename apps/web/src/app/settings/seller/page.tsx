@@ -28,7 +28,7 @@ interface MyPhotoData extends PhotoData {
 export default function SellerSettingsPage() {
   const { user, ready } = useAuth();
   const searchParams = useSearchParams();
-  const [applied, setApplied] = useState(false);
+  const [_applied, setApplied] = useState(false);
 
   // Query user photos for listing management
   const [{ data: photosData, fetching: photosFetching }] = useQuery({
@@ -172,7 +172,7 @@ export default function SellerSettingsPage() {
             <div className={styles.pendingIcon}>⏳</div>
             <h2 className={styles.pendingTitle}>Application Pending</h2>
             <p className={styles.pendingText}>
-              Your seller application is being reviewed by our team. You'll be
+              Your seller application is being reviewed by our team. You&#39;ll be
               notified once approved.
             </p>
           </div>
