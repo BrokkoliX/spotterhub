@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN npm prune --production --workspace=@spotterspace/api
 RUN npm install prisma@^6.2.0 --no-save
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 
 WORKDIR /app
 

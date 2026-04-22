@@ -1,5 +1,5 @@
 # ─── Stage 1: Build ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -54,7 +54,7 @@ RUN cd /app/apps/web && npx next build
 # Skip pruning - image size doesn't matter for App Runner
 
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
-FROM node:20 AS runtime
+FROM node:24-alpine AS runtime
 
 WORKDIR /app
 

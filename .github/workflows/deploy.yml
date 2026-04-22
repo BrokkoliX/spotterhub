@@ -22,7 +22,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   ECS_CLUSTER: spotterspace-cluster
   API_ECR_REPO: spotterspace-dev-api
   WEB_ECR_REPO: spotterspace-dev-web
