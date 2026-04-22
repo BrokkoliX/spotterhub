@@ -22,7 +22,7 @@ function VerifyEmailContent() {
     if (!token) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from URL param requires setState in an effect
       setStatus('error');
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from URL param requires setState in an effect
+       
       setErrorMessage('Missing verification token.');
       return;
     }
@@ -30,16 +30,16 @@ function VerifyEmailContent() {
     executeMutation({ token })
       .then((result) => {
         if (result.error) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- async mutation result requires setState in effect
+           
           setStatus('error');
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- async mutation result requires setState in effect
+           
           setErrorMessage(result.error.graphQLErrors[0]?.message ?? 'Verification failed');
           return;
         }
 
         // The verifyEmail mutation sets the HttpOnly cookie. Navigate to home
         // and the AuthProvider will rehydrate from the cookie on next load.
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- async mutation result requires setState in effect
+         
         setStatus('success');
         router.push('/');
       });

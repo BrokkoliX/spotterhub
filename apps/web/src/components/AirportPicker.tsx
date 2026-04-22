@@ -47,7 +47,7 @@ export default function AirportPicker({
       // eslint-disable-next-line react-hooks/set-state-in-effect -- urql data update requires setState in effect
       setResults(searchResult.data.searchAirports as Airport[]);
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- urql data update requires setState in effect
+       
       setResults([]);
     }
   }, [searchResult.data]);

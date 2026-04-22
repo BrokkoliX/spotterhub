@@ -1,13 +1,10 @@
 import Stripe from 'stripe';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-if (!STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY environment variable is required');
-}
 
-export const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2024-06-20' as const,
-});
+export const stripe = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' as const })
+  : null;
 
 const PLATFORM_FEE_PERCENT = parseInt(
   process.env.PLATFORM_FEE_PERCENT ?? '20',
@@ -27,6 +24,7 @@ export async function createConnectAccount(
   email: string,
   userId: string,
 ): Promise<string> {
+  if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   const account = await stripe.accounts.create({
     type: 'standard',
     email,
@@ -43,6 +41,7 @@ export async function createAccountOnboardingLink(
   returnUrl: string,
   refreshUrl: string,
 ): Promise<string> {
+  if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   const link = await stripe.accountLinks.create({
     account: accountId,
     return_url: returnUrl,
@@ -58,6 +57,7 @@ export async function createAccountOnboardingLink(
 export async function getAccountStatus(
   accountId: string,
 ): Promise<{ detailsSubmitted: boolean; chargesEnabled: boolean }> {
+  if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   const account = await stripe.accounts.retrieve(accountId);
   return {
     detailsSubmitted: account.details_submitted ?? false,
@@ -129,6 +129,8 @@ export async function createCheckoutSession({
     };
   }
 
+  if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
+
   const session = await stripe.checkout.sessions.create(sessionParams);
   if (!session.id || !session.url) {
     throw new Error('Failed to create Stripe Checkout session');
@@ -144,5 +146,6 @@ export function constructWebhookEvent(
   signature: string,
   webhookSecret: string,
 ): Stripe.Event {
+  if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 }

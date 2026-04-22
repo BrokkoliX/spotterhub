@@ -138,10 +138,38 @@ const JSONScalar = new GraphQLScalarType({
   parseLiteral: parseLiteralAst,
 });
 
+const DecimalScalar = new GraphQLScalarType({
+  name: 'Decimal',
+  description: 'Arbitrary decimal value (serialized as string)',
+  serialize: (value: unknown) => {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return String(value);
+    return String(value);
+  },
+  parseValue: (value: unknown) => {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return String(value);
+    throw new Error(`Decimal cannot represent value: ${value}`);
+  },
+  parseLiteral(ast: unknown) {
+    if ((ast as { kind: string }).kind === Kind.STRING) {
+      return (ast as { value: string }).value;
+    }
+    if ((ast as { kind: string }).kind === Kind.FLOAT) {
+      return String((ast as { value: number }).value);
+    }
+    if ((ast as { kind: string }).kind === Kind.INT) {
+      return String((ast as { value: string }).value);
+    }
+    throw new Error('Decimal cannot represent literal');
+  },
+});
+
 // ─── Resolver Map ───────────────────────────────────────────────────────────
 
 export const resolvers = {
   JSON: JSONScalar,
+  Decimal: DecimalScalar,
 
   Query: {
     ...userQueryResolvers,

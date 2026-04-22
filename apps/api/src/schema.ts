@@ -1,7 +1,9 @@
 import gql from 'graphql-tag';
+import { GraphQLScalarType, Kind } from 'graphql';
 
 export const typeDefs = gql`
   scalar JSON
+  scalar Decimal
 
   enum PhotoSortBy {
     recent
