@@ -1,5 +1,5 @@
-import { GraphQLError } from 'graphql';
 import type { FollowTargetType } from '@prisma/client';
+import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
@@ -22,11 +22,7 @@ export interface AirportFollowParent {
 export const followMutationResolvers = {
   // ── User follows ────────────────────────────────────────────────────────
 
-  followUser: async (
-    _parent: unknown,
-    args: { userId: string },
-    ctx: Context,
-  ) => {
+  followUser: async (_parent: unknown, args: { userId: string }, ctx: Context) => {
     const followerId = await resolveUserId(ctx);
 
     if (followerId === args.userId) {
@@ -86,11 +82,7 @@ export const followMutationResolvers = {
     });
   },
 
-  unfollowUser: async (
-    _parent: unknown,
-    args: { userId: string },
-    ctx: Context,
-  ) => {
+  unfollowUser: async (_parent: unknown, args: { userId: string }, ctx: Context) => {
     const followerId = await resolveUserId(ctx);
 
     const targetUser = await ctx.prisma.user.findUnique({
@@ -120,11 +112,7 @@ export const followMutationResolvers = {
 
   // ── Airport follows ─────────────────────────────────────────────────────
 
-  followAirport: async (
-    _parent: unknown,
-    args: { airportId: string },
-    ctx: Context,
-  ) => {
+  followAirport: async (_parent: unknown, args: { airportId: string }, ctx: Context) => {
     const followerId = await resolveUserId(ctx);
 
     const airport = await ctx.prisma.airport.findUnique({
@@ -158,11 +146,7 @@ export const followMutationResolvers = {
     return airport;
   },
 
-  unfollowAirport: async (
-    _parent: unknown,
-    args: { airportId: string },
-    ctx: Context,
-  ) => {
+  unfollowAirport: async (_parent: unknown, args: { airportId: string }, ctx: Context) => {
     const followerId = await resolveUserId(ctx);
 
     const airport = await ctx.prisma.airport.findUnique({
@@ -197,10 +181,9 @@ export const followMutationResolvers = {
 
     const validTopicTypes = ['manufacturer', 'family', 'variant'];
     if (!validTopicTypes.includes(targetType)) {
-      throw new GraphQLError(
-        'targetType must be "manufacturer", "family", or "variant"',
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError('targetType must be "manufacturer", "family", or "variant"', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     const typedTargetType = targetType as FollowTargetType;
@@ -243,10 +226,9 @@ export const followMutationResolvers = {
 
     const validTopicTypes = ['manufacturer', 'family', 'variant'];
     if (!validTopicTypes.includes(targetType)) {
-      throw new GraphQLError(
-        'targetType must be "manufacturer", "family", or "variant"',
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError('targetType must be "manufacturer", "family", or "variant"', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     const typedTargetType = targetType as FollowTargetType;
@@ -373,11 +355,7 @@ export const followQueryResolvers = {
     };
   },
 
-  myFollowing: async (
-    _parent: unknown,
-    args: { targetType?: string },
-    ctx: Context,
-  ) => {
+  myFollowing: async (_parent: unknown, args: { targetType?: string }, ctx: Context) => {
     const followerId = await resolveUserId(ctx);
 
     const where: Record<string, unknown> = { followerId };
@@ -435,11 +413,7 @@ export const followFieldResolvers = {
 // ─── Airport Field Resolvers ────────────────────────────────────────────────
 
 export const airportFollowFieldResolvers = {
-  isFollowedByMe: async (
-    parent: AirportFollowParent,
-    _args: unknown,
-    ctx: Context,
-  ) => {
+  isFollowedByMe: async (parent: AirportFollowParent, _args: unknown, ctx: Context) => {
     if (!ctx.user) return false;
 
     const user = await ctx.prisma.user.findUnique({
@@ -461,11 +435,7 @@ export const airportFollowFieldResolvers = {
     return !!follow;
   },
 
-  followerCount: async (
-    parent: AirportFollowParent,
-    _args: unknown,
-    ctx: Context,
-  ) => {
+  followerCount: async (parent: AirportFollowParent, _args: unknown, ctx: Context) => {
     return ctx.prisma.follow.count({
       where: { targetType: 'airport', airportId: parent.id },
     });

@@ -6,7 +6,16 @@ import {
   aircraftHierarchyMutationResolvers,
   aircraftHierarchyQueryResolvers,
 } from './resolvers/aircraftHierarchyResolvers.js';
-import { aircraftFieldResolvers, aircraftMutationResolvers, aircraftQueryResolvers } from './resolvers/aircraftResolvers.js';
+import {
+  aircraftFieldResolvers,
+  aircraftMutationResolvers,
+  aircraftQueryResolvers,
+} from './resolvers/aircraftResolvers.js';
+import {
+  airlineFieldResolvers,
+  airlineMutationResolvers,
+  airlineQueryResolvers,
+} from './resolvers/airlineResolvers.js';
 import {
   airportFieldResolvers,
   airportMutationResolvers,
@@ -58,15 +67,7 @@ import {
   forumQueryResolvers,
   forumThreadFieldResolvers,
 } from './resolvers/forumResolvers.js';
-import {
-  likeFieldResolvers,
-  likeMutationResolvers,
-} from './resolvers/likeResolvers.js';
-import {
-  airlineFieldResolvers,
-  airlineMutationResolvers,
-  airlineQueryResolvers,
-} from './resolvers/airlineResolvers.js';
+import { likeFieldResolvers, likeMutationResolvers } from './resolvers/likeResolvers.js';
 import { locationQueryResolvers } from './resolvers/locationResolvers.js';
 import {
   marketplaceQueryResolvers,
@@ -105,7 +106,11 @@ import { userFieldResolvers, userQueryResolvers } from './resolvers/userResolver
 function parseLiteralAst(ast: import('graphql').ValueNode): unknown {
   switch (ast.kind) {
     case Kind.STRING:
-      try { return JSON.parse(ast.value); } catch { return ast.value; }
+      try {
+        return JSON.parse(ast.value);
+      } catch {
+        return ast.value;
+      }
     case Kind.INT:
       return parseInt(ast.value, 10);
     case Kind.FLOAT:

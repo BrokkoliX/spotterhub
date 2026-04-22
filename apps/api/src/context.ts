@@ -1,10 +1,10 @@
-import type { StandaloneServerContextFunctionArgument } from '@apollo/server/standalone';
 import type { ServerResponse } from 'node:http';
+
+import type { StandaloneServerContextFunctionArgument } from '@apollo/server/standalone';
 import { prisma } from '@spotterspace/db';
 import jwt from 'jsonwebtoken';
 
 import { createLoaders, type Loaders } from './loaders.js';
-
 
 export interface AuthUser {
   sub: string;
