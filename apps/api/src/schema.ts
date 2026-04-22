@@ -118,6 +118,21 @@ export const typeDefs = gql`
     newest
     price_asc
     price_desc
+    rating_desc
+  }
+
+  enum SellerStatus {
+    pending
+    approved
+    rejected
+  }
+
+  enum ItemCondition {
+    mint
+    excellent
+    good
+    fair
+    poor
   }
 
   type Query {
@@ -929,6 +944,41 @@ export const typeDefs = gql`
     """Upsert an aircraft-specific category by unique name. Requires admin or superuser role."""
     upsertAircraftSpecificCategory(input: CreateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
 
+    # ─── Collectibles Marketplace Queries ─────────────────────────────────────────
+
+    """
+    Browse collectibles listings with optional filters and sorting.
+    Only returns approved items with approved sellers.
+    """
+    marketplaceItems(
+      category: String
+      minPrice: Float
+      maxPrice: Float
+      condition: String
+      search: String
+      sortBy: MarketplaceSort
+      first: Int = 20
+      after: String
+    ): MarketplaceItemConnection!
+
+    """Fetch a single collectible listing by ID."""
+    marketplaceItem(id: ID!): MarketplaceItem
+
+    """List all marketplace categories."""
+    marketplaceCategories: [MarketplaceCategory!]!
+
+    """Fetch a seller's public profile with their listings and ratings."""
+    sellerProfile(userId: ID!): SellerProfile
+
+    """Paginated feedback for a seller."""
+    sellerFeedback(sellerId: ID!, first: Int = 20, after: String): SellerFeedbackConnection!
+
+    """My marketplace listings (seller)."""
+    myListings(first: Int = 20, after: String): MarketplaceItemConnection!
+
+    """Admin: all marketplace items, optionally filtered by moderation status."""
+    adminMarketplaceItems(moderationStatus: String, first: Int = 20, after: String): MarketplaceItemConnection!
+
     # ─── Marketplace Mutations ──────────────────────────────────────────────────
 
     """Apply to become a seller. Creates a SellerProfile in pending state."""
@@ -942,6 +992,40 @@ export const typeDefs = gql`
 
     """Remove a listing from a photo. Works for the photo owner."""
     removeListing(photoId: ID!): Boolean!
+
+    # ─── Collectibles Marketplace Mutations ────────────────────────────────
+
+    """Update a seller's status (approve/reject). Requires admin or superuser role."""
+    updateSellerStatus(sellerProfileId: ID!, status: SellerStatus!): SellerProfile!
+
+    """Create a new collectible listing. Requires approved seller status."""
+    createMarketplaceItem(input: CreateMarketplaceItemInput!): MarketplaceItem!
+
+    """Update an existing collectible listing. Only the seller can update."""
+    updateMarketplaceItem(id: ID!, input: UpdateMarketplaceItemInput!): MarketplaceItem!
+
+    """Delete a collectible listing. Only the seller can delete."""
+    deleteMarketplaceItem(id: ID!): Boolean!
+
+    """Moderate a collectible listing (approve/reject). Requires admin or moderator role."""
+    moderateMarketplaceItem(id: ID!, status: ModerationStatus!, reason: String): MarketplaceItem!
+
+    """Submit feedback for a seller after contacting them. One feedback per buyer per seller."""
+    submitSellerFeedback(input: SubmitSellerFeedbackInput!): SellerFeedback!
+
+    """Request a presigned S3 URL for uploading a marketplace item image."""
+    getMarketplaceItemUploadUrl(input: GetUploadUrlInput!): UploadUrlPayload!
+
+    # ─── Admin: Marketplace Categories ──────────────────────────────────
+
+    """Create a marketplace category. Requires admin or superuser role."""
+    createMarketplaceCategory(input: CreateMarketplaceCategoryInput!): MarketplaceCategory!
+
+    """Update a marketplace category. Requires admin or superuser role."""
+    updateMarketplaceCategory(id: ID!, input: UpdateMarketplaceCategoryInput!): MarketplaceCategory!
+
+    """Delete a marketplace category. Requires admin or superuser role."""
+    deleteMarketplaceCategory(id: ID!): Boolean!
 
     """Initiate a photo purchase. Returns Stripe Checkout URL."""
     createPhotoPurchase(listingId: ID!): PurchasePayload!
@@ -2170,10 +2254,16 @@ export const typeDefs = gql`
     stripeOnboardingComplete: Boolean!
     """Whether the seller has been approved by an admin."""
     approved: Boolean!
+    """Seller status: pending | approved | rejected."""
+    status: SellerStatus!
     """Seller bio shown on their profile."""
     bio: String
     """Optional website URL."""
     website: String
+    """Average seller rating (1-5)."""
+    averageRating: Float!
+    """Total number of feedback ratings received."""
+    feedbackCount: Int!
     createdAt: String!
     updatedAt: String!
   }
@@ -2270,6 +2360,148 @@ export const typeDefs = gql`
   type PurchasePayload {
     sessionId: String!
     checkoutUrl: String!
+  }
+
+  # ─── Collectibles Marketplace Types ──────────────────────────────────────────
+
+  """A collectible item listed for sale in the marketplace."""
+  type MarketplaceItem {
+    id: ID!
+    """The seller who owns this listing."""
+    seller: SellerProfile!
+    """The primary listing category."""
+    category: MarketplaceCategory!
+    title: String!
+    description: String
+    """Price in USD."""
+    priceUsd: String!
+    """Condition: mint | excellent | good | fair | poor."""
+    condition: String!
+    """General geographic region for shipping."""
+    location: String
+    """Seller's contact email (visible after approval)."""
+    contactEmail: String
+    """Seller's contact phone (visible after approval)."""
+    contactPhone: String
+    """Whether the item is active and visible to buyers."""
+    active: Boolean!
+    """Moderation status: pending | approved | rejected | review."""
+    moderationStatus: ModerationStatus!
+    """Reason for rejection, if any."""
+    moderationReason: String
+    images: [MarketplaceItemImage!]!
+    """Average seller rating (1-5)."""
+    averageRating: Float!
+    """Total number of feedback ratings received."""
+    feedbackCount: Int!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  """An image attached to a marketplace item."""
+  type MarketplaceItemImage {
+    id: ID!
+    """Variant type: thumbnail | display | full_res | watermarked."""
+    variantType: String!
+    url: String!
+    width: Int!
+    height: Int!
+    fileSizeBytes: Int
+    sortOrder: Int!
+  }
+
+  """A category for organizing marketplace items."""
+  type MarketplaceCategory {
+    id: ID!
+    """URL-safe slug."""
+    name: String!
+    """Display name shown to users."""
+    label: String!
+    sortOrder: Int!
+    """Number of approved items in this category."""
+    itemCount: Int!
+  }
+
+  """Feedback from a buyer about a seller after contacting them."""
+  type SellerFeedback {
+    id: ID!
+    """The seller being rated."""
+    seller: SellerProfile!
+    """The buyer who submitted the rating."""
+    buyer: User!
+    """Rating from 1 to 5."""
+    rating: Int!
+    """Optional comment."""
+    comment: String
+    """The item this feedback relates to, if any."""
+    item: MarketplaceItem
+    createdAt: String!
+  }
+
+  type MarketplaceItemEdge {
+    cursor: String!
+    node: MarketplaceItem!
+  }
+
+  type MarketplaceItemConnection {
+    edges: [MarketplaceItemEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type SellerFeedbackEdge {
+    cursor: String!
+    node: SellerFeedback!
+  }
+
+  type SellerFeedbackConnection {
+    edges: [SellerFeedbackEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  input CreateMarketplaceItemInput {
+    categoryId: ID!
+    title: String!
+    description: String
+    priceUsd: Decimal!
+    condition: ItemCondition!
+    location: String
+    contactEmail: String
+    contactPhone: String
+    imageS3Keys: [String!]!
+  }
+
+  input UpdateMarketplaceItemInput {
+    categoryId: ID
+    title: String
+    description: String
+    priceUsd: Decimal
+    condition: ItemCondition
+    location: String
+    contactEmail: String
+    contactPhone: String
+    imageS3Keys: [String!]
+    active: Boolean
+  }
+
+  input SubmitSellerFeedbackInput {
+    sellerId: ID!
+    rating: Int!
+    comment: String
+    itemId: ID
+  }
+
+  input CreateMarketplaceCategoryInput {
+    name: String!
+    label: String!
+    sortOrder: Int
+  }
+
+  input UpdateMarketplaceCategoryInput {
+    name: String
+    label: String
+    sortOrder: Int
   }
 
   # ─── Health ──────────────────────────────────────────────────────────────

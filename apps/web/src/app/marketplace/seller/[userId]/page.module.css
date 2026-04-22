@@ -1,0 +1,222 @@
+/* ─── Seller Profile Page ────────────────────────────────────────────────── */
+
+.page {
+  min-height: calc(100vh - var(--header-height));
+  background: var(--bg-primary, #fff);
+}
+
+.inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #8b5cf6;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+/* ─── Profile Header ──────────────────────────────────────────────────────── */
+
+.profileHeader {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 40px;
+  padding: 24px;
+  background: var(--bg-secondary, #f9fafb);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .profileHeader {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e5e7eb;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.displayName {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.username {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+.rating {
+  font-size: 1.1rem;
+  color: #f59e0b;
+  letter-spacing: 1px;
+}
+
+.ratingNum {
+  color: var(--text-primary, #111827);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-left: 6px;
+}
+
+.ratingDenom {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.ratingCount {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.bio {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.website {
+  font-size: 0.9rem;
+  color: #8b5cf6;
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+.website:hover {
+  text-decoration: underline;
+}
+
+/* ─── Feedback Section ────────────────────────────────────────────────────── */
+
+.feedbackSection {
+  margin-top: 32px;
+}
+
+.sectionTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 20px;
+}
+
+.loadingSmall {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.noFeedback {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.95rem;
+}
+
+.feedbackList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feedbackCard {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 16px 20px;
+  background: var(--bg-secondary, #fff);
+}
+
+.feedbackHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.feedbackReviewer {
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  font-size: 0.95rem;
+}
+
+.feedbackStars {
+  color: #f59e0b;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
+.feedbackComment {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.feedbackItem {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: #8b5cf6;
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+
+.feedbackItem:hover {
+  text-decoration: underline;
+}
+
+.feedbackDate {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ─── States ──────────────────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.error {
+  text-align: center;
+  padding: 40px 24px;
+  color: #dc2626;
+}

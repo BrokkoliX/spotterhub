@@ -1,0 +1,359 @@
+/* ─── Item Detail Page ────────────────────────────────────────────────────── */
+
+.page {
+  min-height: calc(100vh - var(--header-height));
+  background: var(--bg-primary, #fff);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #8b5cf6;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Image Gallery ───────────────────────────────────────────────────────── */
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.galleryMain {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.galleryMainImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.galleryPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  opacity: 0.4;
+}
+
+.galleryThumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.galleryThumb {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.galleryThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleryThumb:hover {
+  border-color: #8b5cf6;
+}
+
+/* ─── Details Column ──────────────────────────────────────────────────────── */
+
+.detailCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.categoryBreadcrumb {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* ─── Price Row ────────────────────────────────────────────────────────────── */
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.price {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+}
+
+/* ─── Stars ────────────────────────────────────────────────────────────────── */
+
+.stars {
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  color: #f59e0b;
+}
+
+.ratingNum {
+  color: var(--text-primary, #111827);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-left: 6px;
+}
+
+.ratingCount {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.85rem;
+  margin-left: 4px;
+}
+
+/* ─── Location ─────────────────────────────────────────────────────────────── */
+
+.locationRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.locationLabel {
+  font-size: 1rem;
+}
+
+/* ─── Condition Badge ─────────────────────────────────────────────────────── */
+
+.conditionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.conditionMint { background: #d1fae5; color: #065f46; }
+.conditionExcellent { background: #dbeafe; color: #1e40af; }
+.conditionGood { background: #fef3c7; color: #92400e; }
+.conditionFair { background: #fed7aa; color: #9a3412; }
+.conditionPoor { background: #fecaca; color: #991b1b; }
+
+/* ─── Description ─────────────────────────────────────────────────────────── */
+
+.descriptionSection {
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  padding-top: 16px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 8px;
+}
+
+.description {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ─── Seller Card ─────────────────────────────────────────────────────────── */
+
+.sellerCard {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sellerAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sellerAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sellerAvatarPlaceholder {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.sellerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sellerName {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.sellerBio {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.sellerWebsite {
+  font-size: 0.9rem;
+  color: #8b5cf6;
+  text-decoration: none;
+}
+
+.sellerWebsite:hover {
+  text-decoration: underline;
+}
+
+.sellerProfileLink {
+  font-size: 0.9rem;
+  color: #8b5cf6;
+  text-decoration: none;
+}
+
+.sellerProfileLink:hover {
+  text-decoration: underline;
+}
+
+/* ─── Contact Section ─────────────────────────────────────────────────────── */
+
+.contactSection {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+  background: #f9fafb;
+}
+
+.contactTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 12px;
+}
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.contactLabel {
+  font-size: 0.9rem;
+}
+
+.contactValue {
+  font-size: 0.9rem;
+  color: var(--text-primary, #111827);
+}
+
+/* ─── Pending Notice ───────────────────────────────────────────────────────── */
+
+.pendingNotice {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+/* ─── Feedback Prompt ─────────────────────────────────────────────────────── */
+
+.feedbackPrompt {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.feedbackLink {
+  color: #8b5cf6;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.feedbackLink:hover {
+  text-decoration: underline;
+}
+
+/* ─── States ──────────────────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.error {
+  text-align: center;
+  padding: 40px 24px;
+  color: #dc2626;
+}

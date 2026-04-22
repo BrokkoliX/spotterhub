@@ -1,0 +1,281 @@
+/* ─── Admin Marketplace Categories Page ─────────────────────────────────── */
+
+.page {
+  min-height: calc(100vh - var(--header-height));
+  background: var(--bg-primary, #fff);
+}
+
+.inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #8b5cf6;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.errorMsg {
+  color: #dc2626;
+  text-align: center;
+  padding: 40px;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+/* ─── Table ──────────────────────────────────────────────────────────────── */
+
+.tableWrap {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #6b7280);
+  background: var(--bg-secondary, #f9fafb);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover {
+  background: var(--bg-secondary, #f9fafb);
+}
+
+/* ─── Cells ─────────────────────────────────────────────────────────────── */
+
+.sortCell {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.875rem;
+  width: 60px;
+}
+
+.nameCell {
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: var(--text-primary, #111827);
+}
+
+.labelCell {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+}
+
+.countCell {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ─── Inline Edit Inputs ────────────────────────────────────────────────── */
+
+.sortInput {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #111827);
+}
+
+.nameInput {
+  width: 180px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: monospace;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #111827);
+}
+
+.labelInput {
+  width: 180px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #111827);
+}
+
+.sortInput:focus,
+.nameInput:focus,
+.labelInput:focus {
+  outline: none;
+  border-color: #8b5cf6;
+}
+
+/* ─── Actions ────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.editBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-secondary, #fff);
+  color: var(--text-primary, #111827);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.editBtn:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.deleteBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-secondary, #fff);
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saveBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: #6ee7b7;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-secondary, #fff);
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  border-color: #6b7280;
+}
+
+/* ─── Create Form ───────────────────────────────────────────────────────── */
+
+.createForm {
+  margin-top: 24px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--bg-secondary, #f9fafb);
+}
+
+.createTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 16px;
+}
+
+.createFields {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.createActions {
+  display: flex;
+  gap: 8px;
+}

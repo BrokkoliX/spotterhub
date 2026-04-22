@@ -2237,6 +2237,368 @@ export const UPDATE_SITE_SETTINGS = gql`
   }
 `;
 
+// ─── Collectibles Marketplace ─────────────────────────────────────────────────
+
+export const GET_MARKETPLACE_ITEMS = gql`
+  query GetMarketplaceItems(
+    $category: String
+    $minPrice: Float
+    $maxPrice: Float
+    $condition: String
+    $search: String
+    $sortBy: MarketplaceSort
+    $first: Int
+    $after: String
+  ) {
+    marketplaceItems(
+      category: $category
+      minPrice: $minPrice
+      maxPrice: $maxPrice
+      condition: $condition
+      search: $search
+      sortBy: $sortBy
+      first: $first
+      after: $after
+    ) {
+      edges {
+        cursor
+        node {
+          id
+          title
+          description
+          priceUsd
+          condition
+          location
+          moderationStatus
+          active
+          averageRating
+          feedbackCount
+          createdAt
+          category { id name label }
+          images {
+            id
+            variantType
+            url
+            width
+            height
+            sortOrder
+          }
+          seller {
+            id
+            bio
+            website
+            averageRating
+            feedbackCount
+            user {
+              id
+              username
+              profile { displayName avatarUrl }
+            }
+          }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const GET_MARKETPLACE_ITEM = gql`
+  query GetMarketplaceItem($id: ID!) {
+    marketplaceItem(id: $id) {
+      id
+      title
+      description
+      priceUsd
+      condition
+      location
+      contactEmail
+      contactPhone
+      moderationStatus
+      moderationReason
+      active
+      averageRating
+      feedbackCount
+      createdAt
+      updatedAt
+      category { id name label }
+      images {
+        id
+        variantType
+        url
+        width
+        height
+        fileSizeBytes
+        sortOrder
+      }
+      seller {
+        id
+        bio
+        website
+        averageRating
+        feedbackCount
+        user {
+          id
+          username
+          profile { displayName avatarUrl }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_MARKETPLACE_CATEGORIES = gql`
+  query GetMarketplaceCategories {
+    marketplaceCategories {
+      id
+      name
+      label
+      sortOrder
+      itemCount
+    }
+  }
+`;
+
+export const GET_SELLER_PROFILE = gql`
+  query GetSellerProfile($userId: ID!) {
+    sellerProfile(userId: $userId) {
+      id
+      bio
+      website
+      status
+      approved
+      averageRating
+      feedbackCount
+      createdAt
+      user {
+        id
+        username
+        profile { displayName avatarUrl bio }
+      }
+    }
+  }
+`;
+
+export const GET_SELLER_FEEDBACK = gql`
+  query GetSellerFeedback($sellerId: ID!, $first: Int, $after: String) {
+    sellerFeedback(sellerId: $sellerId, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          rating
+          comment
+          createdAt
+          buyer {
+            id
+            username
+            profile { displayName avatarUrl }
+          }
+          item {
+            id
+            title
+          }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const GET_MY_LISTINGS = gql`
+  query GetMyListings($first: Int, $after: String) {
+    myListings(first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          title
+          description
+          priceUsd
+          condition
+          location
+          moderationStatus
+          active
+          createdAt
+          category { id name label }
+          images {
+            id
+            variantType
+            url
+            width
+            height
+            sortOrder
+          }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const GET_ADMIN_MARKETPLACE_ITEMS = gql`
+  query GetAdminMarketplaceItems($moderationStatus: String, $first: Int, $after: String) {
+    adminMarketplaceItems(moderationStatus: $moderationStatus, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          title
+          description
+          priceUsd
+          condition
+          location
+          moderationStatus
+          active
+          createdAt
+          category { id name label }
+          seller {
+            id
+            user {
+              id
+              username
+              email
+              profile { displayName }
+            }
+          }
+          images { id url variantType }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+      totalCount
+    }
+  }
+`;
+
+export const UPDATE_SELLER_STATUS = gql`
+  mutation UpdateSellerStatus($sellerProfileId: ID!, $status: SellerStatus!) {
+    updateSellerStatus(sellerProfileId: $sellerProfileId, status: $status) {
+      id
+      status
+      approved
+    }
+  }
+`;
+
+export const CREATE_MARKETPLACE_ITEM = gql`
+  mutation CreateMarketplaceItem($input: CreateMarketplaceItemInput!) {
+    createMarketplaceItem(input: $input) {
+      id
+      title
+      description
+      priceUsd
+      condition
+      location
+      contactEmail
+      contactPhone
+      moderationStatus
+      active
+      category { id name label }
+      images {
+        id
+        variantType
+        url
+        width
+        height
+        sortOrder
+      }
+    }
+  }
+`;
+
+export const UPDATE_MARKETPLACE_ITEM = gql`
+  mutation UpdateMarketplaceItem($id: ID!, $input: UpdateMarketplaceItemInput!) {
+    updateMarketplaceItem(id: $id, input: $input) {
+      id
+      title
+      description
+      priceUsd
+      condition
+      location
+      contactEmail
+      contactPhone
+      moderationStatus
+      active
+      category { id name label }
+      images {
+        id
+        variantType
+        url
+        width
+        height
+        sortOrder
+      }
+    }
+  }
+`;
+
+export const DELETE_MARKETPLACE_ITEM = gql`
+  mutation DeleteMarketplaceItem($id: ID!) {
+    deleteMarketplaceItem(id: $id)
+  }
+`;
+
+export const MODERATE_MARKETPLACE_ITEM = gql`
+  mutation ModerateMarketplaceItem($id: ID!, $status: ModerationStatus!, $reason: String) {
+    moderateMarketplaceItem(id: $id, status: $status, reason: $reason) {
+      id
+      moderationStatus
+      moderationReason
+      active
+    }
+  }
+`;
+
+export const SUBMIT_SELLER_FEEDBACK = gql`
+  mutation SubmitSellerFeedback($input: SubmitSellerFeedbackInput!) {
+    submitSellerFeedback(input: $input) {
+      id
+      rating
+      comment
+      createdAt
+    }
+  }
+`;
+
+export const GET_MARKETPLACE_UPLOAD_URL = gql`
+  mutation GetMarketplaceItemUploadUrl($input: GetUploadUrlInput!) {
+    getMarketplaceItemUploadUrl(input: $input) {
+      url
+      key
+    }
+  }
+`;
+
+export const CREATE_MARKETPLACE_CATEGORY = gql`
+  mutation CreateMarketplaceCategory($input: CreateMarketplaceCategoryInput!) {
+    createMarketplaceCategory(input: $input) {
+      id
+      name
+      label
+      sortOrder
+    }
+  }
+`;
+
+export const UPDATE_MARKETPLACE_CATEGORY = gql`
+  mutation UpdateMarketplaceCategory($id: ID!, $input: UpdateMarketplaceCategoryInput!) {
+    updateMarketplaceCategory(id: $id, input: $input) {
+      id
+      name
+      label
+      sortOrder
+    }
+  }
+`;
+
+export const DELETE_MARKETPLACE_CATEGORY = gql`
+  mutation DeleteMarketplaceCategory($id: ID!) {
+    deleteMarketplaceCategory(id: $id)
+  }
+`;
+
 // ─── Marketplace ─────────────────────────────────────────────────────────────
 
 export const MARKETPLACE_LISTINGS = gql`

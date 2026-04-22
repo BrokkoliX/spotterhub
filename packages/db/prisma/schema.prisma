@@ -49,6 +49,12 @@ enum ModerationStatus {
   review
 }
 
+enum SellerStatus {
+  pending
+  approved
+  rejected
+}
+
 enum PhotoVariantType {
   thumbnail
   display
@@ -281,6 +287,8 @@ model User {
   purchases       Order[]         @relation("BuyerOrders")
   sellerSales     Order[]         @relation("SellerSales")
   sellerListings  PhotoListing[]
+  marketplaceItems MarketplaceItem[] @relation("SellerItems")
+  sellerFeedback  SellerFeedback[] @relation("SellerReceivedFeedback")
 
   @@map("users")
 }
@@ -829,12 +837,15 @@ model SellerProfile {
   stripeAccountId          String?  @unique @map("stripe_account_id")
   stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
   approved                 Boolean  @default(false)
+  status                   SellerStatus @default(pending)
   bio                      String?
   website                  String?
   createdAt                DateTime @default(now()) @map("created_at")
   updatedAt                DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketplaceItems MarketplaceItem[]
+  feedback        SellerFeedback[]
 
   @@map("seller_profiles")
 }
@@ -878,6 +889,86 @@ model Order {
   @@index([sellerId])
   @@index([status])
   @@map("orders")
+}
+
+// ─── Collectibles Marketplace ───────────────────────────────────────────────
+
+model MarketplaceCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  label     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  items MarketplaceItem[]
+
+  @@map("marketplace_categories")
+}
+
+model MarketplaceItem {
+  id                 String           @id @default(uuid()) @db.Uuid
+  sellerId           String           @map("seller_id") @db.Uuid
+  userId             String           @map("user_id") @db.Uuid
+  categoryId         String           @map("category_id") @db.Uuid
+  title              String
+  description        String?
+  priceUsd           Decimal          @map("price_usd") @db.Decimal(10, 2)
+  condition          String
+  location           String?
+  contactEmail       String?          @map("contact_email")
+  contactPhone       String?          @map("contact_phone")
+  active             Boolean          @default(false)
+  moderationStatus   ModerationStatus @default(pending) @map("moderation_status")
+  moderationReason   String?          @map("moderation_reason")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  seller   SellerProfile       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  user     User               @relation("SellerItems", fields: [userId], references: [id], onDelete: Cascade)
+  category MarketplaceCategory @relation(fields: [categoryId], references: [id])
+  images   MarketplaceItemImage[]
+  feedback SellerFeedback[]
+
+  @@index([sellerId])
+  @@index([userId])
+  @@index([categoryId])
+  @@index([moderationStatus])
+  @@map("marketplace_items")
+}
+
+model MarketplaceItemImage {
+  id            String           @id @default(uuid()) @db.Uuid
+  itemId        String           @map("item_id") @db.Uuid
+  variantType   PhotoVariantType @map("variant_type")
+  url           String
+  width         Int
+  height        Int
+  fileSizeBytes Int?             @map("file_size_bytes")
+  sortOrder     Int              @default(0) @map("sort_order")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  item MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("marketplace_item_images")
+}
+
+model SellerFeedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  sellerId  String   @map("seller_id") @db.Uuid
+  buyerId   String   @map("buyer_id") @db.Uuid
+  rating    Int
+  comment   String?
+  itemId    String?  @map("item_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  seller SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User          @relation("SellerReceivedFeedback", fields: [buyerId], references: [id], onDelete: Cascade)
+  item   MarketplaceItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@unique([buyerId, sellerId])
+  @@index([sellerId])
+  @@map("seller_feedback")
 }
 
 model PasswordResetToken {

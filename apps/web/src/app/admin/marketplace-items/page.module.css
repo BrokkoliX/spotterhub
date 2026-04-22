@@ -1,0 +1,257 @@
+/* ─── Admin Marketplace Items Page ───────────────────────────────────────── */
+
+.page {
+  min-height: calc(100vh - var(--header-height));
+  background: var(--bg-primary, #fff);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #8b5cf6;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+/* ─── Tabs ───────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-secondary, #fff);
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.tabActive {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  color: #fff;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.errorMsg {
+  color: #dc2626;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ─── Table ──────────────────────────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #6b7280);
+  background: var(--bg-secondary, #f9fafb);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover {
+  background: var(--bg-secondary, #f9fafb);
+}
+
+/* ─── Thumbnail ──────────────────────────────────────────────────────────── */
+
+.thumb {
+  width: 60px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.thumbPlaceholder {
+  width: 60px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  opacity: 0.4;
+}
+
+/* ─── Item Cell ──────────────────────────────────────────────────────────── */
+
+.itemTitle {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 2px;
+}
+
+.category {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ─── Seller ─────────────────────────────────────────────────────────────── */
+
+.sellerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sellerEmail {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ─── Price / Condition ──────────────────────────────────────────────────── */
+
+.price {
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.condition {
+  text-transform: capitalize;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ─── Status Badge ────────────────────────────────────────────────────────── */
+
+.statusBadge {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.statusPending { background: #fef3c7; color: #92400e; }
+.statusApproved { background: #d1fae5; color: #065f46; }
+.statusRejected { background: #fee2e2; color: #991b1b; }
+.statusReview { background: #dbeafe; color: #1e40af; }
+
+/* ─── Actions ────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.approveBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.approveBtn:hover {
+  background: #6ee7b7;
+}
+
+.rejectBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rejectBtn:hover {
+  background: #fecaca;
+}
+
+.viewLink {
+  font-size: 0.8rem;
+  color: #8b5cf6;
+  text-decoration: none;
+}
+
+.viewLink:hover {
+  text-decoration: underline;
+}

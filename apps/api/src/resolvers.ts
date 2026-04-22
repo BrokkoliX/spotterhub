@@ -77,6 +77,15 @@ import {
   sellerProfileFieldResolvers,
 } from './resolvers/marketplaceResolvers.js';
 import {
+  marketplaceCollectiblesQueryResolvers,
+  marketplaceCollectiblesMutationResolvers,
+  marketplaceItemFieldResolvers,
+  marketplaceItemImageFieldResolvers,
+  sellerFeedbackFieldResolvers,
+  marketplaceCategoryFieldResolvers,
+  sellerProfileCollectiblesFieldResolvers,
+} from './resolvers/marketplaceCollectiblesResolvers.js';
+import {
   notificationFieldResolvers,
   notificationMutationResolvers,
   notificationQueryResolvers,
@@ -193,6 +202,7 @@ export const resolvers = {
     ...categoryQueryResolvers,
     ...pendingListItemQueryResolvers,
     ...marketplaceQueryResolvers,
+    ...marketplaceCollectiblesQueryResolvers,
   },
 
   Mutation: {
@@ -219,6 +229,7 @@ export const resolvers = {
     ...categoryMutationResolvers,
     ...pendingListItemMutationResolvers,
     ...marketplaceMutationResolvers,
+    ...marketplaceCollectiblesMutationResolvers,
   },
 
   User: {
@@ -280,5 +291,16 @@ export const resolvers = {
 
   Order: orderFieldResolvers,
 
-  SellerProfile: sellerProfileFieldResolvers,
+  SellerProfile: {
+    ...sellerProfileFieldResolvers,
+    ...sellerProfileCollectiblesFieldResolvers,
+  },
+
+  MarketplaceItem: marketplaceItemFieldResolvers,
+
+  MarketplaceItemImage: marketplaceItemImageFieldResolvers,
+
+  SellerFeedback: sellerFeedbackFieldResolvers,
+
+  MarketplaceCategory: marketplaceCategoryFieldResolvers,
 };

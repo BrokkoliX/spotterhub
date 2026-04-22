@@ -1,0 +1,116 @@
+/* ─── Sell Page ────────────────────────────────────────────────────────────── */
+
+.page {
+  min-height: calc(100vh - var(--header-height));
+  background: var(--bg-primary, #fff);
+}
+
+.inner {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #8b5cf6;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 32px;
+}
+
+/* ─── Card ────────────────────────────────────────────────────────────────── */
+
+.card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 16px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cardTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 4px;
+}
+
+.cardText {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─── Form Fields ─────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.required {
+  color: #dc2626;
+}
+
+.optional {
+  color: var(--text-secondary, #6b7280);
+  font-weight: 400;
+}
+
+.textarea,
+.input {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #111827);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.textarea:focus,
+.input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.charCount {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  text-align: right;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin: 0;
+}
