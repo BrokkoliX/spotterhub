@@ -1,6 +1,6 @@
 -- Create refresh_tokens table for sliding-session JWT refresh
 CREATE TABLE "refresh_tokens" (
-  "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
   "token" VARCHAR(255) NOT NULL,
   "user_id" UUID NOT NULL,
   "expires_at" TIMESTAMP(3) NOT NULL,
