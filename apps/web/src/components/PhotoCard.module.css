@@ -1,10 +1,10 @@
-/* ─── Flip Card Structure ─────────────────────────────────────────────────── */
+/* ─── Card Structure ─────────────────────────────────────────────────────── */
 
 .card {
   background: var(--color-bg-card);
   border-radius: var(--radius-md);
-  overflow: visible;
   border: 1px solid var(--color-border);
+  overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -13,53 +13,14 @@
   box-shadow: var(--shadow-elevated);
 }
 
-.cardInner {
-  position: relative;
-  width: 100%;
-  /* Aspect ratio matching the front face image */
-  aspect-ratio: 4 / 3;
-  transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
-}
-
-.card:hover .cardInner {
-  transform: rotateY(180deg);
-}
-
-.cardFace {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.cardFront {
-  /* front face sits normally */
-  height: 100%;
-}
-
-.cardBack {
-  transform: rotateY(180deg);
-  background: var(--color-bg-card);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 14px 16px;
-  gap: 8px;
-  height: 100%;
-}
-
-/* ─── Front Face ─────────────────────────────────────────────────────────────── */
+/* ─── Image ──────────────────────────────────────────────────────────────── */
 
 .imageWrapper {
   position: relative;
   width: 100%;
-  height: calc(100% - 120px); /* cardInner aspect ratio minus body+footer (~120px) */
+  aspect-ratio: 4 / 3;
   background: var(--color-bg);
   overflow: hidden;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .image {
@@ -82,6 +43,8 @@
   font-size: 2rem;
   color: var(--color-text-muted);
 }
+
+/* ─── Body ────────────────────────────────────────────────────────────────── */
 
 .body {
   padding: 12px;
@@ -111,6 +74,15 @@
   align-items: center;
   gap: 3px;
 }
+
+.tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* ─── Footer ──────────────────────────────────────────────────────────────── */
 
 .footer {
   display: flex;
@@ -168,48 +140,4 @@
 
 .commentBtn:hover {
   color: var(--color-text);
-}
-
-.tags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-/* ─── Back Face (Flip Info) ─────────────────────────────────────────────────── */
-
-.backCaption {
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--color-text);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.backMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-}
-
-.backMetaItem {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.backMetaItem svg {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.backDate {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  margin-top: 2px;
 }
