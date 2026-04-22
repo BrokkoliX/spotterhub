@@ -29,6 +29,8 @@ if ! npx prisma migrate deploy --schema /app/prisma/schema.prisma 2>&1; then
   # drop it so the migration can re-run cleanly
   echo "DROP TABLE IF EXISTS refresh_tokens;" \
     | npx prisma db execute --schema /app/prisma/schema.prisma --stdin 2>/dev/null || true
+  echo "DROP TABLE IF EXISTS _prisma_migrations;" \
+    | npx prisma db execute --schema /app/prisma/schema.prisma --stdin 2>/dev/null || true
 
   echo "Retrying migrate deploy..."
   npx prisma migrate deploy --schema /app/prisma/schema.prisma
