@@ -70,13 +70,6 @@ import {
 import { likeFieldResolvers, likeMutationResolvers } from './resolvers/likeResolvers.js';
 import { locationQueryResolvers } from './resolvers/locationResolvers.js';
 import {
-  marketplaceQueryResolvers,
-  marketplaceMutationResolvers,
-  photoListingFieldResolvers,
-  orderFieldResolvers,
-  sellerProfileFieldResolvers,
-} from './resolvers/marketplaceResolvers.js';
-import {
   marketplaceCollectiblesQueryResolvers,
   marketplaceCollectiblesMutationResolvers,
   marketplaceItemFieldResolvers,
@@ -85,6 +78,13 @@ import {
   marketplaceCategoryFieldResolvers,
   sellerProfileCollectiblesFieldResolvers,
 } from './resolvers/marketplaceCollectiblesResolvers.js';
+import {
+  marketplaceQueryResolvers,
+  marketplaceMutationResolvers,
+  photoListingFieldResolvers,
+  orderFieldResolvers,
+  sellerProfileFieldResolvers,
+} from './resolvers/marketplaceResolvers.js';
 import {
   notificationFieldResolvers,
   notificationMutationResolvers,

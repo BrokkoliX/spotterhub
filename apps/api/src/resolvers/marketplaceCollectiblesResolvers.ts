@@ -3,8 +3,8 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 import { generateVariants } from '../services/imageProcessing.js';
+import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 
 function parseDecimal(value: unknown): string {
   if (!value) return '0';

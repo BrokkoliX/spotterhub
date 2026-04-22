@@ -91,7 +91,7 @@ function AdminMarketplaceItemsContent() {
         ) : error ? (
           <p className={styles.errorMsg}>Failed to load items.</p>
         ) : items.length === 0 ? (
-          <p className={styles.empty}>No items with status "{statusFilter || 'all'}"</p>
+          <p className={styles.empty}>No items with status &quot;{statusFilter || 'all'}&quot;</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
