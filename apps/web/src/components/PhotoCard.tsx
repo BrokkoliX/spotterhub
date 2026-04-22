@@ -43,6 +43,12 @@ export interface PhotoData {
     variant?: { name: string; iataCode?: string | null; icaoCode?: string | null } | null;
     operatorType?: string | null;
   } | null;
+  listing?: {
+    id: string;
+    priceUsd: string;
+    active: boolean;
+  } | null;
+  hasActiveListing?: boolean;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -79,6 +85,9 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
           />
         ) : (
           <div className={styles.placeholder}>📷</div>
+        )}
+        {photo.listing?.active && photo.listing?.priceUsd && (
+          <span className={styles.priceBadge}>${photo.listing.priceUsd}</span>
         )}
       </Link>
 

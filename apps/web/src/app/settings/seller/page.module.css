@@ -1,0 +1,377 @@
+/* ─── Seller Settings Page ───────────────────────────────────────────────── */
+
+.page {
+  min-height: calc(100vh - var(--header-height));
+}
+
+.inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 24px;
+}
+
+.backLink:hover {
+  color: var(--color-text);
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  margin: 0 0 32px;
+}
+
+/* ─── Cards ─────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.cardTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+/* ─── Apply State ───────────────────────────────────────────────────────── */
+
+.applyCard {
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.applyTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.applyText {
+  color: var(--color-text-secondary);
+  margin: 0 0 24px;
+}
+
+.bioTextarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 12px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.bioTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent, #8b5cf6);
+}
+
+.websiteInput {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.websiteInput:focus {
+  outline: none;
+  border-color: var(--color-accent, #8b5cf6);
+}
+
+/* ─── Pending State ─────────────────────────────────────────────────────── */
+
+.pendingCard {
+  text-align: center;
+  padding: 40px 24px;
+  background: rgba(234, 179, 8, 0.1);
+  border-color: #f59e0b;
+}
+
+.pendingIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.pendingTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: #f59e0b;
+}
+
+.pendingText {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* ─── Onboarding State ──────────────────────────────────────────────────── */
+
+.onboardingCard {
+  padding: 32px;
+  text-align: center;
+  background: rgba(139, 92, 246, 0.05);
+  border-color: #8b5cf6;
+}
+
+.onboardingTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: #8b5cf6;
+}
+
+.onboardingText {
+  color: var(--color-text-secondary);
+  margin: 0 0 20px;
+}
+
+.onboardingBtn {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: var(--radius-md);
+  background: #8b5cf6;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.onboardingBtn:hover {
+  opacity: 0.9;
+}
+
+/* ─── Listings Table ───────────────────────────────────────────────────── */
+
+.listingsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.listingsTable th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.listingsTable td {
+  padding: 12px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.listingThumb {
+  width: 60px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.listingCaption {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listingActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.listingActive.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.listingActive.inactive {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--color-text-muted);
+}
+
+.listingPrice {
+  font-weight: 600;
+  color: #8b5cf6;
+}
+
+.listingActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.listingActions button,
+.listingActions a {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.listingActions button:hover,
+.listingActions a:hover {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+/* ─── Sales Summary ─────────────────────────────────────────────────────── */
+
+.salesSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summaryStat {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+}
+
+.summaryLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.summaryValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.summaryValue.positive {
+  color: #16a34a;
+}
+
+/* ─── Edit Listing Modal ───────────────────────────────────────────────── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+  margin: 24px;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+
+.modalField {
+  margin-bottom: 16px;
+}
+
+.modalLabel {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.modalInput {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: var(--color-accent, #8b5cf6);
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.modalCancel {
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.modalSave {
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: #8b5cf6;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.modalSave:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Loading ─────────────────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--color-text-muted);
+}

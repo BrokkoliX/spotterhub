@@ -692,6 +692,16 @@ export const photoFieldResolvers = {
     });
   },
 
+  listing: (parent: PhotoParent, _args: unknown, ctx: Context) => {
+    return ctx.prisma.photoListing.findUnique({
+      where: { photoId: parent.id },
+    });
+  },
+
+  hasActiveListing: (parent: PhotoParent & { hasActiveListing?: boolean }) => {
+    return parent.hasActiveListing ?? false;
+  },
+
   operatorIcao: (parent: PhotoParent) => parent.operatorIcao ?? null,
 
   similarAircraftPhotos: async (

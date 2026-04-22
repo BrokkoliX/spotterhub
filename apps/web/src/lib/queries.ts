@@ -2236,3 +2236,245 @@ export const UPDATE_SITE_SETTINGS = gql`
     }
   }
 `;
+
+// ─── Marketplace ─────────────────────────────────────────────────────────────
+
+export const MARKETPLACE_LISTINGS = gql`
+  query MarketplaceListings($first: Int, $after: String, $sortBy: MarketplaceSort) {
+    marketplaceListings(first: $first, after: $after, sortBy: $sortBy) {
+      edges {
+        cursor
+        node {
+          id
+          caption
+          originalUrl
+          originalWidth
+          originalHeight
+          likeCount
+          commentCount
+          hasActiveListing
+          listing {
+            id
+            priceUsd
+            active
+          }
+          variants {
+            id
+            variantType
+            url
+            width
+            height
+          }
+          user {
+            id
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+          aircraft {
+            registration
+            airline
+            manufacturer { name }
+            family { name }
+            variant { name }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
+export const MY_PURCHASES = gql`
+  query MyPurchases($first: Int, $after: String) {
+    myPurchases(first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          status
+          amountUsd
+          platformFeeUsd
+          createdAt
+          photo {
+            id
+            caption
+            originalUrl
+            variants {
+              id
+              variantType
+              url
+              width
+              height
+            }
+          }
+          seller {
+            id
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
+export const MY_SALES = gql`
+  query MySales($first: Int, $after: String) {
+    mySales(first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          status
+          amountUsd
+          platformFeeUsd
+          createdAt
+          photo {
+            id
+            caption
+            originalUrl
+            variants {
+              id
+              variantType
+              url
+              width
+              height
+            }
+          }
+          buyer {
+            id
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
+export const ADMIN_SELLER_APPLICATIONS = gql`
+  query AdminSellerApplications($first: Int, $after: String) {
+    adminSellerApplications(first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          approved
+          bio
+          website
+          stripeOnboardingComplete
+          createdAt
+          user {
+            id
+            username
+            email
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
+export const APPLY_TO_SELL = gql`
+  mutation ApplyToSell($input: ApplyToSellInput!) {
+    applyToSell(input: $input) {
+      id
+      approved
+      bio
+      website
+      stripeOnboardingComplete
+      createdAt
+      user {
+        id
+        username
+        email
+      }
+    }
+  }
+`;
+
+export const APPROVE_SELLER = gql`
+  mutation ApproveSeller($sellerProfileId: ID!) {
+    approveSeller(sellerProfileId: $sellerProfileId) {
+      sellerProfile {
+        id
+        approved
+        stripeAccountId
+        stripeOnboardingComplete
+      }
+      onboardingUrl
+    }
+  }
+`;
+
+export const CREATE_OR_UPDATE_LISTING = gql`
+  mutation CreateOrUpdateListing($input: CreateOrUpdateListingInput!) {
+    createOrUpdateListing(input: $input) {
+      id
+      photoId
+      priceUsd
+      active
+      createdAt
+      updatedAt
+      photo {
+        id
+        caption
+        originalUrl
+        variants {
+          id
+          variantType
+          url
+          width
+          height
+        }
+      }
+    }
+  }
+`;
+
+export const REMOVE_LISTING = gql`
+  mutation RemoveListing($photoId: ID!) {
+    removeListing(photoId: $photoId)
+  }
+`;
+
+export const CREATE_PHOTO_PURCHASE = gql`
+  mutation CreatePhotoPurchase($listingId: ID!) {
+    createPhotoPurchase(listingId: $listingId) {
+      sessionId
+      checkoutUrl
+    }
+  }
+`;

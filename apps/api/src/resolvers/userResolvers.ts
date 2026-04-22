@@ -106,4 +106,24 @@ export const userFieldResolvers = {
   photoCount: (parent: UserParent, _args: unknown, ctx: Context) => {
     return ctx.loaders.userPhotoCount.load(parent.id);
   },
+
+  sellerProfile: (parent: UserParent, _args: unknown, ctx: Context) => {
+    return ctx.prisma.sellerProfile.findUnique({
+      where: { userId: parent.id },
+    });
+  },
+
+  canSell: (parent: UserParent, _args: unknown, ctx: Context) => {
+    // Look up the user's role to determine if they can sell
+    return ctx.prisma.user.findUnique({
+      where: { id: parent.id },
+      select: { role: true, sellerProfile: { select: { approved: true } } },
+    }).then(user => {
+      if (!user) return false;
+      // Admin/superuser can always sell
+      if (user.role === 'admin' || user.role === 'superuser') return true;
+      // Otherwise check seller profile approval
+      return user.sellerProfile?.approved ?? false;
+    });
+  },
 };

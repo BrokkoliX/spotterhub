@@ -211,6 +211,71 @@ async function main() {
     }),
   );
 
+  // Stripe webhook endpoint
+  app.post(
+    '/api/stripe-webhook',
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
+      const signature = req.headers['stripe-signature'] as string;
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        res.status(500).json({ error: 'STRIPE_WEBHOOK_SECRET not configured' });
+        return;
+      }
+
+      let event: import('stripe').Stripe.Event;
+      try {
+        const { constructWebhookEvent } = await import('./services/stripe.js');
+        event = constructWebhookEvent(req.body, signature, webhookSecret);
+      } catch (err) {
+        console.error('Stripe webhook signature verification failed:', err);
+        res.status(400).json({ error: 'Invalid signature' });
+        return;
+      }
+
+      try {
+        if (event.type === 'checkout.session.completed') {
+          const session = event.data.object as import('stripe').Stripe.Checkout.Session;
+          const orderId = session.metadata?.orderId;
+          if (orderId) {
+            await prisma.order.update({
+              where: { id: orderId },
+              data: {
+                status: 'completed',
+                stripePaymentIntentId: session.payment_intent as string | null,
+              },
+            });
+            // Mark photo listing as inactive (sold)
+            const order = await prisma.order.findUnique({ where: { id: orderId } });
+            if (order) {
+              await prisma.photoListing.update({
+                where: { id: order.listingId },
+                data: { active: false },
+              });
+              await prisma.photo.update({
+                where: { id: order.photoId },
+                data: { hasActiveListing: false },
+              });
+            }
+          }
+        } else if (event.type === 'checkout.session.expired') {
+          const session = event.data.object as import('stripe').Stripe.Checkout.Session;
+          const orderId = session.metadata?.orderId;
+          if (orderId) {
+            await prisma.order.update({
+              where: { id: orderId },
+              data: { status: 'failed' },
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error processing webhook event:', err);
+      }
+
+      res.json({ received: true });
+    },
+  );
+
   app.listen({ port: PORT }, () => {
     console.log(`🚀 SpotterSpace API ready at http://localhost:${PORT}/graphql`);
   });

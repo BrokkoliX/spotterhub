@@ -63,6 +63,76 @@
   gap: 16px;
 }
 
+/* ─── Buy Card ─────────────────────────────────────────────────────────── */
+
+.buyCard {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-accent, #8b5cf6);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+}
+
+.buyPrice {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--color-accent, #8b5cf6);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.buyLabel {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.buyBtn {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent, #8b5cf6);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.buyBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.buyBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.buyError {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: #dc2626;
+}
+
+.buyNote {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ─── Listed Badge ────────────────────────────────────────────────────── */
+
+.listedBadge {
+  text-align: center;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--color-accent, #8b5cf6);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);

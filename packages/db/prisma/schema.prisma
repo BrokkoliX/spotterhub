@@ -132,6 +132,13 @@ enum OperatorType {
   private
 }
 
+enum OrderStatus {
+  pending
+  completed
+  refunded
+  failed
+}
+
 // ─── Aircraft Hierarchy ───────────────────────────────────────────────────────
 
 model AircraftManufacturer {
@@ -270,6 +277,10 @@ model User {
   submittedPendingItems PendingListItem[] @relation("PendingListItemSubmitter")
   reviewedPendingItems PendingListItem[]  @relation("PendingListItemReviewer")
   refreshTokens     RefreshToken[]
+  sellerProfile   SellerProfile?
+  purchases       Order[]         @relation("BuyerOrders")
+  sellerSales     Order[]         @relation("SellerSales")
+  sellerListings  PhotoListing[]
 
   @@map("users")
 }
@@ -369,6 +380,7 @@ model Photo {
   moderationLabels     Json?            @map("moderation_labels")
   moderationConfidence Float?           @map("moderation_confidence")
   likeCount            Int              @default(0) @map("like_count")
+  hasActiveListing     Boolean          @default(false) @map("has_active_listing")
   aircraftId           String?          @map("aircraft_id") @db.Uuid
   photographerId       String?          @map("photographer_id") @db.Uuid
   photographerName     String?          @map("photographer_name")
@@ -397,6 +409,8 @@ model Photo {
   photographer User?          @relation("PhotoPhotographer", fields: [photographerId], references: [id], onDelete: SetNull)
   photoCategory PhotoCategory? @relation(fields: [photoCategoryId], references: [id], onDelete: SetNull)
   aircraftSpecificCategory AircraftSpecificCategory? @relation(fields: [aircraftSpecificCategoryId], references: [id], onDelete: SetNull)
+  listing             PhotoListing?
+  orders             Order[]
 
   @@index([photoCategoryId])
   @@index([aircraftSpecificCategoryId])
@@ -805,6 +819,65 @@ model SiteSettings {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
+}
+
+// ─── Marketplace ─────────────────────────────────────────────────────────────
+
+model SellerProfile {
+  id                       String   @id @default(uuid()) @db.Uuid
+  userId                   String   @unique @map("user_id") @db.Uuid
+  stripeAccountId          String?  @unique @map("stripe_account_id")
+  stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
+  approved                 Boolean  @default(false)
+  bio                      String?
+  website                  String?
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("seller_profiles")
+}
+
+model PhotoListing {
+  id        String   @id @default(uuid()) @db.Uuid
+  photoId   String   @unique @map("photo_id") @db.Uuid
+  sellerId  String   @map("seller_id") @db.Uuid
+  priceUsd  Decimal  @map("price_usd") @db.Decimal(10, 2)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  photo    Photo     @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  seller   User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([sellerId])
+  @@map("photo_listings")
+}
+
+model Order {
+  id                   String      @id @default(uuid()) @db.Uuid
+  buyerId              String      @map("buyer_id") @db.Uuid
+  sellerId             String      @map("seller_id") @db.Uuid
+  photoId              String      @map("photo_id") @db.Uuid
+  listingId            String      @map("listing_id") @db.Uuid
+  amountUsd            Decimal     @map("amount_usd") @db.Decimal(10, 2)
+  platformFeeUsd      Decimal     @map("platform_fee_usd") @db.Decimal(10, 2)
+  stripePaymentIntentId String?  @unique @map("stripe_payment_intent_id")
+  stripeTransferId     String?    @map("stripe_transfer_id")
+  status               OrderStatus @default(pending)
+  createdAt            DateTime   @default(now()) @map("created_at")
+
+  buyer    User         @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller   User         @relation("SellerSales", fields: [sellerId], references: [id], onDelete: Cascade)
+  photo    Photo       @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  listing  PhotoListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@map("orders")
 }
 
 model PasswordResetToken {

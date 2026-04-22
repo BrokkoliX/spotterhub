@@ -69,6 +69,13 @@ import {
 } from './resolvers/airlineResolvers.js';
 import { locationQueryResolvers } from './resolvers/locationResolvers.js';
 import {
+  marketplaceQueryResolvers,
+  marketplaceMutationResolvers,
+  photoListingFieldResolvers,
+  orderFieldResolvers,
+  sellerProfileFieldResolvers,
+} from './resolvers/marketplaceResolvers.js';
+import {
   notificationFieldResolvers,
   notificationMutationResolvers,
   notificationQueryResolvers,
@@ -152,6 +159,7 @@ export const resolvers = {
     ...airlineQueryResolvers,
     ...categoryQueryResolvers,
     ...pendingListItemQueryResolvers,
+    ...marketplaceQueryResolvers,
   },
 
   Mutation: {
@@ -177,6 +185,7 @@ export const resolvers = {
     ...airlineMutationResolvers,
     ...categoryMutationResolvers,
     ...pendingListItemMutationResolvers,
+    ...marketplaceMutationResolvers,
   },
 
   User: {
@@ -233,4 +242,10 @@ export const resolvers = {
   AircraftSpecificCategory: categoryFieldResolvers.AircraftSpecificCategory,
 
   PendingListItem: pendingListItemFieldResolvers.PendingListItem,
+
+  PhotoListing: photoListingFieldResolvers,
+
+  Order: orderFieldResolvers,
+
+  SellerProfile: sellerProfileFieldResolvers,
 };

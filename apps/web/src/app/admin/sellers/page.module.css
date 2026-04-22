@@ -1,0 +1,25 @@
+.page { min-height: calc(100vh - var(--header-height)); }
+.inner { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+.backLink { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 24px; }
+.backLink:hover { color: var(--color-text); }
+.title { font-size: 2rem; font-weight: 700; margin: 0 0 8px; }
+.subtitle { color: var(--color-text-secondary); margin: 0 0 32px; }
+.loading { text-align: center; padding: 60px 24px; color: var(--color-text-muted); }
+.empty { text-align: center; padding: 80px 24px; }
+.emptyIcon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+.emptyTitle { font-size: 1.25rem; font-weight: 600; margin: 0 0 8px; }
+.emptyText { color: var(--color-text-secondary); margin: 0; }
+
+.applicationList { display: flex; flex-direction: column; gap: 16px; }
+.applicationCard { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; }
+.applicant { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.applicantAvatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: var(--color-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.applicantAvatar img { width: 100%; height: 100%; object-fit: cover; }
+.applicantInfo { flex: 1; }
+.applicantName { font-weight: 600; font-size: 1rem; }
+.applicantMeta { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px; }
+.bio { font-size: 0.9rem; color: var(--color-text-secondary); margin: 0 0 8px; line-height: 1.5; }
+.website { font-size: 0.85rem; margin: 0 0 12px; }
+.website a { color: #8b5cf6; }
+.applicationStatus { margin-top: 12px; }
+.statusApproved { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: #16a34a; }

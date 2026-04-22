@@ -11,7 +11,7 @@ import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { ReportButton } from '@/components/ReportButton';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
-import { GET_PHOTO, DELETE_PHOTO } from '@/lib/queries';
+import { GET_PHOTO, DELETE_PHOTO, CREATE_PHOTO_PURCHASE } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -46,6 +46,10 @@ export default function PhotoDetailPage({
       router.push('/');
     }
   };
+
+  // Marketplace purchase
+  const [{ fetching: purchasing }, createPurchase] = useMutation(CREATE_PHOTO_PURCHASE);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   if (fetching) {
     return (
@@ -87,6 +91,20 @@ export default function PhotoDetailPage({
     day: 'numeric',
   });
 
+  const canBuy = !isOwner && photo.listing?.active;
+  const listingPrice = photo.listing?.priceUsd;
+
+  const handleBuy = async () => {
+    if (!photo.listing?.id) return;
+    setPurchaseError(null);
+    const result = await createPurchase({ listingId: photo.listing.id });
+    if (result.error) {
+      setPurchaseError(result.error.graphQLErrors?.[0]?.message ?? 'Failed to start purchase');
+    } else if (result.data?.createPhotoPurchase?.checkoutUrl) {
+      window.location.href = result.data.createPhotoPurchase.checkoutUrl;
+    }
+  };
+
   return (
     <div className={styles.page}>
       <div className="container">
@@ -108,6 +126,35 @@ export default function PhotoDetailPage({
               <div className={styles.imagePlaceholder}>📷</div>
             )}
           </div>
+
+          {/* Buy Button (for priced photos not owned by viewer) */}
+          {canBuy && listingPrice && (
+            <div className={styles.buyCard}>
+              <div className={styles.buyPrice}>${listingPrice}</div>
+              <div className={styles.buyLabel}>for a high-resolution license</div>
+              <button
+                className={styles.buyBtn}
+                onClick={handleBuy}
+                disabled={purchasing}
+                type="button"
+              >
+                {purchasing ? 'Redirecting to Stripe…' : `Buy this photo — $${listingPrice}`}
+              </button>
+              {purchaseError && (
+                <p className={styles.buyError}>{purchaseError}</p>
+              )}
+              <p className={styles.buyNote}>
+                Secure payment via Stripe · Seller receives most of the amount
+              </p>
+            </div>
+          )}
+
+          {/* Owner listing badge */}
+          {isOwner && photo.listing?.active && (
+            <div className={styles.listedBadge}>
+              📋 Listed for ${photo.listing.priceUsd}
+            </div>
+          )}
 
           {/* Sidebar */}
           <div className={styles.sidebar}>

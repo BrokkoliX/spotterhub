@@ -141,3 +141,19 @@
 .commentBtn:hover {
   color: var(--color-text);
 }
+
+/* ─── Price Badge ─────────────────────────────────────────────────────────── */
+
+.priceBadge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: #8b5cf6;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}

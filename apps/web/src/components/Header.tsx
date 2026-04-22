@@ -214,6 +214,9 @@ export function Header() {
           <Link href="/communities" className={styles.navLink}>
             Communities
           </Link>
+          <Link href="/marketplace" className={styles.navLink}>
+            Marketplace
+          </Link>
           {showUser && (
             <Link href="/albums" className={styles.navLink}>
               Albums

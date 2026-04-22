@@ -106,6 +106,19 @@ export const typeDefs = gql`
     PRIVATE
   }
 
+  enum OrderStatus {
+    pending
+    completed
+    refunded
+    failed
+  }
+
+  enum MarketplaceSort {
+    newest
+    price_asc
+    price_desc
+  }
+
   type Query {
     """
     Health check — verifies the API is running and the database is reachable.
@@ -373,6 +386,35 @@ export const typeDefs = gql`
 
     """List all aircraft-specific categories."""
     aircraftSpecificCategories: [AircraftSpecificCategory!]!
+
+    # ─── Marketplace Queries ────────────────────────────────────────────────
+
+    """
+    Browse photos listed for sale in the marketplace.
+    Returns photos with active listings, sorted by creation date or price.
+    """
+    marketplaceListings(
+      first: Int = 20
+      after: String
+      sortBy: MarketplaceSort
+    ): MarketplaceListingConnection!
+
+    """
+    Paginated list of the current user's purchases.
+    Requires authentication.
+    """
+    myPurchases(first: Int = 20, after: String): OrderConnection!
+
+    """
+    Paginated list of the current user's sales.
+    Requires authentication.
+    """
+    mySales(first: Int = 20, after: String): OrderConnection!
+
+    """
+    List of all pending seller applications. Requires admin or superuser role.
+    """
+    adminSellerApplications(first: Int = 20, after: String): SellerProfileConnection!
 
     # ─── Admin: Pending List Items ───────────────────────────────────────────
 
@@ -886,6 +928,23 @@ export const typeDefs = gql`
     """Upsert an aircraft-specific category by unique name. Requires admin or superuser role."""
     upsertAircraftSpecificCategory(input: CreateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
 
+    # ─── Marketplace Mutations ──────────────────────────────────────────────────
+
+    """Apply to become a seller. Creates a SellerProfile in pending state."""
+    applyToSell(input: ApplyToSellInput!): SellerProfile!
+
+    """Approve a seller application. Creates a Stripe Connect account and returns onboarding link."""
+    approveSeller(sellerProfileId: ID!): ApproveSellerPayload!
+
+    """Create or update a listing for one of your approved photos."""
+    createOrUpdateListing(input: CreateOrUpdateListingInput!): PhotoListing!
+
+    """Remove a listing from a photo. Works for the photo owner."""
+    removeListing(photoId: ID!): Boolean!
+
+    """Initiate a photo purchase. Returns Stripe Checkout URL."""
+    createPhotoPurchase(listingId: ID!): PurchasePayload!
+
     # ─── List Contribution (User) ────────────────────────────────────────────
 
     """Submit a new item for addition to a lookup list. Requires authentication."""
@@ -961,6 +1020,10 @@ export const typeDefs = gql`
     isFollowedByMe: Boolean!
     """Number of photos uploaded by this user."""
     photoCount: Int!
+    """The user's seller profile, if any."""
+    sellerProfile: SellerProfile
+    """Whether the user can sell (approved seller or admin/superuser)."""
+    canSell: Boolean!
     createdAt: String!
     updatedAt: String!
   }
@@ -1075,6 +1138,12 @@ export const typeDefs = gql`
     manufacturingDate: String
     createdAt: String!
     updatedAt: String!
+
+    """The active marketplace listing for this photo, if any."""
+    listing: PhotoListing
+
+    """Whether this photo has an active marketplace listing."""
+    hasActiveListing: Boolean!
 
     """Other photos of the same aircraft (matched by serial number or linked aircraft record)."""
     similarAircraftPhotos(first: Int = 12, after: String): PhotoConnection!
@@ -2085,6 +2154,121 @@ export const typeDefs = gql`
     edges: [PendingListItemEdge!]!
     pageInfo: PageInfo!
     totalCount: Int!
+  }
+
+  # ─── Marketplace Types ────────────────────────────────────────────────────
+
+  """A seller profile linked to a Stripe Connect account."""
+  type SellerProfile {
+    id: ID!
+    """The user who owns this seller account."""
+    user: User!
+    """Stripe Connect account ID."""
+    stripeAccountId: String
+    """Whether the seller has completed Stripe onboarding."""
+    stripeOnboardingComplete: Boolean!
+    """Whether the seller has been approved by an admin."""
+    approved: Boolean!
+    """Seller bio shown on their profile."""
+    bio: String
+    """Optional website URL."""
+    website: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  """A photo listing for sale in the marketplace."""
+  type PhotoListing {
+    id: ID!
+    """The photo being sold."""
+    photo: Photo!
+    """Price in USD."""
+    priceUsd: String!
+    """Whether the listing is active."""
+    active: Boolean!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  """A completed or pending purchase of a photo."""
+  type Order {
+    id: ID!
+    """The user who bought the photo."""
+    buyer: User!
+    """The seller who received the payment."""
+    seller: User!
+    """The photo that was purchased."""
+    photo: Photo!
+    """The listing that was purchased."""
+    listing: PhotoListing!
+    """Total amount paid in USD."""
+    amountUsd: String!
+    """Platform commission in USD."""
+    platformFeeUsd: String!
+    """Stripe Payment Intent ID."""
+    stripePaymentIntentId: String
+    """Stripe Transfer ID (for the seller's payout)."""
+    stripeTransferId: String
+    """Order status: pending | completed | refunded | failed."""
+    status: OrderStatus!
+    createdAt: String!
+  }
+
+  type OrderEdge {
+    cursor: String!
+    node: Order!
+  }
+
+  type OrderConnection {
+    edges: [OrderEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type MarketplaceListingEdge {
+    cursor: String!
+    node: Photo!
+  }
+
+  type MarketplaceListingConnection {
+    edges: [MarketplaceListingEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type SellerProfileEdge {
+    cursor: String!
+    node: SellerProfile!
+  }
+
+  type SellerProfileConnection {
+    edges: [SellerProfileEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type ApproveSellerPayload {
+    sellerProfile: SellerProfile!
+    """URL to redirect the seller to for Stripe onboarding."""
+    onboardingUrl: String!
+  }
+
+  input ApplyToSellInput {
+    """Your seller bio shown to buyers."""
+    bio: String!
+    """Optional website URL."""
+    website: String
+  }
+
+  input CreateOrUpdateListingInput {
+    photoId: ID!
+    priceUsd: Decimal!
+    active: Boolean!
+  }
+
+  type PurchasePayload {
+    sessionId: String!
+    checkoutUrl: String!
   }
 
   # ─── Health ──────────────────────────────────────────────────────────────

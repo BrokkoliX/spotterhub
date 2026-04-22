@@ -15,7 +15,15 @@ if [ "$OLD_COUNT" -gt 0 ]; then
   echo "✅ Migration history reset"
 fi
 
-npx prisma migrate deploy --schema /app/prisma/schema.prisma
+# Attempt migration deploy. If it fails due to a previously failed migration
+# (P3009), clean up the failed row and retry once.
+if ! npx prisma migrate deploy --schema /app/prisma/schema.prisma 2>&1; then
+  echo "⚠️  migrate deploy failed — checking for failed migration rows (P3009)..."
+  echo "DELETE FROM _prisma_migrations WHERE rolled_back_at IS NULL AND finished_at IS NULL;" \
+    | npx prisma db execute --schema /app/prisma/schema.prisma --stdin
+  echo "Retrying migrate deploy..."
+  npx prisma migrate deploy --schema /app/prisma/schema.prisma
+fi
 echo "✅ Migrations complete"
 
 echo "Starting API server..."

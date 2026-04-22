@@ -1,0 +1,21 @@
+.page { min-height: calc(100vh - var(--header-height)); }
+.inner { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
+.backLink { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 24px; }
+.backLink:hover { color: var(--color-text); }
+.title { font-size: 2rem; font-weight: 700; margin: 0 0 8px; }
+.subtitle { color: var(--color-text-secondary); margin: 0 0 32px; }
+.loading { text-align: center; padding: 60px 24px; color: var(--color-text-muted); }
+.empty { text-align: center; padding: 80px 24px; }
+.emptyIcon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+.emptyTitle { font-size: 1.25rem; font-weight: 600; margin: 0 0 8px; }
+.emptyText { color: var(--color-text-secondary); margin: 0; }
+
+.purchaseList { display: flex; flex-direction: column; gap: 16px; }
+.purchaseCard { display: flex; align-items: center; gap: 16px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 16px; }
+.purchaseThumb { width: 80px; height: 60px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.purchaseThumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+.purchaseInfo { flex: 1; min-width: 0; }
+.purchaseCaption { font-weight: 600; color: var(--color-text); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.purchaseCaption:hover { color: var(--color-accent, #8b5cf6); }
+.purchaseMeta { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px; }
+.purchaseAmount { font-size: 1.125rem; font-weight: 700; color: #8b5cf6; flex-shrink: 0; }
