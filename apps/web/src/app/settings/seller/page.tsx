@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 import { useSearchParams } from 'next/navigation';
 
@@ -25,7 +25,7 @@ interface MyPhotoData extends PhotoData {
   listing?: { id: string; priceUsd: string; active: boolean } | null;
 }
 
-export default function SellerSettingsPage() {
+function SellerSettingsContent() {
   const { user, ready } = useAuth();
   const searchParams = useSearchParams();
   const [_applied, setApplied] = useState(false);
@@ -309,5 +309,19 @@ export default function SellerSettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SellerSettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.page}>
+        <div className={styles.inner}>
+          <p className={styles.loading}>Loading…</p>
+        </div>
+      </div>
+    }>
+      <SellerSettingsContent />
+    </Suspense>
   );
 }
