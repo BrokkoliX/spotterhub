@@ -2,7 +2,6 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { encodeCursor } from '../utils/resolverHelpers.js';
 
 // Metadata validation rules per listType
 const METADATA_VALIDATION: Record<string, { required: string[]; optional: string[] }> = {
@@ -86,10 +85,9 @@ export const pendingListItemMutationResolvers = {
 
     // Validate listType
     if (!VALID_LIST_TYPES.includes(args.input.listType)) {
-      throw new GraphQLError(
-        `Invalid listType. Must be one of: ${VALID_LIST_TYPES.join(', ')}`,
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError(`Invalid listType. Must be one of: ${VALID_LIST_TYPES.join(', ')}`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     // Validate metadata against listType rules
@@ -166,15 +164,19 @@ export const pendingListItemMutationResolvers = {
 
     // Validate status
     if (!VALID_STATUSES.includes(args.status)) {
-      throw new GraphQLError(
-        `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError(`Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     // If approving, create the actual entity
     if (args.status === 'approved') {
-      await createApprovedEntity(ctx, existing.listType, existing.value, existing.metadata as Record<string, unknown> | null);
+      await createApprovedEntity(
+        ctx,
+        existing.listType,
+        existing.value,
+        existing.metadata as Record<string, unknown> | null,
+      );
     }
 
     // Update the pending item

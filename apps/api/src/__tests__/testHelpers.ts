@@ -23,7 +23,7 @@ export async function teardownTestServer(server: ApolloServer<Context>): Promise
 
 // Minimal mock for ServerResponse with setHeader
 const mockRes = {
-  setHeader: (name: string, value: string | string[]) => {
+  setHeader: (_name: string, _value: string | string[]) => {
     // no-op in tests
   },
   getHeader: () => undefined,

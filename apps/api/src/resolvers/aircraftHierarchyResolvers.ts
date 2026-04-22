@@ -2,7 +2,6 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 
 // ─── Query Resolvers ──────────────────────────────────────────────────────────
 

@@ -31,10 +31,7 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 /**
  * Creates a refresh token record in the DB and returns the raw token string.
  */
-async function createRefreshToken(
-  prisma: Context['prisma'],
-  userId: string,
-): Promise<string> {
+async function createRefreshToken(prisma: Context['prisma'], userId: string): Promise<string> {
   const token = randomBytes(48).toString('base64url');
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000);
   await prisma.refreshToken.create({
@@ -51,7 +48,11 @@ async function issueSession(
   ctx: Context,
   user: { id: string; cognitoSub: string; email: string; username: string },
 ): Promise<{ accessToken: string; refreshToken: string }> {
-  const accessToken = signToken({ sub: user.cognitoSub, email: user.email, username: user.username });
+  const accessToken = signToken({
+    sub: user.cognitoSub,
+    email: user.email,
+    username: user.username,
+  });
   const refreshToken = await createRefreshToken(ctx.prisma, user.id);
 
   // Access token: short-lived HttpOnly cookie (1 hour)
@@ -75,7 +76,7 @@ export const authMutationResolvers = {
     args: { input: { email: string; username: string; password: string; displayName?: string } },
     ctx: Context,
   ) => {
-    const { email, username, password, displayName } = args.input;
+    const { email, username, password } = args.input;
 
     const usernameError = validateUsername(username);
     if (usernameError) {
@@ -193,8 +194,8 @@ export const authMutationResolvers = {
    * Implements token rotation: the old refresh token is deleted and a new one is issued.
    */
   refreshToken: async (_parent: unknown, _args: unknown, ctx: Context) => {
-    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } })
-      .cookies?.refresh_token;
+    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } }).cookies
+      ?.refresh_token;
 
     if (!refreshTokenStr) {
       throw new GraphQLError('Refresh token required', {
@@ -235,8 +236,8 @@ export const authMutationResolvers = {
   },
 
   signOut: async (_parent: unknown, _args: unknown, ctx: Context) => {
-    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } })
-      .cookies?.refresh_token;
+    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } }).cookies
+      ?.refresh_token;
 
     if (refreshTokenStr) {
       await ctx.prisma.refreshToken.deleteMany({
