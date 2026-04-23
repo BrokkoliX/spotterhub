@@ -101,6 +101,8 @@ enum FollowTargetType {
   manufacturer
   family
   variant
+  airline
+  registration
 }
 
 enum CommunityRole {
