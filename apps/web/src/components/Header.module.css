@@ -42,7 +42,9 @@
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
   color: var(--color-text-secondary);
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .navLink:hover {
@@ -50,75 +52,23 @@
   background: var(--color-bg-hover);
 }
 
-.searchBar {
-  flex: 1 1 200px;
-  margin: 0 8px;
-}
-
-.searchWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.searchIcon {
-  position: absolute;
-  left: 10px;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  pointer-events: none;
-  line-height: 1;
-}
-
-.searchInput {
-  width: 100%;
-  padding: 9px 36px 9px 34px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-input);
-  color: var(--color-text);
-  font-size: 0.875rem;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-}
-
-.searchInput::placeholder {
-  color: var(--color-text-muted);
-}
-
-.searchInput:hover {
-  background: var(--color-bg-raised);
-}
-
-.searchInput:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
-  background: var(--color-bg-raised);
-}
-
-.clearBtn {
-  position: absolute;
-  right: 8px;
+.searchBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: none;
   border: none;
-  border-radius: 50%;
-  background: var(--color-bg-hover);
-  color: var(--color-text-muted);
-  font-size: 0.625rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  line-height: 1;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  transition: background 0.15s;
 }
 
-.clearBtn:hover {
-  background: var(--color-border);
-  color: var(--color-text);
+.searchBtn:hover {
+  background: var(--color-bg-hover);
 }
 
 .actions {

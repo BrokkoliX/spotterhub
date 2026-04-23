@@ -14,6 +14,7 @@ import {
   MARK_NOTIFICATION_READ,
 } from '@/lib/queries';
 
+import { SearchModal } from '@/components/SearchModal';
 import styles from './Header.module.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -94,9 +95,7 @@ function NotificationBell() {
   const displayCount = unreadCount > 9 ? '9+' : unreadCount > 0 ? String(unreadCount) : '';
 
   const notifications: NotificationNode[] =
-    notifResult.data?.notifications?.edges?.map(
-      (e: { node: NotificationNode }) => e.node,
-    ) ?? [];
+    notifResult.data?.notifications?.edges?.map((e: { node: NotificationNode }) => e.node) ?? [];
 
   async function handleNotificationClick(n: NotificationNode) {
     if (!n.isRead) {
@@ -137,9 +136,7 @@ function NotificationBell() {
             )}
           </div>
 
-          {notifResult.fetching && (
-            <p className={styles.notifEmpty}>Loading…</p>
-          )}
+          {notifResult.fetching && <p className={styles.notifEmpty}>Loading…</p>}
 
           {!notifResult.fetching && notifications.length === 0 && (
             <p className={styles.notifEmpty}>No notifications yet.</p>
@@ -169,18 +166,23 @@ export function Header() {
   const { user, ready, signOut } = useAuth();
   const { theme, ready: themeReady, toggleTheme } = useTheme();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd+K / Ctrl+K to open search modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSignOut = () => {
     signOut();
     router.push('/');
-  };
-
-  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-    }
   };
 
   const showUser = ready && user;
@@ -234,30 +236,17 @@ export function Header() {
           )}
         </nav>
 
-        <div className={styles.searchBar}>
-          <div className={styles.searchWrap}>
-            <span className={styles.searchIcon} aria-hidden="true">🔍</span>
-            <input
-              type="text"
-              className={styles.searchInput}
-              placeholder="Search photos, users…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              aria-label="Search"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                className={styles.clearBtn}
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
+        <button
+          type="button"
+          className={styles.searchBtn}
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search"
+          title="Search (⌘K)"
+        >
+          🔍
+        </button>
+
+        <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
         <div className={styles.actions}>
           {themeReady && (
@@ -284,25 +273,18 @@ export function Header() {
           {showUser && (
             <>
               <NotificationBell />
-              <Link
-                href={`/u/${user.username}/photos`}
-                className={styles.username}
-              >
-                {isSuperuser && <span title="Superuser" style={{ marginRight: 4 }}>🛡️</span>}
+              <Link href={`/u/${user.username}/photos`} className={styles.username}>
+                {isSuperuser && (
+                  <span title="Superuser" style={{ marginRight: 4 }}>
+                    🛡️
+                  </span>
+                )}
                 {user.username}
               </Link>
-              <Link
-                href="/settings/profile"
-                className={styles.navLink}
-                title="Settings"
-              >
+              <Link href="/settings/profile" className={styles.navLink} title="Settings">
                 ⚙
               </Link>
-              <button
-                onClick={handleSignOut}
-                className="btn btn-secondary"
-                type="button"
-              >
+              <button onClick={handleSignOut} className="btn btn-secondary" type="button">
                 Sign out
               </button>
             </>
