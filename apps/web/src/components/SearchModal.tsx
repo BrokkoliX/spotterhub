@@ -25,7 +25,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   // Escape key closes modal
   useEffect(() => {
     if (!isOpen) return;
-    function handleKeyDown(e: KeyboardEvent) {
+    function handleKeyDown(e: globalThis.KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', handleKeyDown);
