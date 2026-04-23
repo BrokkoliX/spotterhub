@@ -36,7 +36,7 @@ export default function SellPage() {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
-        <Link href="/settings/profile" className={styles.backLink}>
+        <Link href="/marketplace" className={styles.backLink}>
           ← Back to settings
         </Link>
         <h1 className={styles.title}>Become a Seller</h1>

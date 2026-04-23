@@ -260,6 +260,12 @@
   margin: 0;
 }
 
+.sellCta {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
 /* ─── Grid ────────────────────────────────────────────────────────────────── */
 
 .grid {

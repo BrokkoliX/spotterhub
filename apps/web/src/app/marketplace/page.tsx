@@ -327,6 +327,12 @@ export default function MarketplacePage() {
               </p>
             )}
 
+            <div className={styles.sellCta}>
+              <Link href="/sell" className="btn btn-primary">
+                ✈️ Start Selling
+              </Link>
+            </div>
+
             {/* Grid */}
             {fetching && items.length === 0 ? (
               <p className={styles.loading}>Loading marketplace…</p>
