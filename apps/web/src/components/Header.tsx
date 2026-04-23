@@ -235,15 +235,28 @@ export function Header() {
         </nav>
 
         <div className={styles.searchBar}>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search photos, users…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            aria-label="Search"
-          />
+          <div className={styles.searchWrap}>
+            <span className={styles.searchIcon} aria-hidden="true">🔍</span>
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder="Search photos, users…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              aria-label="Search"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className={styles.clearBtn}
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div className={styles.actions}>
