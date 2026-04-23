@@ -22,11 +22,7 @@ interface PhotoVariant {
   height: number;
 }
 
-export default function PhotoDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function PhotoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
@@ -36,7 +32,8 @@ export default function PhotoDetailPage({
   const [imgError, setImgError] = useState(false);
 
   const isOwner = user?.id === data?.photo?.user?.id;
-  const isPrivileged = user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser';
+  const isPrivileged =
+    user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser';
   const canDelete = isOwner || isPrivileged;
 
   const handleDelete = async () => {
@@ -79,12 +76,9 @@ export default function PhotoDetailPage({
 
   const photo = data.photo;
   const exif = photo.exifData as Record<string, unknown> | null;
-  const displayVariant = photo.variants.find(
-    (v: PhotoVariant) => v.variantType === 'display',
-  );
+  const displayVariant = photo.variants.find((v: PhotoVariant) => v.variantType === 'display');
   const imageUrl = displayVariant?.url ?? photo.originalUrl;
-  const displayName =
-    photo.user.profile?.displayName ?? photo.user.username;
+  const displayName = photo.user.profile?.displayName ?? photo.user.username;
   const uploadDate = new Date(photo.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -140,9 +134,7 @@ export default function PhotoDetailPage({
               >
                 {purchasing ? 'Redirecting to Stripe…' : `Buy this photo — $${listingPrice}`}
               </button>
-              {purchaseError && (
-                <p className={styles.buyError}>{purchaseError}</p>
-              )}
+              {purchaseError && <p className={styles.buyError}>{purchaseError}</p>}
               <p className={styles.buyNote}>
                 Secure payment via Stripe · Seller receives most of the amount
               </p>
@@ -151,9 +143,7 @@ export default function PhotoDetailPage({
 
           {/* Owner listing badge */}
           {isOwner && photo.listing?.active && (
-            <div className={styles.listedBadge}>
-              📋 Listed for ${photo.listing.priceUsd}
-            </div>
+            <div className={styles.listedBadge}>📋 Listed for ${photo.listing.priceUsd}</div>
           )}
 
           {/* Sidebar */}
@@ -161,10 +151,7 @@ export default function PhotoDetailPage({
             {/* User */}
             <div className={styles.card}>
               <div className={styles.userRow}>
-                <Link
-                  href={`/u/${photo.user.username}/photos`}
-                  className={styles.userInfo}
-                >
+                <Link href={`/u/${photo.user.username}/photos`} className={styles.userInfo}>
                   <div className={styles.avatar}>
                     {photo.user.profile?.avatarUrl ? (
                       <img
@@ -235,7 +222,10 @@ export default function PhotoDetailPage({
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Operator Type</span>
                     <span className={styles.metaValue}>
-                      {photo.operatorType.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                      {photo.operatorType
+                        .toLowerCase()
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, (c: string) => c.toUpperCase())}
                     </span>
                   </li>
                 )}
@@ -249,16 +239,17 @@ export default function PhotoDetailPage({
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Built</span>
                     <span className={styles.metaValue}>
-                      {new Date(photo.manufacturingDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                      {new Date(photo.manufacturingDate).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                      })}
                     </span>
                   </li>
                 )}
                 {photo.airportCode && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Airport</span>
-                    <span className={styles.metaValue}>
-                      {photo.airportCode}
-                    </span>
+                    <span className={styles.metaValue}>{photo.airportCode}</span>
                   </li>
                 )}
                 {photo.takenAt && (
@@ -304,17 +295,38 @@ export default function PhotoDetailPage({
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Registration</span>
                     <span className={styles.metaValue}>{photo.aircraft.registration}</span>
+                    {user && (
+                      <TopicFollowButton
+                        targetType="registration"
+                        value={photo.aircraft.registration}
+                        initialIsFollowing={photo.aircraft.isFollowedByMe ?? false}
+                      />
+                    )}
                   </li>
                   {photo.aircraft.manufacturer && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Manufacturer</span>
                       <span className={styles.metaValue}>{photo.aircraft.manufacturer.name}</span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="manufacturer"
+                          value={photo.aircraft.manufacturer.name}
+                          initialIsFollowing={false}
+                        />
+                      )}
                     </li>
                   )}
                   {photo.aircraft.family && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Family</span>
                       <span className={styles.metaValue}>{photo.aircraft.family.name}</span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="family"
+                          value={photo.aircraft.family.name}
+                          initialIsFollowing={false}
+                        />
+                      )}
                     </li>
                   )}
                   {photo.aircraft.variant && (
@@ -326,6 +338,13 @@ export default function PhotoDetailPage({
                           ? ` (${[photo.aircraft.variant.iataCode, photo.aircraft.variant.icaoCode].filter(Boolean).join('/')})`
                           : null}
                       </span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="variant"
+                          value={photo.aircraft.variant.name}
+                          initialIsFollowing={false}
+                        />
+                      )}
                     </li>
                   )}
                   {(photo.aircraft?.msn ?? photo.msn) && (
@@ -338,7 +357,9 @@ export default function PhotoDetailPage({
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Built</span>
                       <span className={styles.metaValue}>
-                        {new Date(photo.aircraft?.manufacturingDate ?? photo.manufacturingDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                        {new Date(
+                          photo.aircraft?.manufacturingDate ?? photo.manufacturingDate,
+                        ).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
                       </span>
                     </li>
                   )}
@@ -346,7 +367,7 @@ export default function PhotoDetailPage({
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Operator Type</span>
                       <span className={styles.metaValue}>
-                        {((photo.aircraft?.operatorType ?? photo.operatorType) ?? '')
+                        {(photo.aircraft?.operatorType ?? photo.operatorType ?? '')
                           .toLowerCase()
                           .replace(/_/g, ' ')
                           .replace(/\b\w/g, (c: string) => c.toUpperCase())}
@@ -362,6 +383,13 @@ export default function PhotoDetailPage({
                           ? ` (${[photo.aircraft.airlineRef.iataCode, photo.aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`
                           : null}
                       </span>
+                      {user && photo.aircraft.airlineRef.icaoCode && (
+                        <TopicFollowButton
+                          targetType="airline"
+                          value={photo.aircraft.airlineRef.icaoCode}
+                          initialIsFollowing={photo.aircraft.airlineRef.isFollowedByMe ?? false}
+                        />
+                      )}
                     </li>
                   )}
                 </ul>
@@ -393,10 +421,7 @@ export default function PhotoDetailPage({
             {photo.photographer && photo.photographer.id !== photo.user.id && (
               <div className={styles.card}>
                 <h3 className={styles.cardTitle}>📸 Photographer</h3>
-                <Link
-                  href={`/u/${photo.photographer.username}/photos`}
-                  className={styles.userInfo}
-                >
+                <Link href={`/u/${photo.photographer.username}/photos`} className={styles.userInfo}>
                   <div className={styles.avatar}>
                     {photo.photographer.profile?.avatarUrl ? (
                       <img
@@ -558,48 +583,69 @@ export default function PhotoDetailPage({
                     gap: 8,
                   }}
                 >
-                  {photo.similarAircraftPhotos.edges.map(({ node: similar }: { node: { id: string; variants?: { variantType: string; url: string; width: number; height: number }[]; aircraft?: { registration: string; manufacturer?: { name: string } | null; family?: { name: string } | null; variant?: { name: string } | null } | null; user?: { username: string } | null } }) => (
-                    <Link
-                      key={similar.id}
-                      href={`/photos/${similar.id}`}
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <div
-                        style={{
-                          borderRadius: 'var(--radius-sm)',
-                          overflow: 'hidden',
-                          background: 'var(--color-bg-base)',
-                          border: '1px solid var(--color-border)',
-                        }}
+                  {photo.similarAircraftPhotos.edges.map(
+                    ({
+                      node: similar,
+                    }: {
+                      node: {
+                        id: string;
+                        variants?: {
+                          variantType: string;
+                          url: string;
+                          width: number;
+                          height: number;
+                        }[];
+                        aircraft?: {
+                          registration: string;
+                          manufacturer?: { name: string } | null;
+                          family?: { name: string } | null;
+                          variant?: { name: string } | null;
+                        } | null;
+                        user?: { username: string } | null;
+                      };
+                    }) => (
+                      <Link
+                        key={similar.id}
+                        href={`/photos/${similar.id}`}
+                        style={{ textDecoration: 'none' }}
                       >
-                        <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
-                          <img
-                            src={
-                              similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
-                              similar.variants?.[0]?.url ??
-                              ''
-                            }
-                            alt=""
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </div>
-                        <div style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                            {similar.aircraft?.registration ?? '—'}
+                        <div
+                          style={{
+                            borderRadius: 'var(--radius-sm)',
+                            overflow: 'hidden',
+                            background: 'var(--color-bg-base)',
+                            border: '1px solid var(--color-border)',
+                          }}
+                        >
+                          <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
+                            <img
+                              src={
+                                similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
+                                similar.variants?.[0]?.url ??
+                                ''
+                              }
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
                           </div>
-                          <div style={{ color: 'var(--color-text-muted)' }}>
-                            {[
-                              similar.aircraft?.manufacturer?.name,
-                              similar.aircraft?.family?.name,
-                              similar.aircraft?.variant?.name,
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
+                          <div style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                              {similar.aircraft?.registration ?? '—'}
+                            </div>
+                            <div style={{ color: 'var(--color-text-muted)' }}>
+                              {[
+                                similar.aircraft?.manufacturer?.name,
+                                similar.aircraft?.family?.name,
+                                similar.aircraft?.variant?.name,
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    ),
+                  )}
                 </div>
               </div>
             )}

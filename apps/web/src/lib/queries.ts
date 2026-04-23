@@ -83,8 +83,16 @@ export const PHOTO_FIELDS = gql`
     commentCount
     isLikedByMe
     createdAt
-    photoCategory { id name label }
-    aircraftSpecificCategory { id name label }
+    photoCategory {
+      id
+      name
+      label
+    }
+    aircraftSpecificCategory {
+      id
+      name
+      label
+    }
     operatorIcao
     operatorType
     msn
@@ -95,16 +103,36 @@ export const PHOTO_FIELDS = gql`
       airline
       msn
       manufacturingDate
-      manufacturer { id name }
-      family { id name }
-      variant { id name iataCode icaoCode }
+      manufacturer {
+        id
+        name
+      }
+      family {
+        id
+        name
+      }
+      variant {
+        id
+        name
+        iataCode
+        icaoCode
+      }
       operatorType
-      airlineRef { id name icaoCode iataCode }
+      airlineRef {
+        id
+        name
+        icaoCode
+        iataCode
+        isFollowedByMe
+      }
     }
     photographer {
       id
       username
-      profile { displayName avatarUrl }
+      profile {
+        displayName
+        avatarUrl
+      }
     }
     photographerName
     gearBody
@@ -166,14 +194,28 @@ export const PHOTO_FIELDS = gql`
           aircraft {
             id
             registration
-            manufacturer { id name }
-            family { id name }
-            variant { id name iataCode icaoCode }
+            manufacturer {
+              id
+              name
+            }
+            family {
+              id
+              name
+            }
+            variant {
+              id
+              name
+              iataCode
+              icaoCode
+            }
           }
           user {
             id
             username
-            profile { displayName avatarUrl }
+            profile {
+              displayName
+              avatarUrl
+            }
           }
         }
       }
@@ -591,7 +633,13 @@ export const GET_AIRPORT = gql`
 `;
 
 export const PHOTOS_IN_BOUNDS = gql`
-  query PhotosInBounds($swLat: Float!, $swLng: Float!, $neLat: Float!, $neLng: Float!, $first: Int) {
+  query PhotosInBounds(
+    $swLat: Float!
+    $swLng: Float!
+    $neLat: Float!
+    $neLng: Float!
+    $first: Int
+  ) {
     photosInBounds(swLat: $swLat, swLng: $swLng, neLat: $neLat, neLng: $neLng, first: $first) {
       id
       latitude
@@ -604,7 +652,12 @@ export const PHOTOS_IN_BOUNDS = gql`
 
 export const PHOTOS_NEARBY = gql`
   query PhotosNearby($latitude: Float!, $longitude: Float!, $radiusMeters: Float, $first: Int) {
-    photosNearby(latitude: $latitude, longitude: $longitude, radiusMeters: $radiusMeters, first: $first) {
+    photosNearby(
+      latitude: $latitude
+      longitude: $longitude
+      radiusMeters: $radiusMeters
+      first: $first
+    ) {
       id
       latitude
       longitude
@@ -652,7 +705,11 @@ export const ALBUM_FIELDS = gql`
     createdAt
     updatedAt
     communityId
-    community { id name slug }
+    community {
+      id
+      name
+      slug
+    }
     user {
       id
       username
@@ -677,7 +734,11 @@ export const GET_ALBUM = gql`
   query Album($id: ID!) {
     album(id: $id) {
       ...AlbumFields
-      myMembership { id role status }
+      myMembership {
+        id
+        role
+        status
+      }
     }
   }
   ${ALBUM_FIELDS}
@@ -748,7 +809,11 @@ export const CREATE_COMMUNITY_ALBUM = gql`
   mutation CreateCommunityAlbum($communityId: ID!, $input: CreateAlbumInput!) {
     createCommunityAlbum(communityId: $communityId, input: $input) {
       ...AlbumFields
-      community { id name slug }
+      community {
+        id
+        name
+        slug
+      }
     }
   }
   ${ALBUM_FIELDS}
@@ -892,13 +957,22 @@ export const ADMIN_REPORTS = gql`
           reason
           description
           status
-          reporter { id username }
-          reviewer { id username }
+          reporter {
+            id
+            username
+          }
+          reviewer {
+            id
+            username
+          }
           createdAt
           resolvedAt
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -916,10 +990,16 @@ export const ADMIN_USERS = gql`
           role
           status
           createdAt
-          profile { displayName avatarUrl }
+          profile {
+            displayName
+            avatarUrl
+          }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -934,7 +1014,10 @@ export const ADMIN_PHOTOS = gql`
           ...PhotoFields
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1087,29 +1170,78 @@ export const REJECT_PHOTO = gql`
 export const GET_COMMUNITY = gql`
   query Community($slug: String!) {
     community(slug: $slug) {
-      id name slug description bannerUrl avatarUrl category visibility location
+      id
+      name
+      slug
+      description
+      bannerUrl
+      avatarUrl
+      category
+      visibility
+      location
       inviteCode
       createdAt
-      owner { id username profile { displayName avatarUrl } }
+      owner {
+        id
+        username
+        profile {
+          displayName
+          avatarUrl
+        }
+      }
       memberCount
-      myMembership { id role status }
+      myMembership {
+        id
+        role
+        status
+      }
       members(first: 20) {
-        edges { node { id role status joinedAt user { id username profile { displayName avatarUrl } } } }
+        edges {
+          node {
+            id
+            role
+            status
+            joinedAt
+            user {
+              id
+              username
+              profile {
+                displayName
+                avatarUrl
+              }
+            }
+          }
+        }
         totalCount
-        pageInfo { hasNextPage endCursor }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
       }
       photos(first: 12) {
         edges {
           cursor
-          node { ...PhotoFields }
+          node {
+            ...PhotoFields
+          }
         }
-        pageInfo { hasNextPage endCursor }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
         totalCount
       }
       albums(first: 20) {
-        edges { node { ...AlbumFields } }
+        edges {
+          node {
+            ...AlbumFields
+          }
+        }
         totalCount
-        pageInfo { hasNextPage endCursor }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
       }
     }
   }
@@ -1123,52 +1255,90 @@ export const GET_COMMUNITIES = gql`
       edges {
         cursor
         node {
-          id name slug description category avatarUrl location
+          id
+          name
+          slug
+          description
+          category
+          avatarUrl
+          location
           memberCount
-          owner { username }
+          owner {
+            username
+          }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
 `;
 
 export const MY_COMMUNITIES = gql`
-  query MyCommunities { myCommunities { id name slug avatarUrl memberCount } }
+  query MyCommunities {
+    myCommunities {
+      id
+      name
+      slug
+      avatarUrl
+      memberCount
+    }
+  }
 `;
 
 export const CREATE_COMMUNITY = gql`
   mutation CreateCommunity($input: CreateCommunityInput!) {
-    createCommunity(input: $input) { id slug }
+    createCommunity(input: $input) {
+      id
+      slug
+    }
   }
 `;
 
 export const JOIN_COMMUNITY = gql`
   mutation JoinCommunity($communityId: ID!, $inviteCode: String) {
-    joinCommunity(communityId: $communityId, inviteCode: $inviteCode) { id role }
+    joinCommunity(communityId: $communityId, inviteCode: $inviteCode) {
+      id
+      role
+    }
   }
 `;
 
 export const LEAVE_COMMUNITY = gql`
-  mutation LeaveCommunity($communityId: ID!) { leaveCommunity(communityId: $communityId) }
+  mutation LeaveCommunity($communityId: ID!) {
+    leaveCommunity(communityId: $communityId)
+  }
 `;
 
 export const UPDATE_COMMUNITY = gql`
   mutation UpdateCommunity($id: ID!, $input: UpdateCommunityInput!) {
     updateCommunity(id: $id, input: $input) {
-      id name slug description category visibility location
+      id
+      name
+      slug
+      description
+      category
+      visibility
+      location
     }
   }
 `;
 
 export const DELETE_COMMUNITY = gql`
-  mutation DeleteCommunity($id: ID!) { deleteCommunity(id: $id) }
+  mutation DeleteCommunity($id: ID!) {
+    deleteCommunity(id: $id)
+  }
 `;
 
 export const GENERATE_INVITE_CODE = gql`
   mutation GenerateInviteCode($communityId: ID!) {
-    generateInviteCode(communityId: $communityId) { id inviteCode }
+    generateInviteCode(communityId: $communityId) {
+      id
+      inviteCode
+    }
   }
 `;
 
@@ -1275,7 +1445,12 @@ export const DELETE_COMMUNITY_POST = gql`
 
 export const GET_COMMUNITY_MODERATION_LOGS = gql`
   query CommunityModerationLogs($communityId: ID!, $action: String, $first: Int, $after: String) {
-    communityModerationLogs(communityId: $communityId, action: $action, first: $first, after: $after) {
+    communityModerationLogs(
+      communityId: $communityId
+      action: $action
+      first: $first
+      after: $after
+    ) {
       edges {
         cursor
         node {
@@ -1284,11 +1459,28 @@ export const GET_COMMUNITY_MODERATION_LOGS = gql`
           reason
           metadata
           createdAt
-          moderator { id username profile { displayName avatarUrl } }
-          targetUser { id username profile { displayName avatarUrl } }
+          moderator {
+            id
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+          targetUser {
+            id
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1309,7 +1501,9 @@ export const GET_FORUM_CATEGORIES = gql`
         id
         title
         lastPostAt
-        author { username }
+        author {
+          username
+        }
       }
     }
   }
@@ -1328,11 +1522,22 @@ export const GET_FORUM_THREADS = gql`
           postCount
           lastPostAt
           createdAt
-          author { username profile { displayName avatarUrl } }
-          firstPost { body }
+          author {
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
+          firstPost {
+            body
+          }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1348,8 +1553,19 @@ export const GET_FORUM_THREAD = gql`
       postCount
       lastPostAt
       createdAt
-      author { username profile { displayName avatarUrl } }
-      category { id name slug communityId }
+      author {
+        username
+        profile {
+          displayName
+          avatarUrl
+        }
+      }
+      category {
+        id
+        name
+        slug
+        communityId
+      }
     }
   }
 `;
@@ -1365,26 +1581,56 @@ export const GET_FORUM_POSTS = gql`
           isDeleted
           createdAt
           updatedAt
-          author { username profile { displayName avatarUrl } }
+          author {
+            username
+            profile {
+              displayName
+              avatarUrl
+            }
+          }
           replies {
             id
             body
             isDeleted
             createdAt
-            author { username profile { displayName avatarUrl } }
+            author {
+              username
+              profile {
+                displayName
+                avatarUrl
+              }
+            }
           }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
 `;
 
 export const CREATE_FORUM_CATEGORY = gql`
-  mutation CreateForumCategory($communityId: ID, $name: String!, $description: String, $slug: String) {
-    createForumCategory(communityId: $communityId, name: $name, description: $description, slug: $slug) {
-      id name slug description position threadCount
+  mutation CreateForumCategory(
+    $communityId: ID
+    $name: String!
+    $description: String
+    $slug: String
+  ) {
+    createForumCategory(
+      communityId: $communityId
+      name: $name
+      description: $description
+      slug: $slug
+    ) {
+      id
+      name
+      slug
+      description
+      position
+      threadCount
     }
   }
 `;
@@ -1392,53 +1638,97 @@ export const CREATE_FORUM_CATEGORY = gql`
 export const UPDATE_FORUM_CATEGORY = gql`
   mutation UpdateForumCategory($id: ID!, $name: String, $description: String, $position: Int) {
     updateForumCategory(id: $id, name: $name, description: $description, position: $position) {
-      id name description position
+      id
+      name
+      description
+      position
     }
   }
 `;
 
 export const DELETE_FORUM_CATEGORY = gql`
-  mutation DeleteForumCategory($id: ID!) { deleteForumCategory(id: $id) }
+  mutation DeleteForumCategory($id: ID!) {
+    deleteForumCategory(id: $id)
+  }
 `;
 
 export const CREATE_FORUM_THREAD = gql`
   mutation CreateForumThread($categoryId: ID!, $title: String!, $body: String!) {
     createForumThread(categoryId: $categoryId, title: $title, body: $body) {
-      id title isPinned isLocked postCount createdAt
-      author { username }
+      id
+      title
+      isPinned
+      isLocked
+      postCount
+      createdAt
+      author {
+        username
+      }
     }
   }
 `;
 
 export const DELETE_FORUM_THREAD = gql`
-  mutation DeleteForumThread($id: ID!) { deleteForumThread(id: $id) }
+  mutation DeleteForumThread($id: ID!) {
+    deleteForumThread(id: $id)
+  }
 `;
 
 export const PIN_FORUM_THREAD = gql`
   mutation PinForumThread($id: ID!, $pinned: Boolean!) {
-    pinForumThread(id: $id, pinned: $pinned) { id isPinned }
+    pinForumThread(id: $id, pinned: $pinned) {
+      id
+      isPinned
+    }
   }
 `;
 
 export const LOCK_FORUM_THREAD = gql`
   mutation LockForumThread($id: ID!, $locked: Boolean!) {
-    lockForumThread(id: $id, locked: $locked) { id isLocked }
+    lockForumThread(id: $id, locked: $locked) {
+      id
+      isLocked
+    }
   }
 `;
 
 export const CREATE_FORUM_POST = gql`
   mutation CreateForumPost($threadId: ID!, $body: String!, $parentPostId: ID) {
     createForumPost(threadId: $threadId, body: $body, parentPostId: $parentPostId) {
-      id body isDeleted createdAt
-      author { username profile { displayName avatarUrl } }
-      replies { id body isDeleted createdAt author { username profile { displayName avatarUrl } } }
+      id
+      body
+      isDeleted
+      createdAt
+      author {
+        username
+        profile {
+          displayName
+          avatarUrl
+        }
+      }
+      replies {
+        id
+        body
+        isDeleted
+        createdAt
+        author {
+          username
+          profile {
+            displayName
+            avatarUrl
+          }
+        }
+      }
     }
   }
 `;
 
 export const UPDATE_FORUM_POST = gql`
   mutation UpdateForumPost($id: ID!, $body: String!) {
-    updateForumPost(id: $id, body: $body) { id body }
+    updateForumPost(id: $id, body: $body) {
+      id
+      body
+    }
   }
 `;
 
@@ -1455,7 +1745,9 @@ export const GET_GLOBAL_FORUM_CATEGORIES = gql`
         id
         title
         lastPostAt
-        author { username }
+        author {
+          username
+        }
       }
     }
   }
@@ -1464,20 +1756,32 @@ export const GET_GLOBAL_FORUM_CATEGORIES = gql`
 export const CREATE_GLOBAL_FORUM_CATEGORY = gql`
   mutation CreateGlobalForumCategory($name: String!, $description: String, $slug: String) {
     createGlobalForumCategory(name: $name, description: $description, slug: $slug) {
-      id name slug description position threadCount
+      id
+      name
+      slug
+      description
+      position
+      threadCount
     }
   }
 `;
 
 export const DELETE_FORUM_POST = gql`
-  mutation DeleteForumPost($id: ID!) { deleteForumPost(id: $id) }
+  mutation DeleteForumPost($id: ID!) {
+    deleteForumPost(id: $id)
+  }
 `;
 
 // ─── Events ──────────────────────────────────────────────────────────────────
 
 export const GET_COMMUNITY_EVENTS = gql`
   query GetCommunityEvents($communityId: ID!, $first: Int, $after: String, $includePast: Boolean) {
-    communityEvents(communityId: $communityId, first: $first, after: $after, includePast: $includePast) {
+    communityEvents(
+      communityId: $communityId
+      first: $first
+      after: $after
+      includePast: $includePast
+    ) {
       edges {
         cursor
         node {
@@ -1490,15 +1794,24 @@ export const GET_COMMUNITY_EVENTS = gql`
           maxAttendees
           attendeeCount
           isFull
-          myRsvp { id status }
+          myRsvp {
+            id
+            status
+          }
           organizer {
             id
             username
-            profile { displayName avatarUrl }
+            profile {
+              displayName
+              avatarUrl
+            }
           }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1517,11 +1830,17 @@ export const GET_COMMUNITY_EVENT = gql`
       maxAttendees
       attendeeCount
       isFull
-      myRsvp { id status }
+      myRsvp {
+        id
+        status
+      }
       organizer {
         id
         username
-        profile { displayName avatarUrl }
+        profile {
+          displayName
+          avatarUrl
+        }
       }
     }
   }
@@ -1530,7 +1849,10 @@ export const GET_COMMUNITY_EVENT = gql`
 export const CREATE_COMMUNITY_EVENT = gql`
   mutation CreateCommunityEvent($communityId: ID!, $input: CreateCommunityEventInput!) {
     createCommunityEvent(communityId: $communityId, input: $input) {
-      id title startsAt endsAt
+      id
+      title
+      startsAt
+      endsAt
     }
   }
 `;
@@ -1538,23 +1860,37 @@ export const CREATE_COMMUNITY_EVENT = gql`
 export const UPDATE_COMMUNITY_EVENT = gql`
   mutation UpdateCommunityEvent($id: ID!, $input: UpdateCommunityEventInput!) {
     updateCommunityEvent(id: $id, input: $input) {
-      id title description location startsAt endsAt maxAttendees
+      id
+      title
+      description
+      location
+      startsAt
+      endsAt
+      maxAttendees
     }
   }
 `;
 
 export const DELETE_COMMUNITY_EVENT = gql`
-  mutation DeleteCommunityEvent($id: ID!) { deleteCommunityEvent(id: $id) }
+  mutation DeleteCommunityEvent($id: ID!) {
+    deleteCommunityEvent(id: $id)
+  }
 `;
 
 export const RSVP_EVENT = gql`
   mutation RsvpEvent($eventId: ID!, $status: String!) {
-    rsvpEvent(eventId: $eventId, status: $status) { id status joinedAt }
+    rsvpEvent(eventId: $eventId, status: $status) {
+      id
+      status
+      joinedAt
+    }
   }
 `;
 
 export const CANCEL_RSVP = gql`
-  mutation CancelRsvp($eventId: ID!) { cancelRsvp(eventId: $eventId) }
+  mutation CancelRsvp($eventId: ID!) {
+    cancelRsvp(eventId: $eventId)
+  }
 `;
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -1642,10 +1978,27 @@ export const SEARCH_AIRCRAFT_REGISTRATIONS = gql`
         node {
           id
           registration
-          manufacturer { id name }
-          family { id name }
-          variant { id name iataCode icaoCode }
-          airlineRef { id name icaoCode iataCode country }
+          manufacturer {
+            id
+            name
+          }
+          family {
+            id
+            name
+          }
+          variant {
+            id
+            name
+            iataCode
+            icaoCode
+          }
+          airlineRef {
+            id
+            name
+            icaoCode
+            iataCode
+            country
+          }
           msn
           manufacturingDate
           operatorType
@@ -1676,7 +2029,10 @@ export const GET_AIRCRAFT_FAMILIES = gql`
         node {
           id
           name
-          manufacturer { id name }
+          manufacturer {
+            id
+            name
+          }
         }
       }
     }
@@ -1692,7 +2048,10 @@ export const GET_AIRCRAFT_VARIANTS = gql`
           name
           iataCode
           icaoCode
-          family { id name }
+          family {
+            id
+            name
+          }
         }
       }
     }
@@ -1720,10 +2079,28 @@ export const GET_AIRCRAFT_BY_REGISTRATION = gql`
     aircraft(registration: $registration) {
       id
       registration
-      manufacturer { id name }
-      family { id name }
-      variant { id name iataCode icaoCode }
-      airlineRef { id name icaoCode iataCode country callsign }
+      manufacturer {
+        id
+        name
+      }
+      family {
+        id
+        name
+      }
+      variant {
+        id
+        name
+        iataCode
+        icaoCode
+      }
+      airlineRef {
+        id
+        name
+        icaoCode
+        iataCode
+        country
+        callsign
+      }
       msn
       manufacturingDate
       operatorType
@@ -1733,7 +2110,8 @@ export const GET_AIRCRAFT_BY_REGISTRATION = gql`
 
 export const ADMIN_AIRCRAFT = gql`
   query AdminAircraft($search: String, $first: Int, $after: String) {
-    adminAircraft(search: $search, first: $first, after: $after) {      edges {
+    adminAircraft(search: $search, first: $first, after: $after) {
+      edges {
         cursor
         node {
           id
@@ -1741,13 +2119,32 @@ export const ADMIN_AIRCRAFT = gql`
           msn
           manufacturingDate
           operatorType
-          manufacturer { id name }
-          family { id name }
-          variant { id name iataCode icaoCode }
-          airlineRef { id name icaoCode iataCode }
+          manufacturer {
+            id
+            name
+          }
+          family {
+            id
+            name
+          }
+          variant {
+            id
+            name
+            iataCode
+            icaoCode
+          }
+          airlineRef {
+            id
+            name
+            icaoCode
+            iataCode
+          }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1755,13 +2152,17 @@ export const ADMIN_AIRCRAFT = gql`
 
 export const CREATE_AIRCRAFT = gql`
   mutation CreateAircraft($input: CreateAircraftInput!) {
-    createAircraft(input: $input) { id }
+    createAircraft(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_AIRCRAFT = gql`
   mutation UpdateAircraft($id: ID!, $input: UpdateAircraftInput!) {
-    updateAircraft(id: $id, input: $input) { id }
+    updateAircraft(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
@@ -1773,23 +2174,42 @@ export const DELETE_AIRCRAFT = gql`
 
 export const UPSERT_AIRCRAFT = gql`
   mutation UpsertAircraft($input: CreateAircraftInput!) {
-    upsertAircraft(input: $input) { id }
+    upsertAircraft(input: $input) {
+      id
+    }
   }
 `;
 
 export const EXPORT_AIRCRAFT = gql`
   query ExportAircraft {
-    adminAircraft(first: 10000) {      edges {
+    adminAircraft(first: 10000) {
+      edges {
         node {
           id
           registration
           msn
           manufacturingDate
           operatorType
-          manufacturer { id name }
-          family { id name }
-          variant { id name iataCode icaoCode }
-          airlineRef { id name icaoCode iataCode }
+          manufacturer {
+            id
+            name
+          }
+          family {
+            id
+            name
+          }
+          variant {
+            id
+            name
+            iataCode
+            icaoCode
+          }
+          airlineRef {
+            id
+            name
+            icaoCode
+            iataCode
+          }
         }
       }
     }
@@ -1872,7 +2292,10 @@ export const ADMIN_MANUFACTURERS = gql`
           createdAt
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1880,13 +2303,17 @@ export const ADMIN_MANUFACTURERS = gql`
 
 export const CREATE_MANUFACTURER = gql`
   mutation CreateManufacturer($input: CreateManufacturerInput!) {
-    createManufacturer(input: $input) { id }
+    createManufacturer(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_MANUFACTURER = gql`
   mutation UpdateManufacturer($id: ID!, $input: UpdateManufacturerInput!) {
-    updateManufacturer(id: $id, input: $input) { id }
+    updateManufacturer(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
@@ -1898,7 +2325,9 @@ export const DELETE_MANUFACTURER = gql`
 
 export const UPSERT_MANUFACTURER = gql`
   mutation UpsertManufacturer($input: CreateManufacturerInput!) {
-    upsertManufacturer(input: $input) { id }
+    upsertManufacturer(input: $input) {
+      id
+    }
   }
 `;
 
@@ -1910,11 +2339,17 @@ export const ADMIN_FAMILIES = gql`
         node {
           id
           name
-          manufacturer { id name }
+          manufacturer {
+            id
+            name
+          }
           createdAt
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1922,13 +2357,17 @@ export const ADMIN_FAMILIES = gql`
 
 export const CREATE_FAMILY = gql`
   mutation CreateFamily($input: CreateFamilyInput!) {
-    createFamily(input: $input) { id }
+    createFamily(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_FAMILY = gql`
   mutation UpdateFamily($id: ID!, $input: UpdateFamilyInput!) {
-    updateFamily(id: $id, input: $input) { id }
+    updateFamily(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
@@ -1940,7 +2379,9 @@ export const DELETE_FAMILY = gql`
 
 export const UPSERT_FAMILY = gql`
   mutation UpsertFamily($input: CreateFamilyInput!) {
-    upsertFamily(input: $input) { id }
+    upsertFamily(input: $input) {
+      id
+    }
   }
 `;
 
@@ -1958,13 +2399,23 @@ export const ADMIN_VARIANTS = gql`
         node {
           id
           name
-          family { id name manufacturer { id name } }
+          family {
+            id
+            name
+            manufacturer {
+              id
+              name
+            }
+          }
           iataCode
           icaoCode
           createdAt
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -1972,19 +2423,25 @@ export const ADMIN_VARIANTS = gql`
 
 export const CREATE_VARIANT = gql`
   mutation CreateVariant($input: CreateVariantInput!) {
-    createVariant(input: $input) { id }
+    createVariant(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_VARIANT = gql`
   mutation UpdateVariant($id: ID!, $input: UpdateVariantInput!) {
-    updateVariant(id: $id, input: $input) { id }
+    updateVariant(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
 export const UPSERT_VARIANT = gql`
   mutation UpsertVariant($input: CreateVariantInput!) {
-    upsertVariant(input: $input) { id }
+    upsertVariant(input: $input) {
+      id
+    }
   }
 `;
 
@@ -2005,7 +2462,10 @@ export const ADMIN_AIRLINES = gql`
           createdAt
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -2013,13 +2473,17 @@ export const ADMIN_AIRLINES = gql`
 
 export const CREATE_AIRLINE = gql`
   mutation CreateAirline($input: CreateAirlineInput!) {
-    createAirline(input: $input) { id }
+    createAirline(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_AIRLINE = gql`
   mutation UpdateAirline($id: ID!, $input: UpdateAirlineInput!) {
-    updateAirline(id: $id, input: $input) { id }
+    updateAirline(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
@@ -2031,7 +2495,9 @@ export const DELETE_AIRLINE = gql`
 
 export const UPSERT_AIRLINE = gql`
   mutation UpsertAirline($input: CreateAirlineInput!) {
-    upsertAirline(input: $input) { id }
+    upsertAirline(input: $input) {
+      id
+    }
   }
 `;
 
@@ -2051,13 +2517,17 @@ export const ADMIN_PHOTO_CATEGORIES = gql`
 
 export const CREATE_PHOTO_CATEGORY = gql`
   mutation CreatePhotoCategory($input: CreatePhotoCategoryInput!) {
-    createPhotoCategory(input: $input) { id }
+    createPhotoCategory(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_PHOTO_CATEGORY = gql`
   mutation UpdatePhotoCategory($id: ID!, $input: UpdatePhotoCategoryInput!) {
-    updatePhotoCategory(id: $id, input: $input) { id }
+    updatePhotoCategory(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
@@ -2069,7 +2539,9 @@ export const DELETE_PHOTO_CATEGORY = gql`
 
 export const UPSERT_PHOTO_CATEGORY = gql`
   mutation UpsertPhotoCategory($input: CreatePhotoCategoryInput!) {
-    upsertPhotoCategory(input: $input) { id }
+    upsertPhotoCategory(input: $input) {
+      id
+    }
   }
 `;
 
@@ -2089,13 +2561,17 @@ export const ADMIN_AIRCRAFT_SPECIFIC_CATEGORIES = gql`
 
 export const CREATE_AIRCRAFT_SPECIFIC_CATEGORY = gql`
   mutation CreateAircraftSpecificCategory($input: CreateAircraftSpecificCategoryInput!) {
-    createAircraftSpecificCategory(input: $input) { id }
+    createAircraftSpecificCategory(input: $input) {
+      id
+    }
   }
 `;
 
 export const UPDATE_AIRCRAFT_SPECIFIC_CATEGORY = gql`
   mutation UpdateAircraftSpecificCategory($id: ID!, $input: UpdateAircraftSpecificCategoryInput!) {
-    updateAircraftSpecificCategory(id: $id, input: $input) { id }
+    updateAircraftSpecificCategory(id: $id, input: $input) {
+      id
+    }
   }
 `;
 
@@ -2107,7 +2583,9 @@ export const DELETE_AIRCRAFT_SPECIFIC_CATEGORY = gql`
 
 export const UPSERT_AIRCRAFT_SPECIFIC_CATEGORY = gql`
   mutation UpsertAircraftSpecificCategory($input: CreateAircraftSpecificCategoryInput!) {
-    upsertAircraftSpecificCategory(input: $input) { id }
+    upsertAircraftSpecificCategory(input: $input) {
+      id
+    }
   }
 `;
 
@@ -2125,13 +2603,22 @@ export const ADMIN_PENDING_LIST_ITEMS = gql`
           metadata
           status
           reviewNote
-          submitter { id username }
-          reviewer { id username }
+          submitter {
+            id
+            username
+          }
+          reviewer {
+            id
+            username
+          }
           createdAt
           updatedAt
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -2143,7 +2630,10 @@ export const REVIEW_LIST_ITEM = gql`
       id
       status
       reviewNote
-      reviewer { id username }
+      reviewer {
+        id
+        username
+      }
       updatedAt
     }
   }
@@ -2155,7 +2645,11 @@ export const EXPORT_MANUFACTURERS = gql`
   query ExportManufacturers {
     aircraftManufacturers(first: 10000) {
       edges {
-        node { id name country }
+        node {
+          id
+          name
+          country
+        }
       }
     }
   }
@@ -2165,7 +2659,14 @@ export const EXPORT_FAMILIES = gql`
   query ExportFamilies {
     aircraftFamilies(first: 10000) {
       edges {
-        node { id name manufacturer { id name } }
+        node {
+          id
+          name
+          manufacturer {
+            id
+            name
+          }
+        }
       }
     }
   }
@@ -2178,7 +2679,14 @@ export const EXPORT_VARIANTS = gql`
         node {
           id
           name
-          family { id name manufacturer { id name } }
+          family {
+            id
+            name
+            manufacturer {
+              id
+              name
+            }
+          }
           iataCode
           icaoCode
         }
@@ -2191,7 +2699,14 @@ export const EXPORT_AIRLINES = gql`
   query ExportAirlines {
     airlines(first: 10000) {
       edges {
-        node { id name icaoCode iataCode country callsign }
+        node {
+          id
+          name
+          icaoCode
+          iataCode
+          country
+          callsign
+        }
       }
     }
   }
@@ -2200,7 +2715,10 @@ export const EXPORT_AIRLINES = gql`
 export const EXPORT_PHOTO_CATEGORIES = gql`
   query ExportPhotoCategories {
     photoCategories {
-      id name label sortOrder
+      id
+      name
+      label
+      sortOrder
     }
   }
 `;
@@ -2208,7 +2726,10 @@ export const EXPORT_PHOTO_CATEGORIES = gql`
 export const EXPORT_AIRCRAFT_SPECIFIC_CATEGORIES = gql`
   query ExportAircraftSpecificCategories {
     aircraftSpecificCategories {
-      id name label sortOrder
+      id
+      name
+      label
+      sortOrder
     }
   }
 `;
@@ -2274,7 +2795,11 @@ export const GET_MARKETPLACE_ITEMS = gql`
           averageRating
           feedbackCount
           createdAt
-          category { id name label }
+          category {
+            id
+            name
+            label
+          }
           images {
             id
             variantType
@@ -2292,12 +2817,18 @@ export const GET_MARKETPLACE_ITEMS = gql`
             user {
               id
               username
-              profile { displayName avatarUrl }
+              profile {
+                displayName
+                avatarUrl
+              }
             }
           }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -2321,7 +2852,11 @@ export const GET_MARKETPLACE_ITEM = gql`
       feedbackCount
       createdAt
       updatedAt
-      category { id name label }
+      category {
+        id
+        name
+        label
+      }
       images {
         id
         variantType
@@ -2340,7 +2875,10 @@ export const GET_MARKETPLACE_ITEM = gql`
         user {
           id
           username
-          profile { displayName avatarUrl }
+          profile {
+            displayName
+            avatarUrl
+          }
         }
       }
     }
@@ -2373,7 +2911,11 @@ export const GET_SELLER_PROFILE = gql`
       user {
         id
         username
-        profile { displayName avatarUrl bio }
+        profile {
+          displayName
+          avatarUrl
+          bio
+        }
       }
     }
   }
@@ -2392,7 +2934,10 @@ export const GET_SELLER_FEEDBACK = gql`
           buyer {
             id
             username
-            profile { displayName avatarUrl }
+            profile {
+              displayName
+              avatarUrl
+            }
           }
           item {
             id
@@ -2400,7 +2945,10 @@ export const GET_SELLER_FEEDBACK = gql`
           }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -2421,7 +2969,11 @@ export const GET_MY_LISTINGS = gql`
           moderationStatus
           active
           createdAt
-          category { id name label }
+          category {
+            id
+            name
+            label
+          }
           images {
             id
             variantType
@@ -2432,7 +2984,10 @@ export const GET_MY_LISTINGS = gql`
           }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -2453,20 +3008,33 @@ export const GET_ADMIN_MARKETPLACE_ITEMS = gql`
           moderationStatus
           active
           createdAt
-          category { id name label }
+          category {
+            id
+            name
+            label
+          }
           seller {
             id
             user {
               id
               username
               email
-              profile { displayName }
+              profile {
+                displayName
+              }
             }
           }
-          images { id url variantType }
+          images {
+            id
+            url
+            variantType
+          }
         }
       }
-      pageInfo { hasNextPage endCursor }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       totalCount
     }
   }
@@ -2495,7 +3063,11 @@ export const CREATE_MARKETPLACE_ITEM = gql`
       contactPhone
       moderationStatus
       active
-      category { id name label }
+      category {
+        id
+        name
+        label
+      }
       images {
         id
         variantType
@@ -2521,7 +3093,11 @@ export const UPDATE_MARKETPLACE_ITEM = gql`
       contactPhone
       moderationStatus
       active
-      category { id name label }
+      category {
+        id
+        name
+        label
+      }
       images {
         id
         variantType
@@ -2638,9 +3214,15 @@ export const MARKETPLACE_LISTINGS = gql`
           aircraft {
             registration
             airline
-            manufacturer { name }
-            family { name }
-            variant { name }
+            manufacturer {
+              name
+            }
+            family {
+              name
+            }
+            variant {
+              name
+            }
           }
         }
       }
