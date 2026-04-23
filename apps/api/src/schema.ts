@@ -43,6 +43,8 @@ export const typeDefs = gql`
     manufacturer
     family
     variant
+    airline
+    registration
   }
 
   enum ReportTargetType {
@@ -306,13 +308,23 @@ export const typeDefs = gql`
     Optionally filter by role or status, and search by username/email.
     Requires admin or moderator role.
     """
-    adminUsers(role: String, status: String, search: String, first: Int = 20, after: String): UserConnection!
+    adminUsers(
+      role: String
+      status: String
+      search: String
+      first: Int = 20
+      after: String
+    ): UserConnection!
 
     """
     Paginated list of photos filtered by moderation status.
     Requires admin or moderator role.
     """
-    adminPhotos(moderationStatus: String = "pending", first: Int = 20, after: String): PhotoConnection!
+    adminPhotos(
+      moderationStatus: String = "pending"
+      first: Int = 20
+      after: String
+    ): PhotoConnection!
 
     # ─── Community Queries ──────────────────────────────────────────────────
 
@@ -324,7 +336,12 @@ export const typeDefs = gql`
     """
     Browse/discover communities with optional search, category filter, and pagination.
     """
-    communities(search: String, category: String, first: Int = 20, after: String): CommunityConnection!
+    communities(
+      search: String
+      category: String
+      first: Int = 20
+      after: String
+    ): CommunityConnection!
 
     """
     List communities the current user is a member of.
@@ -334,73 +351,133 @@ export const typeDefs = gql`
     """
     Paginated moderation log for a community. Requires owner or admin role.
     """
-    communityModerationLogs(communityId: ID!, action: String, first: Int = 20, after: String): CommunityModerationLogConnection!
+    communityModerationLogs(
+      communityId: ID!
+      action: String
+      first: Int = 20
+      after: String
+    ): CommunityModerationLogConnection!
 
     """
     Paginated, filterable member list for a community. Requires owner or admin role.
     """
     communityMembers(communityId: ID!, filter: CommunityMemberFilter): CommunityMemberConnection!
 
-    """Fetch site-wide settings (banner, tagline). Returns null if not set."""
+    """
+    Fetch site-wide settings (banner, tagline). Returns null if not set.
+    """
     siteSettings: SiteSettings
 
     # ─── Forum Queries ───────────────────────────────────────────────────────
 
-    """List all forum categories for a community, ordered by position."""
+    """
+    List all forum categories for a community, ordered by position.
+    """
     forumCategories(communityId: ID!): [ForumCategory!]!
 
-    """List all global forum categories (not tied to any community), ordered by position."""
+    """
+    List all global forum categories (not tied to any community), ordered by position.
+    """
     globalForumCategories: [ForumCategory!]!
 
-    """Fetch a single forum category by ID."""
+    """
+    Fetch a single forum category by ID.
+    """
     forumCategory(id: ID!): ForumCategory
 
-    """Paginated list of threads in a category. Pinned threads appear first."""
+    """
+    Paginated list of threads in a category. Pinned threads appear first.
+    """
     forumThreads(categoryId: ID!, first: Int, after: String): ForumThreadConnection!
 
-    """Fetch a single forum thread by ID."""
+    """
+    Fetch a single forum thread by ID.
+    """
     forumThread(id: ID!): ForumThread
 
-    """Paginated top-level posts in a thread, oldest first."""
+    """
+    Paginated top-level posts in a thread, oldest first.
+    """
     forumPosts(threadId: ID!, first: Int, after: String): ForumPostConnection!
 
     # ─── Event Queries ───────────────────────────────────────────────────────
 
-    """List events for a community, ordered by startsAt asc. Defaults to upcoming only."""
-    communityEvents(communityId: ID!, first: Int = 20, after: String, includePast: Boolean): CommunityEventConnection!
+    """
+    List events for a community, ordered by startsAt asc. Defaults to upcoming only.
+    """
+    communityEvents(
+      communityId: ID!
+      first: Int = 20
+      after: String
+      includePast: Boolean
+    ): CommunityEventConnection!
 
-    """Fetch a single event by ID."""
+    """
+    Fetch a single event by ID.
+    """
     communityEvent(id: ID!): CommunityEvent
 
     # ─── Notification Queries ─────────────────────────────────────────────
 
-    """Paginated list of the current user's notifications, newest first."""
+    """
+    Paginated list of the current user's notifications, newest first.
+    """
     notifications(first: Int, after: String, unreadOnly: Boolean): NotificationConnection!
 
-    """Count of unread notifications for the current user. Returns 0 if unauthenticated."""
+    """
+    Count of unread notifications for the current user. Returns 0 if unauthenticated.
+    """
     unreadNotificationCount: Int!
 
     # ─── Aircraft Hierarchy Queries ──────────────────────────────────────────
 
-    """List all aircraft manufacturers with optional search and pagination."""
-    aircraftManufacturers(search: String, first: Int = 20, after: String): AircraftManufacturerConnection!
+    """
+    List all aircraft manufacturers with optional search and pagination.
+    """
+    aircraftManufacturers(
+      search: String
+      first: Int = 20
+      after: String
+    ): AircraftManufacturerConnection!
 
-    """List aircraft families, optionally filtered by manufacturer."""
-    aircraftFamilies(manufacturerId: ID, search: String, first: Int = 20, after: String): AircraftFamilyConnection!
+    """
+    List aircraft families, optionally filtered by manufacturer.
+    """
+    aircraftFamilies(
+      manufacturerId: ID
+      search: String
+      first: Int = 20
+      after: String
+    ): AircraftFamilyConnection!
 
-    """List aircraft variants, optionally filtered by family."""
-    aircraftVariants(familyId: ID, search: String, first: Int = 20, after: String): AircraftVariantConnection!
+    """
+    List aircraft variants, optionally filtered by family.
+    """
+    aircraftVariants(
+      familyId: ID
+      search: String
+      first: Int = 20
+      after: String
+    ): AircraftVariantConnection!
 
-    """List all airlines with optional search and pagination."""
+    """
+    List all airlines with optional search and pagination.
+    """
     airlines(search: String, first: Int = 20, after: String): AirlineConnection!
 
-    """Fetch a single airline by ICAO code for auto-fill."""
+    """
+    Fetch a single airline by ICAO code for auto-fill.
+    """
     airline(icaoCode: String!): Airline
 
-    """List all photo categories."""
+    """
+    List all photo categories.
+    """
     photoCategories: [PhotoCategory!]!
 
-    """List all aircraft-specific categories."""
+    """
+    List all aircraft-specific categories.
+    """
     aircraftSpecificCategories: [AircraftSpecificCategory!]!
 
     # ─── Marketplace Queries ────────────────────────────────────────────────
@@ -434,8 +511,15 @@ export const typeDefs = gql`
 
     # ─── Admin: Pending List Items ───────────────────────────────────────────
 
-    """Paginated list of pending list items for admin review."""
-    pendingListItems(status: String, listType: String, first: Int = 20, after: String): PendingListItemConnection!
+    """
+    Paginated list of pending list items for admin review.
+    """
+    pendingListItems(
+      status: String
+      listType: String
+      first: Int = 20
+      after: String
+    ): PendingListItemConnection!
   }
 
   type Mutation {
@@ -715,7 +799,9 @@ export const typeDefs = gql`
     """
     deleteCommunity(id: ID!): Boolean!
 
-    """Update site-wide settings (banner, tagline). Requires admin or superuser role."""
+    """
+    Update site-wide settings (banner, tagline). Requires admin or superuser role.
+    """
     updateSiteSettings(input: UpdateSiteSettingsInput!): SiteSettings!
 
     """
@@ -791,65 +877,108 @@ export const typeDefs = gql`
 
     # ─── Forum Mutations ────────────────────────────────────────────────────
 
-    """Create a forum category in a community. Requires owner or admin role. Pass communityId: null for global categories (admin only)."""
-    createForumCategory(communityId: ID, name: String!, description: String, slug: String): ForumCategory!
+    """
+    Create a forum category in a community. Requires owner or admin role. Pass communityId: null for global categories (admin only).
+    """
+    createForumCategory(
+      communityId: ID
+      name: String!
+      description: String
+      slug: String
+    ): ForumCategory!
 
-    """Create a global forum category (not tied to any community). Requires admin or superuser role."""
+    """
+    Create a global forum category (not tied to any community). Requires admin or superuser role.
+    """
     createGlobalForumCategory(name: String!, description: String, slug: String): ForumCategory!
 
-    """Update a forum category. Requires owner or admin role."""
+    """
+    Update a forum category. Requires owner or admin role.
+    """
     updateForumCategory(id: ID!, name: String, description: String, position: Int): ForumCategory!
 
-    """Delete a forum category and all its threads. Requires owner or admin role."""
+    """
+    Delete a forum category and all its threads. Requires owner or admin role.
+    """
     deleteForumCategory(id: ID!): Boolean!
 
-    """Create a new thread in a forum category. Any active community member."""
+    """
+    Create a new thread in a forum category. Any active community member.
+    """
     createForumThread(categoryId: ID!, title: String!, body: String!): ForumThread!
 
-    """Delete a forum thread. Requires thread authorship or moderator+ role."""
+    """
+    Delete a forum thread. Requires thread authorship or moderator+ role.
+    """
     deleteForumThread(id: ID!): Boolean!
 
-    """Pin or unpin a thread. Requires moderator+ role."""
+    """
+    Pin or unpin a thread. Requires moderator+ role.
+    """
     pinForumThread(id: ID!, pinned: Boolean!): ForumThread!
 
-    """Lock or unlock a thread. Requires moderator+ role."""
+    """
+    Lock or unlock a thread. Requires moderator+ role.
+    """
     lockForumThread(id: ID!, locked: Boolean!): ForumThread!
 
-    """Post a reply in a thread. Any active community member."""
+    """
+    Post a reply in a thread. Any active community member.
+    """
     createForumPost(threadId: ID!, body: String!, parentPostId: ID): ForumPost!
 
-    """Edit a post body. Author only, within 24 hours of creation."""
+    """
+    Edit a post body. Author only, within 24 hours of creation.
+    """
     updateForumPost(id: ID!, body: String!): ForumPost!
 
-    """Soft-delete a post. Author or moderator+."""
+    """
+    Soft-delete a post. Author or moderator+.
+    """
     deleteForumPost(id: ID!): Boolean!
 
     # ─── Event Mutations ──────────────────────────────────────────────────
 
-    """Create an event in a community. Requires owner or admin role."""
+    """
+    Create an event in a community. Requires owner or admin role.
+    """
     createCommunityEvent(communityId: ID!, input: CreateCommunityEventInput!): CommunityEvent!
 
-    """Update an event. Requires owner/admin or the event organizer."""
+    """
+    Update an event. Requires owner/admin or the event organizer.
+    """
     updateCommunityEvent(id: ID!, input: UpdateCommunityEventInput!): CommunityEvent!
 
-    """Delete an event. Requires owner/admin or the event organizer."""
+    """
+    Delete an event. Requires owner/admin or the event organizer.
+    """
     deleteCommunityEvent(id: ID!): Boolean!
 
-    """RSVP to an event. status: going | maybe | not_going."""
+    """
+    RSVP to an event. status: going | maybe | not_going.
+    """
     rsvpEvent(eventId: ID!, status: String!): EventAttendee!
 
-    """Cancel your RSVP (remove the attendance record)."""
+    """
+    Cancel your RSVP (remove the attendance record).
+    """
     cancelRsvp(eventId: ID!): Boolean!
 
     # ─── Notification Mutations ───────────────────────────────────────────
 
-    """Mark a single notification as read. Must be the notification owner."""
+    """
+    Mark a single notification as read. Must be the notification owner.
+    """
     markNotificationRead(id: ID!): Notification!
 
-    """Mark all of the current user's notifications as read."""
+    """
+    Mark all of the current user's notifications as read.
+    """
     markAllNotificationsRead: Boolean!
 
-    """Delete a notification. Must be the notification owner."""
+    """
+    Delete a notification. Must be the notification owner.
+    """
     deleteNotification(id: ID!): Boolean!
 
     """
@@ -867,82 +996,139 @@ export const typeDefs = gql`
     """
     resetPassword(token: String!, newPassword: String!): AuthPayload!
 
-    """Verify an email address using the token sent during sign-up."""
+    """
+    Verify an email address using the token sent during sign-up.
+    """
     verifyEmail(token: String!): AuthPayload!
 
     # ─── Aircraft Hierarchy Mutations (Admin) ────────────────────────────────
 
-    """Create an aircraft manufacturer. Requires admin or superuser role."""
+    """
+    Create an aircraft manufacturer. Requires admin or superuser role.
+    """
     createManufacturer(input: CreateManufacturerInput!): AircraftManufacturer!
 
-    """Update an aircraft manufacturer. Requires admin or superuser role."""
+    """
+    Update an aircraft manufacturer. Requires admin or superuser role.
+    """
     updateManufacturer(id: ID!, input: UpdateManufacturerInput!): AircraftManufacturer!
 
-    """Delete an aircraft manufacturer. Requires admin or superuser role."""
+    """
+    Delete an aircraft manufacturer. Requires admin or superuser role.
+    """
     deleteManufacturer(id: ID!): Boolean!
 
-    """Upsert an aircraft manufacturer by unique name. Requires admin or superuser role."""
+    """
+    Upsert an aircraft manufacturer by unique name. Requires admin or superuser role.
+    """
     upsertManufacturer(input: CreateManufacturerInput!): AircraftManufacturer!
 
-    """Create an aircraft family. Requires admin or superuser role."""
+    """
+    Create an aircraft family. Requires admin or superuser role.
+    """
     createFamily(input: CreateFamilyInput!): AircraftFamily!
 
-    """Update an aircraft family. Requires admin or superuser role."""
+    """
+    Update an aircraft family. Requires admin or superuser role.
+    """
     updateFamily(id: ID!, input: UpdateFamilyInput!): AircraftFamily!
 
-    """Delete an aircraft family. Requires admin or superuser role."""
+    """
+    Delete an aircraft family. Requires admin or superuser role.
+    """
     deleteFamily(id: ID!): Boolean!
 
-    """Upsert an aircraft family by unique name. Requires admin or superuser role."""
+    """
+    Upsert an aircraft family by unique name. Requires admin or superuser role.
+    """
     upsertFamily(input: CreateFamilyInput!): AircraftFamily!
 
-    """Create an aircraft variant. Requires admin or superuser role."""
+    """
+    Create an aircraft variant. Requires admin or superuser role.
+    """
     createVariant(input: CreateVariantInput!): AircraftVariant!
 
-    """Update an aircraft variant. Requires admin or superuser role."""
+    """
+    Update an aircraft variant. Requires admin or superuser role.
+    """
     updateVariant(id: ID!, input: UpdateVariantInput!): AircraftVariant!
 
-    """Delete an aircraft variant. Requires admin or superuser role."""
+    """
+    Delete an aircraft variant. Requires admin or superuser role.
+    """
     deleteVariant(id: ID!): Boolean!
 
-    """Upsert an aircraft variant by unique name. Requires admin or superuser role."""
+    """
+    Upsert an aircraft variant by unique name. Requires admin or superuser role.
+    """
     upsertVariant(input: CreateVariantInput!): AircraftVariant!
 
-    """Create an airline. Requires admin or superuser role."""
+    """
+    Create an airline. Requires admin or superuser role.
+    """
     createAirline(input: CreateAirlineInput!): Airline!
 
-    """Update an airline. Requires admin or superuser role."""
+    """
+    Update an airline. Requires admin or superuser role.
+    """
     updateAirline(id: ID!, input: UpdateAirlineInput!): Airline!
 
-    """Delete an airline. Requires admin or superuser role."""
+    """
+    Delete an airline. Requires admin or superuser role.
+    """
     deleteAirline(id: ID!): Boolean!
 
-    """Upsert an airline by unique name. Requires admin or superuser role."""
+    """
+    Upsert an airline by unique name. Requires admin or superuser role.
+    """
     upsertAirline(input: CreateAirlineInput!): Airline!
 
-    """Create a photo category. Requires admin or superuser role."""
+    """
+    Create a photo category. Requires admin or superuser role.
+    """
     createPhotoCategory(input: CreatePhotoCategoryInput!): PhotoCategory!
 
-    """Update a photo category. Requires admin or superuser role."""
+    """
+    Update a photo category. Requires admin or superuser role.
+    """
     updatePhotoCategory(id: ID!, input: UpdatePhotoCategoryInput!): PhotoCategory!
 
-    """Delete a photo category. Requires admin or superuser role."""
+    """
+    Delete a photo category. Requires admin or superuser role.
+    """
     deletePhotoCategory(id: ID!): Boolean!
 
-    """Upsert a photo category by unique name. Requires admin or superuser role."""
+    """
+    Upsert a photo category by unique name. Requires admin or superuser role.
+    """
     upsertPhotoCategory(input: CreatePhotoCategoryInput!): PhotoCategory!
 
-    """Create an aircraft-specific category. Requires admin or superuser role."""
-    createAircraftSpecificCategory(input: CreateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
+    """
+    Create an aircraft-specific category. Requires admin or superuser role.
+    """
+    createAircraftSpecificCategory(
+      input: CreateAircraftSpecificCategoryInput!
+    ): AircraftSpecificCategory!
 
-    """Update an aircraft-specific category. Requires admin or superuser role."""
-    updateAircraftSpecificCategory(id: ID!, input: UpdateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
+    """
+    Update an aircraft-specific category. Requires admin or superuser role.
+    """
+    updateAircraftSpecificCategory(
+      id: ID!
+      input: UpdateAircraftSpecificCategoryInput!
+    ): AircraftSpecificCategory!
 
-    """Delete an aircraft-specific category. Requires admin or superuser role."""
+    """
+    Delete an aircraft-specific category. Requires admin or superuser role.
+    """
     deleteAircraftSpecificCategory(id: ID!): Boolean!
 
-    """Upsert an aircraft-specific category by unique name. Requires admin or superuser role."""
-    upsertAircraftSpecificCategory(input: CreateAircraftSpecificCategoryInput!): AircraftSpecificCategory!
+    """
+    Upsert an aircraft-specific category by unique name. Requires admin or superuser role.
+    """
+    upsertAircraftSpecificCategory(
+      input: CreateAircraftSpecificCategoryInput!
+    ): AircraftSpecificCategory!
 
     # ─── Collectibles Marketplace Queries ─────────────────────────────────────────
 
@@ -961,103 +1147,165 @@ export const typeDefs = gql`
       after: String
     ): MarketplaceItemConnection!
 
-    """Fetch a single collectible listing by ID."""
+    """
+    Fetch a single collectible listing by ID.
+    """
     marketplaceItem(id: ID!): MarketplaceItem
 
-    """List all marketplace categories."""
+    """
+    List all marketplace categories.
+    """
     marketplaceCategories: [MarketplaceCategory!]!
 
-    """Fetch a seller's public profile with their listings and ratings."""
+    """
+    Fetch a seller's public profile with their listings and ratings.
+    """
     sellerProfile(userId: ID!): SellerProfile
 
-    """Paginated feedback for a seller."""
+    """
+    Paginated feedback for a seller.
+    """
     sellerFeedback(sellerId: ID!, first: Int = 20, after: String): SellerFeedbackConnection!
 
-    """My marketplace listings (seller)."""
+    """
+    My marketplace listings (seller).
+    """
     myListings(first: Int = 20, after: String): MarketplaceItemConnection!
 
-    """Admin: all marketplace items, optionally filtered by moderation status."""
-    adminMarketplaceItems(moderationStatus: String, first: Int = 20, after: String): MarketplaceItemConnection!
+    """
+    Admin: all marketplace items, optionally filtered by moderation status.
+    """
+    adminMarketplaceItems(
+      moderationStatus: String
+      first: Int = 20
+      after: String
+    ): MarketplaceItemConnection!
 
     # ─── Marketplace Mutations ──────────────────────────────────────────────────
 
-    """Apply to become a seller. Creates a SellerProfile in pending state."""
+    """
+    Apply to become a seller. Creates a SellerProfile in pending state.
+    """
     applyToSell(input: ApplyToSellInput!): SellerProfile!
 
-    """Approve a seller application. Creates a Stripe Connect account and returns onboarding link."""
+    """
+    Approve a seller application. Creates a Stripe Connect account and returns onboarding link.
+    """
     approveSeller(sellerProfileId: ID!): ApproveSellerPayload!
 
-    """Create or update a listing for one of your approved photos."""
+    """
+    Create or update a listing for one of your approved photos.
+    """
     createOrUpdateListing(input: CreateOrUpdateListingInput!): PhotoListing!
 
-    """Remove a listing from a photo. Works for the photo owner."""
+    """
+    Remove a listing from a photo. Works for the photo owner.
+    """
     removeListing(photoId: ID!): Boolean!
 
     # ─── Collectibles Marketplace Mutations ────────────────────────────────
 
-    """Update a seller's status (approve/reject). Requires admin or superuser role."""
+    """
+    Update a seller's status (approve/reject). Requires admin or superuser role.
+    """
     updateSellerStatus(sellerProfileId: ID!, status: SellerStatus!): SellerProfile!
 
-    """Create a new collectible listing. Requires approved seller status."""
+    """
+    Create a new collectible listing. Requires approved seller status.
+    """
     createMarketplaceItem(input: CreateMarketplaceItemInput!): MarketplaceItem!
 
-    """Update an existing collectible listing. Only the seller can update."""
+    """
+    Update an existing collectible listing. Only the seller can update.
+    """
     updateMarketplaceItem(id: ID!, input: UpdateMarketplaceItemInput!): MarketplaceItem!
 
-    """Delete a collectible listing. Only the seller can delete."""
+    """
+    Delete a collectible listing. Only the seller can delete.
+    """
     deleteMarketplaceItem(id: ID!): Boolean!
 
-    """Moderate a collectible listing (approve/reject). Requires admin or moderator role."""
+    """
+    Moderate a collectible listing (approve/reject). Requires admin or moderator role.
+    """
     moderateMarketplaceItem(id: ID!, status: ModerationStatus!, reason: String): MarketplaceItem!
 
-    """Submit feedback for a seller after contacting them. One feedback per buyer per seller."""
+    """
+    Submit feedback for a seller after contacting them. One feedback per buyer per seller.
+    """
     submitSellerFeedback(input: SubmitSellerFeedbackInput!): SellerFeedback!
 
-    """Request a presigned S3 URL for uploading a marketplace item image."""
+    """
+    Request a presigned S3 URL for uploading a marketplace item image.
+    """
     getMarketplaceItemUploadUrl(input: GetUploadUrlInput!): UploadUrlPayload!
 
     # ─── Admin: Marketplace Categories ──────────────────────────────────
 
-    """Create a marketplace category. Requires admin or superuser role."""
+    """
+    Create a marketplace category. Requires admin or superuser role.
+    """
     createMarketplaceCategory(input: CreateMarketplaceCategoryInput!): MarketplaceCategory!
 
-    """Update a marketplace category. Requires admin or superuser role."""
+    """
+    Update a marketplace category. Requires admin or superuser role.
+    """
     updateMarketplaceCategory(id: ID!, input: UpdateMarketplaceCategoryInput!): MarketplaceCategory!
 
-    """Delete a marketplace category. Requires admin or superuser role."""
+    """
+    Delete a marketplace category. Requires admin or superuser role.
+    """
     deleteMarketplaceCategory(id: ID!): Boolean!
 
-    """Initiate a photo purchase. Returns Stripe Checkout URL."""
+    """
+    Initiate a photo purchase. Returns Stripe Checkout URL.
+    """
     createPhotoPurchase(listingId: ID!): PurchasePayload!
 
     # ─── List Contribution (User) ────────────────────────────────────────────
 
-    """Submit a new item for addition to a lookup list. Requires authentication."""
+    """
+    Submit a new item for addition to a lookup list. Requires authentication.
+    """
     submitListItem(input: SubmitListItemInput!): PendingListItem!
 
     # ─── List Review (Admin) ────────────────────────────────────────────────
 
-    """Review a pending list item (approve or reject). Requires admin or superuser role."""
+    """
+    Review a pending list item (approve or reject). Requires admin or superuser role.
+    """
     reviewListItem(id: ID!, status: String!, reviewNote: String): PendingListItem!
   }
 
   # ─── Auth Types ──────────────────────────────────────────────────────────
 
   input SignUpInput {
-    """Email address for the new account."""
+    """
+    Email address for the new account.
+    """
     email: String!
-    """Unique username (3-30 chars, alphanumeric + hyphens/underscores)."""
+    """
+    Unique username (3-30 chars, alphanumeric + hyphens/underscores).
+    """
     username: String!
-    """Password (min 8 characters)."""
+    """
+    Password (min 8 characters).
+    """
     password: String!
-    """Display name shown on your profile."""
+    """
+    Display name shown on your profile.
+    """
     displayName: String
   }
 
   input SignInInput {
-    """Email address."""
+    """
+    Email address.
+    """
     email: String!
-    """Password."""
+    """
+    Password.
+    """
     password: String!
   }
 
@@ -1066,79 +1314,141 @@ export const typeDefs = gql`
   the refresh token (opaque token in HttpOnly cookie), and the authenticated user record.
   """
   type AuthPayload {
-    """Short-lived JWT access token (1 hour). Sent via HttpOnly cookie on browser requests."""
+    """
+    Short-lived JWT access token (1 hour). Sent via HttpOnly cookie on browser requests.
+    """
     token: String!
-    """Opaque refresh token — stored in DB and sent via HttpOnly cookie. Used to obtain new access tokens."""
+    """
+    Opaque refresh token — stored in DB and sent via HttpOnly cookie. Used to obtain new access tokens.
+    """
     refreshToken: String
-    """The authenticated user."""
+    """
+    The authenticated user.
+    """
     user: User!
   }
 
-  """Response after a successful sign-up. No token is returned — user must verify email first."""
+  """
+  Response after a successful sign-up. No token is returned — user must verify email first.
+  """
   type SignUpPayload {
-    """The created user (email not yet verified)."""
+    """
+    The created user (email not yet verified).
+    """
     user: User!
   }
 
   # ─── User & Profile Types ────────────────────────────────────────────────
 
-  """A registered SpotterSpace user."""
+  """
+  A registered SpotterSpace user.
+  """
   type User {
     id: ID!
-    """Unique email address."""
+    """
+    Unique email address.
+    """
     email: String!
-    """Unique username, used in profile URLs (/u/username)."""
+    """
+    Unique username, used in profile URLs (/u/username).
+    """
     username: String!
-    """Platform role: user, moderator, or admin."""
+    """
+    Platform role: user, moderator, or admin.
+    """
     role: UserRole!
-    """Account status: active, suspended, or banned."""
+    """
+    Account status: active, suspended, or banned.
+    """
     status: UserStatus!
-    """Whether the email has been verified."""
+    """
+    Whether the email has been verified.
+    """
     emailVerified: Boolean!
-    """The user's profile, if one has been created."""
+    """
+    The user's profile, if one has been created.
+    """
     profile: Profile
-    """Number of users following this user."""
+    """
+    Number of users following this user.
+    """
     followerCount: Int!
-    """Number of users this user follows."""
+    """
+    Number of users this user follows.
+    """
     followingCount: Int!
-    """Whether the currently authenticated user follows this user."""
+    """
+    Whether the currently authenticated user follows this user.
+    """
     isFollowedByMe: Boolean!
-    """Number of photos uploaded by this user."""
+    """
+    Number of photos uploaded by this user.
+    """
     photoCount: Int!
-    """The user's seller profile, if any."""
+    """
+    The user's seller profile, if any.
+    """
     sellerProfile: SellerProfile
-    """Whether the user can sell (approved seller or admin/superuser)."""
+    """
+    Whether the user can sell (approved seller or admin/superuser).
+    """
     canSell: Boolean!
     createdAt: String!
     updatedAt: String!
   }
 
-  """A user's public profile with biographical and preference information."""
+  """
+  A user's public profile with biographical and preference information.
+  """
   type Profile {
     id: ID!
-    """Display name shown on the profile page."""
+    """
+    Display name shown on the profile page.
+    """
     displayName: String
-    """Free-form biography text."""
+    """
+    Free-form biography text.
+    """
     bio: String
-    """URL to the user's avatar image."""
+    """
+    URL to the user's avatar image.
+    """
     avatarUrl: String
-    """Geographic region (e.g., 'Pacific Northwest, USA')."""
+    """
+    Geographic region (e.g., 'Pacific Northwest, USA').
+    """
     locationRegion: String
-    """Self-reported experience level for aviation spotting."""
+    """
+    Self-reported experience level for aviation spotting.
+    """
     experienceLevel: String
-    """Camera/lens gear description."""
+    """
+    Camera/lens gear description.
+    """
     gear: String
-    """List of spotting interests (e.g., military, commercial, GA)."""
+    """
+    List of spotting interests (e.g., military, commercial, GA).
+    """
     interests: [String!]!
-    """Favorite aircraft types (e.g., A380, 747, F-16)."""
+    """
+    Favorite aircraft types (e.g., A380, 747, F-16).
+    """
     favoriteAircraft: [String!]!
-    """Favorite airport codes."""
+    """
+    Favorite airport codes.
+    """
     favoriteAirports: [String!]!
-    """Whether this profile is publicly visible."""
+    """
+    Whether this profile is publicly visible.
+    """
     isPublic: Boolean!
-    """Camera bodies in the user's gear list."""
+    """
+    Camera bodies in the user's gear list.
+    """
     cameraBodies: [String!]!
-    """Lenses in the user's gear list."""
+    """
+    Lenses in the user's gear list.
+    """
     lenses: [String!]!
   }
 
@@ -1158,158 +1468,294 @@ export const typeDefs = gql`
 
   # ─── Photo Types ─────────────────────────────────────────────────────────
 
-  """An uploaded aviation photo with metadata and processing variants."""
+  """
+  An uploaded aviation photo with metadata and processing variants.
+  """
   type Photo {
     id: ID!
-    """The user who uploaded this photo."""
+    """
+    The user who uploaded this photo.
+    """
     user: User!
-    """The album this photo belongs to, if any."""
+    """
+    The album this photo belongs to, if any.
+    """
     albumId: ID
-    """Photo caption or description."""
+    """
+    Photo caption or description.
+    """
     caption: String
-    """Airline name."""
+    """
+    Airline name.
+    """
     airline: String
-    """Airport ICAO or IATA code where the photo was taken."""
+    """
+    Airport ICAO or IATA code where the photo was taken.
+    """
     airportCode: String
-    """Date/time the photo was taken (from EXIF or user input)."""
+    """
+    Date/time the photo was taken (from EXIF or user input).
+    """
     takenAt: String
-    """URL to the original uploaded image."""
+    """
+    URL to the original uploaded image.
+    """
     originalUrl: String!
-    """Original image width in pixels."""
+    """
+    Original image width in pixels.
+    """
     originalWidth: Int
-    """Original image height in pixels."""
+    """
+    Original image height in pixels.
+    """
     originalHeight: Int
-    """Original file size in bytes."""
+    """
+    Original file size in bytes.
+    """
     fileSizeBytes: Int
-    """MIME type of the original file."""
+    """
+    MIME type of the original file.
+    """
     mimeType: String
-    """Content moderation status."""
+    """
+    Content moderation status.
+    """
     moderationStatus: ModerationStatus!
-    """Generated image variants (thumbnail, display, etc.)."""
+    """
+    Generated image variants (thumbnail, display, etc.).
+    """
     variants: [PhotoVariant!]!
-    """User-applied tags."""
+    """
+    User-applied tags.
+    """
     tags: [String!]!
-    """Photo location with privacy-filtered coordinates."""
+    """
+    Photo location with privacy-filtered coordinates.
+    """
     location: PhotoLocation
-    """Number of likes on this photo."""
+    """
+    Number of likes on this photo.
+    """
     likeCount: Int!
-    """Number of comments on this photo."""
+    """
+    Number of comments on this photo.
+    """
     commentCount: Int!
-    """Whether the currently authenticated user has liked this photo."""
+    """
+    Whether the currently authenticated user has liked this photo.
+    """
     isLikedByMe: Boolean!
-    """Linked aircraft record, if any."""
+    """
+    Linked aircraft record, if any.
+    """
     aircraft: Aircraft
-    """The person who took the photo (defaults to uploader)."""
+    """
+    The person who took the photo (defaults to uploader).
+    """
     photographer: User
-    """Name of the photographer."""
+    """
+    Name of the photographer.
+    """
     photographerName: String
-    """Camera body used."""
+    """
+    Camera body used.
+    """
     gearBody: String
-    """Lens used."""
+    """
+    Lens used.
+    """
     gearLens: String
-    """Full EXIF data as JSON."""
+    """
+    Full EXIF data as JSON.
+    """
     exifData: JSON
-    """Photo category (e.g., cabin, cockpit, exterior)."""
+    """
+    Photo category (e.g., cabin, cockpit, exterior).
+    """
     photoCategory: PhotoCategory
-    """Aircraft-specific category (e.g., vintage, narrowbody)."""
+    """
+    Aircraft-specific category (e.g., vintage, narrowbody).
+    """
     aircraftSpecificCategory: AircraftSpecificCategory
-    """Operator ICAO code (e.g., 'AAL' for American Airlines)."""
+    """
+    Operator ICAO code (e.g., 'AAL' for American Airlines).
+    """
     operatorIcao: String
-    """Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.)."""
+    """
+    Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.).
+    """
     operatorType: OperatorType
-    """Aircraft serial number (MSN)."""
+    """
+    Aircraft serial number (MSN).
+    """
     msn: String
-    """Aircraft manufacturing date."""
+    """
+    Aircraft manufacturing date.
+    """
     manufacturingDate: String
     createdAt: String!
     updatedAt: String!
 
-    """The active marketplace listing for this photo, if any."""
+    """
+    The active marketplace listing for this photo, if any.
+    """
     listing: PhotoListing
 
-    """Whether this photo has an active marketplace listing."""
+    """
+    Whether this photo has an active marketplace listing.
+    """
     hasActiveListing: Boolean!
 
-    """Other photos of the same aircraft (matched by serial number or linked aircraft record)."""
+    """
+    Other photos of the same aircraft (matched by serial number or linked aircraft record).
+    """
     similarAircraftPhotos(first: Int = 12, after: String): PhotoConnection!
   }
 
-  """A processed image variant (thumbnail, display, etc.)."""
+  """
+  A processed image variant (thumbnail, display, etc.).
+  """
   type PhotoVariant {
     id: ID!
-    """The variant type: thumbnail, display, full_res, or watermarked."""
+    """
+    The variant type: thumbnail, display, full_res, or watermarked.
+    """
     variantType: String!
-    """URL to access this variant."""
+    """
+    URL to access this variant.
+    """
     url: String!
-    """Variant width in pixels."""
+    """
+    Variant width in pixels.
+    """
     width: Int!
-    """Variant height in pixels."""
+    """
+    Variant height in pixels.
+    """
     height: Int!
-    """Variant file size in bytes."""
+    """
+    Variant file size in bytes.
+    """
     fileSizeBytes: Int
   }
 
   input GetUploadUrlInput {
-    """MIME type of the file to upload (image/jpeg, image/png, etc.)."""
+    """
+    MIME type of the file to upload (image/jpeg, image/png, etc.).
+    """
     mimeType: String!
-    """File size in bytes (for tier limit validation)."""
+    """
+    File size in bytes (for tier limit validation).
+    """
     fileSizeBytes: Int!
   }
 
-  """Presigned URL payload for client-side S3 upload."""
+  """
+  Presigned URL payload for client-side S3 upload.
+  """
   type UploadUrlPayload {
-    """Presigned PUT URL — upload the file directly to this URL."""
+    """
+    Presigned PUT URL — upload the file directly to this URL.
+    """
     url: String!
-    """S3 object key — pass this to createPhoto after upload completes."""
+    """
+    S3 object key — pass this to createPhoto after upload completes.
+    """
     key: String!
   }
 
   input CreatePhotoInput {
-    """S3 object key returned from getUploadUrl."""
+    """
+    S3 object key returned from getUploadUrl.
+    """
     s3Key: String!
-    """MIME type of the uploaded file."""
+    """
+    MIME type of the uploaded file.
+    """
     mimeType: String!
-    """File size in bytes."""
+    """
+    File size in bytes.
+    """
     fileSizeBytes: Int!
-    """Photo caption or description."""
+    """
+    Photo caption or description.
+    """
     caption: String
-    """Airline name."""
+    """
+    Airline name.
+    """
     airline: String
-    """Airport ICAO or IATA code."""
+    """
+    Airport ICAO or IATA code.
+    """
     airportCode: String
-    """Date/time the photo was taken (ISO 8601)."""
+    """
+    Date/time the photo was taken (ISO 8601).
+    """
     takenAt: String
-    """Tags to apply to the photo."""
+    """
+    Tags to apply to the photo.
+    """
     tags: [String!]
-    """Latitude of where the photo was taken."""
+    """
+    Latitude of where the photo was taken.
+    """
     latitude: Float
-    """Longitude of where the photo was taken."""
+    """
+    Longitude of where the photo was taken.
+    """
     longitude: Float
-    """Location privacy mode: exact (default), approximate, or hidden."""
+    """
+    Location privacy mode: exact (default), approximate, or hidden.
+    """
     locationPrivacy: LocationPrivacyMode
-    """Link to a structured Aircraft record."""
+    """
+    Link to a structured Aircraft record.
+    """
     aircraftId: ID
-    """Camera body used (from user's gear list)."""
+    """
+    Camera body used (from user's gear list).
+    """
     gearBody: String
-    """Lens used (from user's gear list)."""
+    """
+    Lens used (from user's gear list).
+    """
     gearLens: String
-    """Full EXIF data as JSON."""
+    """
+    Full EXIF data as JSON.
+    """
     exifData: JSON
-    """Photo category ID."""
+    """
+    Photo category ID.
+    """
     photoCategoryId: ID
-    """Aircraft-specific category ID."""
+    """
+    Aircraft-specific category ID.
+    """
     aircraftSpecificCategoryId: ID
-    """Operator ICAO code."""
+    """
+    Operator ICAO code.
+    """
     operatorIcao: String
-    """Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.)."""
+    """
+    Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.).
+    """
     operatorType: OperatorType
-    """Aircraft serial number (MSN)."""
+    """
+    Aircraft serial number (MSN).
+    """
     msn: String
-    """Aircraft manufacturing date."""
+    """
+    Aircraft manufacturing date.
+    """
     manufacturingDate: String
-    """Location type: airport, museum, cemetery, airfield, other."""
+    """
+    Location type: airport, museum, cemetery, airfield, other.
+    """
     locationType: String
-    """Airport ICAO code for location lookup."""
+    """
+    Airport ICAO code for location lookup.
+    """
     airportIcao: String
   }
 
@@ -1338,7 +1784,9 @@ export const typeDefs = gql`
 
   # ─── Pagination ──────────────────────────────────────────────────────────
 
-  """Relay-style connection for paginated user lists."""
+  """
+  Relay-style connection for paginated user lists.
+  """
   type UserConnection {
     edges: [UserEdge!]!
     pageInfo: PageInfo!
@@ -1350,7 +1798,9 @@ export const typeDefs = gql`
     node: User!
   }
 
-  """Relay-style connection for paginated photo lists."""
+  """
+  Relay-style connection for paginated photo lists.
+  """
   type PhotoConnection {
     edges: [PhotoEdge!]!
     pageInfo: PageInfo!
@@ -1391,29 +1841,45 @@ export const typeDefs = gql`
 
   # ─── Comment Types ───────────────────────────────────────────────────────
 
-  """A comment on a photo, with optional threaded replies."""
+  """
+  A comment on a photo, with optional threaded replies.
+  """
   type Comment {
     id: ID!
-    """The user who wrote this comment."""
+    """
+    The user who wrote this comment.
+    """
     user: User!
-    """The comment text."""
+    """
+    The comment text.
+    """
     body: String!
-    """Nested replies to this comment."""
+    """
+    Nested replies to this comment.
+    """
     replies: [Comment!]!
     createdAt: String!
     updatedAt: String!
   }
 
   input AddCommentInput {
-    """The photo to comment on."""
+    """
+    The photo to comment on.
+    """
     photoId: ID!
-    """The comment text (1-2000 characters)."""
+    """
+    The comment text (1-2000 characters).
+    """
     body: String!
-    """Optional parent comment ID for threaded replies."""
+    """
+    Optional parent comment ID for threaded replies.
+    """
     parentCommentId: ID
   }
 
-  """Relay-style connection for paginated comment lists."""
+  """
+  Relay-style connection for paginated comment lists.
+  """
   type CommentConnection {
     edges: [CommentEdge!]!
     pageInfo: PageInfo!
@@ -1427,25 +1893,43 @@ export const typeDefs = gql`
 
   # ─── Report Types ──────────────────────────────────────────────────────
 
-  """A content moderation report."""
+  """
+  A content moderation report.
+  """
   type Report {
     id: ID!
-    """The type of content being reported."""
+    """
+    The type of content being reported.
+    """
     targetType: ReportTargetType!
-    """The ID of the reported content."""
+    """
+    The ID of the reported content.
+    """
     targetId: ID!
-    """The reason for the report."""
+    """
+    The reason for the report.
+    """
     reason: ReportReason!
-    """Optional description providing additional context."""
+    """
+    Optional description providing additional context.
+    """
     description: String
-    """Current status of the report."""
+    """
+    Current status of the report.
+    """
     status: ReportStatus!
-    """The user who submitted the report."""
+    """
+    The user who submitted the report.
+    """
     reporter: User!
-    """The admin/moderator who reviewed the report."""
+    """
+    The admin/moderator who reviewed the report.
+    """
     reviewer: User
     createdAt: String!
-    """When the report was resolved."""
+    """
+    When the report was resolved.
+    """
     resolvedAt: String
   }
 
@@ -1462,7 +1946,9 @@ export const typeDefs = gql`
 
   # ─── Admin Types ──────────────────────────────────────────────────────
 
-  """Dashboard statistics for the admin panel."""
+  """
+  Dashboard statistics for the admin panel.
+  """
   type AdminStats {
     totalUsers: Int!
     totalPhotos: Int!
@@ -1473,32 +1959,50 @@ export const typeDefs = gql`
   }
 
   input CreateReportInput {
-    """Type of content: photo, comment, profile, or album."""
+    """
+    Type of content: photo, comment, profile, or album.
+    """
     targetType: ReportTargetType!
-    """ID of the content to report."""
+    """
+    ID of the content to report.
+    """
     targetId: ID!
-    """Reason: inappropriate, spam, harassment, copyright, or other."""
+    """
+    Reason: inappropriate, spam, harassment, copyright, or other.
+    """
     reason: ReportReason!
-    """Additional details (required when reason is 'other')."""
+    """
+    Additional details (required when reason is 'other').
+    """
     description: String
   }
 
   # ─── Follow Types ────────────────────────────────────────────────────────
 
-  """Represents a single follow relationship."""
+  """
+  Represents a single follow relationship.
+  """
   type FollowEntry {
     id: ID!
     targetType: FollowTargetType!
-    """The followed user (if targetType is 'user')."""
+    """
+    The followed user (if targetType is 'user').
+    """
     user: User
-    """The followed airport (if targetType is 'airport')."""
+    """
+    The followed airport (if targetType is 'airport').
+    """
     airport: Airport
-    """The followed value (if targetType is 'manufacturer', 'family', or 'variant')."""
+    """
+    The followed value (if targetType is 'manufacturer', 'family', or 'variant').
+    """
     targetValue: String
     createdAt: String!
   }
 
-  """Result of following/unfollowing a topic (manufacturer, family, or variant)."""
+  """
+  Result of following/unfollowing a topic (manufacturer, family, or variant).
+  """
   type FollowedTopic {
     targetType: String!
     value: String!
@@ -1506,24 +2010,38 @@ export const typeDefs = gql`
 
   # ─── Album Types ──────────────────────────────────────────────────────────
 
-  """A curated collection of photos created by a user."""
+  """
+  A curated collection of photos created by a user.
+  """
   type Album {
     id: ID!
     title: String!
     description: String
     isPublic: Boolean!
-    """The user who created this album."""
+    """
+    The user who created this album.
+    """
     user: User!
-    """Community this album belongs to, if any."""
+    """
+    Community this album belongs to, if any.
+    """
     communityId: ID
     community: Community
-    """Optional cover photo for the album."""
+    """
+    Optional cover photo for the album.
+    """
     coverPhoto: Photo
-    """Total number of photos in this album."""
+    """
+    Total number of photos in this album.
+    """
     photoCount: Int!
-    """Photos in this album (junction-table based for community albums)."""
+    """
+    Photos in this album (junction-table based for community albums).
+    """
     photos(first: Int = 20, after: String): PhotoConnection!
-    """Current user's membership in the community this album belongs to (null if not a community album)."""
+    """
+    Current user's membership in the community this album belongs to (null if not a community album).
+    """
     myMembership: CommunityMember
     createdAt: String!
     updatedAt: String!
@@ -1541,28 +2059,44 @@ export const typeDefs = gql`
   }
 
   input CreateAlbumInput {
-    """Album title (required, max 100 characters)."""
+    """
+    Album title (required, max 100 characters).
+    """
     title: String!
-    """Optional description."""
+    """
+    Optional description.
+    """
     description: String
-    """Whether the album is publicly visible. Defaults to true."""
+    """
+    Whether the album is publicly visible. Defaults to true.
+    """
     isPublic: Boolean
   }
 
   input UpdateAlbumInput {
-    """New title for the album."""
+    """
+    New title for the album.
+    """
     title: String
-    """New description."""
+    """
+    New description.
+    """
     description: String
-    """Toggle album visibility."""
+    """
+    Toggle album visibility.
+    """
     isPublic: Boolean
-    """Set the cover photo. Must be a photo in this album."""
+    """
+    Set the cover photo. Must be a photo in this album.
+    """
     coverPhotoId: ID
   }
 
   # ─── Airport & Location Types ────────────────────────────────────────────
 
-  """Minimal airport info for typeahead search results."""
+  """
+  Minimal airport info for typeahead search results.
+  """
   type AirportSearchResult {
     icaoCode: String!
     iataCode: String
@@ -1573,7 +2107,9 @@ export const typeDefs = gql`
     longitude: Float!
   }
 
-  """An airport with geographic coordinates and associated photos."""
+  """
+  An airport with geographic coordinates and associated photos.
+  """
   type Airport {
     id: ID!
     icaoCode: String!
@@ -1583,17 +2119,27 @@ export const typeDefs = gql`
     country: String
     latitude: Float!
     longitude: Float!
-    """Number of photos taken at this airport."""
+    """
+    Number of photos taken at this airport.
+    """
     photoCount: Int!
-    """Spotting locations near this airport."""
+    """
+    Spotting locations near this airport.
+    """
     spottingLocations: [SpottingLocation!]!
-    """Whether the authenticated user follows this airport."""
+    """
+    Whether the authenticated user follows this airport.
+    """
     isFollowedByMe: Boolean!
-    """Number of users following this airport."""
+    """
+    Number of users following this airport.
+    """
     followerCount: Int!
   }
 
-  """A known spotting location near an airport."""
+  """
+  A known spotting location near an airport.
+  """
   type SpottingLocation {
     id: ID!
     name: String!
@@ -1604,46 +2150,83 @@ export const typeDefs = gql`
     createdBy: User!
   }
 
-  """Location data for a photo, with privacy-filtered coordinates."""
+  """
+  Location data for a photo, with privacy-filtered coordinates.
+  """
   type PhotoLocation {
     id: ID!
-    """Display latitude (may be jittered based on privacy mode)."""
+    """
+    Display latitude (may be jittered based on privacy mode).
+    """
     latitude: Float!
-    """Display longitude (may be jittered based on privacy mode)."""
+    """
+    Display longitude (may be jittered based on privacy mode).
+    """
     longitude: Float!
-    """Privacy mode: exact, approximate, or hidden."""
+    """
+    Privacy mode: exact, approximate, or hidden.
+    """
     privacyMode: LocationPrivacyMode!
-    """Location type: airport, museum, cemetery, airfield, other."""
+    """
+    Location type: airport, museum, cemetery, airfield, other.
+    """
     locationType: String
-    """Country where the photo was taken (resolved from coordinates or airport)."""
+    """
+    Country where the photo was taken (resolved from coordinates or airport).
+    """
     country: String
-    """Associated airport, if any."""
+    """
+    Associated airport, if any.
+    """
     airport: Airport
-    """Associated spotting location, if any."""
+    """
+    Associated spotting location, if any.
+    """
     spottingLocation: SpottingLocation
   }
 
-  """A known aircraft with MSN and manufacturing info."""
+  """
+  A known aircraft with MSN and manufacturing info.
+  """
   type Aircraft {
     id: ID!
-    """Registration (tail number)."""
+    """
+    Registration (tail number).
+    """
     registration: String!
-    """Airline or operator."""
+    """
+    Airline or operator.
+    """
     airline: String
-    """Manufacturer serial number."""
+    """
+    Manufacturer serial number.
+    """
     msn: String
-    """Date the aircraft was manufactured."""
+    """
+    Date the aircraft was manufactured.
+    """
     manufacturingDate: String
-    """Aircraft manufacturer."""
+    """
+    Aircraft manufacturer.
+    """
     manufacturer: AircraftManufacturer
-    """Aircraft family."""
+    """
+    Aircraft family.
+    """
     family: AircraftFamily
-    """Aircraft variant."""
+    """
+    Aircraft variant.
+    """
     variant: AircraftVariant
-    """Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.)."""
+    """
+    Operator type (AIRLINE, GENERAL_AVIATION, MILITARY, etc.).
+    """
     operatorType: OperatorType
-    """Linked airline record."""
+    """
+    Linked airline record.
+    """
     airlineRef: Airline
+    isFollowedByMe: Boolean!
   }
 
   input CreateAircraftInput {
@@ -1690,7 +2273,9 @@ export const typeDefs = gql`
     longitude: Float
   }
 
-  """Lightweight photo data for map markers."""
+  """
+  Lightweight photo data for map markers.
+  """
   type PhotoMapMarker {
     id: ID!
     latitude: Float!
@@ -1700,23 +2285,37 @@ export const typeDefs = gql`
   }
 
   input CreateSpottingLocationInput {
-    """Name of the spotting location."""
+    """
+    Name of the spotting location.
+    """
     name: String!
-    """Description of the location."""
+    """
+    Description of the location.
+    """
     description: String
-    """Access notes (parking, public transit, etc.)."""
+    """
+    Access notes (parking, public transit, etc.).
+    """
     accessNotes: String
-    """Latitude of the spotting location."""
+    """
+    Latitude of the spotting location.
+    """
     latitude: Float!
-    """Longitude of the spotting location."""
+    """
+    Longitude of the spotting location.
+    """
     longitude: Float!
-    """Airport ID this location is near."""
+    """
+    Airport ID this location is near.
+    """
     airportId: ID!
   }
 
   # ─── Community Types ──────────────────────────────────────────────────────
 
-  """A spotting community that users can join and participate in."""
+  """
+  A spotting community that users can join and participate in.
+  """
   type Community {
     id: ID!
     name: String!
@@ -1731,26 +2330,40 @@ export const typeDefs = gql`
     createdAt: String!
     updatedAt: String!
 
-    """The community owner."""
+    """
+    The community owner.
+    """
     owner: User!
 
-    """Total number of members."""
+    """
+    Total number of members.
+    """
     memberCount: Int!
 
-    """Current user's membership, if any."""
+    """
+    Current user's membership, if any.
+    """
     myMembership: CommunityMember
 
-    """Paginated list of community members."""
+    """
+    Paginated list of community members.
+    """
     members(first: Int = 20, after: String): CommunityMemberConnection!
 
-    """Recent photos from community members."""
+    """
+    Recent photos from community members.
+    """
     photos(first: Int = 20, after: String): PhotoConnection!
 
-    """Community albums. Only present for community-scoped albums."""
+    """
+    Community albums. Only present for community-scoped albums.
+    """
     albums(first: Int = 20, after: String): AlbumConnection!
   }
 
-  """A member of a community with their role and status."""
+  """
+  A member of a community with their role and status.
+  """
   type CommunityMember {
     id: ID!
     role: CommunityRole!
@@ -1782,20 +2395,34 @@ export const typeDefs = gql`
     totalCount: Int!
   }
 
-  """A record of a moderation action taken in a community."""
+  """
+  A record of a moderation action taken in a community.
+  """
   type CommunityModerationLog {
     id: ID!
-    """The community where the action was taken."""
+    """
+    The community where the action was taken.
+    """
     community: Community!
-    """The moderator who performed the action."""
+    """
+    The moderator who performed the action.
+    """
     moderator: User!
-    """The user who was targeted by the action."""
+    """
+    The user who was targeted by the action.
+    """
     targetUser: User!
-    """The action taken: ban | unban | kick | pin_thread | unpin_thread | lock_thread | unlock_thread | delete_post"""
+    """
+    The action taken: ban | unban | kick | pin_thread | unpin_thread | lock_thread | unlock_thread | delete_post
+    """
     action: String!
-    """Optional reason for the action."""
+    """
+    Optional reason for the action.
+    """
     reason: String
-    """JSON metadata (e.g. threadId for forum actions)."""
+    """
+    JSON metadata (e.g. threadId for forum actions).
+    """
     metadata: JSON
     createdAt: String!
   }
@@ -1826,17 +2453,29 @@ export const typeDefs = gql`
   }
 
   input CreateCommunityInput {
-    """Community name (3–100 characters)."""
+    """
+    Community name (3–100 characters).
+    """
     name: String!
-    """URL-friendly slug (3–50 characters, lowercase alphanumeric + hyphens)."""
+    """
+    URL-friendly slug (3–50 characters, lowercase alphanumeric + hyphens).
+    """
     slug: String!
-    """Description of the community."""
+    """
+    Description of the community.
+    """
     description: String
-    """Community category (e.g. 'military', 'airliners', 'general-aviation')."""
+    """
+    Community category (e.g. 'military', 'airliners', 'general-aviation').
+    """
     category: String
-    """Visibility: 'public' or 'invite_only'."""
+    """
+    Visibility: 'public' or 'invite_only'.
+    """
     visibility: CommunityVisibility
-    """Geographic location or region."""
+    """
+    Geographic location or region.
+    """
     location: String
   }
 
@@ -1852,21 +2491,33 @@ export const typeDefs = gql`
   }
 
   input CommunityMemberFilter {
-    """Search by username or display name."""
+    """
+    Search by username or display name.
+    """
     search: String
-    """Filter by community role."""
+    """
+    Filter by community role.
+    """
     role: [CommunityRole!]
-    """Filter by membership status (active, banned)."""
+    """
+    Filter by membership status (active, banned).
+    """
     status: [String!]
-    """Pagination page size."""
+    """
+    Pagination page size.
+    """
     first: Int
-    """Cursor for pagination."""
+    """
+    Cursor for pagination.
+    """
     after: String
   }
 
   # ─── Forum Types ─────────────────────────────────────────────────────────
 
-  """A discussion category within a community forum or global forum."""
+  """
+  A discussion category within a community forum or global forum.
+  """
   type ForumCategory {
     id: ID!
     communityId: ID
@@ -1876,13 +2527,19 @@ export const typeDefs = gql`
     position: Int!
     createdAt: String!
     updatedAt: String!
-    """Number of threads in this category."""
+    """
+    Number of threads in this category.
+    """
     threadCount: Int!
-    """Most recently active thread."""
+    """
+    Most recently active thread.
+    """
     latestThread: ForumThread
   }
 
-  """A discussion thread within a forum category."""
+  """
+  A discussion thread within a forum category.
+  """
   type ForumThread {
     id: ID!
     categoryId: ID!
@@ -1895,11 +2552,15 @@ export const typeDefs = gql`
     lastPostAt: String!
     author: User!
     category: ForumCategory!
-    """The opening post of the thread."""
+    """
+    The opening post of the thread.
+    """
     firstPost: ForumPost
   }
 
-  """A post (reply) within a forum thread."""
+  """
+  A post (reply) within a forum thread.
+  """
   type ForumPost {
     id: ID!
     threadId: ID!
@@ -1909,7 +2570,9 @@ export const typeDefs = gql`
     createdAt: String!
     updatedAt: String!
     author: User!
-    """Direct replies to this post (max 50)."""
+    """
+    Direct replies to this post (max 50).
+    """
     replies: [ForumPost!]!
   }
 
@@ -1937,38 +2600,58 @@ export const typeDefs = gql`
 
   # ─── Event Types ─────────────────────────────────────────────────────────
 
-  """A community-scoped event with optional RSVP and capacity limit."""
+  """
+  A community-scoped event with optional RSVP and capacity limit.
+  """
   type CommunityEvent {
     id: ID!
     communityId: ID!
-    """The user who created the event."""
+    """
+    The user who created the event.
+    """
     organizer: User!
     title: String!
     description: String
     location: String
-    """ISO datetime string."""
+    """
+    ISO datetime string.
+    """
     startsAt: String!
-    """ISO datetime string, optional end time."""
+    """
+    ISO datetime string, optional end time.
+    """
     endsAt: String
-    """Maximum number of attendees. Null means unlimited."""
+    """
+    Maximum number of attendees. Null means unlimited.
+    """
     maxAttendees: Int
     coverUrl: String
-    """Number of attendees with status 'going'."""
+    """
+    Number of attendees with status 'going'.
+    """
     attendeeCount: Int!
-    """The current user's RSVP, if any."""
+    """
+    The current user's RSVP, if any.
+    """
     myRsvp: EventAttendee
-    """Whether the event is at capacity."""
+    """
+    Whether the event is at capacity.
+    """
     isFull: Boolean!
     createdAt: String!
     updatedAt: String!
   }
 
-  """An RSVP record linking a user to an event."""
+  """
+  An RSVP record linking a user to an event.
+  """
   type EventAttendee {
     id: ID!
     eventId: ID!
     user: User!
-    """going | maybe | not_going"""
+    """
+    going | maybe | not_going
+    """
     status: EventRsvpStatus!
     joinedAt: String!
   }
@@ -1988,9 +2671,13 @@ export const typeDefs = gql`
     title: String!
     description: String
     location: String
-    """ISO datetime string."""
+    """
+    ISO datetime string.
+    """
     startsAt: String!
-    """ISO datetime string, optional."""
+    """
+    ISO datetime string, optional.
+    """
     endsAt: String
     maxAttendees: Int
     coverUrl: String
@@ -2086,14 +2773,20 @@ export const typeDefs = gql`
 
   # ─── Notifications ───────────────────────────────────────────────────────
 
-  """An in-app notification for a user."""
+  """
+  An in-app notification for a user.
+  """
   type Notification {
     id: ID!
-    """Notification type: like | comment | follow | mention | moderation | system | community_join | community_event"""
+    """
+    Notification type: like | comment | follow | mention | moderation | system | community_join | community_event
+    """
     type: NotificationType!
     title: String!
     body: String
-    """JSON payload with context-specific data (e.g. photoId, communityId)."""
+    """
+    JSON payload with context-specific data (e.g. photoId, communityId).
+    """
     data: JSON
     isRead: Boolean!
     createdAt: String!
@@ -2111,7 +2804,9 @@ export const typeDefs = gql`
 
   # ─── Aircraft Hierarchy Types ──────────────────────────────────────────────
 
-  """An aircraft manufacturer (e.g., Boeing, Airbus)."""
+  """
+  An aircraft manufacturer (e.g., Boeing, Airbus).
+  """
   type AircraftManufacturer {
     id: ID!
     name: String!
@@ -2172,7 +2867,9 @@ export const typeDefs = gql`
 
   # ─── Airline ────────────────────────────────────────────────────────────────
 
-  """An airline or operator."""
+  """
+  An airline or operator.
+  """
   type Airline {
     id: ID!
     name: String!
@@ -2181,6 +2878,7 @@ export const typeDefs = gql`
     country: String
     callsign: String
     createdAt: String!
+    isFollowedByMe: Boolean!
   }
 
   type AirlineEdge {
@@ -2196,7 +2894,9 @@ export const typeDefs = gql`
 
   # ─── Photo Categories ─────────────────────────────────────────────────────
 
-  """A photo category for classification (e.g., cabin, cockpit, exterior)."""
+  """
+  A photo category for classification (e.g., cabin, cockpit, exterior).
+  """
   type PhotoCategory {
     id: ID!
     name: String!
@@ -2205,7 +2905,9 @@ export const typeDefs = gql`
     createdAt: String!
   }
 
-  """An aircraft-specific category (e.g., vintage, narrowbody, widebody)."""
+  """
+  An aircraft-specific category (e.g., vintage, narrowbody, widebody).
+  """
   type AircraftSpecificCategory {
     id: ID!
     name: String!
@@ -2216,7 +2918,9 @@ export const typeDefs = gql`
 
   # ─── Pending List Items ────────────────────────────────────────────────────
 
-  """A user-submitted item awaiting admin review for addition to a lookup list."""
+  """
+  A user-submitted item awaiting admin review for addition to a lookup list.
+  """
   type PendingListItem {
     id: ID!
     listType: String!
@@ -2243,64 +2947,112 @@ export const typeDefs = gql`
 
   # ─── Marketplace Types ────────────────────────────────────────────────────
 
-  """A seller profile linked to a Stripe Connect account."""
+  """
+  A seller profile linked to a Stripe Connect account.
+  """
   type SellerProfile {
     id: ID!
-    """The user who owns this seller account."""
+    """
+    The user who owns this seller account.
+    """
     user: User!
-    """Stripe Connect account ID."""
+    """
+    Stripe Connect account ID.
+    """
     stripeAccountId: String
-    """Whether the seller has completed Stripe onboarding."""
+    """
+    Whether the seller has completed Stripe onboarding.
+    """
     stripeOnboardingComplete: Boolean!
-    """Whether the seller has been approved by an admin."""
+    """
+    Whether the seller has been approved by an admin.
+    """
     approved: Boolean!
-    """Seller status: pending | approved | rejected."""
+    """
+    Seller status: pending | approved | rejected.
+    """
     status: SellerStatus!
-    """Seller bio shown on their profile."""
+    """
+    Seller bio shown on their profile.
+    """
     bio: String
-    """Optional website URL."""
+    """
+    Optional website URL.
+    """
     website: String
-    """Average seller rating (1-5)."""
+    """
+    Average seller rating (1-5).
+    """
     averageRating: Float!
-    """Total number of feedback ratings received."""
+    """
+    Total number of feedback ratings received.
+    """
     feedbackCount: Int!
     createdAt: String!
     updatedAt: String!
   }
 
-  """A photo listing for sale in the marketplace."""
+  """
+  A photo listing for sale in the marketplace.
+  """
   type PhotoListing {
     id: ID!
-    """The photo being sold."""
+    """
+    The photo being sold.
+    """
     photo: Photo!
-    """Price in USD."""
+    """
+    Price in USD.
+    """
     priceUsd: String!
-    """Whether the listing is active."""
+    """
+    Whether the listing is active.
+    """
     active: Boolean!
     createdAt: String!
     updatedAt: String!
   }
 
-  """A completed or pending purchase of a photo."""
+  """
+  A completed or pending purchase of a photo.
+  """
   type Order {
     id: ID!
-    """The user who bought the photo."""
+    """
+    The user who bought the photo.
+    """
     buyer: User!
-    """The seller who received the payment."""
+    """
+    The seller who received the payment.
+    """
     seller: User!
-    """The photo that was purchased."""
+    """
+    The photo that was purchased.
+    """
     photo: Photo!
-    """The listing that was purchased."""
+    """
+    The listing that was purchased.
+    """
     listing: PhotoListing!
-    """Total amount paid in USD."""
+    """
+    Total amount paid in USD.
+    """
     amountUsd: String!
-    """Platform commission in USD."""
+    """
+    Platform commission in USD.
+    """
     platformFeeUsd: String!
-    """Stripe Payment Intent ID."""
+    """
+    Stripe Payment Intent ID.
+    """
     stripePaymentIntentId: String
-    """Stripe Transfer ID (for the seller's payout)."""
+    """
+    Stripe Transfer ID (for the seller's payout).
+    """
     stripeTransferId: String
-    """Order status: pending | completed | refunded | failed."""
+    """
+    Order status: pending | completed | refunded | failed.
+    """
     status: OrderStatus!
     createdAt: String!
   }
@@ -2340,14 +3092,20 @@ export const typeDefs = gql`
 
   type ApproveSellerPayload {
     sellerProfile: SellerProfile!
-    """URL to redirect the seller to for Stripe onboarding."""
+    """
+    URL to redirect the seller to for Stripe onboarding.
+    """
     onboardingUrl: String!
   }
 
   input ApplyToSellInput {
-    """Your seller bio shown to buyers."""
+    """
+    Your seller bio shown to buyers.
+    """
     bio: String!
-    """Optional website URL."""
+    """
+    Optional website URL.
+    """
     website: String
   }
 
@@ -2364,44 +3122,74 @@ export const typeDefs = gql`
 
   # ─── Collectibles Marketplace Types ──────────────────────────────────────────
 
-  """A collectible item listed for sale in the marketplace."""
+  """
+  A collectible item listed for sale in the marketplace.
+  """
   type MarketplaceItem {
     id: ID!
-    """The seller who owns this listing."""
+    """
+    The seller who owns this listing.
+    """
     seller: SellerProfile!
-    """The primary listing category."""
+    """
+    The primary listing category.
+    """
     category: MarketplaceCategory!
     title: String!
     description: String
-    """Price in USD."""
+    """
+    Price in USD.
+    """
     priceUsd: String!
-    """Condition: mint | excellent | good | fair | poor."""
+    """
+    Condition: mint | excellent | good | fair | poor.
+    """
     condition: String!
-    """General geographic region for shipping."""
+    """
+    General geographic region for shipping.
+    """
     location: String
-    """Seller's contact email (visible after approval)."""
+    """
+    Seller's contact email (visible after approval).
+    """
     contactEmail: String
-    """Seller's contact phone (visible after approval)."""
+    """
+    Seller's contact phone (visible after approval).
+    """
     contactPhone: String
-    """Whether the item is active and visible to buyers."""
+    """
+    Whether the item is active and visible to buyers.
+    """
     active: Boolean!
-    """Moderation status: pending | approved | rejected | review."""
+    """
+    Moderation status: pending | approved | rejected | review.
+    """
     moderationStatus: ModerationStatus!
-    """Reason for rejection, if any."""
+    """
+    Reason for rejection, if any.
+    """
     moderationReason: String
     images: [MarketplaceItemImage!]!
-    """Average seller rating (1-5)."""
+    """
+    Average seller rating (1-5).
+    """
     averageRating: Float!
-    """Total number of feedback ratings received."""
+    """
+    Total number of feedback ratings received.
+    """
     feedbackCount: Int!
     createdAt: String!
     updatedAt: String!
   }
 
-  """An image attached to a marketplace item."""
+  """
+  An image attached to a marketplace item.
+  """
   type MarketplaceItemImage {
     id: ID!
-    """Variant type: thumbnail | display | full_res | watermarked."""
+    """
+    Variant type: thumbnail | display | full_res | watermarked.
+    """
     variantType: String!
     url: String!
     width: Int!
@@ -2410,30 +3198,50 @@ export const typeDefs = gql`
     sortOrder: Int!
   }
 
-  """A category for organizing marketplace items."""
+  """
+  A category for organizing marketplace items.
+  """
   type MarketplaceCategory {
     id: ID!
-    """URL-safe slug."""
+    """
+    URL-safe slug.
+    """
     name: String!
-    """Display name shown to users."""
+    """
+    Display name shown to users.
+    """
     label: String!
     sortOrder: Int!
-    """Number of approved items in this category."""
+    """
+    Number of approved items in this category.
+    """
     itemCount: Int!
   }
 
-  """Feedback from a buyer about a seller after contacting them."""
+  """
+  Feedback from a buyer about a seller after contacting them.
+  """
   type SellerFeedback {
     id: ID!
-    """The seller being rated."""
+    """
+    The seller being rated.
+    """
     seller: SellerProfile!
-    """The buyer who submitted the rating."""
+    """
+    The buyer who submitted the rating.
+    """
     buyer: User!
-    """Rating from 1 to 5."""
+    """
+    Rating from 1 to 5.
+    """
     rating: Int!
-    """Optional comment."""
+    """
+    Optional comment.
+    """
     comment: String
-    """The item this feedback relates to, if any."""
+    """
+    The item this feedback relates to, if any.
+    """
     item: MarketplaceItem
     createdAt: String!
   }

@@ -179,11 +179,14 @@ export const followMutationResolvers = {
     const followerId = await resolveUserId(ctx);
     const { targetType, value } = args;
 
-    const validTopicTypes = ['manufacturer', 'family', 'variant'];
+    const validTopicTypes = ['manufacturer', 'family', 'variant', 'airline', 'registration'];
     if (!validTopicTypes.includes(targetType)) {
-      throw new GraphQLError('targetType must be "manufacturer", "family", or "variant"', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
+      throw new GraphQLError(
+        'targetType must be "manufacturer", "family", "variant", "airline", or "registration"',
+        {
+          extensions: { code: 'BAD_USER_INPUT' },
+        },
+      );
     }
 
     const typedTargetType = targetType as FollowTargetType;
@@ -224,11 +227,14 @@ export const followMutationResolvers = {
     const followerId = await resolveUserId(ctx);
     const { targetType, value } = args;
 
-    const validTopicTypes = ['manufacturer', 'family', 'variant'];
+    const validTopicTypes = ['manufacturer', 'family', 'variant', 'airline', 'registration'];
     if (!validTopicTypes.includes(targetType)) {
-      throw new GraphQLError('targetType must be "manufacturer", "family", or "variant"', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
+      throw new GraphQLError(
+        'targetType must be "manufacturer", "family", "variant", "airline", or "registration"',
+        {
+          extensions: { code: 'BAD_USER_INPUT' },
+        },
+      );
     }
 
     const typedTargetType = targetType as FollowTargetType;
@@ -313,6 +319,29 @@ export const followQueryResolvers = {
     if (followedVariants.length > 0) {
       orConditions.push({
         aircraft: { variant: { name: { in: followedVariants, mode: 'insensitive' } } },
+      });
+    }
+
+    const followedAirlines = follows
+      .filter((f) => f.targetType === 'airline' && f.targetValue)
+      .map((f) => f.targetValue!);
+    if (followedAirlines.length > 0) {
+      orConditions.push({
+        aircraft: {
+          OR: [
+            { airline: { in: followedAirlines, mode: 'insensitive' } },
+            { airlineRef: { icaoCode: { in: followedAirlines, mode: 'insensitive' } } },
+          ],
+        },
+      });
+    }
+
+    const followedRegistrations = follows
+      .filter((f) => f.targetType === 'registration' && f.targetValue)
+      .map((f) => f.targetValue!);
+    if (followedRegistrations.length > 0) {
+      orConditions.push({
+        aircraft: { registration: { in: followedRegistrations, mode: 'insensitive' } },
       });
     }
 

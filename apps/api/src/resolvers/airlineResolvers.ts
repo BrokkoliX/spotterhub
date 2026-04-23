@@ -172,7 +172,9 @@ export const airlineMutationResolvers = {
     // Try to find by icaoCode (preferred), then by name
     const existing = icaoCode
       ? await ctx.prisma.airline.findUnique({ where: { icaoCode } })
-      : await ctx.prisma.airline.findFirst({ where: { name: { equals: args.input.name, mode: 'insensitive' } } });
+      : await ctx.prisma.airline.findFirst({
+          where: { name: { equals: args.input.name, mode: 'insensitive' } },
+        });
 
     if (existing) {
       return ctx.prisma.airline.update({
@@ -204,5 +206,27 @@ export const airlineMutationResolvers = {
 export const airlineFieldResolvers = {
   Airline: {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+    isFollowedByMe: async (parent: { icaoCode: string | null }, _args: unknown, ctx: Context) => {
+      if (!ctx.user) return false;
+      if (!parent.icaoCode) return false;
+
+      const user = await ctx.prisma.user.findUnique({
+        where: { cognitoSub: ctx.user.sub },
+        select: { id: true },
+      });
+      if (!user) return false;
+
+      const follow = await ctx.prisma.follow.findUnique({
+        where: {
+          followerId_targetType_targetValue: {
+            followerId: user.id,
+            targetType: 'airline',
+            targetValue: parent.icaoCode,
+          },
+        },
+        select: { id: true },
+      });
+      return !!follow;
+    },
   },
 };

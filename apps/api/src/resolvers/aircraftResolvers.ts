@@ -149,7 +149,14 @@ export const aircraftMutationResolvers = {
         familyId: args.input.familyId ?? null,
         variantId: args.input.variantId ?? null,
         operatorType: args.input.operatorType
-          ? (args.input.operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private')
+          ? (args.input.operatorType.toLowerCase() as
+              | 'airline'
+              | 'general_aviation'
+              | 'military'
+              | 'government'
+              | 'cargo'
+              | 'charter'
+              | 'private')
           : null,
         airlineId: args.input.airlineId ?? null,
       },
@@ -188,14 +195,29 @@ export const aircraftMutationResolvers = {
     }
 
     const data: Record<string, unknown> = {};
-    if (args.input.registration !== undefined) data.registration = args.input.registration.toUpperCase();
+    if (args.input.registration !== undefined)
+      data.registration = args.input.registration.toUpperCase();
     if (args.input.airline !== undefined) data.airline = args.input.airline;
     if (args.input.msn !== undefined) data.msn = args.input.msn;
-    if (args.input.manufacturingDate !== undefined) data.manufacturingDate = args.input.manufacturingDate ? new Date(args.input.manufacturingDate) : null;
-    if (args.input.manufacturerId !== undefined) data.manufacturerId = args.input.manufacturerId ?? null;
+    if (args.input.manufacturingDate !== undefined)
+      data.manufacturingDate = args.input.manufacturingDate
+        ? new Date(args.input.manufacturingDate)
+        : null;
+    if (args.input.manufacturerId !== undefined)
+      data.manufacturerId = args.input.manufacturerId ?? null;
     if (args.input.familyId !== undefined) data.familyId = args.input.familyId ?? null;
     if (args.input.variantId !== undefined) data.variantId = args.input.variantId ?? null;
-    if (args.input.operatorType !== undefined) data.operatorType = args.input.operatorType ? (args.input.operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private') : null;
+    if (args.input.operatorType !== undefined)
+      data.operatorType = args.input.operatorType
+        ? (args.input.operatorType.toLowerCase() as
+            | 'airline'
+            | 'general_aviation'
+            | 'military'
+            | 'government'
+            | 'cargo'
+            | 'charter'
+            | 'private')
+        : null;
     if (args.input.airlineId !== undefined) data.airlineId = args.input.airlineId ?? null;
 
     return ctx.prisma.aircraft.update({
@@ -238,7 +260,14 @@ export const aircraftMutationResolvers = {
       familyId: args.input.familyId ?? null,
       variantId: args.input.variantId ?? null,
       operatorType: args.input.operatorType
-        ? (args.input.operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private')
+        ? (args.input.operatorType.toLowerCase() as
+            | 'airline'
+            | 'general_aviation'
+            | 'military'
+            | 'government'
+            | 'cargo'
+            | 'charter'
+            | 'private')
         : null,
       airlineId: args.input.airlineId ?? null,
     };
@@ -279,6 +308,7 @@ export const aircraftMutationResolvers = {
 
 export interface AircraftParent {
   id: string;
+  registration: string;
   manufacturingDate?: Date | null;
   manufacturerId?: string | null;
   familyId?: string | null;
@@ -293,7 +323,14 @@ export const aircraftFieldResolvers = {
 
   operatorType: (parent: AircraftParent) =>
     parent.operatorType
-      ? (parent.operatorType.toUpperCase() as 'AIRLINE' | 'GENERAL_AVIATION' | 'MILITARY' | 'GOVERNMENT' | 'CARGO' | 'CHARTER' | 'PRIVATE')
+      ? (parent.operatorType.toUpperCase() as
+          | 'AIRLINE'
+          | 'GENERAL_AVIATION'
+          | 'MILITARY'
+          | 'GOVERNMENT'
+          | 'CARGO'
+          | 'CHARTER'
+          | 'PRIVATE')
       : null,
 
   manufacturer: (parent: AircraftParent, _args: unknown, ctx: Context) => {
@@ -314,5 +351,27 @@ export const aircraftFieldResolvers = {
   airlineRef: (parent: AircraftParent, _args: unknown, ctx: Context) => {
     if (!parent.airlineId) return null;
     return ctx.prisma.airline.findUnique({ where: { id: parent.airlineId } });
+  },
+
+  isFollowedByMe: async (parent: AircraftParent, _args: unknown, ctx: Context) => {
+    if (!ctx.user) return false;
+
+    const user = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: ctx.user.sub },
+      select: { id: true },
+    });
+    if (!user) return false;
+
+    const follow = await ctx.prisma.follow.findUnique({
+      where: {
+        followerId_targetType_targetValue: {
+          followerId: user.id,
+          targetType: 'registration',
+          targetValue: parent.registration,
+        },
+      },
+      select: { id: true },
+    });
+    return !!follow;
   },
 };

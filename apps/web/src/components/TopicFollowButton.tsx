@@ -12,7 +12,7 @@ import styles from './FollowButton.module.css';
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface TopicFollowButtonProps {
-  targetType: 'aircraft_type' | 'manufacturer';
+  targetType: 'aircraft_type' | 'manufacturer' | 'family' | 'variant' | 'airline' | 'registration';
   value: string;
   initialIsFollowing: boolean;
 }
@@ -55,14 +55,24 @@ export function TopicFollowButton({
     }
   }, [user, isFollowing, targetType, value, router, executeFollow, executeUnfollow]);
 
-  const label = isFollowing
-    ? isHovering
-      ? 'Unfollow'
-      : 'Following'
-    : 'Follow';
+  const label = isFollowing ? (isHovering ? 'Unfollow' : 'Following') : 'Follow';
 
-  const ariaTarget =
-    targetType === 'aircraft_type' ? 'aircraft type' : 'manufacturer';
+  const ariaLabel = (() => {
+    switch (targetType) {
+      case 'aircraft_type':
+        return isFollowing ? 'Unfollow aircraft type' : 'Follow aircraft type';
+      case 'manufacturer':
+        return isFollowing ? 'Unfollow manufacturer' : 'Follow manufacturer';
+      case 'family':
+        return isFollowing ? 'Unfollow aircraft family' : 'Follow aircraft family';
+      case 'variant':
+        return isFollowing ? 'Unfollow aircraft variant' : 'Follow aircraft variant';
+      case 'airline':
+        return isFollowing ? 'Unfollow airline' : 'Follow airline';
+      case 'registration':
+        return isFollowing ? 'Unfollow aircraft' : 'Follow aircraft';
+    }
+  })();
 
   return (
     <button
@@ -71,7 +81,7 @@ export function TopicFollowButton({
       onClick={handleClick}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
-      aria-label={isFollowing ? `Unfollow ${ariaTarget}` : `Follow ${ariaTarget}`}
+      aria-label={ariaLabel}
     >
       {label}
     </button>
