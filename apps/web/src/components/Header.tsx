@@ -218,6 +218,11 @@ export function Header() {
             Marketplace
           </Link>
           {showUser && (
+            <Link href="/sell" className={styles.navLink}>
+              Sell
+            </Link>
+          )}
+          {showUser && (
             <Link href="/albums" className={styles.navLink}>
               Albums
             </Link>
