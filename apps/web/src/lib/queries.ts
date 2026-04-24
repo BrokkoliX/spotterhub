@@ -2016,6 +2016,7 @@ export const GET_AIRCRAFT_MANUFACTURERS = gql`
           id
           name
           country
+          isFollowedByMe
         }
       }
     }
@@ -2029,6 +2030,7 @@ export const GET_AIRCRAFT_FAMILIES = gql`
         node {
           id
           name
+          isFollowedByMe
           manufacturer {
             id
             name
@@ -2048,6 +2050,7 @@ export const GET_AIRCRAFT_VARIANTS = gql`
           name
           iataCode
           icaoCode
+          isFollowedByMe
           family {
             id
             name
@@ -2068,6 +2071,7 @@ export const GET_AIRLINES = gql`
           icaoCode
           iataCode
           country
+          isFollowedByMe
         }
       }
     }

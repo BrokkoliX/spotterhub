@@ -75,8 +75,9 @@ export default function FollowingPage() {
   );
   const topicEntries = entries.filter(
     (e) =>
-      (e.targetType === 'aircraft_type' || e.targetType === 'manufacturer') &&
-      e.targetValue,
+      ['manufacturer', 'family', 'variant', 'airline', 'registration', 'aircraft_type'].includes(
+        e.targetType,
+      ) && e.targetValue,
   );
 
   const tabs: { key: TabType; label: string; count: number }[] = [
@@ -227,19 +228,30 @@ export default function FollowingPage() {
                   You&apos;re not following any topics
                 </p>
                 <p className={styles.emptySub}>
-                  Follow aircraft types from photo detail pages to see them in
-                  your feed
+                  <Link href="/discover">Discover</Link> airlines, aircraft families, variants, and manufacturers to follow them here
                 </p>
               </div>
             ) : (
               <div className={styles.list}>
                 {topicEntries.map((entry) => {
-                  const typeLabel =
-                    entry.targetType === 'aircraft_type'
-                      ? 'Aircraft Type'
-                      : 'Manufacturer';
-                  const icon =
-                    entry.targetType === 'aircraft_type' ? '✈️' : '🏭';
+                  const typeLabelMap: Record<string, string> = {
+                    aircraft_type: 'Aircraft Type',
+                    manufacturer: 'Manufacturer',
+                    family: 'Family',
+                    variant: 'Variant',
+                    airline: 'Airline',
+                    registration: 'Registration',
+                  };
+                  const iconMap: Record<string, string> = {
+                    aircraft_type: '✈️',
+                    manufacturer: '🏭',
+                    family: '✈️',
+                    variant: '✈️',
+                    airline: '✈️',
+                    registration: '🔖',
+                  };
+                  const typeLabel = typeLabelMap[entry.targetType] ?? entry.targetType;
+                  const icon = iconMap[entry.targetType] ?? '✈️';
                   return (
                     <div key={entry.id} className={styles.listItem}>
                       <div className={styles.itemInfo}>
@@ -257,7 +269,13 @@ export default function FollowingPage() {
                       </div>
                       <TopicFollowButton
                         targetType={
-                          entry.targetType as 'aircraft_type' | 'manufacturer'
+                          entry.targetType as
+                            | 'aircraft_type'
+                            | 'manufacturer'
+                            | 'family'
+                            | 'variant'
+                            | 'airline'
+                            | 'registration'
                         }
                         value={entry.targetValue!}
                         initialIsFollowing={true}

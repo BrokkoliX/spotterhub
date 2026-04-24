@@ -2813,6 +2813,7 @@ export const typeDefs = gql`
     country: String
     families: [AircraftFamily!]!
     createdAt: String!
+    isFollowedByMe: Boolean!
   }
 
   type AircraftFamily {
@@ -2821,6 +2822,7 @@ export const typeDefs = gql`
     manufacturer: AircraftManufacturer!
     variants: [AircraftVariant!]!
     createdAt: String!
+    isFollowedByMe: Boolean!
   }
 
   type AircraftVariant {
@@ -2830,6 +2832,7 @@ export const typeDefs = gql`
     iataCode: String
     icaoCode: String
     createdAt: String!
+    isFollowedByMe: Boolean!
   }
 
   type AircraftManufacturerEdge {
