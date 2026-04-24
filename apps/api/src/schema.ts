@@ -520,6 +520,57 @@ export const typeDefs = gql`
       first: Int = 20
       after: String
     ): PendingListItemConnection!
+
+    # ─── Collectibles Marketplace Queries ─────────────────────────────────────────
+
+    """
+    Browse collectibles listings with optional filters and sorting.
+    Only returns approved items with approved sellers.
+    """
+    marketplaceItems(
+      category: String
+      minPrice: Float
+      maxPrice: Float
+      condition: String
+      search: String
+      sortBy: MarketplaceSort
+      first: Int = 20
+      after: String
+    ): MarketplaceItemConnection!
+
+    """
+    Fetch a single collectible listing by ID.
+    """
+    marketplaceItem(id: ID!): MarketplaceItem
+
+    """
+    List all marketplace categories.
+    """
+    marketplaceCategories: [MarketplaceCategory!]!
+
+    """
+    Fetch a seller's public profile with their listings and ratings.
+    """
+    sellerProfile(userId: ID!): SellerProfile
+
+    """
+    Paginated feedback for a seller.
+    """
+    sellerFeedback(sellerId: ID!, first: Int = 20, after: String): SellerFeedbackConnection!
+
+    """
+    My marketplace listings (seller).
+    """
+    myListings(first: Int = 20, after: String): MarketplaceItemConnection!
+
+    """
+    Admin: all marketplace items, optionally filtered by moderation status.
+    """
+    adminMarketplaceItems(
+      moderationStatus: String
+      first: Int = 20
+      after: String
+    ): MarketplaceItemConnection!
   }
 
   type Mutation {
@@ -1129,57 +1180,6 @@ export const typeDefs = gql`
     upsertAircraftSpecificCategory(
       input: CreateAircraftSpecificCategoryInput!
     ): AircraftSpecificCategory!
-
-    # ─── Collectibles Marketplace Queries ─────────────────────────────────────────
-
-    """
-    Browse collectibles listings with optional filters and sorting.
-    Only returns approved items with approved sellers.
-    """
-    marketplaceItems(
-      category: String
-      minPrice: Float
-      maxPrice: Float
-      condition: String
-      search: String
-      sortBy: MarketplaceSort
-      first: Int = 20
-      after: String
-    ): MarketplaceItemConnection!
-
-    """
-    Fetch a single collectible listing by ID.
-    """
-    marketplaceItem(id: ID!): MarketplaceItem
-
-    """
-    List all marketplace categories.
-    """
-    marketplaceCategories: [MarketplaceCategory!]!
-
-    """
-    Fetch a seller's public profile with their listings and ratings.
-    """
-    sellerProfile(userId: ID!): SellerProfile
-
-    """
-    Paginated feedback for a seller.
-    """
-    sellerFeedback(sellerId: ID!, first: Int = 20, after: String): SellerFeedbackConnection!
-
-    """
-    My marketplace listings (seller).
-    """
-    myListings(first: Int = 20, after: String): MarketplaceItemConnection!
-
-    """
-    Admin: all marketplace items, optionally filtered by moderation status.
-    """
-    adminMarketplaceItems(
-      moderationStatus: String
-      first: Int = 20
-      after: String
-    ): MarketplaceItemConnection!
 
     # ─── Marketplace Mutations ──────────────────────────────────────────────────
 
@@ -3196,6 +3196,7 @@ export const typeDefs = gql`
     height: Int!
     fileSizeBytes: Int
     sortOrder: Int!
+    createdAt: String!
   }
 
   """
