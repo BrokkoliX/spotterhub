@@ -1,0 +1,282 @@
+.page {
+  padding: 32px 0;
+  min-height: calc(100vh - 64px);
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* ─── Two-column layout ──────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────── */
+
+.sidebar {
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+/* ─── Search ──────────────────────────────────────────────────────────── */
+
+.searchWrap {
+  margin-bottom: 12px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 0.875rem;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.searchInput:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ─── Tabs ─────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.tab {
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--color-text-secondary);
+}
+
+.tabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+/* ─── Entity list ──────────────────────────────────────────────────────── */
+
+.entityList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.listItem:hover {
+  background: var(--color-bg-hover);
+}
+
+.listItemSelected {
+  background: var(--color-bg-hover);
+  outline: 2px solid var(--color-accent);
+}
+
+.itemInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.itemIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.itemDetails {
+  min-width: 0;
+}
+
+.itemName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.itemActions {
+  flex-shrink: 0;
+}
+
+/* ─── Main content area ──────────────────────────────────────────────── */
+
+.main {
+  min-height: 400px;
+}
+
+.feedHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.backBtn {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.backBtn:hover {
+  color: var(--color-text-secondary);
+}
+
+.feedTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+/* ─── States ─────────────────────────────────────────────────────────────── */
+
+.loading {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--color-text-muted);
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.emptyText {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.emptySub {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.emptyEntityList {
+  padding: 24px 0;
+  text-align: center;
+}
+
+.emptyEntityListText {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.signInPrompt {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+.signInPrompt a {
+  color: var(--color-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.signInPrompt a:hover {
+  text-decoration: underline;
+}

@@ -210,8 +210,8 @@ export function Header() {
           <Link href="/map" className={styles.navLink}>
             Map
           </Link>
-          <Link href="/discover" className={styles.navLink}>
-            Discover
+          <Link href="/explore" className={styles.navLink}>
+            Explore
           </Link>
           <Link href="/forum" className={styles.navLink}>
             Forum
