@@ -16,6 +16,7 @@ import {
   GET_AIRCRAFT_FAMILIES,
   GET_AIRCRAFT_VARIANTS,
   GET_PHOTOS,
+  GET_MY_FOLLOWING,
 } from '@/lib/queries';
 
 import styles from './page.module.css';
@@ -62,6 +63,13 @@ interface SelectedEntity {
   value: string;
 }
 
+interface FollowingEntry {
+  id: string;
+  targetType: string;
+  targetValue?: string | null;
+  createdAt: string;
+}
+
 const PAGE_SIZE = 24;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -105,6 +113,16 @@ function ExplorePageInner() {
 
   const displayedPhotos: PhotoData[] =
     photoData?.photos?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+
+  // ─── Following query ───────────────────────────────────────────────────────
+
+  const [followingResult] = useQuery({
+    query: GET_MY_FOLLOWING,
+    variables: {},
+    pause: !user,
+  });
+
+  const allFollowing: FollowingEntry[] = followingResult.data?.myFollowing ?? [];
 
   // ─── Entity queries ────────────────────────────────────────────────────────
 
@@ -212,97 +230,199 @@ function ExplorePageInner() {
             {/* Entity list */}
             <div className={styles.entityList}>
               {activeTab === 'airlines' && (
-                <EntityList
-                  loading={airlinesResult.fetching}
-                  emptyLabel="No airlines found"
-                >
-                  {airlinesResult.data?.airlines?.edges?.map(
-                    (e: { node: AirlineNode }) => (
+                <>
+                  <FollowedSection
+                    title="Your Airlines"
+                    following={allFollowing.filter((f) => f.targetType === 'airline')}
+                    findEntity={(value) =>
+                      airlinesResult.data?.airlines?.edges?.find(
+                        (e: { node: AirlineNode }) => (e.node.icaoCode ?? e.node.name) === value,
+                      )?.node
+                    }
+                    renderEntity={(airline) => (
                       <EntityRow
-                        key={e.node.id}
-                        name={e.node.name}
+                        key={airline.id}
+                        name={airline.name}
                         meta={
-                          [e.node.icaoCode, e.node.iataCode].filter(Boolean).join(' / ') +
-                          (e.node.country ? ` · ${e.node.country}` : '')
+                          [airline.icaoCode, airline.iataCode].filter(Boolean).join(' / ') +
+                          (airline.country ? ` · ${airline.country}` : '')
                         }
                         targetType="airline"
-                        value={e.node.icaoCode ?? e.node.name}
-                        isFollowedByMe={e.node.isFollowedByMe}
-                        isSelected={selectedType === 'airlines' && selectedValue === (e.node.icaoCode ?? e.node.name)}
-                        onSelect={() => selectEntity('airlines', e.node.name, e.node.icaoCode ?? e.node.name)}
+                        value={airline.icaoCode ?? airline.name}
+                        isFollowedByMe={true}
+                        isSelected={selectedType === 'airlines' && selectedValue === (airline.icaoCode ?? airline.name)}
+                        onSelect={() => selectEntity('airlines', airline.name, airline.icaoCode ?? airline.name)}
                       />
-                    ),
-                  )}
-                </EntityList>
+                    )}
+                  />
+                  <EntityList
+                    loading={airlinesResult.fetching}
+                    emptyLabel="No airlines found"
+                    headerLabel="Browse All Airlines"
+                  >
+                    {airlinesResult.data?.airlines?.edges?.map(
+                      (e: { node: AirlineNode }) => (
+                        <EntityRow
+                          key={e.node.id}
+                          name={e.node.name}
+                          meta={
+                            [e.node.icaoCode, e.node.iataCode].filter(Boolean).join(' / ') +
+                            (e.node.country ? ` · ${e.node.country}` : '')
+                          }
+                          targetType="airline"
+                          value={e.node.icaoCode ?? e.node.name}
+                          isFollowedByMe={e.node.isFollowedByMe}
+                          isSelected={selectedType === 'airlines' && selectedValue === (e.node.icaoCode ?? e.node.name)}
+                          onSelect={() => selectEntity('airlines', e.node.name, e.node.icaoCode ?? e.node.name)}
+                        />
+                      ),
+                    )}
+                  </EntityList>
+                </>
               )}
 
               {activeTab === 'manufacturers' && (
-                <EntityList
-                  loading={manufacturersResult.fetching}
-                  emptyLabel="No manufacturers found"
-                >
-                  {manufacturersResult.data?.aircraftManufacturers?.edges?.map(
-                    (e: { node: ManufacturerNode }) => (
+                <>
+                  <FollowedSection
+                    title="Your Manufacturers"
+                    following={allFollowing.filter((f) => f.targetType === 'manufacturer')}
+                    findEntity={(value) =>
+                      manufacturersResult.data?.aircraftManufacturers?.edges?.find(
+                        (e: { node: ManufacturerNode }) => e.node.name === value,
+                      )?.node
+                    }
+                    renderEntity={(manufacturer) => (
                       <EntityRow
-                        key={e.node.id}
-                        name={e.node.name}
-                        meta={e.node.country ?? undefined}
+                        key={manufacturer.id}
+                        name={manufacturer.name}
+                        meta={manufacturer.country ?? undefined}
                         targetType="manufacturer"
-                        value={e.node.name}
-                        isFollowedByMe={e.node.isFollowedByMe}
-                        isSelected={selectedType === 'manufacturers' && selectedValue === e.node.name}
-                        onSelect={() => selectEntity('manufacturers', e.node.name, e.node.name)}
+                        value={manufacturer.name}
+                        isFollowedByMe={true}
+                        isSelected={selectedType === 'manufacturers' && selectedValue === manufacturer.name}
+                        onSelect={() => selectEntity('manufacturers', manufacturer.name, manufacturer.name)}
                       />
-                    ),
-                  )}
-                </EntityList>
+                    )}
+                  />
+                  <EntityList
+                    loading={manufacturersResult.fetching}
+                    emptyLabel="No manufacturers found"
+                    headerLabel="Browse All Manufacturers"
+                  >
+                    {manufacturersResult.data?.aircraftManufacturers?.edges?.map(
+                      (e: { node: ManufacturerNode }) => (
+                        <EntityRow
+                          key={e.node.id}
+                          name={e.node.name}
+                          meta={e.node.country ?? undefined}
+                          targetType="manufacturer"
+                          value={e.node.name}
+                          isFollowedByMe={e.node.isFollowedByMe}
+                          isSelected={selectedType === 'manufacturers' && selectedValue === e.node.name}
+                          onSelect={() => selectEntity('manufacturers', e.node.name, e.node.name)}
+                        />
+                      ),
+                    )}
+                  </EntityList>
+                </>
               )}
 
               {activeTab === 'families' && (
-                <EntityList
-                  loading={familiesResult.fetching}
-                  emptyLabel="No families found"
-                >
-                  {familiesResult.data?.aircraftFamilies?.edges?.map(
-                    (e: { node: FamilyNode }) => (
+                <>
+                  <FollowedSection
+                    title="Your Families"
+                    following={allFollowing.filter((f) => f.targetType === 'family')}
+                    findEntity={(value) =>
+                      familiesResult.data?.aircraftFamilies?.edges?.find(
+                        (e: { node: FamilyNode }) => e.node.name === value,
+                      )?.node
+                    }
+                    renderEntity={(family) => (
                       <EntityRow
-                        key={e.node.id}
-                        name={e.node.name}
-                        meta={`By ${e.node.manufacturer.name}`}
+                        key={family.id}
+                        name={family.name}
+                        meta={`By ${family.manufacturer.name}`}
                         targetType="family"
-                        value={e.node.name}
-                        isFollowedByMe={e.node.isFollowedByMe}
-                        isSelected={selectedType === 'families' && selectedValue === e.node.name}
-                        onSelect={() => selectEntity('families', e.node.name, e.node.name)}
+                        value={family.name}
+                        isFollowedByMe={true}
+                        isSelected={selectedType === 'families' && selectedValue === family.name}
+                        onSelect={() => selectEntity('families', family.name, family.name)}
                       />
-                    ),
-                  )}
-                </EntityList>
+                    )}
+                  />
+                  <EntityList
+                    loading={familiesResult.fetching}
+                    emptyLabel="No families found"
+                    headerLabel="Browse All Families"
+                  >
+                    {familiesResult.data?.aircraftFamilies?.edges?.map(
+                      (e: { node: FamilyNode }) => (
+                        <EntityRow
+                          key={e.node.id}
+                          name={e.node.name}
+                          meta={`By ${e.node.manufacturer.name}`}
+                          targetType="family"
+                          value={e.node.name}
+                          isFollowedByMe={e.node.isFollowedByMe}
+                          isSelected={selectedType === 'families' && selectedValue === e.node.name}
+                          onSelect={() => selectEntity('families', e.node.name, e.node.name)}
+                        />
+                      ),
+                    )}
+                  </EntityList>
+                </>
               )}
 
               {activeTab === 'variants' && (
-                <EntityList
-                  loading={variantsResult.fetching}
-                  emptyLabel="No variants found"
-                >
-                  {variantsResult.data?.aircraftVariants?.edges?.map(
-                    (e: { node: VariantNode }) => (
+                <>
+                  <FollowedSection
+                    title="Your Variants"
+                    following={allFollowing.filter((f) => f.targetType === 'variant')}
+                    findEntity={(value) =>
+                      variantsResult.data?.aircraftVariants?.edges?.find(
+                        (e: { node: VariantNode }) => e.node.name === value,
+                      )?.node
+                    }
+                    renderEntity={(variant) => (
                       <EntityRow
-                        key={e.node.id}
-                        name={e.node.name}
+                        key={variant.id}
+                        name={variant.name}
                         meta={
-                          [e.node.iataCode, e.node.icaoCode].filter(Boolean).join(' / ') +
-                          ` · ${e.node.family.name}`
+                          [variant.iataCode, variant.icaoCode].filter(Boolean).join(' / ') +
+                          ` · ${variant.family.name}`
                         }
                         targetType="variant"
-                        value={e.node.name}
-                        isFollowedByMe={e.node.isFollowedByMe}
-                        isSelected={selectedType === 'variants' && selectedValue === e.node.name}
-                        onSelect={() => selectEntity('variants', e.node.name, e.node.name)}
+                        value={variant.name}
+                        isFollowedByMe={true}
+                        isSelected={selectedType === 'variants' && selectedValue === variant.name}
+                        onSelect={() => selectEntity('variants', variant.name, variant.name)}
                       />
-                    ),
-                  )}
-                </EntityList>
+                    )}
+                  />
+                  <EntityList
+                    loading={variantsResult.fetching}
+                    emptyLabel="No variants found"
+                    headerLabel="Browse All Variants"
+                  >
+                    {variantsResult.data?.aircraftVariants?.edges?.map(
+                      (e: { node: VariantNode }) => (
+                        <EntityRow
+                          key={e.node.id}
+                          name={e.node.name}
+                          meta={
+                            [e.node.iataCode, e.node.icaoCode].filter(Boolean).join(' / ') +
+                            ` · ${e.node.family.name}`
+                          }
+                          targetType="variant"
+                          value={e.node.name}
+                          isFollowedByMe={e.node.isFollowedByMe}
+                          isSelected={selectedType === 'variants' && selectedValue === e.node.name}
+                          onSelect={() => selectEntity('variants', e.node.name, e.node.name)}
+                        />
+                      ),
+                    )}
+                  </EntityList>
+                </>
               )}
             </div>
           </div>
@@ -369,13 +489,42 @@ function getPhotoFilter(type: TabType, value: string): Record<string, unknown> {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+function FollowedSection<T extends { id: string }>({
+  title,
+  following,
+  findEntity,
+  renderEntity,
+}: {
+  title: string;
+  following: FollowingEntry[];
+  findEntity: (value: string) => T | undefined;
+  renderEntity: (entity: T) => React.ReactNode;
+}) {
+  if (following.length === 0) return null;
+
+  return (
+    <div className={styles.followedSection}>
+      <div className={styles.followedSectionHeader}>{title}</div>
+      <div className={styles.list}>
+        {following.map((entry) => {
+          const entity = findEntity(entry.targetValue ?? '');
+          if (!entity) return null;
+          return <div key={entry.id}>{renderEntity(entity)}</div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
 function EntityList({
   loading,
   emptyLabel,
+  headerLabel,
   children,
 }: {
   loading: boolean;
   emptyLabel: string;
+  headerLabel?: string;
   children: React.ReactNode;
 }) {
   if (loading) {
@@ -392,7 +541,12 @@ function EntityList({
     );
   }
 
-  return <div className={styles.list}>{children}</div>;
+  return (
+    <>
+      {headerLabel && <div className={styles.listHeader}>{headerLabel}</div>}
+      <div className={styles.list}>{children}</div>
+    </>
+  );
 }
 
 interface EntityRowProps {

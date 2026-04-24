@@ -202,11 +202,6 @@ export function Header() {
           <Link href="/" className={styles.navLink}>
             Feed
           </Link>
-          {showUser && (
-            <Link href="/following" className={styles.navLink}>
-              Following
-            </Link>
-          )}
           <Link href="/map" className={styles.navLink}>
             Map
           </Link>
