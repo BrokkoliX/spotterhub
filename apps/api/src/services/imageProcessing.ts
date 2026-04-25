@@ -24,7 +24,7 @@ import { getObject, getObjectUrl, uploadBuffer } from './s3.js';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface ImageVariantResult {
-  variantType: 'thumbnail' | 'display';
+  variantType: 'thumbnail' | 'display' | 'watermarked';
   url: string;
   key: string;
   width: number;
@@ -97,11 +97,17 @@ export async function extractExif(buffer: Buffer): Promise<ExifData> {
 /**
  * Generates thumbnail and display variants from an uploaded original image.
  * Fetches the original from S3, processes with Sharp, and uploads variants back.
+ * Optionally generates a watermarked variant.
  *
  * @param originalKey - The S3 key of the original uploaded image.
+ * @param options - Optional generation options.
+ * @param options.watermarkEnabled - Whether to generate a watermarked variant.
  * @returns Array of generated variant metadata.
  */
-export async function generateVariants(originalKey: string): Promise<ImageVariantResult[]> {
+export async function generateVariants(
+  originalKey: string,
+  options: { watermarkEnabled?: boolean } = {},
+): Promise<ImageVariantResult[]> {
   const original = await getObject(originalKey);
   const results: ImageVariantResult[] = [];
 
@@ -131,7 +137,57 @@ export async function generateVariants(originalKey: string): Promise<ImageVarian
     fileSizeBytes: display.buffer.length,
   });
 
+  // Generate watermarked variant if enabled
+  if (options.watermarkEnabled) {
+    const watermarked = await generateWatermarked(original);
+    const watermarkedKey = deriveVariantKey(originalKey, 'watermarked');
+    await uploadBuffer(watermarkedKey, watermarked.buffer, 'image/jpeg');
+    results.push({
+      variantType: 'watermarked',
+      url: getObjectUrl(watermarkedKey),
+      key: watermarkedKey,
+      width: watermarked.width,
+      height: watermarked.height,
+      fileSizeBytes: watermarked.buffer.length,
+    });
+  }
+
   return results;
+}
+
+/**
+ * Generates a watermarked version of an image with "© SpotterSpace" text overlay.
+ *
+ * @param buffer - The original image buffer.
+ * @returns The watermarked image buffer with dimensions.
+ */
+async function generateWatermarked(buffer: Buffer): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const metadata = await (await getSharp())(buffer).metadata();
+  const width = metadata.width ?? 1920;
+  const height = metadata.height ?? 1080;
+
+  // Create SVG watermark text overlay
+  const svg = Buffer.from(
+    `<svg width="${width}" height="${Math.min(Math.floor(height * 0.1), 80)}">
+      <style>
+        .w { fill: white; font-size: ${Math.max(Math.floor(width * 0.02), 18)}px; font-family: Arial, sans-serif; opacity: 0.5; }
+      </style>
+      <text x="${Math.floor(width * 0.02)}" y="${Math.floor(height * 0.08)}" class="w">© SpotterSpace</text>
+    </svg>`,
+  );
+
+  const watermarkBuffer = await (await getSharp())(svg).png().toBuffer();
+
+  const result = await (await getSharp())(buffer)
+    .composite([{ input: watermarkBuffer, gravity: 'southeast' }])
+    .jpeg({ quality: 90 })
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    buffer: result.data,
+    width: result.info.width,
+    height: result.info.height,
+  };
 }
 
 /**

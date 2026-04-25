@@ -81,6 +81,8 @@ export const PHOTO_FIELDS = gql`
     tags
     likeCount
     commentCount
+    license
+    watermarkEnabled
     isLikedByMe
     createdAt
     photoCategory {

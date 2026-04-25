@@ -32,6 +32,15 @@ export const typeDefs = gql`
     review
   }
 
+  enum PhotoLicense {
+    ALL_RIGHTS_RESERVED
+    CC_BY_NC_ND
+    CC_BY_NC
+    CC_BY_NC_SA
+    CC_BY
+    CC_BY_SA
+  }
+
   enum CommunityVisibility {
     public
     invite_only
@@ -1542,6 +1551,14 @@ export const typeDefs = gql`
     """
     commentCount: Int!
     """
+    License under which the photo is published.
+    """
+    license: PhotoLicense!
+    """
+    Whether a watermarked variant should be generated.
+    """
+    watermarkEnabled: Boolean!
+    """
     Whether the currently authenticated user has liked this photo.
     """
     isLikedByMe: Boolean!
@@ -1757,6 +1774,14 @@ export const typeDefs = gql`
     Airport ICAO code for location lookup.
     """
     airportIcao: String
+    """
+    License for the photo.
+    """
+    license: PhotoLicense
+    """
+    Whether to generate a watermarked variant.
+    """
+    watermarkEnabled: Boolean
   }
 
   input UpdatePhotoInput {

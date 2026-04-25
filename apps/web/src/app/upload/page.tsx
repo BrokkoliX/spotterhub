@@ -205,6 +205,8 @@ export default function UploadPage() {
   const [locationType, setLocationType] = useState('');
   const [exifData, setExifData] = useState<Record<string, unknown> | null>(null);
   const [airlineDisplay, setAirlineDisplay] = useState(''); // shown below airline dropdown
+  const [license, setLicense] = useState('ALL_RIGHTS_RESERVED');
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
 
   // Try to get device location on mount to set initial map center
   useEffect(() => {
@@ -362,6 +364,8 @@ export default function UploadPage() {
     setSelectedFamilyId('');
     setSelectedVariantId('');
     setSelectedAirlineId('');
+    setLicense('ALL_RIGHTS_RESERVED');
+    setWatermarkEnabled(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -418,6 +422,8 @@ export default function UploadPage() {
     if (manufacturingDate) input.manufacturingDate = manufacturingDate;
     if (locationType) input.locationType = locationType;
     if (exifData && Object.keys(exifData).length > 0) input.exifData = exifData;
+    input.license = license;
+    input.watermarkEnabled = watermarkEnabled;
 
     const result = await createPhoto({ input });
 
@@ -503,6 +509,8 @@ export default function UploadPage() {
                   setSelectedFamilyId('');
                   setSelectedVariantId('');
                   setSelectedAirlineId('');
+                  setLicense('ALL_RIGHTS_RESERVED');
+                  setWatermarkEnabled(false);
                 }}
                 className="btn btn-secondary btn-lg"
                 type="button"
@@ -972,6 +980,36 @@ export default function UploadPage() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="license" className="label">
+                    License
+                  </label>
+                  <select
+                    id="license"
+                    className="input"
+                    value={license}
+                    onChange={(e) => setLicense(e.target.value)}
+                  >
+                    <option value="ALL_RIGHTS_RESERVED">All Rights Reserved</option>
+                    <option value="CC_BY_NC_ND">CC BY-NC-ND (NonCommercial, NoDerivatives)</option>
+                    <option value="CC_BY_NC">CC BY-NC (NonCommercial)</option>
+                    <option value="CC_BY_NC_SA">CC BY-NC-SA (NonCommercial, ShareAlike)</option>
+                    <option value="CC_BY">CC BY (Attribution)</option>
+                    <option value="CC_BY_SA">CC BY-SA (Attribution, ShareAlike)</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={watermarkEnabled}
+                      onChange={(e) => setWatermarkEnabled(e.target.checked)}
+                    />
+                    <span style={{ marginLeft: 8 }}>Add © SpotterSpace watermark to this photo</span>
+                  </label>
                 </div>
 
                 {error && <p className="error-text">{error}</p>}

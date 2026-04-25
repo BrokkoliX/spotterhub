@@ -79,6 +79,8 @@ export interface CreatePhotoInput {
   manufacturingDate?: string;
   locationType?: string;
   airportIcao?: string;
+  license?: string;
+  watermarkEnabled?: boolean;
 }
 
 export interface UpdatePhotoInput {
@@ -316,6 +318,8 @@ export const photoMutationResolvers = {
         manufacturingDate: input.manufacturingDate ?? null,
         // In dev, auto-approve; in production, start as pending
         moderationStatus: process.env.NODE_ENV === 'production' ? 'pending' : 'approved',
+        license: (input.license ?? 'ALL_RIGHTS_RESERVED') as 'ALL_RIGHTS_RESERVED' | 'CC_BY_NC_ND' | 'CC_BY_NC' | 'CC_BY_NC_SA' | 'CC_BY' | 'CC_BY_SA',
+        watermarkEnabled: input.watermarkEnabled ?? false,
         tags: input.tags
           ? { create: input.tags.map((tag) => ({ tag: tag.toLowerCase().trim() })) }
           : undefined,
@@ -325,7 +329,9 @@ export const photoMutationResolvers = {
 
     // Generate image variants asynchronously (in dev, synchronous for simplicity)
     try {
-      const variants = await generateVariants(input.s3Key);
+      const variants = await generateVariants(input.s3Key, {
+        watermarkEnabled: input.watermarkEnabled ?? false,
+      });
       for (const variant of variants) {
         await ctx.prisma.photoVariant.create({
           data: {

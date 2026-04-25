@@ -49,6 +49,15 @@ enum ModerationStatus {
   review
 }
 
+enum PhotoLicense {
+  ALL_RIGHTS_RESERVED
+  CC_BY_NC_ND
+  CC_BY_NC
+  CC_BY_NC_SA
+  CC_BY
+  CC_BY_SA
+}
+
 enum SellerStatus {
   pending
   approved
@@ -391,6 +400,8 @@ model Photo {
   moderationConfidence Float?           @map("moderation_confidence")
   likeCount            Int              @default(0) @map("like_count")
   hasActiveListing     Boolean          @default(false) @map("has_active_listing")
+  license              PhotoLicense     @default(ALL_RIGHTS_RESERVED)
+  watermarkEnabled     Boolean          @default(false) @map("watermark_enabled")
   aircraftId           String?          @map("aircraft_id") @db.Uuid
   photographerId       String?          @map("photographer_id") @db.Uuid
   photographerName     String?          @map("photographer_name")
