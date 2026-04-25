@@ -311,7 +311,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                         <TopicFollowButton
                           targetType="manufacturer"
                           value={photo.aircraft.manufacturer.name}
-                          initialIsFollowing={false}
+                          initialIsFollowing={photo.aircraft.manufacturer.isFollowedByMe ?? false}
                         />
                       )}
                     </li>
@@ -324,7 +324,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                         <TopicFollowButton
                           targetType="family"
                           value={photo.aircraft.family.name}
-                          initialIsFollowing={false}
+                          initialIsFollowing={photo.aircraft.family.isFollowedByMe ?? false}
                         />
                       )}
                     </li>
@@ -342,7 +342,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                         <TopicFollowButton
                           targetType="variant"
                           value={photo.aircraft.variant.name}
-                          initialIsFollowing={false}
+                          initialIsFollowing={photo.aircraft.variant.isFollowedByMe ?? false}
                         />
                       )}
                     </li>

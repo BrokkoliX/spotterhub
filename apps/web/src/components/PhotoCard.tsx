@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { FollowButton } from './FollowButton';
 import { LikeButton } from './LikeButton';
+import { TopicFollowButton } from './TopicFollowButton';
 import styles from './PhotoCard.module.css';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -38,9 +39,10 @@ export interface PhotoData {
   variants: PhotoVariant[];
   aircraft?: {
     registration?: string | null;
-    manufacturer?: { name: string } | null;
-    family?: { name: string } | null;
-    variant?: { name: string; iataCode?: string | null; icaoCode?: string | null } | null;
+    isFollowedByMe?: boolean;
+    manufacturer?: { id?: string; name: string; isFollowedByMe?: boolean } | null;
+    family?: { id?: string; name: string; isFollowedByMe?: boolean } | null;
+    variant?: { id?: string; name: string; iataCode?: string | null; icaoCode?: string | null; isFollowedByMe?: boolean } | null;
     operatorType?: string | null;
   } | null;
   listing?: {
@@ -95,12 +97,53 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
         {photo.caption && <p className={styles.caption}>{photo.caption}</p>}
 
         <div className={styles.meta}>
-          {(photo.aircraft?.manufacturer?.name || photo.aircraft?.family?.name || photo.aircraft?.variant?.name) && (
-            <span className={styles.metaItem}>✈ {[
-              photo.aircraft?.manufacturer?.name,
-              photo.aircraft?.family?.name,
-              photo.aircraft?.variant?.name,
-            ].filter(Boolean).join(' ')}</span>
+          {photo.aircraft?.registration && (
+            <span className={styles.metaItem}>
+              📋 {photo.aircraft.registration}
+              {user && (
+                <TopicFollowButton
+                  targetType="registration"
+                  value={photo.aircraft.registration}
+                  initialIsFollowing={photo.aircraft.isFollowedByMe ?? false}
+                />
+              )}
+            </span>
+          )}
+          {photo.aircraft?.manufacturer?.name && (
+            <span className={styles.metaItem}>
+              {photo.aircraft.manufacturer.name}
+              {user && (
+                <TopicFollowButton
+                  targetType="manufacturer"
+                  value={photo.aircraft.manufacturer.name}
+                  initialIsFollowing={photo.aircraft.manufacturer.isFollowedByMe ?? false}
+                />
+              )}
+            </span>
+          )}
+          {photo.aircraft?.family?.name && (
+            <span className={styles.metaItem}>
+              {photo.aircraft.family.name}
+              {user && (
+                <TopicFollowButton
+                  targetType="family"
+                  value={photo.aircraft.family.name}
+                  initialIsFollowing={photo.aircraft.family.isFollowedByMe ?? false}
+                />
+              )}
+            </span>
+          )}
+          {photo.aircraft?.variant?.name && (
+            <span className={styles.metaItem}>
+              {photo.aircraft.variant.name}
+              {user && (
+                <TopicFollowButton
+                  targetType="variant"
+                  value={photo.aircraft.variant.name}
+                  initialIsFollowing={photo.aircraft.variant.isFollowedByMe ?? false}
+                />
+              )}
+            </span>
           )}
           {photo.airline && (
             <span className={styles.metaItem}>{photo.airline}</span>

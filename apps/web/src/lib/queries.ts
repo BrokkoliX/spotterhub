@@ -108,16 +108,19 @@ export const PHOTO_FIELDS = gql`
       manufacturer {
         id
         name
+        isFollowedByMe
       }
       family {
         id
         name
+        isFollowedByMe
       }
       variant {
         id
         name
         iataCode
         icaoCode
+        isFollowedByMe
       }
       operatorType
       airlineRef {
