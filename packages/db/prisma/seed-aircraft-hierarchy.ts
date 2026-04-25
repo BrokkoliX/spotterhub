@@ -44,36 +44,63 @@ const prisma = new PrismaClient();
 
 const DATA_DIR = join(process.cwd(), 'prisma', 'data');
 
-interface ManufacturerRow { name: string; country?: string }
-interface FamilyRow { name: string; manufacturer_name: string }
-interface VariantRow { name: string; family_name: string; aircraft_type_icao?: string }
-interface AirlineRow { name: string; icaoCode?: string; iataCode?: string; country?: string; callsign?: string }
+interface ManufacturerRow {
+  name: string;
+  country?: string;
+}
+interface FamilyRow {
+  name: string;
+  manufacturer_name: string;
+}
+interface VariantRow {
+  name: string;
+  family_name: string;
+  aircraft_type_icao?: string;
+}
+interface AirlineRow {
+  name: string;
+  icaoCode?: string;
+  iataCode?: string;
+  country?: string;
+  callsign?: string;
+}
 
 function parseCSV(filepath: string): Record<string, string>[] {
   const text = readFileSync(filepath, 'utf-8');
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'));
   if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  return lines.slice(1).map(line => {
-    const fields = line.split(',').map(f => f.trim().replace(/^"|"$/g, ''));
+  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+  return lines.slice(1).map((line) => {
+    const fields = line.split(',').map((f) => f.trim().replace(/^"|"$/g, ''));
     const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = fields[i] ?? ''; });
+    headers.forEach((h, i) => {
+      obj[h] = fields[i] ?? '';
+    });
     return obj;
   });
 }
 
 async function seedManufacturers(rows: ManufacturerRow[]) {
-  let created = 0, updated = 0;
+  let created = 0,
+    updated = 0;
   for (const row of rows) {
     if (!row.name) continue;
     const existing = await prisma.aircraftManufacturer.findUnique({ where: { name: row.name } });
     if (existing) {
       if (existing.country !== row.country) {
-        await prisma.aircraftManufacturer.update({ where: { name: row.name }, data: { country: row.country || null } });
+        await prisma.aircraftManufacturer.update({
+          where: { name: row.name },
+          data: { country: row.country || null },
+        });
         updated++;
       }
     } else {
-      await prisma.aircraftManufacturer.create({ data: { name: row.name, country: row.country || null } });
+      await prisma.aircraftManufacturer.create({
+        data: { name: row.name, country: row.country || null },
+      });
       created++;
     }
   }
@@ -81,50 +108,64 @@ async function seedManufacturers(rows: ManufacturerRow[]) {
 }
 
 async function seedFamilies(rows: FamilyRow[]) {
-  let created = 0, updated = 0, skipped = 0;
+  let created = 0,
+    updated = 0,
+    skipped = 0;
   for (const row of rows) {
     if (!row.name || !row.manufacturer_name) continue;
-    const manufacturer = await prisma.aircraftManufacturer.findUnique({ where: { name: row.manufacturer_name } });
-    if (!manufacturer) { console.warn(`  ⚠️  Family "${row.name}": manufacturer "${row.manufacturer_name}" not found, skipping`); skipped++; continue; }
+    const manufacturer = await prisma.aircraftManufacturer.findUnique({
+      where: { name: row.manufacturer_name },
+    });
+    if (!manufacturer) {
+      console.warn(
+        `  ⚠️  Family "${row.name}": manufacturer "${row.manufacturer_name}" not found, skipping`,
+      );
+      skipped++;
+      continue;
+    }
     const existing = await prisma.aircraftFamily.findUnique({ where: { name: row.name } });
     if (existing) {
       if (existing.manufacturerId !== manufacturer.id) {
-        await prisma.aircraftFamily.update({ where: { name: row.name }, data: { manufacturerId: manufacturer.id } });
+        await prisma.aircraftFamily.update({
+          where: { name: row.name },
+          data: { manufacturerId: manufacturer.id },
+        });
         updated++;
       }
     } else {
-      await prisma.aircraftFamily.create({ data: { name: row.name, manufacturerId: manufacturer.id } });
+      await prisma.aircraftFamily.create({
+        data: { name: row.name, manufacturerId: manufacturer.id },
+      });
       created++;
     }
   }
-  console.log(`  ✅ Families: ${created} created, ${updated} updated, ${skipped} skipped (no manufacturer)`);
+  console.log(
+    `  ✅ Families: ${created} created, ${updated} updated, ${skipped} skipped (no manufacturer)`,
+  );
 }
 
 async function seedVariants(rows: VariantRow[]) {
-  let created = 0, updated = 0, skipped = 0;
+  let created = 0,
+    updated = 0,
+    skipped = 0;
   for (const row of rows) {
     if (!row.name || !row.family_name) continue;
     const family = await prisma.aircraftFamily.findUnique({ where: { name: row.family_name } });
-    if (!family) { console.warn(`  ⚠️  Variant "${row.name}": family "${row.family_name}" not found, skipping`); skipped++; continue; }
-    let aircraftTypeId: string | null = null;
-    if (row.aircraft_type_icao) {
-      // Look up by icaoCode OR iataCode (some AircraftTypes only have one)
-      const at = await prisma.aircraftType.findFirst({
-        where: { OR: [{ icaoCode: row.aircraft_type_icao }, { iataCode: row.aircraft_type_icao }] },
-      });
-      aircraftTypeId = at?.id ?? null;
+    if (!family) {
+      console.warn(`  ⚠️  Variant "${row.name}": family "${row.family_name}" not found, skipping`);
+      skipped++;
+      continue;
     }
     const existing = await prisma.aircraftVariant.findUnique({ where: { name: row.name } });
     if (existing) {
-      const needsUpdate: { familyId?: string; aircraftTypeId?: string | null } = {};
+      const needsUpdate: { familyId?: string } = {};
       if (existing.familyId !== family.id) needsUpdate.familyId = family.id;
-      if (existing.aircraftTypeId !== aircraftTypeId) needsUpdate.aircraftTypeId = aircraftTypeId;
       if (Object.keys(needsUpdate).length > 0) {
         await prisma.aircraftVariant.update({ where: { name: row.name }, data: needsUpdate });
         updated++;
       }
     } else {
-      await prisma.aircraftVariant.create({ data: { name: row.name, familyId: family.id, aircraftTypeId } });
+      await prisma.aircraftVariant.create({ data: { name: row.name, familyId: family.id } });
       created++;
     }
   }
@@ -132,15 +173,23 @@ async function seedVariants(rows: VariantRow[]) {
 }
 
 async function seedAirlines(rows: AirlineRow[]) {
-  let created = 0, updated = 0;
+  let created = 0,
+    updated = 0;
   for (const row of rows) {
     if (!row.name) continue;
     const where = row.icaoCode
       ? { icaoCode: row.icaoCode }
-      : row.iataCode ? { iataCode: row.iataCode } : { name: row.name };
+      : row.iataCode
+        ? { iataCode: row.iataCode }
+        : { name: row.name };
     const existing = await prisma.airline.findFirst({ where: { OR: [where, { name: row.name }] } });
     if (existing) {
-      const data: { name?: string; iataCode?: string | null; country?: string | null; callsign?: string | null } = {};
+      const data: {
+        name?: string;
+        iataCode?: string | null;
+        country?: string | null;
+        callsign?: string | null;
+      } = {};
       if (!existing.name && row.name) data.name = row.name;
       if (!existing.iataCode && row.iataCode) data.iataCode = row.iataCode;
       if (!existing.country && row.country) data.country = row.country;

@@ -1,0 +1,138 @@
+name,family_name,aircraft_type_icao
+A220-100,Airbus A220,B77L
+A220-300,Airbus A220,B77L
+A320-200,Airbus A320,A320
+A320neo,Airbus A320,A320
+A321-200,Airbus A320,A321
+A321neo,Airbus A320,A321
+A321LR,Airbus A320,A321
+A330-200,Airbus A330,A332
+A330-300,Airbus A330,A333
+A330-800,Airbus A330,A338
+A330-900,Airbus A330,A339
+A340-200,Airbus A340,A342
+A340-300,Airbus A340,A343
+A340-500,Airbus A340,A345
+A340-600,Airbus A340,A346
+A350-800,Airbus A350,A358
+A350-900,Airbus A350,A359
+A350-1000,Airbus A350,A35J
+A380-800,Airbus A380,A388
+A380-700,Airbus A380,A388
+A400M-180,Airbus A400M,A400
+A400M-200,Airbus A400M,A400
+737-700,Boeing 737,B737
+737-800,Boeing 737,B738
+737-900,Boeing 737,B739
+737 MAX 7,Boeing 737 MAX,B37M
+737 MAX 8,Boeing 737 MAX,B37M
+737 MAX 9,Boeing 737 MAX,B39M
+737 MAX 10,Boeing 737 MAX,B37M
+747-400,Boeing 747,B744
+747-8,Boeing 747,B748
+747-8F,Boeing 747,B748
+757-200,Boeing 757,B752
+757-300,Boeing 757,B753
+767-300,Boeing 767,B763
+767-300F,Boeing 767,B763
+767-400,Boeing 767,B764
+777-200,Boeing 777,B772
+777-200ER,Boeing 777,B772
+777-200LR,Boeing 777,B77L
+777-300,Boeing 777,B773
+777F,Boeing 777,B77L
+777X,Boeing 777,B77X
+787-8,Boeing 787,B788
+787-9,Boeing 787,B789
+787-10,Boeing 787,B78X
+E190,Embraer E-Jet,E190
+E195,Embraer E-Jot,E195
+E175-E2,Embraer E-Jet,E295
+E190-E2,Embraer E-Jet,E295
+E195-E2,Embraer E-Jet,E295
+Phenom 100,Embraer Phenom,E50P
+Phenom 300,Embraer Phenom,E300
+Legacy 100,Embraer Legacy,E550
+Legacy 500,Embraer Legacy,E550
+Legacy 600,Embraer Legacy,E550
+CRJ200,Embraer CRJ,CRJ2
+CRJ700,Embraer CRJ,CRJ7
+CRJ900,Embraer CRJ,CRJ9
+CRJ1000,Embraer CRJ,CRJX
+Global 5000,Bombardier Global,G500
+Global 6000,Bombardier Global,G600
+Global 7500,Bombardier Global,G750
+Challenger 350,Bombardier Challenger,CL35
+Challenger 650,Bombardier Challenger,CL65
+ATR 42-300,ATR ATR 42,AT43
+ATR 42-500,ATR ATR 42,AT45
+ATR 42-600,ATR ATR 42,AT46
+ATR 72-200,ATR ATR 72,AT72
+ATR 72-500,ATR ATR 72,AT75
+ATR 72-600,ATR ATR 72,AT76
+C-130J Super Hercules,Lockheed Martin C-130,C130J
+C-130H Hercules,Lockheed Martin C-130,C130H
+F-16A,Lockheed Martin F-16,F16A
+F-16C,Lockheed Martin F-16,F16C
+F-16D,Lockheed Martin F-16,F16D
+F-22A,Lockheed Martin F-22,RAPT
+F-35A,Lockheed Martin F-35,F35A
+F-35B,Lockheed Martin F-35,F35B
+F-35C,Lockheed Martin F-35,F35C
+C-5A Galaxy,Lockheed Martin C-5 Galaxy,C5A
+C-5B Galaxy,Lockheed Martin C-5 Galaxy,C5B
+C-5M Super Galaxy,Lockheed Martin C-5 Galaxy,C5M
+G100,Gulfstream G100,GA6C
+G200,Gulfstream G200,GA6C
+G280,Gulfstream G200,GA6C
+G450,Gulfstream G400,GLF4
+G500,Gulfstream G500,GLF5
+G550,Gulfstream G500,GLF5
+G600,Gulfstream G600,GLF6
+G700,Gulfstream G700,GLF7
+Falcon 7X,Dassault Falcon,F7X
+Falcon 8X,Dassault Falcon,F8X
+Falcon 900,Dassault Falcon,F900
+Falcon 2000,Dassault Falcon,F2TH
+BAe 146-100,British Aerospace 146,B461
+BAe 146-200,British Aerospace 146,B462
+BAe 146-300,British Aerospace 146,B463
+Jetstream 31,British Aerospace Jetstream,JST3
+DHC-1 Chipmunk,DHC-1 Chipmunk,CHIP
+DHC-2 Beaver,DHC-2 Beaver,DHC2
+DHC-3 Otter,DHC-3 Otter,DHC3
+DHC-4 Caribou,DHC-4 Caribou,DHC4
+DHC-6 Twin Otter,DHC-6 Twin Otter,DHC6
+DHC-7 Ranger,DHC-7 Ranger,DHC7
+DHC-8-100,de Havilland Canada DHC-8 Dash 8,DHC8
+DHC-8-200,de Havilland Canada DHC-8 Dash 8,DHC8
+DHC-8-300,de Havilland Canada DHC-8 Dash 8,DHC8
+DHC-8-400,de Havilland Canada DHC-8 Dash 8,DHC8
+Vickers Viscount,Viscount,VICK
+Vickers Vanguard,Vanguard,VICK
+Fokker F27,Fokker F27,F27
+Fokker F28,Fokker F28,F28
+Do 228,Dornier Do 228,D228
+Do 328-100,Dornier Do 328,D328
+Do 328JET,Dornier Do 328,D328
+Learjet 45,Learjet 45,LJ45
+Learjet 60,Learjet 60,LJ60
+CitationJet,Cirrus Aircraft,CJ1
+Citation Mustang,Cirrus Aircraft,CJ1
+Citation CJ3,Cirrus Aircraft,CJ3
+Citation CJ4,Cirrus Aircraft,CJ4
+Cessna 172,Cessna 172,C172
+Cessna 182,Cessna 182,C182
+Cessna 206,Cessna 206,C206
+Caravan 208,Cessna 208 Caravan,C208
+Piper Cherokee Six,Piper Cherokee,C206
+Piper Warrior II,Piper Archer,C172
+Piper Archer III,Piper Archer,C172
+Piper Saratoga,Piper Saratoga,P28R
+Piper Malibu Matrix,Piper Malibu,P28A
+Beechcraft Bonanza,Bonanza,BE36
+Beechcraft Baron,Bonanza,BE58
+King Air 350,King Air,BE40
+Cirrus SR20,Cirrus Aircraft SR20,SR20
+Cirrus SR22,Cirrus Aircraft SR22,SR22
+Cirrus SF50 Vision,Cirrus SF50 Vision,SF50

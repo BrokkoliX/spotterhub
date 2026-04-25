@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-17
+> **Last updated:** 2026-04-25
 > **Purpose:** Living document tracking implemented features and operational notes. See `PRODUCT.md` for current product overview.
 
 ---
@@ -35,7 +35,9 @@
 ### Photos
 
 - [x] Upload with S3 presigned URLs
-- [x] Sharp image processing (thumbnail 150px, display 640px)
+- [x] Sharp image processing (thumbnail 150px, display 640px, watermarked variant)
+- [x] Photo license selection (All Rights Reserved, CC BY variants) on upload
+- [x] Watermark option (© SpotterSpace overlay) on upload
 - [x] Photo CRUD, variants, tags
 - [x] Geotagging with privacy modes (exact / approximate / hidden)
 - [x] EXIF extraction (GPS, camera date)
@@ -58,6 +60,17 @@
 - [x] Like button with optimistic UI
 - [x] Comment system with threaded replies (2 levels)
 - [x] Report content (photo, comment, profile, album)
+
+### Follow System (Topics)
+
+- [x] Follow/unfollow airlines (by ICAO code)
+- [x] Follow/unfollow aircraft manufacturers
+- [x] Follow/unfollow aircraft families
+- [x] Follow/unfollow aircraft variants
+- [x] Follow/unfollow registrations
+- [x] Follow/unfollow aircraft types
+- [x] Explore page (`/explore`) — unified browse + follow UI with "Your Following" sections
+- [x] Following topics shown in Explore page per tab
 
 ### Map & Locations
 
@@ -107,6 +120,14 @@
 - [x] Notification triggers: like, comment, follow, community join, event RSVP
 - [x] Mark read / mark all read / delete
 
+### Marketplace (Aviation Collectibles)
+
+- [x] Create/edit/delete marketplace listings
+- [x] Listing categories, conditions, pricing
+- [x] Seller profiles and listings pages
+- [x] Browse marketplace with search/filter
+- [x] Contact seller flow
+
 ### Admin Panel
 
 - [x] `/admin` dashboard with stats
@@ -145,6 +166,7 @@
 - [x] Legal notice (`/legal-notice`) and imprint pages
 - [x] Upload page redesigned
 - [x] Signup page with display name field
+- [x] Explore page (`/explore`) — unified browse and follow for topics
 
 ---
 
@@ -154,8 +176,7 @@
 - Stripe billing (community subscriptions, individual premium)
 - Native mobile app
 - Video uploads
-- In-platform checkout / payments
-- Marketplace
+- In-platform checkout / payments (marketplace contact flow only)
 - Email system (SES) — transactional and digest emails
 - Analytics and KPI instrumentation
 - SEO implementation (SSR metadata, sitemaps, structured data)
@@ -163,6 +184,7 @@
 - Performance load testing
 - Redis (ElastiCache) — currently no caching layer
 - OpenSearch — search currently uses PostgreSQL full-text
+- Full-res photo variant generation (watermarked variant generated, but full_res variant not yet)
 
 ---
 
@@ -198,10 +220,9 @@ npx turbo run generate --filter=@spotterspace/db
 - **LocalStack S3:** Community edition doesn't persist across restarts. Re-run `npm run db:seed-images` after LocalStack restarts.
 - **Migrations:** Run automatically on API container startup via `docker-entrypoint.sh`. The entrypoint also performs a one-time migration history reset if old squashed migration entries exist.
 - **Photo URLs:** Seed data photos have `original_url` pointing to LocalStack bucket paths that must be seeded separately via `seed-images.ts`.
-- **Community photos tab:** Shows all approved photos from active community members (not a community-specific collection). The "album photo bug" (photos appearing without being added) is likely stale cached data — clearing browser cache or hard-refreshing should resolve it.
-- **Duplicate photo URLs:** Some seeded photos share identical S3 keys (e.g., `ffd61ed5-ae9c-4dfd-8d34-69028b1f44be.jpg`) — the upload flow uses a hardcoded UUID instead of each photo's unique ID. This is a known bug needing fix.
-- **CDK stack:** The `infrastructure/` directory has stale CDK code. Current infrastructure is managed through the working deploy workflow and manual AWS CLI commands. CDK should be updated if infrastructure changes are needed.
 - **ECS Fargate migration:** Previously used App Runner. Migrated to ECS Fargate + ALB to fix ALB health check timeout issues (ECS services need `loadBalancers` config to register with ALB target groups).
+- **Explore page:** The `/explore` page replaced the separate `/discover` and `/following` pages. It shows "Your Following" sections at the top of each tab and "Browse All" below.
+- **Follow system:** Supports airline, registration, manufacturer, family, variant, aircraft_type target types. `isFollowedByMe` is exposed on all topic types.
 
 ---
 
@@ -229,5 +250,3 @@ npx turbo run generate --filter=@spotterspace/db
 | API Dockerfile   | `apps/api/Dockerfile`                                                                                                        |
 | API entrypoint   | `apps/api/docker-entrypoint.sh`                                                                                              |
 | Web Dockerfile   | `apps/web/Dockerfile`                                                                                                        |
-| Deployment docs  | `DEPLOYMENT_STATUS.md`                                                                                                       |
-| Product docs     | `PRODUCT.md`                                                                                                                 |

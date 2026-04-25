@@ -1,0 +1,1 @@
+-- Add seller relations to marketplace items (intentional no-op placeholder — tables already created in previous migration)

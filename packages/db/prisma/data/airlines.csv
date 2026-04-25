@@ -1,0 +1,86 @@
+name,icaoCode,iataCode,country,callsign
+American Airlines,AAL,AA,United States,AMERICAN
+Air Canada,ACA,AC,Canada,AIR CANADA
+Air France,AFR,AF,France,AIR FRANCE
+Air India,AIC,AI,India,AIR INDIA
+Alitalia,AZA,AZ,Italy,ALITALIA
+All Nippon Airways,ANA,NH,Japan,ALL NIPPON
+Asiana Airlines,ASA,OZ,South Korea,ASIANA
+Austrian Airlines,AUA,OS,Austria,Austrian
+British Airways,BAW,BA,United Kingdom,SPEEDBIRD
+Cathay Pacific,CPA,CX,Hong Kong,CATHAY
+China Eastern,CEB,MU,China,CHINA EASTERN
+China Southern,CSN,CZ,China,CHINA SOUTHERN
+Delta Air Lines,DAL,DL,United States,DELTA
+Emirates,EMA,EK,United Arab Emirates,EMIRATES
+Ethiopian Airlines,ETH,ET,Ethiopia,ETHIOPIAN
+Etihad Airways,ETD,EY,United Arab Emirates,ETIHAD
+Finnair,FIA,AY,Finland,Finnair
+Garuda Indonesia,GIA,GA,Indonesia,GARUDA
+Gulf Air,GFA,GF,Bahrain,GULF AIR
+Iberia,IBE,IB,Spain,IBERIA
+Japan Airlines,JAL,JL,Japan,JAPANAIR
+KLM,KLM,KL,Netherlands,KLM
+Korean Air,KAL,KE,South Korea,KOREAN AIR
+Lufthansa,DLH,LH,Germany,LUFTHANSA
+Malaysia Airlines,MAS,MH,Malaysia,MALAYSIAN
+Norwegian Air Shuttle,NRS,DY,Norway,NORWEGIAN
+Qantas,QFA,QF,Australia,QANTAS
+Qatar Airways,QTR,QR,Qatar,QATARI
+Royal Dutch Shell Airways,RSH,PH,Netherlands,SHELL
+Saudia,SVA,SV,Saudi Arabia,SAUDIA
+Singapore Airlines,SIA,SQ,Singapore,SINGAPORE
+Southwest Airlines,SWA,WN,United States,SOUTHWEST
+Swiss International Air Lines,SWR,LX,Switzerland,SWISS
+Thai Airways,THA,TG,Thailand,THAI
+Turkish Airlines,THY,TK,Turkey,TURKISH
+United Airlines,UAL,UA,United States,UNITED
+Virgin Atlantic,VIR,VS,United Kingdom,VIRGIN
+LATAM Chile,LAN,LA,Chile,LATAM
+Aeromexico,AMX,AM,Mexico,AEROMEXICO
+Air Austral,REU,SB,France,REUNION
+TAROM,ROMA,RO,Romania,TAROM
+Air Malta,AMM,KM,Malta,AIR MALTA
+Finnair,FIN,AY,Finland,Finnair
+Air Baltic,BTI,BT,Latvia,AIR BALTIC
+Condor,CFG,DE,Germany,CONDOR
+Brussels Airlines,BEL,SN,Belgium,BEELINE
+Wizz Air,WZZ,W6,Hungary,WIZZAIR
+Ryanair,RYR,FR,Ireland,RYANAIR
+easyJet,EZY,U2,United Kingdom,EASYJET
+Vueling,VLG,VY,Spain,VUELING
+TAP Portugal,TAP,PT,Portugal,AIR PORTUGAL
+Aegean Airlines,GEE,A3,Greece,AEGEAN
+Croatia Airlines,CTN,OU,Croatia,CROATIA
+Czech Airlines,CSA,OK,Czech Republic,CZECH AIRLINES
+Air Serbia,AUI,JU,Serbia,AIR SERBIA
+Alitalia CityLiner,CIL,CT,Italy,CITYLINER
+LOT Polish Airlines,LOT,LOT,Poland,LOT
+Ukraine International Airlines,AUI,PS,Ukraine,UKRAINE
+Scandinavian Airlines,SAS,SK,Sweden,SCANDINAVIAN
+Air China,CCA,CA,China,AIR CHINA
+Sichuan Airlines,CSC,3U,China,SICHUAN
+XiamenAir,CXA,MF,China,XIAMEN
+Hainan Airlines,CHH,HU,China,HAINAN
+Shenzhen Airlines,CSZ,SZ,China,SHENZHEN
+Juneyao Airlines,JEA,HO,China,JUNEYAO
+Spring Airlines,LKJ,C9,China,SPRING
+WestJet,CGE,WS,Canada,WESTJET
+Sun Country Airlines,SCA,SY,United States,SUN COUNTRY
+Alaska Airlines,ASA,AS,United States,ALASKA
+Frontier Airlines,FFT,F9,United States,FRONTIER
+Spirit Airlines,NKS,NK,United States,SPIRIT
+JetBlue Airways,JBU,B6,United States,JETBLUE
+Hawaiian Airlines,HAL,HA,United States,HAWAIIAN
+Air New Zealand,ANZ,NZ,New Zealand,AIR NEW ZEALAND
+Virgin Australia,VAU,VA,Australia,VIRGIN AUSTRALIA
+Aer Lingus,EIN,EI,Ireland,AER LINGUS
+Trans States Airlines,LOF,AX,United States,AMERIFLIGHT
+Air Wisconsin,AWQ,ZW,United States,WISCONSIN
+Envoy Air,ENY,MQ,United States,ENVOY
+CommutAir,CMP,CQ,United States,COMMUTAIR
+Piedmont Airlines,PDT,PO,United States,PIEDMONT
+Mesa Airlines,ASH,MH,United States,MESA AIR
+SkyWest Airlines,SKW,OO,United States,SKYWEST
+Republic Airways,RPA,YX,United States,REPUBLIC
+Horizon Air,QLM,QX,United States,HORIZON

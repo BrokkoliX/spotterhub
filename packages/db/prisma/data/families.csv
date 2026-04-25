@@ -1,0 +1,76 @@
+name,manufacturer_name
+A220,Airbus
+A320,Airbus
+A330,Airbus
+A340,Airbus
+A350,Airbus
+A380,Airbus
+A400M,Airbus
+737,Boeing
+747,Boeing
+757,Boeing
+767,Boeing
+777,Boeing
+787,Boeing
+737 MAX,Boeing
+E-Jet,Embraer
+Phenom,Embraer
+Legacy,Embraer
+CRJ,Bombardier
+Global,Bombardier
+Challenger,Bombardier
+ATR 42,ATR
+ATR 72,ATR
+Saab 340,Saab
+Saab 2000,Saab
+Gripen,Saab
+Falcon,Dassault Aviation
+Mirage,Dassault Aviation
+Rafale,Dassault Aviation
+Gulfstream G100,Gulfstream Aerospace
+Gulfstream G200,Gulfstream Aerospace
+Gulfstream G300,Gulfstream Aerospace
+Gulfstream G400,Gulfstream Aerospace
+Gulfstream G500,Gulfstream Aerospace
+Gulfstream G600,Gulfstream Aerospace
+Gulfstream G700,Gulfstream Aerospace
+C-130,Lockheed Martin
+F-16,Lockheed Martin
+F-22,Lockheed Martin
+F-35,Lockheed Martin
+C-5 Galaxy,Lockheed Martin
+Hawk,British Aerospace
+146,British Aerospace
+Jetstream,British Aerospace
+DHC-1 Chipmunk,de Havilland Canada
+DHC-2 Beaver,de Havilland Canada
+DHC-3 Otter,de Havilland Canada
+DHC-4 Caribou,de Havilland Canada
+DHC-6 Twin Otter,de Havilland Canada
+DHC-7 Ranger,de Havilland Canada
+DHC-8 Dash 8,de Havilland Canada
+Viscount,Vickers
+Vanguard,Vickers
+VC10,Vickers
+F27,Fokker
+F28,Fokker
+Do 228,Dornier
+Do 328,Dornier
+Learjet 45,Learjet
+Learjet 60,Learjet
+Citation,Learjet
+172,Cessna
+182,Cessna
+206,Cessna
+208 Caravan,Cessna
+Cherokee,Piper Aircraft
+Warrior,Piper Aircraft
+Archer,Piper Aircraft
+Saratoga,Piper Aircraft
+Malibu,Piper Aircraft
+Bonanza,Beechcraft
+Baron,Beechcraft
+King Air,Beechcraft
+SR20,Cirrus Aircraft
+SR22,Cirrus Aircraft
+SF50 Vision,Cirrus Aircraft
