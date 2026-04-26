@@ -253,10 +253,43 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     </span>
                   </li>
                 )}
+                {photo.airline && (
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Airline</span>
+                    <span className={styles.metaValue}>{photo.airline}</span>
+                    {user && (
+                      <TopicFollowButton
+                        targetType="airline"
+                        value={photo.airline}
+                        initialIsFollowing={false}
+                      />
+                    )}
+                  </li>
+                )}
                 {photo.airportCode && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Airport</span>
                     <span className={styles.metaValue}>{photo.airportCode}</span>
+                    {user && (
+                      <TopicFollowButton
+                        targetType="airport"
+                        value={photo.airportCode}
+                        initialIsFollowing={false}
+                      />
+                    )}
+                  </li>
+                )}
+                {photo.operatorIcao && (
+                  <li className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Operator</span>
+                    <span className={styles.metaValue}>{photo.operatorIcao}</span>
+                    {user && (
+                      <TopicFollowButton
+                        targetType="airline"
+                        value={photo.operatorIcao}
+                        initialIsFollowing={false}
+                      />
+                    )}
                   </li>
                 )}
                 {photo.takenAt && (

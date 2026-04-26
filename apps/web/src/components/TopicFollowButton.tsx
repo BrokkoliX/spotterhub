@@ -12,7 +12,7 @@ import styles from './FollowButton.module.css';
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface TopicFollowButtonProps {
-  targetType: 'aircraft_type' | 'manufacturer' | 'family' | 'variant' | 'airline' | 'registration';
+  targetType: 'aircraft_type' | 'airport' | 'manufacturer' | 'family' | 'variant' | 'airline' | 'registration';
   value: string;
   initialIsFollowing: boolean;
 }
@@ -69,6 +69,8 @@ export function TopicFollowButton({
         return isFollowing ? 'Unfollow aircraft variant' : 'Follow aircraft variant';
       case 'airline':
         return isFollowing ? 'Unfollow airline' : 'Follow airline';
+      case 'airport':
+        return isFollowing ? 'Unfollow airport' : 'Follow airport';
       case 'registration':
         return isFollowing ? 'Unfollow aircraft' : 'Follow aircraft';
     }
