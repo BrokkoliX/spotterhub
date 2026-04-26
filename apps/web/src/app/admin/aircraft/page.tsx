@@ -11,9 +11,11 @@ import {
   ADMIN_FAMILIES,
   ADMIN_MANUFACTURERS,
   ADMIN_VARIANTS,
+  APPROVE_AIRCRAFT,
   CREATE_AIRCRAFT,
   DELETE_AIRCRAFT,
   EXPORT_AIRCRAFT,
+  REJECT_AIRCRAFT,
   UPDATE_AIRCRAFT,
   UPSERT_AIRCRAFT,
 } from '@/lib/queries';
@@ -29,6 +31,7 @@ type AircraftNode = {
   msn: string | null;
   manufacturingDate: string | null;
   operatorType: string | null;
+  status: string;
   manufacturer: { id: string; name: string } | null;
   family: { id: string; name: string } | null;
   variant: { id: string; name: string } | null;
@@ -63,6 +66,7 @@ export default function AdminAircraftPage() {
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -123,10 +127,19 @@ export default function AdminAircraftPage() {
   const [, updateAircraft] = useMutation(UPDATE_AIRCRAFT);
   const [, deleteAircraft] = useMutation(DELETE_AIRCRAFT);
   const [, upsertAircraft] = useMutation(UPSERT_AIRCRAFT);
+  const [, approveAircraft] = useMutation(APPROVE_AIRCRAFT);
+  const [, rejectAircraft] = useMutation(REJECT_AIRCRAFT);
 
   const aircrafts = data?.adminAircraft;
-  const hasNextPage = aircrafts?.pageInfo?.hasNextPage;
-  const endCursor = aircrafts?.pageInfo?.endCursor;
+  const filteredAircrafts = statusFilter
+    ? {
+        ...aircrafts,
+        edges: aircrafts?.edges?.filter(({ node }: { node: AircraftNode }) => node.status === statusFilter) ?? [],
+        totalCount: aircrafts?.edges?.filter(({ node }: { node: AircraftNode }) => node.status === statusFilter).length ?? 0,
+      }
+    : aircrafts;
+  const hasNextPage = filteredAircrafts?.pageInfo?.hasNextPage;
+  const endCursor = filteredAircrafts?.pageInfo?.endCursor;
 
   const allManufacturers = manufacturersResult.data?.aircraftManufacturers?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
   const manufacturerNameToId = new Map(allManufacturers.map((m: { id: string; name: string }) => [m.name.toLowerCase(), m.id]));
@@ -304,6 +317,18 @@ export default function AdminAircraftPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
+  const handleApprove = async (id: string) => {
+    if (!confirm('Approve this aircraft? It will become active and photos may be linked.')) return;
+    await approveAircraft({ id });
+    reexecute({ requestPolicy: 'network-only' });
+  };
+
+  const handleReject = async (id: string) => {
+    if (!confirm('Reject this aircraft? It will be permanently deleted.')) return;
+    await rejectAircraft({ id });
+    reexecute({ requestPolicy: 'network-only' });
+  };
+
   const loadMore = () => {
     if (!endCursor) return;
     reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, first: PAGE_SIZE, after: endCursor } });
@@ -325,30 +350,81 @@ export default function AdminAircraftPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <select
+          className={styles.filterInput}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ width: 'auto', minWidth: 150 }}
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending_approval">Pending Approval</option>
+        </select>
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={openCreate}>+ Add</button>
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={handleExport}>Export CSV</button>
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={() => fileInputRef.current?.click()}>Import CSV</button>
         <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileChange} />
         {aircrafts && (
           <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-            {aircrafts.totalCount} aircraft
+            {filteredAircrafts?.totalCount ?? 0} aircraft{statusFilter && ` (filtered from ${aircrafts.totalCount})`}
           </span>
         )}
       </div>
 
+      {/* Pending Approval Banner */}
+      {!statusFilter && aircrafts?.edges?.some(({ node }: { node: AircraftNode }) => node.status === 'PENDING_APPROVAL') && (
+        <div style={{
+          background: 'var(--color-bg-secondary)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{ fontWeight: 500 }}>
+            ⚠ {aircrafts.edges.filter(({ node }: { node: AircraftNode }) => node.status === 'PENDING_APPROVAL').length} aircraft pending approval
+          </span>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setStatusFilter('pending_approval')}
+          >
+            Show Pending
+          </button>
+        </div>
+      )}
+
       {fetching && <div className={styles.loading}>Loading…</div>}
       {error && <div className={styles.loading}>Error loading aircraft</div>}
 
-      {aircrafts && aircrafts.edges.length > 0 && (
+      {filteredAircrafts && filteredAircrafts.edges.length > 0 && (
         <>
           <table className={styles.table}>
             <thead>
-              <tr><th>Registration</th><th>Manufacturer</th><th>Family</th><th>Variant</th><th>Operator Type</th><th>Airline</th><th>MSN</th><th>Actions</th></tr>
+              <tr><th>Registration</th><th>Status</th><th>Manufacturer</th><th>Family</th><th>Variant</th><th>Operator Type</th><th>Airline</th><th>MSN</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              {aircrafts.edges.map(({ node }: { node: AircraftNode }) => (
-                <tr key={node.id}>
-                  <td>{node.registration}</td>
+              {filteredAircrafts.edges.map(({ node }: { node: AircraftNode }) => (
+                <tr
+                  key={node.id}
+                  style={node.status === 'PENDING_APPROVAL' ? { background: 'rgba(251, 191, 147, 0.1)' } : {}}
+                >
+                  <td style={{ fontWeight: node.status === 'PENDING_APPROVAL' ? 600 : 400 }}>
+                    {node.registration}
+                    {node.status === 'PENDING_APPROVAL' && <span style={{ marginLeft: 6, color: '#f59e0b', fontSize: '0.75rem' }}>⏳ pending</span>}
+                  </td>
+                  <td>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: node.status === 'PENDING_APPROVAL' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      color: node.status === 'PENDING_APPROVAL' ? '#f59e0b' : '#22c55e',
+                    }}>
+                      {node.status === 'PENDING_APPROVAL' ? 'Pending' : 'Active'}
+                    </span>
+                  </td>
                   <td>{node.manufacturer?.name ?? '—'}</td>
                   <td>{node.family?.name ?? '—'}</td>
                   <td>{node.variant?.name ?? '—'}</td>
@@ -356,8 +432,17 @@ export default function AdminAircraftPage() {
                   <td>{node.airlineRef?.name ?? '—'}</td>
                   <td>{node.msn ?? '—'}</td>
                   <td>
-                    <button className={styles.actionBtn} onClick={() => openEdit(node)}>Edit</button>
-                    <button className={styles.actionBtnDanger} onClick={() => handleDelete(node.id)}>Delete</button>
+                    {node.status === 'PENDING_APPROVAL' ? (
+                      <>
+                        <button className={styles.actionBtn} style={{ color: '#22c55e' }} onClick={() => handleApprove(node.id)}>Approve</button>
+                        <button className={styles.actionBtnDanger} onClick={() => handleReject(node.id)}>Reject</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className={styles.actionBtn} onClick={() => openEdit(node)}>Edit</button>
+                        <button className={styles.actionBtnDanger} onClick={() => handleDelete(node.id)}>Delete</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -371,8 +456,8 @@ export default function AdminAircraftPage() {
         </>
       )}
 
-      {aircrafts && aircrafts.edges.length === 0 && !fetching && (
-        <div className={styles.loading}>No aircraft found</div>
+      {filteredAircrafts && filteredAircrafts.edges.length === 0 && !fetching && (
+        <div className={styles.loading}>{statusFilter ? 'No aircraft match the selected filter' : 'No aircraft found'}</div>
       )}
       </div>
 

@@ -2148,6 +2148,7 @@ export const ADMIN_AIRCRAFT = gql`
             icaoCode
             iataCode
           }
+          status
         }
       }
       pageInfo {
@@ -2186,6 +2187,32 @@ export const UPSERT_AIRCRAFT = gql`
     upsertAircraft(input: $input) {
       id
     }
+  }
+`;
+
+export const CREATE_PENDING_AIRCRAFT = gql`
+  mutation CreatePendingAircraft($input: CreateAircraftInput!) {
+    createPendingAircraft(input: $input) {
+      id
+      registration
+      status
+    }
+  }
+`;
+
+export const APPROVE_AIRCRAFT = gql`
+  mutation ApproveAircraft($id: ID!) {
+    approveAircraft(id: $id) {
+      id
+      registration
+      status
+    }
+  }
+`;
+
+export const REJECT_AIRCRAFT = gql`
+  mutation RejectAircraft($id: ID!) {
+    rejectAircraft(id: $id)
   }
 `;
 

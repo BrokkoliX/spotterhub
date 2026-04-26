@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/auth';
 import SearchableSelect from '@/components/SearchableSelect';
 import {
   CREATE_PHOTO,
+  CREATE_PENDING_AIRCRAFT,
   GET_ME,
   GET_UPLOAD_URL,
   GET_PHOTO_CATEGORIES,
@@ -45,6 +46,7 @@ export default function UploadPage() {
 
   const [, getUploadUrl] = useMutation(GET_UPLOAD_URL);
   const [, createPhoto] = useMutation(CREATE_PHOTO);
+  const [, createPendingAircraft] = useMutation(CREATE_PENDING_AIRCRAFT);
 
   // Fetch user's gear list
   const [meResult] = useQuery({ query: GET_ME });
@@ -119,6 +121,8 @@ export default function UploadPage() {
     operatorType: string | null;
   }>>([]);
   const [showRegistrationDropdown, setShowRegistrationDropdown] = useState(false);
+  const [registerAsNew, setRegisterAsNew] = useState(false);
+  const [hasSearchResults, setHasSearchResults] = useState(false);
   const registrationSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [registrationSearchResult] = useQuery({
@@ -129,19 +133,27 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (registrationSearchResult.data?.aircraftSearch?.edges) {
+      const edges = registrationSearchResult.data.aircraftSearch.edges;
       setRegistrationResults(
-        registrationSearchResult.data.aircraftSearch.edges.map(
+        edges.map(
           (e: { node: { id: string; registration: string; manufacturer: { name: string } | null; family: { name: string } | null; variant: { name: string; iataCode: string | null; icaoCode: string | null } | null; airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null; msn: string | null; manufacturingDate: string | null; operatorType: string | null } }) => e.node,
         ),
       );
+      setHasSearchResults(edges.length > 0);
+      if (edges.length === 0) setRegisterAsNew(false);
     } else {
       setRegistrationResults([]);
+      setHasSearchResults(false);
+      setRegisterAsNew(false);
     }
   }, [registrationSearchResult.data]);
 
   const handleRegistrationSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.toUpperCase();
     setRegistrationSearch(val);
+    // Clear existing aircraft selection when user types new registration
+    setAircraftId('');
+    setRegisterAsNew(false);
     if (registrationSearchRef.current) clearTimeout(registrationSearchRef.current);
     if (val.length > 0) {
       setShowRegistrationDropdown(true);
@@ -168,6 +180,13 @@ export default function UploadPage() {
       setSelectedAirlineId(aircraft.airlineRef.icaoCode);
       setAirlineDisplay(`${aircraft.airlineRef.name} (${[aircraft.airlineRef.iataCode, aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`);
     }
+  };
+
+  const handleRegisterAsNew = () => {
+    setShowRegistrationDropdown(false);
+    setRegisterAsNew(true);
+    // Clear any auto-filled aircraft data since user will fill in manually
+    setAircraftId('');
   };
 
 
@@ -399,13 +418,39 @@ export default function UploadPage() {
     setStep('creating');
     setError(null);
 
+    let finalAircraftId = aircraftId;
+
+    // If user chose "register as new", create pending aircraft first
+    if (registerAsNew && registrationSearch) {
+      const aircraftInput: Record<string, unknown> = {
+        registration: registrationSearch,
+      };
+      if (selectedManufacturerId) aircraftInput.manufacturerId = selectedManufacturerId;
+      if (selectedFamilyId) aircraftInput.familyId = selectedFamilyId;
+      if (selectedVariantId) aircraftInput.variantId = selectedVariantId;
+      if (selectedAirlineId) aircraftInput.airlineId = selectedAirlineId;
+      if (operatorType) aircraftInput.operatorType = operatorType;
+      if (msn) aircraftInput.msn = msn;
+      if (manufacturingDate) aircraftInput.manufacturingDate = manufacturingDate;
+
+      const aircraftResult = await createPendingAircraft({ input: aircraftInput });
+      if (aircraftResult.error) {
+        setError(
+          aircraftResult.error.graphQLErrors[0]?.message ?? 'Failed to create pending aircraft',
+        );
+        setStep('form');
+        return;
+      }
+      finalAircraftId = aircraftResult.data?.createPendingAircraft?.id;
+    }
+
     const input: Record<string, unknown> = {
       s3Key,
       mimeType: file.type,
       fileSizeBytes: file.size,
     };
     if (caption) input.caption = caption;
-    if (aircraftId) input.aircraftId = aircraftId;
+    if (finalAircraftId) input.aircraftId = finalAircraftId;
     if (airportCode) input.airportCode = airportCode;
     if (takenAt) input.takenAt = takenAt;
     if (tags.length > 0) input.tags = tags;
@@ -668,13 +713,35 @@ export default function UploadPage() {
                         ))}
                       </div>
                     )}
+                    {showRegistrationDropdown && registrationSearch.length > 0 && !hasSearchResults && (
+                      <button
+                        type="button"
+                        onClick={handleRegisterAsNew}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '8px 12px',
+                          background: 'var(--color-bg-secondary)',
+                          border: 'none',
+                          borderTop: '1px solid var(--color-border)',
+                          cursor: 'pointer',
+                          color: 'var(--color-text-link)',
+                          fontWeight: 500,
+                        }}
+                      >
+                        + Register as new aircraft
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Aircraft Details — collapsible section */}
-                <details className={styles.aircraftDetails}>
+                <details className={styles.aircraftDetails} open={registerAsNew || !aircraftId}>
                   <summary className={styles.aircraftDetailsSummary}>
-                    ✈ Aircraft Details
+                    ✈ Aircraft Details {!registerAsNew && aircraftId && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>(auto-filled)</span>}
+                    {!aircraftId && !registerAsNew && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}> — enter registration or select existing above</span>}
+                    {registerAsNew && <span style={{ color: 'var(--color-text-link)', fontWeight: 500 }}> — will be submitted for approval</span>}
                   </summary>
                   <div className={styles.aircraftDetailsBody}>
                     <div className={styles.aircraftRow}>

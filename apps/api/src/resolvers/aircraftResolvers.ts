@@ -302,6 +302,119 @@ export const aircraftMutationResolvers = {
     await ctx.prisma.aircraft.delete({ where: { id: args.id } });
     return true;
   },
+
+  createPendingAircraft: async (
+    _parent: unknown,
+    args: {
+      input: {
+        registration: string;
+        airline?: string;
+        msn?: string;
+        manufacturingDate?: string;
+        manufacturerId?: string;
+        familyId?: string;
+        variantId?: string;
+        operatorType?: string;
+        airlineId?: string;
+      };
+    },
+    ctx: Context,
+  ) => {
+    if (!ctx.user) {
+      throw new GraphQLError('Authentication required', {
+        extensions: { code: 'UNAUTHENTICATED' },
+      });
+    }
+
+    const registration = args.input.registration.toUpperCase();
+
+    // Check if aircraft already exists (active or pending)
+    const existing = await ctx.prisma.aircraft.findUnique({
+      where: { registration },
+    });
+    if (existing) {
+      throw new GraphQLError('Aircraft with this registration already exists', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    return ctx.prisma.aircraft.create({
+      data: {
+        registration,
+        airline: args.input.airline,
+        msn: args.input.msn,
+        manufacturingDate: args.input.manufacturingDate
+          ? new Date(args.input.manufacturingDate)
+          : null,
+        manufacturerId: args.input.manufacturerId ?? null,
+        familyId: args.input.familyId ?? null,
+        variantId: args.input.variantId ?? null,
+        operatorType: args.input.operatorType
+          ? (args.input.operatorType.toLowerCase() as
+              | 'airline'
+              | 'general_aviation'
+              | 'military'
+              | 'government'
+              | 'cargo'
+              | 'charter'
+              | 'private')
+          : null,
+        airlineId: args.input.airlineId ?? null,
+        status: 'pending_approval',
+      },
+    });
+  },
+
+  approveAircraft: async (_parent: unknown, args: { id: string }, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const aircraft = await ctx.prisma.aircraft.findUnique({
+      where: { id: args.id },
+    });
+    if (!aircraft) {
+      throw new GraphQLError('Aircraft not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    // Update status to active
+    const updated = await ctx.prisma.aircraft.update({
+      where: { id: args.id },
+      data: { status: 'active' },
+    });
+
+    // Link any photos that have matching operatorIcao but no aircraftId
+    // (photos submitted with this aircraft before it was approved)
+    if (aircraft.airline) {
+      await ctx.prisma.photo.updateMany({
+        where: {
+          operatorIcao: aircraft.airline,
+          aircraftId: null,
+        },
+        data: {
+          aircraftId: aircraft.id,
+        },
+      });
+    }
+
+    return updated;
+  },
+
+  rejectAircraft: async (_parent: unknown, args: { id: string }, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    const aircraft = await ctx.prisma.aircraft.findUnique({
+      where: { id: args.id },
+    });
+    if (!aircraft) {
+      throw new GraphQLError('Aircraft not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    await ctx.prisma.aircraft.delete({ where: { id: args.id } });
+    return true;
+  },
 };
 
 // ─── Field Resolvers ─────────────────────────────────────────────────────────

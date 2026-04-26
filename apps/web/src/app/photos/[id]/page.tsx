@@ -211,6 +211,11 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
             {/* Metadata */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>Details</h3>
+              {!photo.aircraft && (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+                  This photo was uploaded with aircraft details that are pending admin approval.
+                </p>
+              )}
               <ul className={styles.metaList}>
                 {!photo.aircraft && photo.operatorIcao && (
                   <li className={styles.metaItem}>
