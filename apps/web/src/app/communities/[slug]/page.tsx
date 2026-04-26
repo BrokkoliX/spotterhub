@@ -32,6 +32,14 @@ import styles from './page.module.css';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const CLOUDFRONT_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
+
+function fixLocalhostUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  // Replace localhost URLs with the configured CDN host
+  return url.replace(/^http:\/\/localhost:4566\//, `${CLOUDFRONT_HOST}/`);
+}
+
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60000);
@@ -136,7 +144,7 @@ export default function CommunityPage() {
         return;
       }
       // Save the S3 object URL as the banner
-      const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+      const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
       const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
       const bannerUrl = `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
       await updateCommunity({
@@ -163,7 +171,7 @@ export default function CommunityPage() {
         onJoin={handleJoin}
         onLeave={handleLeave}
         onEditClick={() => setActiveTab('settings')}
-        bannerUrl={community.bannerUrl}
+        bannerUrl={fixLocalhostUrl(community.bannerUrl)}
         bannerUploading={bannerUploading}
         onBannerFileSelect={canEdit ? handleBannerFileSelect : undefined}
       />
@@ -271,7 +279,7 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+              const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
               const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
               return `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
             }}
@@ -289,7 +297,7 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+              const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
               const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
               return `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
             }}
@@ -417,8 +425,8 @@ function HeroSection({
         <div className={styles.heroTop}>
           <div className={styles.heroTitleRow}>
             <div className={styles.heroAvatar}>
-              {community.avatarUrl ? (
-                <img src={community.avatarUrl} alt="" />
+              {fixLocalhostUrl(community.avatarUrl) ? (
+                <img src={fixLocalhostUrl(community.avatarUrl)!} alt="" />
               ) : (
                 community.name.charAt(0).toUpperCase()
               )}
@@ -660,8 +668,8 @@ function MembersPreview({ community }: { community: NonNullable<CommunityQuery['
                 className={styles.memberRow}
               >
                 <div className={styles.memberAvatar}>
-                  {member.user.profile?.avatarUrl ? (
-                    <img src={member.user.profile.avatarUrl} alt="" />
+                  {fixLocalhostUrl(member.user.profile?.avatarUrl) ? (
+                    <img src={fixLocalhostUrl(member.user.profile?.avatarUrl)!} alt="" />
                   ) : (
                     member.user.username.charAt(0).toUpperCase()
                   )}
@@ -1055,8 +1063,8 @@ function MembersTab({
                 className={styles.memberInfo}
               >
                 <div className={styles.memberAvatarLarge}>
-                  {member.user.profile?.avatarUrl ? (
-                    <img src={member.user.profile.avatarUrl} alt="" />
+                  {fixLocalhostUrl(member.user.profile?.avatarUrl) ? (
+                    <img src={fixLocalhostUrl(member.user.profile?.avatarUrl)!} alt="" />
                   ) : (
                     member.user.username.charAt(0).toUpperCase()
                   )}

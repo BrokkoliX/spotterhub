@@ -47,7 +47,7 @@ function inputToArray(str: string): string[] {
     .filter(Boolean);
 }
 
-const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'http://localhost:4566';
+const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
 const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
 
 // ─── Component ──────────────────────────────────────────────────────────────
