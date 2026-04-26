@@ -54,6 +54,7 @@ function createMockPhoto(overrides: Partial<PhotoData> = {}): PhotoData {
       family: { name: '747-8' },
       variant: { name: '747-8F', iataCode: '748', icaoCode: 'B748' },
     },
+    ...overrides,
   };
 }
 

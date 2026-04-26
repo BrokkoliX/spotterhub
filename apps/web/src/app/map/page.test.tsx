@@ -59,17 +59,27 @@ vi.mock('mapbox-gl', async (importOriginal) => {
 
 vi.mock('mapbox-gl/dist/mapbox-gl.css', () => ({}));
 
+vi.mock('supercluster', () => ({
+  default: vi.fn(() => ({ load: vi.fn(), getClusters: vi.fn(() => []) })),
+}));
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-// Lazy import to ensure mocks are applied first
+// MAPBOX_TOKEN is a module-level const read from process.env at import time,
+// so we must set process.env BEFORE importing the module and reset modules
+// between tests to re-evaluate the const.
 async function getMapPage() {
   const mod = await import('./page');
   return mod.default;
 }
 
 describe('MapPage no token', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN = 'pk.your_mapbox_token';
+  });
+
   it('renders placeholder UI when token is the placeholder value', async () => {
-    vi.stubGlobal('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.your_mapbox_token_here');
     const MapPage = await getMapPage();
     render(
       <AuthProvider>
@@ -83,7 +93,6 @@ describe('MapPage no token', () => {
   });
 
   it('shows env var instructions in placeholder', async () => {
-    vi.stubGlobal('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.your_mapbox_token_here');
     const MapPage = await getMapPage();
     render(
       <AuthProvider>
@@ -99,10 +108,12 @@ describe('MapPage no token', () => {
 
 describe('MapPage with token', () => {
   beforeEach(() => {
-    vi.stubGlobal('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test-token');
+    vi.resetModules();
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN = 'pk.test-token';
   });
 
   it('initializes Map with correct options', async () => {
+    const mapboxgl = await import('mapbox-gl');
     const MapPage = await getMapPage();
     render(
       <AuthProvider>
@@ -111,8 +122,7 @@ describe('MapPage with token', () => {
     );
 
     await waitFor(() => {
-      // The map should initialize when token is valid
-      expect(screen.getByText('Mapbox Token Required')).toBeTruthy();
+      expect(mapboxgl.default.Map).toHaveBeenCalled();
     });
   });
 });
