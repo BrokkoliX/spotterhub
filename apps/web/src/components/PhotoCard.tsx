@@ -21,6 +21,8 @@ export interface PhotoData {
   caption?: string | null;
   airline?: string | null;
   airportCode?: string | null;
+  operatorIcao?: string | null;
+  operatorType?: string | null;
   originalUrl: string;
   tags: string[];
   likeCount: number;
@@ -146,7 +148,28 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
             </span>
           )}
           {photo.airline && (
-            <span className={styles.metaItem}>{photo.airline}</span>
+            <span className={styles.metaItem}>
+              {photo.airline}
+              {user && (
+                <TopicFollowButton
+                  targetType="airline"
+                  value={photo.airline}
+                  initialIsFollowing={false}
+                />
+              )}
+            </span>
+          )}
+          {photo.operatorIcao && (
+            <span className={styles.metaItem}>
+              ✈ {photo.operatorIcao}
+              {user && (
+                <TopicFollowButton
+                  targetType="airline"
+                  value={photo.operatorIcao}
+                  initialIsFollowing={false}
+                />
+              )}
+            </span>
           )}
           {photo.airportCode && (
             <span className={styles.metaItem}>📍 {photo.airportCode}</span>
