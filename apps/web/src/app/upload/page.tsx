@@ -121,8 +121,9 @@ export default function UploadPage() {
     operatorType: string | null;
   }>>([]);
   const [showRegistrationDropdown, setShowRegistrationDropdown] = useState(false);
-  const [registerAsNew, setRegisterAsNew] = useState(false);
+  const [showNewAircraftModal, setShowNewAircraftModal] = useState(false);
   const [hasSearchResults, setHasSearchResults] = useState(false);
+  const [aircraftLocked, setAircraftLocked] = useState(false);
   const registrationSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [registrationSearchResult] = useQuery({
@@ -140,11 +141,9 @@ export default function UploadPage() {
         ),
       );
       setHasSearchResults(edges.length > 0);
-      if (edges.length === 0) setRegisterAsNew(false);
     } else {
       setRegistrationResults([]);
       setHasSearchResults(false);
-      setRegisterAsNew(false);
     }
   }, [registrationSearchResult.data]);
 
@@ -152,8 +151,20 @@ export default function UploadPage() {
     const val = e.target.value.toUpperCase();
     setRegistrationSearch(val);
     // Clear existing aircraft selection when user types new registration
+    if (aircraftLocked) {
+      // Reset everything if user clears/locks aircraft
+      setAircraftId('');
+      setSelectedManufacturerId('');
+      setSelectedFamilyId('');
+      setSelectedVariantId('');
+      setSelectedAirlineId('');
+      setOperatorType('');
+      setMsn('');
+      setManufacturingDate('');
+      setAirlineDisplay('');
+      setAircraftLocked(false);
+    }
     setAircraftId('');
-    setRegisterAsNew(false);
     if (registrationSearchRef.current) clearTimeout(registrationSearchRef.current);
     if (val.length > 0) {
       setShowRegistrationDropdown(true);
@@ -180,13 +191,40 @@ export default function UploadPage() {
       setSelectedAirlineId(aircraft.airlineRef.icaoCode);
       setAirlineDisplay(`${aircraft.airlineRef.name} (${[aircraft.airlineRef.iataCode, aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`);
     }
+    setAircraftLocked(true);
   };
 
-  const handleRegisterAsNew = () => {
+  const handleOpenNewAircraftModal = () => {
     setShowRegistrationDropdown(false);
-    setRegisterAsNew(true);
-    // Clear any auto-filled aircraft data since user will fill in manually
-    setAircraftId('');
+    setShowNewAircraftModal(true);
+  };
+
+  const handleNewAircraftCreated = (data: {
+    id: string;
+    registration: string;
+    manufacturerId?: string;
+    familyId?: string;
+    variantId?: string;
+    operatorType?: string;
+    msn?: string;
+    manufacturingDate?: string;
+    airlineId?: string;
+    airlineName?: string;
+  }) => {
+    setAircraftId(data.id);
+    setRegistrationSearch(data.registration);
+    if (data.manufacturerId) setSelectedManufacturerId(data.manufacturerId);
+    if (data.familyId) setSelectedFamilyId(data.familyId);
+    if (data.variantId) setSelectedVariantId(data.variantId);
+    if (data.operatorType) setOperatorType(data.operatorType);
+    if (data.msn) setMsn(data.msn);
+    if (data.manufacturingDate) setManufacturingDate(data.manufacturingDate);
+    if (data.airlineId) {
+      setSelectedAirlineId(data.airlineId);
+      if (data.airlineName) setAirlineDisplay(data.airlineName);
+    }
+    setAircraftLocked(true);
+    setShowNewAircraftModal(false);
   };
 
 
@@ -385,6 +423,8 @@ export default function UploadPage() {
     setSelectedAirlineId('');
     setLicense('ALL_RIGHTS_RESERVED');
     setWatermarkEnabled(false);
+    setAircraftLocked(false);
+    setShowNewAircraftModal(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -418,39 +458,13 @@ export default function UploadPage() {
     setStep('creating');
     setError(null);
 
-    let finalAircraftId = aircraftId;
-
-    // If user chose "register as new", create pending aircraft first
-    if (registerAsNew && registrationSearch) {
-      const aircraftInput: Record<string, unknown> = {
-        registration: registrationSearch,
-      };
-      if (selectedManufacturerId) aircraftInput.manufacturerId = selectedManufacturerId;
-      if (selectedFamilyId) aircraftInput.familyId = selectedFamilyId;
-      if (selectedVariantId) aircraftInput.variantId = selectedVariantId;
-      if (selectedAirlineId) aircraftInput.airlineId = selectedAirlineId;
-      if (operatorType) aircraftInput.operatorType = operatorType;
-      if (msn) aircraftInput.msn = msn;
-      if (manufacturingDate) aircraftInput.manufacturingDate = manufacturingDate;
-
-      const aircraftResult = await createPendingAircraft({ input: aircraftInput });
-      if (aircraftResult.error) {
-        setError(
-          aircraftResult.error.graphQLErrors[0]?.message ?? 'Failed to create pending aircraft',
-        );
-        setStep('form');
-        return;
-      }
-      finalAircraftId = aircraftResult.data?.createPendingAircraft?.id;
-    }
-
     const input: Record<string, unknown> = {
       s3Key,
       mimeType: file.type,
       fileSizeBytes: file.size,
     };
     if (caption) input.caption = caption;
-    if (finalAircraftId) input.aircraftId = finalAircraftId;
+    if (aircraftId) input.aircraftId = aircraftId;
     if (airportCode) input.airportCode = airportCode;
     if (takenAt) input.takenAt = takenAt;
     if (tags.length > 0) input.tags = tags;
@@ -661,7 +675,7 @@ export default function UploadPage() {
 
                 <div className="field">
                   <label htmlFor="registration" className="label">
-                    Registration (auto-fill)
+                    Registration *
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -671,8 +685,41 @@ export default function UploadPage() {
                       value={registrationSearch}
                       onChange={handleRegistrationSearchChange}
                       placeholder="e.g. N12345"
-                      style={{ textTransform: 'uppercase' }}
+                      disabled={aircraftLocked}
+                      style={{ textTransform: 'uppercase', paddingRight: 80 }}
                     />
+                    {aircraftLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegistrationSearch('');
+                          setAircraftId('');
+                          setSelectedManufacturerId('');
+                          setSelectedFamilyId('');
+                          setSelectedVariantId('');
+                          setSelectedAirlineId('');
+                          setOperatorType('');
+                          setMsn('');
+                          setManufacturingDate('');
+                          setAirlineDisplay('');
+                          setAircraftLocked(false);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: 8,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          color: 'var(--color-text-link)',
+                          padding: '4px 8px',
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
                     {showRegistrationDropdown && registrationResults.length > 0 && (
                       <div style={{
                         position: 'absolute',
@@ -713,150 +760,78 @@ export default function UploadPage() {
                         ))}
                       </div>
                     )}
-                    {showRegistrationDropdown && registrationSearch.length > 0 && !hasSearchResults && (
+                    {!aircraftLocked && (
                       <button
                         type="button"
-                        onClick={handleRegisterAsNew}
+                        onClick={handleOpenNewAircraftModal}
+                        disabled={registrationSearch.length === 0}
                         style={{
-                          display: 'block',
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 12px',
-                          background: 'var(--color-bg-secondary)',
+                          position: 'absolute',
+                          right: 8,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'var(--color-accent)',
                           border: 'none',
-                          borderTop: '1px solid var(--color-border)',
-                          cursor: 'pointer',
-                          color: 'var(--color-text-link)',
+                          borderRadius: 4,
+                          cursor: registrationSearch.length === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.75rem',
                           fontWeight: 500,
+                          color: '#fff',
+                          padding: '4px 8px',
+                          opacity: registrationSearch.length === 0 ? 0.5 : 1,
                         }}
                       >
-                        + Register as new aircraft
+                        New
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Aircraft Details — collapsible section */}
-                <details className={styles.aircraftDetails} open={registerAsNew || !aircraftId}>
-                  <summary className={styles.aircraftDetailsSummary}>
-                    ✈ Aircraft Details {!registerAsNew && aircraftId && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>(auto-filled)</span>}
-                    {!aircraftId && !registerAsNew && <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}> — enter registration or select existing above</span>}
-                    {registerAsNew && <span style={{ color: 'var(--color-text-link)', fontWeight: 500 }}> — will be submitted for approval</span>}
-                  </summary>
-                  <div className={styles.aircraftDetailsBody}>
-                    <div className={styles.aircraftRow}>
-                      <div className="field">
-                        <label htmlFor="manufacturer" className="label">
-                          Manufacturer
-                        </label>
-                        <SearchableSelect
-                          options={manufacturers.map((m: { id: string; name: string }) => ({ id: m.id, label: m.name }))}
-                          value={selectedManufacturerId}
-                          onChange={(id) => {
-                            setSelectedManufacturerId(id);
-                            setSelectedFamilyId('');
-                            setSelectedVariantId('');
-                          }}
-                          placeholder="Search manufacturer…"
-                        />
-                      </div>
-
-                      <div className="field">
-                        <label htmlFor="family" className="label">
-                          Family
-                        </label>
-                        <SearchableSelect
-                          options={filteredFamilies.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
-                          value={selectedFamilyId}
-                          onChange={(id) => {
-                            setSelectedFamilyId(id);
-                            setSelectedVariantId('');
-                          }}
-                          placeholder="Search family…"
-                        />
-                      </div>
+                {/* Aircraft Info — read-only once selected */}
+                {aircraftLocked && (
+                  <div style={{
+                    background: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 8,
+                    padding: '12px 16px',
+                  }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, marginBottom: 8, color: 'var(--color-text-secondary)' }}>
+                      ✈ Aircraft (pending approval)
                     </div>
-
-                    <div className={styles.aircraftRow}>
-                      <div className="field">
-                        <label htmlFor="variant" className="label">
-                          Variant
-                        </label>
-                        <SearchableSelect
-                          options={filteredVariants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
-                          value={selectedVariantId}
-                          onChange={(id) => setSelectedVariantId(id)}
-                          placeholder="Search variant…"
-                        />
-                      </div>
-
-                      <div className="field">
-                        <label htmlFor="operatorType" className="label">
-                          Operator Type
-                        </label>
-                        <select
-                          id="operatorType"
-                          className="input"
-                          value={operatorType}
-                          onChange={(e) => setOperatorType(e.target.value)}
-                        >
-                          <option value="">Select type…</option>
-                          <option value="airline">Airline</option>
-                          <option value="general_aviation">General Aviation</option>
-                          <option value="military">Military</option>
-                          <option value="government">Government</option>
-                          <option value="cargo">Cargo</option>
-                          <option value="charter">Charter</option>
-                          <option value="private">Private</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className={styles.aircraftRow}>
-                      <div className="field">
-                        <label htmlFor="msn" className="label">
-                          MSN / Serial Number
-                        </label>
-                        <input
-                          id="msn"
-                          type="text"
-                          className="input"
-                          value={msn}
-                          onChange={(e) => setMsn(e.target.value)}
-                          placeholder="e.g. 12345"
-                        />
-                      </div>
-
-                      <div className="field">
-                        <label htmlFor="manufacturingDate" className="label">
-                          Manufacturing Date
-                        </label>
-                        <input
-                          id="manufacturingDate"
-                          type="date"
-                          className="input"
-                          value={manufacturingDate}
-                          onChange={(e) => setManufacturingDate(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="field">
-                        <label htmlFor="airlineRef" className="label">
-                          Airline
-                        </label>
-                        <SearchableSelect
-                          options={airlines.map((a: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null }) => ({
-                            id: a.icaoCode,
-                            label: `${a.name} (${a.icaoCode}${a.iataCode ? `/${a.iataCode}` : ''})`,
-                          }))}
-                          value={selectedAirlineId}
-                          onChange={(id) => setSelectedAirlineId(id)}
-                          placeholder="Search airline…"
-                        />
-                      </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, fontSize: '0.875rem' }}>
+                      {selectedManufacturerId && (() => {
+                        const m = manufacturers.find((m: { id: string }) => m.id === selectedManufacturerId);
+                        return m ? <div><span style={{ color: 'var(--color-text-muted)' }}>Manufacturer</span><br/>{m.name}</div> : null;
+                      })()}
+                      {selectedFamilyId && (() => {
+                        const f = allFamilies.find((f: { id: string }) => f.id === selectedFamilyId);
+                        return f ? <div><span style={{ color: 'var(--color-text-muted)' }}>Family</span><br/>{f.name}</div> : null;
+                      })()}
+                      {selectedVariantId && (() => {
+                        const v = allVariants.find((v: { id: string }) => v.id === selectedVariantId);
+                        return v ? <div><span style={{ color: 'var(--color-text-muted)' }}>Variant</span><br/>{v.name}</div> : null;
+                      })()}
+                      {operatorType && <div><span style={{ color: 'var(--color-text-muted)' }}>Operator Type</span><br/>{operatorType.replace(/_/g, ' ')}</div>}
+                      {msn && <div><span style={{ color: 'var(--color-text-muted)' }}>MSN</span><br/>{msn}</div>}
+                      {manufacturingDate && <div><span style={{ color: 'var(--color-text-muted)' }}>Built</span><br/>{manufacturingDate}</div>}
+                      {airlineDisplay && <div><span style={{ color: 'var(--color-text-muted)' }}>Airline</span><br/>{airlineDisplay}</div>}
                     </div>
                   </div>
-                </details>
+                )}
+
+                {!aircraftLocked && (
+                  <div style={{
+                    background: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 8,
+                    padding: '12px 16px',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                  }}>
+                    Enter a registration above — select an existing aircraft or create a new one
+                  </div>
+                )}
 
                 <div className="field">
                   <label htmlFor="takenAt" className="label">
@@ -1100,6 +1075,284 @@ export default function UploadPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* New Aircraft Modal */}
+      {showNewAircraftModal && (
+        <NewAircraftModal
+          registration={registrationSearch}
+          manufacturers={manufacturers}
+          allFamilies={allFamilies}
+          allVariants={allVariants}
+          airlines={airlines}
+          onClose={() => setShowNewAircraftModal(false)}
+          onCreated={handleNewAircraftCreated}
+          createPendingAircraft={createPendingAircraft}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── New Aircraft Modal ────────────────────────────────────────────────────────
+
+function NewAircraftModal({
+  registration,
+  manufacturers,
+  allFamilies,
+  allVariants,
+  airlines,
+  onClose,
+  onCreated,
+  createPendingAircraft,
+}: {
+  registration: string;
+  manufacturers: Array<{ id: string; name: string }>;
+  allFamilies: Array<{ id: string; name: string; label: string; manufacturer: { id: string } }>;
+  allVariants: Array<{ id: string; name: string; label: string; family: { id: string } }>;
+  airlines: Array<{ id: string; name: string; icaoCode: string; iataCode: string | null }>;
+  onClose: () => void;
+  onCreated: (data: {
+    id: string;
+    registration: string;
+    manufacturerId?: string;
+    familyId?: string;
+    variantId?: string;
+    operatorType?: string;
+    msn?: string;
+    manufacturingDate?: string;
+    airlineId?: string;
+    airlineName?: string;
+  }) => void;
+  createPendingAircraft: ReturnType<typeof useMutation<any, any>>[1];
+}) {
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState('');
+  const [selectedFamilyId, setSelectedFamilyId] = useState('');
+  const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [selectedAirlineId, setSelectedAirlineId] = useState('');
+  const [airlineDisplay, setAirlineDisplay] = useState('');
+  const [operatorType, setOperatorType] = useState('');
+  const [msn, setMsn] = useState('');
+  const [manufacturingDate, setManufacturingDate] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const filteredFamilies = useMemo(
+    () => (selectedManufacturerId
+      ? allFamilies.filter((f) => f.manufacturer?.id === selectedManufacturerId)
+      : allFamilies),
+    [selectedManufacturerId, allFamilies],
+  );
+
+  const filteredVariants = useMemo(
+    () => (selectedFamilyId
+      ? allVariants.filter((v) => v.family?.id === selectedFamilyId)
+      : allVariants),
+    [selectedFamilyId, allVariants],
+  );
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const input: Record<string, unknown> = {
+      registration: registration.toUpperCase(),
+    };
+    if (selectedManufacturerId) input.manufacturerId = selectedManufacturerId;
+    if (selectedFamilyId) input.familyId = selectedFamilyId;
+    if (selectedVariantId) input.variantId = selectedVariantId;
+    if (selectedAirlineId) input.airlineId = selectedAirlineId;
+    if (operatorType) input.operatorType = operatorType;
+    if (msn) input.msn = msn;
+    if (manufacturingDate) input.manufacturingDate = manufacturingDate;
+
+    setSubmitting(true);
+    const result = await createPendingAircraft({ input });
+    setSubmitting(false);
+
+    if (result.error) {
+      setError(result.error.graphQLErrors[0]?.message ?? 'Failed to create aircraft');
+      return;
+    }
+
+    const aircraft = result.data?.createPendingAircraft;
+    if (!aircraft) {
+      setError('Failed to create aircraft');
+      return;
+    }
+
+    const airline = airlines.find((a: { icaoCode: string }) => a.icaoCode === selectedAirlineId);
+    onCreated({
+      id: aircraft.id,
+      registration: aircraft.registration,
+      manufacturerId: selectedManufacturerId || undefined,
+      familyId: selectedFamilyId || undefined,
+      variantId: selectedVariantId || undefined,
+      operatorType: operatorType || undefined,
+      msn: msn || undefined,
+      manufacturingDate: manufacturingDate || undefined,
+      airlineId: selectedAirlineId || undefined,
+      airlineName: airlineDisplay || undefined,
+    });
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 200,
+        padding: 16,
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 24,
+          width: '100%',
+          maxWidth: 520,
+          maxHeight: '90vh',
+          overflow: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Add New Aircraft</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--color-text-muted)' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Registration *</label>
+            <input
+              type="text"
+              className="input"
+              value={registration}
+              disabled
+              style={{ width: '100%', textTransform: 'uppercase' }}
+            />
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+              This aircraft will be submitted for admin approval before becoming active
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturer</label>
+              <SearchableSelect
+                options={manufacturers.map((m: { id: string; name: string }) => ({ id: m.id, label: m.name }))}
+                value={selectedManufacturerId}
+                onChange={(id) => { setSelectedManufacturerId(id); setSelectedFamilyId(''); setSelectedVariantId(''); }}
+                placeholder="Search…"
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Family</label>
+              <SearchableSelect
+                options={filteredFamilies.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
+                value={selectedFamilyId}
+                onChange={(id) => { setSelectedFamilyId(id); setSelectedVariantId(''); }}
+                placeholder="Search…"
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Variant</label>
+              <SearchableSelect
+                options={filteredVariants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
+                value={selectedVariantId}
+                onChange={(id) => setSelectedVariantId(id)}
+                placeholder="Search…"
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Operator Type</label>
+              <select
+                className="input"
+                value={operatorType}
+                onChange={(e) => setOperatorType(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select type…</option>
+                <option value="airline">Airline</option>
+                <option value="general_aviation">General Aviation</option>
+                <option value="military">Military</option>
+                <option value="government">Government</option>
+                <option value="cargo">Cargo</option>
+                <option value="charter">Charter</option>
+                <option value="private">Private</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>MSN / Serial Number</label>
+              <input
+                type="text"
+                className="input"
+                value={msn}
+                onChange={(e) => setMsn(e.target.value)}
+                placeholder="e.g. 12345"
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturing Date</label>
+              <input
+                type="date"
+                className="input"
+                value={manufacturingDate}
+                onChange={(e) => setManufacturingDate(e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Airline</label>
+            <SearchableSelect
+              options={airlines.map((a: { icaoCode: string; name: string; iataCode: string | null }) => ({
+                id: a.icaoCode,
+                label: `${a.name} (${a.icaoCode}${a.iataCode ? `/${a.iataCode}` : ''})`,
+              }))}
+              value={selectedAirlineId}
+              onChange={(id) => {
+                setSelectedAirlineId(id);
+                const airline = airlines.find((a: { icaoCode: string }) => a.icaoCode === id);
+                if (airline) setAirlineDisplay(`${airline.name} (${[airline.iataCode, airline.icaoCode].filter(Boolean).join('/')})`);
+              }}
+              placeholder="Search airline…"
+            />
+          </div>
+
+          {error && (
+            <p style={{ color: '#f87171', fontSize: '0.875rem', marginBottom: 12 }}>{error}</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Creating…' : 'Add Aircraft'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
