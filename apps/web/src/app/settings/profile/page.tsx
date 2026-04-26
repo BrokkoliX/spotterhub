@@ -48,7 +48,6 @@ function inputToArray(str: string): string[] {
 }
 
 const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
-const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -159,7 +158,7 @@ export default function ProfileSettingsPage() {
         }
 
         // 3. Construct object URL and save
-        const objectUrl = `${S3_IMAGES_HOST}/${S3_BUCKET}/${key}`;
+        const objectUrl = `${S3_IMAGES_HOST}/${key}`;
         const avatarResult = await executeUpdateAvatar({ avatarUrl: objectUrl });
         if (avatarResult.error) {
           throw new Error(avatarResult.error.graphQLErrors?.[0]?.message ?? 'Failed to update avatar');

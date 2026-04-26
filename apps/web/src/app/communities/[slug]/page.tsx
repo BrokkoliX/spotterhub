@@ -36,8 +36,10 @@ const CLOUDFRONT_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur4
 
 function fixLocalhostUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  // Replace localhost URLs with the configured CDN host
-  return url.replace(/^http:\/\/localhost:4566\//, `${CLOUDFRONT_HOST}/`);
+  // Replace localhost URLs with the configured CDN host, stripping the bucket name
+  // LocalStack URLs look like: http://localhost:4566/bucket-name/key
+  // CloudFront URLs look like: https://host/key (no bucket name)
+  return url.replace(/^http:\/\/localhost:4566\/[^/]+\//, `${CLOUDFRONT_HOST}/`);
 }
 
 function formatRelativeTime(iso: string): string {
@@ -143,10 +145,8 @@ export default function CommunityPage() {
         alert('Banner upload failed');
         return;
       }
-      // Save the S3 object URL as the banner
-      const CLOUDFRONT_HOST = 'https://d2ur47prd8ljwz.cloudfront.net';
-      const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
-      const bannerUrl = `${CLOUDFRONT_HOST}/${S3_BUCKET}/${key}`;
+      // Save the S3 object URL as the banner (CloudFront URL, no bucket name in path)
+      const bannerUrl = `${CLOUDFRONT_HOST}/${key}`;
       await updateCommunity({
         id: community.id,
         input: { bannerUrl, avatarUrl: community.avatarUrl ?? null },
@@ -279,9 +279,7 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              const CLOUDFRONT_HOST = 'https://d2ur47prd8ljwz.cloudfront.net';
-              const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
-              return `${CLOUDFRONT_HOST}/${S3_BUCKET}/${key}`;
+              return `${CLOUDFRONT_HOST}/${key}`;
             }}
             onAvatarUpload={async (file: File) => {
               const urlResult = await getUploadUrl({
@@ -297,9 +295,7 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              const CLOUDFRONT_HOST = 'https://d2ur47prd8ljwz.cloudfront.net';
-              const S3_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET ?? 'spotterspace-photos';
-              return `${CLOUDFRONT_HOST}/${S3_BUCKET}/${key}`;
+              return `${CLOUDFRONT_HOST}/${key}`;
             }}
             onDelete={async () => {
               if (
