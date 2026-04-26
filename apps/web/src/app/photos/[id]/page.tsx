@@ -216,6 +216,13 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Operator</span>
                     <span className={styles.metaValue}>{photo.operatorIcao}</span>
+                    {user && (
+                      <TopicFollowButton
+                        targetType="airline"
+                        value={photo.operatorIcao}
+                        initialIsFollowing={false}
+                      />
+                    )}
                   </li>
                 )}
                 {!photo.aircraft && photo.operatorType && (
