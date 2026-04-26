@@ -149,6 +149,11 @@ enum OperatorType {
   private
 }
 
+enum AircraftStatus {
+  active
+  pending_approval
+}
+
 enum OrderStatus {
   pending
   completed
@@ -477,6 +482,7 @@ model Aircraft {
   variantId          String?      @map("variant_id") @db.Uuid
   operatorType       OperatorType? @map("operator_type")
   airlineId          String?      @map("airline_id") @db.Uuid
+  status             AircraftStatus @default(active) @map("status")
   createdAt          DateTime    @default(now()) @map("created_at")
   updatedAt          DateTime    @updatedAt @map("updated_at")
 

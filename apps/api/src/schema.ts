@@ -784,6 +784,25 @@ export const typeDefs = gql`
     """
     upsertAircraft(input: CreateAircraftInput!): Aircraft!
 
+    """
+    Submit a new aircraft for approval. Any authenticated user can submit
+    a registration that doesn't exist yet. The aircraft starts in PENDING_APPROVAL
+    status and must be approved by an admin/moderator before it becomes active.
+    """
+    createPendingAircraft(input: CreateAircraftInput!): Aircraft!
+
+    """
+    Approve a pending aircraft. Only admin, moderator, or superuser can approve.
+    Once approved, the aircraft becomes active and can be linked to photos.
+    """
+    approveAircraft(id: ID!): Aircraft!
+
+    """
+    Reject a pending aircraft. Only admin or superuser can reject.
+    The aircraft record is deleted.
+    """
+    rejectAircraft(id: ID!): Boolean!
+
     # ─── Admin Mutations ───────────────────────────────────────────────────
 
     """
@@ -2251,7 +2270,16 @@ export const typeDefs = gql`
     Linked airline record.
     """
     airlineRef: Airline
+    """
+    Status: ACTIVE or PENDING_APPROVAL.
+    """
+    status: AircraftStatus!
     isFollowedByMe: Boolean!
+  }
+
+  enum AircraftStatus {
+    ACTIVE
+    PENDING_APPROVAL
   }
 
   input CreateAircraftInput {
