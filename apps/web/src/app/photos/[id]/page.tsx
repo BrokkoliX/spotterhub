@@ -383,6 +383,112 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Aircraft Info */}
             {photo.aircraft && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>✈️ Aircraft</h3>
+                <ul className={styles.metaList}>
+                  {photo.aircraft.registration && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Registration</span>
+                      <span className={styles.metaValue}>{photo.aircraft.registration}</span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="registration"
+                          value={photo.aircraft.registration}
+                          initialIsFollowing={photo.aircraft.isFollowedByMe ?? false}
+                        />
+                      )}
+                    </li>
+                  )}
+                  {photo.aircraft.manufacturer && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Manufacturer</span>
+                      <span className={styles.metaValue}>{photo.aircraft.manufacturer.name}</span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="manufacturer"
+                          value={photo.aircraft.manufacturer.name}
+                          initialIsFollowing={photo.aircraft.manufacturer.isFollowedByMe ?? false}
+                        />
+                      )}
+                    </li>
+                  )}
+                  {photo.aircraft.family && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Family</span>
+                      <span className={styles.metaValue}>{photo.aircraft.family.name}</span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="family"
+                          value={photo.aircraft.family.name}
+                          initialIsFollowing={photo.aircraft.family.isFollowedByMe ?? false}
+                        />
+                      )}
+                    </li>
+                  )}
+                  {photo.aircraft.variant && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Variant</span>
+                      <span className={styles.metaValue}>
+                        {photo.aircraft.variant.name}
+                        {photo.aircraft.variant.iataCode || photo.aircraft.variant.icaoCode
+                          ? ` (${[photo.aircraft.variant.iataCode, photo.aircraft.variant.icaoCode].filter(Boolean).join('/')})`
+                          : null}
+                      </span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="variant"
+                          value={photo.aircraft.variant.name}
+                          initialIsFollowing={photo.aircraft.variant.isFollowedByMe ?? false}
+                        />
+                      )}
+                    </li>
+                  )}
+                  {(photo.aircraft.msn ?? photo.msn) && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>MSN</span>
+                      <span className={styles.metaValue}>{photo.aircraft.msn ?? photo.msn}</span>
+                    </li>
+                  )}
+                  {(photo.aircraft.manufacturingDate ?? photo.manufacturingDate) && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Built</span>
+                      <span className={styles.metaValue}>
+                        {new Date(photo.aircraft.manufacturingDate ?? photo.manufacturingDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                        })}
+                      </span>
+                    </li>
+                  )}
+                  {(photo.aircraft.operatorType ?? photo.operatorType) && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Operator Type</span>
+                      <span className={styles.metaValue}>
+                        {(photo.aircraft.operatorType ?? photo.operatorType ?? '')
+                          .toLowerCase()
+                          .replace(/_/g, ' ')
+                          .replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                      </span>
+                    </li>
+                  )}
+                  {photo.aircraft.airlineRef && (
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Airline</span>
+                      <span className={styles.metaValue}>
+                        {photo.aircraft.airlineRef.name}
+                        {photo.aircraft.airlineRef.iataCode || photo.aircraft.airlineRef.icaoCode
+                          ? ` (${[photo.aircraft.airlineRef.iataCode, photo.aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`
+                          : null}
+                      </span>
+                      {user && photo.aircraft.airlineRef.icaoCode && (
+                        <TopicFollowButton
+                          targetType="airline"
+                          value={photo.aircraft.airlineRef.icaoCode}
+                          initialIsFollowing={photo.aircraft.airlineRef.isFollowedByMe ?? false}
+                        />
+                      )}
+                    </li>
+                  )}
                 </ul>
               </div>
             )}
