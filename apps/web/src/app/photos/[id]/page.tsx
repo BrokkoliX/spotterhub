@@ -253,7 +253,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     </span>
                   </li>
                 )}
-                {photo.airline && (
+                {!photo.aircraft && photo.airline && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Airline</span>
                     <span className={styles.metaValue}>{photo.airline}</span>
@@ -266,7 +266,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </li>
                 )}
-                {photo.airportCode && (
+                {!photo.aircraft && photo.airportCode && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Airport</span>
                     <span className={styles.metaValue}>{photo.airportCode}</span>
@@ -279,74 +279,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </li>
                 )}
-                {photo.operatorIcao && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Operator</span>
-                    <span className={styles.metaValue}>{photo.operatorIcao}</span>
-                    {user && (
-                      <TopicFollowButton
-                        targetType="airline"
-                        value={photo.operatorIcao}
-                        initialIsFollowing={false}
-                      />
-                    )}
-                  </li>
-                )}
-                {photo.operatorType && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Operator Type</span>
-                    <span className={styles.metaValue}>
-                      {photo.operatorType
-                        .toLowerCase()
-                        .replace(/_/g, ' ')
-                        .replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                    </span>
-                  </li>
-                )}
-                {photo.msn && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>MSN</span>
-                    <span className={styles.metaValue}>{photo.msn}</span>
-                  </li>
-                )}
-                {photo.manufacturingDate && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Built</span>
-                    <span className={styles.metaValue}>
-                      {new Date(photo.manufacturingDate).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                      })}
-                    </span>
-                  </li>
-                )}
-                {photo.airline && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Airline</span>
-                    <span className={styles.metaValue}>{photo.airline}</span>
-                    {user && (
-                      <TopicFollowButton
-                        targetType="airline"
-                        value={photo.airline}
-                        initialIsFollowing={false}
-                      />
-                    )}
-                  </li>
-                )}
-                {photo.airportCode && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Airport</span>
-                    <span className={styles.metaValue}>{photo.airportCode}</span>
-                    {user && (
-                      <TopicFollowButton
-                        targetType="airport"
-                        value={photo.airportCode}
-                        initialIsFollowing={false}
-                      />
-                    )}
-                  </li>
-                )}
-                {photo.takenAt && (
+                {!photo.aircraft && photo.takenAt && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Taken</span>
                     <span className={styles.metaValue}>
@@ -354,13 +287,13 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     </span>
                   </li>
                 )}
-                {photo.photoCategory && (
+                {!photo.aircraft && photo.photoCategory && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Category</span>
                     <span className={styles.metaValue}>{photo.photoCategory.label}</span>
                   </li>
                 )}
-                {photo.aircraftSpecificCategory && (
+                {!photo.aircraft && photo.aircraftSpecificCategory && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Aircraft Type</span>
                     <span className={styles.metaValue}>{photo.aircraftSpecificCategory.label}</span>
