@@ -932,7 +932,7 @@ export const communityFieldResolvers = {
     };
   },
 
-  // Photos from community members
+  // Photos in community albums
   photos: async (
     parent: CommunityParent,
     args: { first?: number; after?: string },
@@ -940,46 +940,14 @@ export const communityFieldResolvers = {
   ) => {
     const take = Math.min(args.first ?? 20, 50);
 
-    // Superuser sees all photos regardless of membership
-    const dbUser = await getDbUser(ctx);
-    const isSuperuser = dbUser.role === 'superuser';
-
-    if (isSuperuser) {
-      // Superuser: bypass membership filter, show all approved photos
-      const where: Record<string, unknown> = {
-        moderationStatus: 'approved',
-      };
-      if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
-
-      const [items, totalCount] = await Promise.all([
-        ctx.prisma.photo.findMany({
-          where,
-          orderBy: { createdAt: 'desc' },
-          take: take + 1,
-        }),
-        ctx.prisma.photo.count({ where }),
-      ]);
-
-      const hasNextPage = items.length > take;
-      const edges = items.slice(0, take).map((p) => ({
-        cursor: encodeCursor(p.createdAt),
-        node: p,
-      }));
-      return {
-        edges,
-        pageInfo: { hasNextPage, endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null },
-        totalCount,
-      };
-    }
-
-    // Get all active member user IDs
-    const memberUserIds = await ctx.prisma.communityMember.findMany({
-      where: { communityId: parent.id, status: 'active' },
-      select: { userId: true },
+    // Get all album IDs for this community
+    const communityAlbumIds = await ctx.prisma.album.findMany({
+      where: { communityId: parent.id },
+      select: { id: true },
     });
+    const albumIds = communityAlbumIds.map((a) => a.id);
 
-    const userIds = memberUserIds.map((m) => m.userId);
-    if (userIds.length === 0) {
+    if (albumIds.length === 0) {
       return {
         edges: [],
         pageInfo: { hasNextPage: false, endCursor: null },
@@ -987,29 +955,32 @@ export const communityFieldResolvers = {
       };
     }
 
+    // Get album photo entries for these albums, ordered by addedAt desc
     const where: Record<string, unknown> = {
-      userId: { in: userIds },
-      moderationStatus: 'approved',
+      albumId: { in: albumIds },
     };
-
     if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+      where.addedAt = { lt: decodeCursor(args.after) };
     }
 
-    const [items, totalCount] = await Promise.all([
-      ctx.prisma.photo.findMany({
+    const [albumPhotos, totalCount] = await Promise.all([
+      ctx.prisma.albumPhoto.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { addedAt: 'desc' },
         take: take + 1,
-        include: { user: true, variants: true, tags: true },
+        include: {
+          photo: {
+            include: { user: true, variants: true, tags: true },
+          },
+        },
       }),
-      ctx.prisma.photo.count({ where }),
+      ctx.prisma.albumPhoto.count({ where }),
     ]);
 
-    const hasNextPage = items.length > take;
-    const edges = items.slice(0, take).map((p) => ({
-      cursor: encodeCursor(p.createdAt),
-      node: p,
+    const hasNextPage = albumPhotos.length > take;
+    const edges = albumPhotos.slice(0, take).map((ap) => ({
+      cursor: encodeCursor(ap.addedAt),
+      node: ap.photo,
     }));
 
     return {
