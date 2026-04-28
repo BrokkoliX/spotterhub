@@ -184,7 +184,7 @@
 - Performance load testing
 - Redis (ElastiCache) — currently no caching layer
 - OpenSearch — search currently uses PostgreSQL full-text
-- Full-res photo variant generation (watermarked variant generated, but full_res variant not yet)
+- Full-res photo variant generation (thumbnail, display, and watermarked variants work; full_res variant not yet generated)
 
 ---
 
@@ -223,6 +223,10 @@ npx turbo run generate --filter=@spotterspace/db
 - **ECS Fargate migration:** Previously used App Runner. Migrated to ECS Fargate + ALB to fix ALB health check timeout issues (ECS services need `loadBalancers` config to register with ALB target groups).
 - **Explore page:** The `/explore` page replaced the separate `/discover` and `/following` pages. It shows "Your Following" sections at the top of each tab and "Browse All" below.
 - **Follow system:** Supports airline, registration, manufacturer, family, variant, aircraft_type target types. `isFollowedByMe` is exposed on all topic types.
+- **Sharp image processing (production fix):** ESM dynamic `import('sharp')` was returning a module object instead of the Sharp function. Fixed with `mod.default ?? mod` to unwrap correctly. Docker image explicitly installs `@img/sharp-linuxmusl-arm64` and `@img/sharp-linuxmusl-x64` after `npm prune` to ensure native binaries survive the prune step.
+- **Watermark rendering:** Docker image installs `font-noto` and `fontconfig` packages so Sharp's SVG composite can render text. When `watermarkEnabled` is true during upload, a "© SpotterSpace" watermark is composited onto the display-size image in the bottom-right corner using Sharp's SVG overlay.
+- **`regeneratePhotoVariants` mutation:** Allows photo owners and admins to re-trigger variant generation (thumbnail, display, watermarked) for existing photos. Useful after fixing processing bugs or changing watermark logic.
+- **Frontend watermark preference:** `PhotoCard.tsx` and `photos/[id]/page.tsx` prefer the `watermarked` variant over `display` when `watermarkEnabled` is true on the photo.
 
 ---
 

@@ -19,7 +19,7 @@ SpotterHub is a community platform for aviation photographers and plane spotters
 |---------|-------------|
 | **Auth** | Email/password signup and sign-in. Mock JWT auth in dev; AWS Cognito in production. |
 | **Profiles** | Display name, bio, gear, experience level, interests, favorite aircraft and airports. |
-| **Photo Upload** | Drag-and-drop upload with aircraft type, airline, airport, caption, tags, date, location (EXIF GPS or manual pin). Privacy modes: exact / approximate (±500m) / hidden. |
+| **Photo Upload** | Drag-and-drop upload with aircraft type, airline, airport, caption, tags, date, location (EXIF GPS or manual pin). Privacy modes: exact / approximate (±500m) / hidden. License selection (All Rights Reserved, CC BY variants). Optional watermark toggle — when enabled, a "© SpotterSpace" overlay is composited onto the display variant via Sharp SVG composite. |
 | **Photo Feed** | Paginated home feed of recent approved photos. |
 | **Photo Detail** | Full photo with metadata, map pin, comments, likes, related aircraft photos. |
 | **Albums** | Personal albums with cover photo selection. Add/remove photos. |
@@ -120,6 +120,12 @@ Production superuser: `robi_sz@yahoo.com` / `Jerusalem!25`
 - Auth: Bearer JWT in `Authorization` header (mock JWT in dev, production uses same flow with real tokens)
 - Migrations: run automatically on API container startup via `prisma migrate deploy` (idempotent)
 
+### API Mutations (Notable)
+
+| Mutation | Description |
+|----------|-------------|
+| `regeneratePhotoVariants(photoId: ID!): Photo!` | Re-triggers variant generation (thumbnail, display, watermarked) for an existing photo. Accessible to the photo owner and admins. Useful after processing bug fixes or watermark logic changes. |
+
 ---
 
 ## Database
@@ -128,7 +134,7 @@ Production superuser: `robi_sz@yahoo.com` / `Jerusalem!25`
 
 - **User** — cognitoSub, email, username, role, status, emailVerified
 - **Profile** — userId, displayName, bio, avatarUrl, locationRegion, experienceLevel, gear, interests, favoriteAircraft, favoriteAirports
-- **Photo** — userId, albumId (nullable), caption, airline, airportCode, takenAt, originalUrl, moderationStatus, likeCount, commentCount, msn, manufacturingDate, aircraftId, photographerName, gearBody, gearLens
+- **Photo** — userId, albumId (nullable), caption, airline, airportCode, takenAt, originalUrl, moderationStatus, likeCount, commentCount, msn, manufacturingDate, aircraftId, photographerName, gearBody, gearLens, watermarkEnabled
 - **PhotoVariant** — photoId, variantType, url, width, height, fileSizeBytes
 - **Album** — userId, communityId (nullable), title, description, coverPhotoId, isPublic
 - **AlbumPhoto** — albumId, photoId, addedAt (junction table for community albums)
