@@ -10,6 +10,11 @@ COPY . .
 # Using --ignore-scripts to skip husky install (no git repo in Docker)
 RUN npm install --workspaces --ignore-scripts
 
+# sharp requires platform-specific native binaries that are installed via its
+# postinstall script — which --ignore-scripts skips. Re-run sharp's install
+# to fetch the correct binaries for Alpine (linuxmusl-x64).
+RUN cd node_modules/sharp && npm run install
+
 # Generate Prisma client (binary targets are set in schema.prisma)
 RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema packages/db/prisma/schema.prisma
 
