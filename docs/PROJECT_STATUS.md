@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-25
+> **Last updated:** 2026-04-29
 > **Purpose:** Living document tracking implemented features and operational notes. See `PRODUCT.md` for current product overview.
 
 ---
@@ -144,6 +144,7 @@
 - [x] `/admin/airports` — airport management
 - [x] `/admin/pending-list-items` — pending aircraft types/variants/manufacturers/categories
 - [x] `/settings/site` — custom banner and tagline
+- [x] Admin/moderator soft-delete + hard-delete for photos, albums, forum threads, forum posts, comments (requires role + reason logged to moderation audit)
 
 ### Aircraft Taxonomy
 

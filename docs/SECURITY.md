@@ -18,13 +18,14 @@
 
 Users have one of four roles: `user`, `moderator`, `admin`, `superuser`.
 
-| Endpoint                                                | Protection                           |
-| ------------------------------------------------------- | ------------------------------------ |
-| Public queries (photos, airports, search)               | No auth required                     |
-| Auth mutations (like, comment, follow)                  | JWT required                         |
-| Admin queries (adminStats, adminUsers)                  | `moderator` or `admin` role required |
-| Admin mutations (ban, delete, update roles)             | `admin` or `superuser` role required |
-| Superuser-only (delete superuser, promote to superuser) | `superuser` role required            |
+| Endpoint                                                                           | Protection                                                                                |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Public queries (photos, airports, search)                                          | No auth required                                                                          |
+| Auth mutations (like, comment, follow)                                             | JWT required                                                                              |
+| Admin queries (adminStats, adminUsers)                                             | `moderator` or `admin` role required                                                      |
+| Admin mutations (ban, delete content, update roles)                                | `admin` or `superuser` role required                                                      |
+| Soft-delete / hard-delete content (photos, albums, forum threads, posts, comments) | `admin`, `moderator`, or `superuser` — reason required, action logged to moderation audit |
+| Superuser-only (delete superuser, promote to superuser)                            | `superuser` role required                                                                 |
 
 ### Auth Middleware
 
@@ -199,7 +200,7 @@ This keeps ECS tasks warm and prevents cold starts. Cost: ~$0.50/month.
 2. **No content sanitization** — XSS is mitigated by React's default escaping but not actively prevented server-side
 3. **No AWS Cognito** — auth is mocked JWT; in production, integrate with Cognito for proper identity management
 4. **No Redis/ElastiCache** — session data not cached; no rate limit state sharing across instances
-5. **No audit logging** — sensitive admin actions are not independently logged
+5. Moderation audit logs exist for soft/hard deletes and community actions but not for all sensitive admin operations (e.g., role changes, bulk operations)
 
 ---
 
