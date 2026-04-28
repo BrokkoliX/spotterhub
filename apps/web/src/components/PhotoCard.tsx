@@ -47,6 +47,7 @@ export interface PhotoData {
     variant?: { id?: string; name: string; iataCode?: string | null; icaoCode?: string | null; isFollowedByMe?: boolean } | null;
     operatorType?: string | null;
   } | null;
+  watermarkEnabled?: boolean | null;
   listing?: {
     id: string;
     priceUsd: string;
@@ -65,6 +66,9 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
   const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
 
+  const watermarkedVariant = photo.watermarkEnabled
+    ? photo.variants.find((v) => v.variantType === 'watermarked')
+    : undefined;
   const displayVariant = photo.variants.find(
     (v) => v.variantType === 'display',
   );
@@ -72,7 +76,7 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
     (v) => v.variantType === 'thumbnail',
   );
   const imageUrl =
-    displayVariant?.url ?? thumbnailVariant?.url ?? photo.originalUrl;
+    watermarkedVariant?.url ?? displayVariant?.url ?? thumbnailVariant?.url ?? photo.originalUrl;
   const displayName =
     photo.user.profile?.displayName ?? photo.user.username;
 

@@ -3423,7 +3423,6 @@ export const CREATE_OR_UPDATE_LISTING = gql`
   mutation CreateOrUpdateListing($input: CreateOrUpdateListingInput!) {
     createOrUpdateListing(input: $input) {
       id
-      photoId
       priceUsd
       active
       createdAt

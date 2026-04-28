@@ -76,8 +76,11 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
 
   const photo = data.photo;
   const exif = photo.exifData as Record<string, unknown> | null;
+  const watermarkedVariant = photo.watermarkEnabled
+    ? photo.variants.find((v: PhotoVariant) => v.variantType === 'watermarked')
+    : undefined;
   const displayVariant = photo.variants.find((v: PhotoVariant) => v.variantType === 'display');
-  const imageUrl = displayVariant?.url ?? photo.originalUrl;
+  const imageUrl = watermarkedVariant?.url ?? displayVariant?.url ?? photo.originalUrl;
   const displayName = photo.user.profile?.displayName ?? photo.user.username;
   const uploadDate = new Date(photo.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',

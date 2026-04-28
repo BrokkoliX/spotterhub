@@ -9,3 +9,5 @@ generates:
     config:
       urqlImportFrom: urql
       skipTypename: false
+      silent: true
+      overwrite: true
