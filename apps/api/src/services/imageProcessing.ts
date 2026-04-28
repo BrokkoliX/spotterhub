@@ -174,12 +174,16 @@ async function generateWatermarked(buffer: Buffer): Promise<{ buffer: Buffer; wi
   const height = metadata.height ?? 1080;
 
   // Create SVG watermark text overlay
+  const svgHeight = Math.min(Math.floor(height * 0.1), 80);
+  const fontSize = Math.max(Math.floor(width * 0.02), 18);
+  const textX = Math.floor(width * 0.02);
+  const textY = Math.floor(svgHeight * 0.7); // position relative to SVG height, not image height
   const svg = Buffer.from(
-    `<svg width="${width}" height="${Math.min(Math.floor(height * 0.1), 80)}">
+    `<svg width="${width}" height="${svgHeight}">
       <style>
-        .w { fill: white; font-size: ${Math.max(Math.floor(width * 0.02), 18)}px; font-family: Arial, sans-serif; opacity: 0.5; }
+        .w { fill: white; font-size: ${fontSize}px; font-family: Arial, sans-serif; opacity: 0.5; }
       </style>
-      <text x="${Math.floor(width * 0.02)}" y="${Math.floor(height * 0.08)}" class="w">© SpotterSpace</text>
+      <text x="${textX}" y="${textY}" class="w">© SpotterSpace</text>
     </svg>`,
   );
 
