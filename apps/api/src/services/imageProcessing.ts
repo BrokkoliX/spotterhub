@@ -174,17 +174,32 @@ async function generateWatermarked(buffer: Buffer): Promise<{ buffer: Buffer; wi
   const width = metadata.width ?? 1920;
   const height = metadata.height ?? 1080;
 
-  // Create SVG watermark text overlay
-  const svgHeight = Math.min(Math.floor(height * 0.1), 80);
-  const fontSize = Math.max(Math.floor(width * 0.02), 18);
-  const textX = Math.floor(width * 0.02);
-  const textY = Math.floor(svgHeight * 0.7); // position relative to SVG height, not image height
+  // Create a full-image SVG watermark with repeating diagonal text
+  const fontSize = Math.max(Math.floor(width * 0.04), 32);
+  const spacingX = Math.floor(width * 0.35);
+  const spacingY = Math.floor(height * 0.25);
+
+  let textElements = '';
+  for (let y = spacingY / 2; y < height; y += spacingY) {
+    for (let x = -spacingX / 2; x < width + spacingX; x += spacingX) {
+      textElements += `<text x="${Math.floor(x)}" y="${Math.floor(y)}" class="w">© SpotterSpace</text>\n`;
+    }
+  }
+
   const svg = Buffer.from(
-    `<svg width="${width}" height="${svgHeight}">
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <style>
-        .w { fill: white; font-size: ${fontSize}px; font-family: Arial, sans-serif; opacity: 0.5; }
+        .w {
+          fill: white;
+          font-size: ${fontSize}px;
+          font-family: Arial, Helvetica, sans-serif;
+          font-weight: bold;
+          opacity: 0.3;
+        }
       </style>
-      <text x="${textX}" y="${textY}" class="w">© SpotterSpace</text>
+      <g transform="rotate(-30, ${Math.floor(width / 2)}, ${Math.floor(height / 2)})">
+        ${textElements}
+      </g>
     </svg>`,
   );
 
