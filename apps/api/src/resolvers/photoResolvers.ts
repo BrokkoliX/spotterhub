@@ -122,19 +122,45 @@ export interface PhotoParent {
   operatorType?: string | null;
   msn?: string | null;
   manufacturingDate?: string | null;
+  isDeleted?: boolean;
+}
+
+// ─── Privacy Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Returns a Prisma filter to exclude soft-deleted records for non-privileged users.
+ * Admin, moderator, and superuser see all content.
+ */
+async function deletedFilter(ctx: Context): Promise<Record<string, unknown>> {
+  try {
+    const authUser = requireAuth(ctx);
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: authUser.sub },
+      select: { role: true },
+    });
+    if (dbUser && ['admin', 'moderator', 'superuser'].includes(dbUser.role)) {
+      return {};
+    }
+  } catch {
+    // Not authenticated
+  }
+  return { isDeleted: false };
 }
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const photoQueryResolvers = {
   photo: async (_parent: unknown, args: { id: string }, ctx: Context) => {
-    return ctx.prisma.photo.findUnique({
-      where: { id: args.id },
+    const filter = await deletedFilter(ctx);
+    return ctx.prisma.photo.findFirst({
+      where: { id: args.id, ...filter },
       include: {
         user: true,
         variants: true,
         tags: true,
-        aircraft: { include: { manufacturer: true, family: true, variant: true, airlineRef: true } },
+        aircraft: {
+          include: { manufacturer: true, family: true, variant: true, airlineRef: true },
+        },
         location: { include: { airport: true, spottingLocation: true } },
         photoCategory: true,
         aircraftSpecificCategory: true,
@@ -144,10 +170,12 @@ export const photoQueryResolvers = {
 
   photos: async (_parent: unknown, args: PhotosArgs, ctx: Context) => {
     const take = Math.min(args.first ?? 20, 50);
+    const deletedFilter_ = await deletedFilter(ctx);
 
     // Build filter conditions
     const where: Record<string, unknown> = {
       moderationStatus: 'approved',
+      ...deletedFilter_,
     };
 
     if (args.after) {
@@ -220,7 +248,9 @@ export const photoQueryResolvers = {
           user: true,
           variants: true,
           tags: true,
-          aircraft: { include: { manufacturer: true, family: true, variant: true, airlineRef: true } },
+          aircraft: {
+            include: { manufacturer: true, family: true, variant: true, airlineRef: true },
+          },
           location: { include: { airport: true, spottingLocation: true } },
           photoCategory: true,
           aircraftSpecificCategory: true,
@@ -312,13 +342,26 @@ export const photoMutationResolvers = {
         aircraftSpecificCategoryId: input.aircraftSpecificCategoryId ?? null,
         operatorIcao: input.operatorIcao ?? null,
         operatorType: input.operatorType
-          ? (input.operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private')
+          ? (input.operatorType.toLowerCase() as
+              | 'airline'
+              | 'general_aviation'
+              | 'military'
+              | 'government'
+              | 'cargo'
+              | 'charter'
+              | 'private')
           : null,
         msn: input.msn ?? null,
         manufacturingDate: input.manufacturingDate ?? null,
         // In dev, auto-approve; in production, start as pending
         moderationStatus: process.env.NODE_ENV === 'production' ? 'pending' : 'approved',
-        license: (input.license ?? 'ALL_RIGHTS_RESERVED') as 'ALL_RIGHTS_RESERVED' | 'CC_BY_NC_ND' | 'CC_BY_NC' | 'CC_BY_NC_SA' | 'CC_BY' | 'CC_BY_SA',
+        license: (input.license ?? 'ALL_RIGHTS_RESERVED') as
+          | 'ALL_RIGHTS_RESERVED'
+          | 'CC_BY_NC_ND'
+          | 'CC_BY_NC'
+          | 'CC_BY_NC_SA'
+          | 'CC_BY'
+          | 'CC_BY_SA',
         watermarkEnabled: input.watermarkEnabled ?? false,
         tags: input.tags
           ? { create: input.tags.map((tag) => ({ tag: tag.toLowerCase().trim() })) }
@@ -529,7 +572,18 @@ export const photoMutationResolvers = {
           aircraftSpecificCategoryId: aircraftSpecificCategoryId ?? null,
         }),
         ...(operatorIcao !== undefined && { operatorIcao: operatorIcao ?? null }),
-        ...(operatorType !== undefined && { operatorType: operatorType ? operatorType.toLowerCase() as 'airline' | 'general_aviation' | 'military' | 'government' | 'cargo' | 'charter' | 'private' : null }),
+        ...(operatorType !== undefined && {
+          operatorType: operatorType
+            ? (operatorType.toLowerCase() as
+                | 'airline'
+                | 'general_aviation'
+                | 'military'
+                | 'government'
+                | 'cargo'
+                | 'charter'
+                | 'private')
+            : null,
+        }),
         ...(msn !== undefined && { msn: msn ?? null }),
         ...(manufacturingDate !== undefined && { manufacturingDate: manufacturingDate ?? null }),
       },
@@ -552,7 +606,11 @@ export const photoMutationResolvers = {
     });
   },
 
-  rejectPhoto: async (_parent: unknown, args: { photoId: string; reason?: string }, ctx: Context) => {
+  rejectPhoto: async (
+    _parent: unknown,
+    args: { photoId: string; reason?: string },
+    ctx: Context,
+  ) => {
     await requireRole(ctx, ['admin', 'moderator', 'superuser']);
 
     const photo = await ctx.prisma.photo.findUnique({ where: { id: args.photoId } });
@@ -596,6 +654,65 @@ export const photoMutationResolvers = {
 
     // Admin/moderator/superuser can delete any photo
     await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+    await ctx.prisma.photo.delete({ where: { id: args.id } });
+    return true;
+  },
+
+  softDeletePhoto: async (
+    _parent: unknown,
+    args: { id: string; reason?: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const photo = await ctx.prisma.photo.findUnique({ where: { id: args.id } });
+    if (!photo) {
+      throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: photo.userId,
+        action: 'delete_photo',
+        reason: args.reason ?? 'Soft delete requested',
+        metadata: { photoId: photo.id, mode: 'SOFT' },
+      },
+    });
+
+    await ctx.prisma.photo.update({
+      where: { id: args.id },
+      data: { isDeleted: true },
+    });
+    return true;
+  },
+
+  hardDeletePhoto: async (_parent: unknown, args: { id: string; reason: string }, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    if (!args.reason) {
+      throw new GraphQLError('A reason is required for hard deletion', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const photo = await ctx.prisma.photo.findUnique({ where: { id: args.id } });
+    if (!photo) {
+      throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: photo.userId,
+        action: 'delete_photo',
+        reason: args.reason,
+        metadata: { photoId: photo.id, mode: 'HARD' },
+      },
+    });
+
     await ctx.prisma.photo.delete({ where: { id: args.id } });
     return true;
   },
@@ -736,7 +853,14 @@ export const photoFieldResolvers = {
 
   operatorType: (parent: { operatorType: string | null }) =>
     parent.operatorType
-      ? (parent.operatorType.toUpperCase() as 'AIRLINE' | 'GENERAL_AVIATION' | 'MILITARY' | 'GOVERNMENT' | 'CARGO' | 'CHARTER' | 'PRIVATE')
+      ? (parent.operatorType.toUpperCase() as
+          | 'AIRLINE'
+          | 'GENERAL_AVIATION'
+          | 'MILITARY'
+          | 'GOVERNMENT'
+          | 'CARGO'
+          | 'CHARTER'
+          | 'PRIVATE')
       : null,
 
   exifData: (parent: PhotoParent) => parent.exifData ?? null,
@@ -820,7 +944,10 @@ export const photoFieldResolvers = {
 
     return {
       edges,
-      pageInfo: { hasNextPage, endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null },
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      },
       totalCount,
     };
   },

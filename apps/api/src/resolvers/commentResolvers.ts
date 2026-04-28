@@ -1,5 +1,6 @@
 import { GraphQLError } from 'graphql';
 
+import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
@@ -11,6 +12,7 @@ import { createNotification } from './notificationResolvers.js';
 export interface CommentParent {
   id: string;
   userId: string;
+  isDeleted?: boolean;
 }
 
 export interface CommentsArgs {
@@ -25,15 +27,38 @@ export interface AddCommentInput {
   parentCommentId?: string;
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a Prisma filter to exclude soft-deleted records for non-privileged users.
+ */
+async function deletedFilter(ctx: Context): Promise<Record<string, unknown>> {
+  try {
+    const authUser = requireAuth(ctx);
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: authUser.sub },
+      select: { role: true },
+    });
+    if (dbUser && ['admin', 'moderator', 'superuser'].includes(dbUser.role)) {
+      return {};
+    }
+  } catch {
+    // Not authenticated
+  }
+  return { isDeleted: false };
+}
+
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const commentQueryResolvers = {
   comments: async (_parent: unknown, args: CommentsArgs, ctx: Context) => {
     const take = Math.min(args.first ?? 20, 50);
+    const filter = await deletedFilter(ctx);
 
     const where: Record<string, unknown> = {
       photoId: args.photoId,
       parentCommentId: null, // Only top-level comments
+      ...filter,
     };
 
     if (args.after) {
@@ -221,6 +246,69 @@ export const commentMutationResolvers = {
         extensions: { code: 'FORBIDDEN' },
       });
     }
+
+    await ctx.prisma.comment.delete({ where: { id: args.id } });
+    return true;
+  },
+
+  softDeleteComment: async (
+    _parent: unknown,
+    args: { id: string; reason?: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const comment = await ctx.prisma.comment.findUnique({ where: { id: args.id } });
+    if (!comment) {
+      throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: comment.userId,
+        action: 'delete_comment',
+        reason: args.reason ?? 'Soft delete requested',
+        metadata: { commentId: comment.id, mode: 'SOFT' },
+      },
+    });
+
+    await ctx.prisma.comment.update({
+      where: { id: args.id },
+      data: { isDeleted: true, body: '[deleted]' },
+    });
+    return true;
+  },
+
+  hardDeleteComment: async (
+    _parent: unknown,
+    args: { id: string; reason: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    if (!args.reason) {
+      throw new GraphQLError('A reason is required for hard deletion', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const comment = await ctx.prisma.comment.findUnique({ where: { id: args.id } });
+    if (!comment) {
+      throw new GraphQLError('Comment not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: comment.userId,
+        action: 'delete_comment',
+        reason: args.reason,
+        metadata: { commentId: comment.id, mode: 'HARD' },
+      },
+    });
 
     await ctx.prisma.comment.delete({ where: { id: args.id } });
     return true;

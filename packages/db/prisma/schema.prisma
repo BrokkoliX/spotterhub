@@ -373,6 +373,7 @@ model Album {
   description  String?
   coverPhotoId String?  @map("cover_photo_id") @db.Uuid
   isPublic     Boolean  @default(true) @map("is_public")
+  isDeleted    Boolean  @default(false) @map("is_deleted")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -419,6 +420,7 @@ model Photo {
   operatorType         OperatorType?    @map("operator_type")
   msn                  String?          @map("msn")
   manufacturingDate    String?          @map("manufacturing_date")
+  isDeleted            Boolean          @default(false) @map("is_deleted")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
@@ -571,6 +573,7 @@ model Comment {
   albumId         String?  @map("album_id") @db.Uuid
   parentCommentId String?  @map("parent_comment_id") @db.Uuid
   body            String
+  isDeleted       Boolean   @default(false) @map("is_deleted")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -722,6 +725,7 @@ model ForumThread {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
   lastPostAt DateTime  @default(now()) @map("last_post_at")
+  isDeleted  Boolean   @default(false) @map("is_deleted")
 
   category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -816,6 +820,7 @@ enum CommunityModerationAction {
   delete_post
   delete_photo
   delete_comment
+  delete_album
 }
 
 model CommunityModerationLog {

@@ -643,6 +643,16 @@ export const typeDefs = gql`
     deletePhoto(id: ID!): Boolean!
 
     """
+    Soft-delete a photo. Requires admin or moderator role.
+    """
+    softDeletePhoto(id: ID!, reason: String): Boolean!
+
+    """
+    Permanently delete a photo. Requires admin or moderator role and a reason.
+    """
+    hardDeletePhoto(id: ID!, reason: String!): Boolean!
+
+    """
     Regenerate image variants (thumbnail, display, watermark) for an existing photo.
     Useful when variants failed to generate during upload. Owner or admin only.
     """
@@ -710,6 +720,16 @@ export const typeDefs = gql`
     deleteComment(id: ID!): Boolean!
 
     """
+    Soft-delete a comment. Requires admin or moderator role.
+    """
+    softDeleteComment(id: ID!, reason: String): Boolean!
+
+    """
+    Permanently delete a comment. Requires admin or moderator role and a reason.
+    """
+    hardDeleteComment(id: ID!, reason: String!): Boolean!
+
+    """
     Create a new album. Requires authentication.
     """
     createAlbum(input: CreateAlbumInput!): Album!
@@ -725,6 +745,17 @@ export const typeDefs = gql`
     Only the album owner can delete.
     """
     deleteAlbum(id: ID!): Boolean!
+
+    """
+    Soft-delete an album. Requires admin or moderator role.
+    """
+    softDeleteAlbum(id: ID!, reason: String): Boolean!
+
+    """
+    Permanently delete an album. Requires admin or moderator role and a reason.
+    Photos are unlinked from the album but not deleted.
+    """
+    hardDeleteAlbum(id: ID!, reason: String!): Boolean!
 
     """
     Add photos to an album. Only the album owner can add photos, and only
@@ -998,6 +1029,16 @@ export const typeDefs = gql`
     deleteForumThread(id: ID!): Boolean!
 
     """
+    Soft-delete a forum thread. Requires admin or moderator role.
+    """
+    softDeleteForumThread(id: ID!, reason: String): Boolean!
+
+    """
+    Permanently delete a forum thread. Requires admin or moderator role and a reason.
+    """
+    hardDeleteForumThread(id: ID!, reason: String!): Boolean!
+
+    """
     Pin or unpin a thread. Requires moderator+ role.
     """
     pinForumThread(id: ID!, pinned: Boolean!): ForumThread!
@@ -1021,6 +1062,11 @@ export const typeDefs = gql`
     Soft-delete a post. Author or moderator+.
     """
     deleteForumPost(id: ID!): Boolean!
+
+    """
+    Permanently delete a forum post. Requires admin or moderator role and a reason.
+    """
+    hardDeleteForumPost(id: ID!, reason: String!): Boolean!
 
     # ─── Event Mutations ──────────────────────────────────────────────────
 
@@ -1639,6 +1685,11 @@ export const typeDefs = gql`
     updatedAt: String!
 
     """
+    Whether this photo has been soft-deleted by an admin.
+    """
+    isDeleted: Boolean!
+
+    """
     The active marketplace listing for this photo, if any.
     """
     listing: PhotoListing
@@ -1910,6 +1961,10 @@ export const typeDefs = gql`
     replies: [Comment!]!
     createdAt: String!
     updatedAt: String!
+    """
+    Whether this comment has been soft-deleted by an admin.
+    """
+    isDeleted: Boolean!
   }
 
   input AddCommentInput {
@@ -2095,6 +2150,10 @@ export const typeDefs = gql`
     myMembership: CommunityMember
     createdAt: String!
     updatedAt: String!
+    """
+    Whether this album has been soft-deleted by an admin.
+    """
+    isDeleted: Boolean!
   }
 
   type AlbumEdge {
@@ -2615,6 +2674,10 @@ export const typeDefs = gql`
     The opening post of the thread.
     """
     firstPost: ForumPost
+    """
+    Whether this thread has been soft-deleted by an admin.
+    """
+    isDeleted: Boolean!
   }
 
   """

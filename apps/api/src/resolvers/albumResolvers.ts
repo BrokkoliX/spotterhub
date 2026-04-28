@@ -1,5 +1,6 @@
 import { GraphQLError } from 'graphql';
 
+import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
@@ -11,6 +12,7 @@ export interface AlbumParent {
   userId: string;
   coverPhotoId?: string | null;
   communityId?: string | null;
+  isDeleted?: boolean;
 }
 
 export interface CreateAlbumInput {
@@ -47,12 +49,32 @@ async function requireAlbumOwner(ctx: Context, albumId: string) {
   return { dbUser, album };
 }
 
+/**
+ * Returns a Prisma filter to exclude soft-deleted records for non-privileged users.
+ */
+async function deletedFilter(ctx: Context): Promise<Record<string, unknown>> {
+  try {
+    const authUser = requireAuth(ctx);
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: authUser.sub },
+      select: { role: true },
+    });
+    if (dbUser && ['admin', 'moderator', 'superuser'].includes(dbUser.role)) {
+      return {};
+    }
+  } catch {
+    // Not authenticated
+  }
+  return { isDeleted: false };
+}
+
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const albumQueryResolvers = {
   album: async (_parent: unknown, args: { id: string }, ctx: Context) => {
-    const album = await ctx.prisma.album.findUnique({
-      where: { id: args.id },
+    const filter = await deletedFilter(ctx);
+    const album = await ctx.prisma.album.findFirst({
+      where: { id: args.id, ...filter },
       include: {
         user: { include: { profile: true } },
         coverPhoto: { include: { variants: true } },
@@ -86,6 +108,7 @@ export const albumQueryResolvers = {
     ctx: Context,
   ) => {
     const take = Math.min(args.first ?? 20, 50);
+    const filter = await deletedFilter(ctx);
 
     // Determine whose albums to fetch
     let targetUserId = args.userId;
@@ -94,7 +117,7 @@ export const albumQueryResolvers = {
       targetUserId = dbUser.id;
     }
 
-    const where: Record<string, unknown> = { userId: targetUserId, communityId: null };
+    const where: Record<string, unknown> = { userId: targetUserId, communityId: null, ...filter };
 
     // Unless it's the owner, only show public albums
     let isOwner = false;
@@ -308,6 +331,76 @@ export const albumMutationResolvers = {
         });
       }
     }
+
+    // Unlink personal album photos
+    await ctx.prisma.photo.updateMany({
+      where: { albumId: args.id },
+      data: { albumId: null },
+    });
+
+    // Delete junction table entries for community albums
+    await ctx.prisma.albumPhoto.deleteMany({
+      where: { albumId: args.id },
+    });
+
+    await ctx.prisma.album.delete({ where: { id: args.id } });
+    return true;
+  },
+
+  softDeleteAlbum: async (
+    _parent: unknown,
+    args: { id: string; reason?: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const album = await ctx.prisma.album.findUnique({ where: { id: args.id } });
+    if (!album) {
+      throw new GraphQLError('Album not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: album.communityId ?? 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: album.userId,
+        action: 'delete_album',
+        reason: args.reason ?? 'Soft delete requested',
+        metadata: { albumId: album.id, mode: 'SOFT' },
+      },
+    });
+
+    await ctx.prisma.album.update({
+      where: { id: args.id },
+      data: { isDeleted: true },
+    });
+    return true;
+  },
+
+  hardDeleteAlbum: async (_parent: unknown, args: { id: string; reason: string }, ctx: Context) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    if (!args.reason) {
+      throw new GraphQLError('A reason is required for hard deletion', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const album = await ctx.prisma.album.findUnique({ where: { id: args.id } });
+    if (!album) {
+      throw new GraphQLError('Album not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: album.communityId ?? 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: album.userId,
+        action: 'delete_album',
+        reason: args.reason,
+        metadata: { albumId: album.id, mode: 'HARD' },
+      },
+    });
 
     // Unlink personal album photos
     await ctx.prisma.photo.updateMany({

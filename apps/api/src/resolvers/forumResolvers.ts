@@ -1,5 +1,6 @@
 import { GraphQLError } from 'graphql';
 
+import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
@@ -19,6 +20,7 @@ export interface ForumThreadParent {
   isLocked: boolean;
   postCount: number;
   lastPostAt: Date;
+  isDeleted?: boolean;
 }
 
 export interface ForumPostParent {
@@ -104,6 +106,25 @@ async function requireAdmin(ctx: Context): Promise<void> {
   }
 }
 
+/**
+ * Returns a Prisma filter to exclude soft-deleted records for non-privileged users.
+ */
+async function deletedFilter(ctx: Context): Promise<Record<string, unknown>> {
+  try {
+    const authUser = requireAuth(ctx);
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: authUser.sub },
+      select: { role: true },
+    });
+    if (dbUser && ['admin', 'moderator', 'superuser'].includes(dbUser.role)) {
+      return {};
+    }
+  } catch {
+    // Not authenticated
+  }
+  return { isDeleted: false };
+}
+
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const forumQueryResolvers = {
@@ -131,10 +152,11 @@ export const forumQueryResolvers = {
     ctx: Context,
   ) => {
     const take = Math.min(args.first ?? 20, 50);
+    const filter = await deletedFilter(ctx);
 
     // Pinned threads always come first, then by lastPostAt desc
     // We fetch pinned + non-pinned separately then merge
-    const where: Record<string, unknown> = { categoryId: args.categoryId };
+    const where: Record<string, unknown> = { categoryId: args.categoryId, ...filter };
     if (args.after) {
       where.lastPostAt = { lt: decodeCursor(args.after) };
     }
@@ -165,7 +187,8 @@ export const forumQueryResolvers = {
   },
 
   forumThread: async (_parent: unknown, args: { id: string }, ctx: Context) => {
-    return ctx.prisma.forumThread.findUnique({ where: { id: args.id } });
+    const filter = await deletedFilter(ctx);
+    return ctx.prisma.forumThread.findFirst({ where: { id: args.id, ...filter } });
   },
 
   forumPosts: async (
@@ -174,9 +197,11 @@ export const forumQueryResolvers = {
     ctx: Context,
   ) => {
     const take = Math.min(args.first ?? 30, 100);
+    const filter = await deletedFilter(ctx);
     const where: Record<string, unknown> = {
       threadId: args.threadId,
       parentPostId: null, // top-level only
+      ...filter,
     };
 
     if (args.after) {
@@ -457,7 +482,116 @@ export const forumMutationResolvers = {
       }
     }
 
+    // Soft delete — replace title with '[deleted]'
+    await ctx.prisma.forumThread.update({
+      where: { id: args.id },
+      data: { isDeleted: true, title: '[deleted]' },
+    });
+    return true;
+  },
+
+  softDeleteForumThread: async (
+    _parent: unknown,
+    args: { id: string; reason?: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    const thread = await ctx.prisma.forumThread.findUnique({
+      where: { id: args.id },
+      select: { authorId: true },
+    });
+    if (!thread) {
+      throw new GraphQLError('Forum thread not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: thread.authorId,
+        action: 'delete_post',
+        reason: args.reason ?? 'Soft delete requested',
+        metadata: { threadId: args.id, mode: 'SOFT' },
+      },
+    });
+
+    await ctx.prisma.forumThread.update({
+      where: { id: args.id },
+      data: { isDeleted: true, title: '[deleted]' },
+    });
+    return true;
+  },
+
+  hardDeleteForumThread: async (
+    _parent: unknown,
+    args: { id: string; reason: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    if (!args.reason) {
+      throw new GraphQLError('A reason is required for hard deletion', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const thread = await ctx.prisma.forumThread.findUnique({
+      where: { id: args.id },
+      select: { authorId: true },
+    });
+    if (!thread) {
+      throw new GraphQLError('Forum thread not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: thread.authorId,
+        action: 'delete_post',
+        reason: args.reason,
+        metadata: { threadId: args.id, mode: 'HARD' },
+      },
+    });
+
     await ctx.prisma.forumThread.delete({ where: { id: args.id } });
+    return true;
+  },
+
+  hardDeleteForumPost: async (
+    _parent: unknown,
+    args: { id: string; reason: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+
+    if (!args.reason) {
+      throw new GraphQLError('A reason is required for hard deletion', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const post = await ctx.prisma.forumPost.findUnique({
+      where: { id: args.id },
+      select: { authorId: true },
+    });
+    if (!post) {
+      throw new GraphQLError('Forum post not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    await ctx.prisma.communityModerationLog.create({
+      data: {
+        communityId: 'global',
+        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        targetUserId: post.authorId,
+        action: 'delete_post',
+        reason: args.reason,
+        metadata: { postId: args.id, mode: 'HARD' },
+      },
+    });
+
+    await ctx.prisma.forumPost.delete({ where: { id: args.id } });
     return true;
   },
 
