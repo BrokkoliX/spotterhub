@@ -34,6 +34,9 @@ RUN npm install prisma@^6.2.0 --no-save
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:24-alpine AS runtime
 
+# Install fonts for sharp SVG text rendering (watermarks)
+RUN apk add --no-cache fontconfig font-noto && fc-cache -f
+
 WORKDIR /app
 
 # Secrets are fetched by the Node.js app using @aws-sdk/client-secrets-manager
