@@ -599,6 +599,61 @@ export const photoMutationResolvers = {
     await ctx.prisma.photo.delete({ where: { id: args.id } });
     return true;
   },
+
+  regeneratePhotoVariants: async (_parent: unknown, args: { photoId: string }, ctx: Context) => {
+    const authUser = requireAuth(ctx);
+    const user = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: authUser.sub },
+      select: { id: true, role: true },
+    });
+    if (!user) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    const photo = await ctx.prisma.photo.findUnique({
+      where: { id: args.photoId },
+      include: { user: true, variants: true, tags: true },
+    });
+    if (!photo) {
+      throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    // Only owner or privileged users can regenerate
+    const isPrivileged = ['admin', 'moderator', 'superuser'].includes(user.role);
+    if (photo.userId !== user.id && !isPrivileged) {
+      throw new GraphQLError('Not authorized', { extensions: { code: 'FORBIDDEN' } });
+    }
+
+    // Derive S3 key from originalUrl by stripping the host prefix
+    const url = new URL(photo.originalUrl);
+    const s3Key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+
+    // Delete existing variants
+    await ctx.prisma.photoVariant.deleteMany({ where: { photoId: photo.id } });
+
+    // Regenerate variants
+    const variants = await generateVariants(s3Key, {
+      watermarkEnabled: photo.watermarkEnabled,
+    });
+
+    for (const variant of variants) {
+      await ctx.prisma.photoVariant.create({
+        data: {
+          photoId: photo.id,
+          variantType: variant.variantType,
+          url: variant.url,
+          width: variant.width,
+          height: variant.height,
+          fileSizeBytes: variant.fileSizeBytes,
+        },
+      });
+    }
+
+    return ctx.prisma.photo.findUnique({
+      where: { id: photo.id },
+      include: { user: true, variants: true, tags: true },
+    });
+  },
 };
 
 // ─── Field Resolvers ────────────────────────────────────────────────────────

@@ -643,6 +643,12 @@ export const typeDefs = gql`
     deletePhoto(id: ID!): Boolean!
 
     """
+    Regenerate image variants (thumbnail, display, watermark) for an existing photo.
+    Useful when variants failed to generate during upload. Owner or admin only.
+    """
+    regeneratePhotoVariants(photoId: ID!): Photo!
+
+    """
     Like a photo. Idempotent — liking an already-liked photo is a no-op.
     Returns the updated photo.
     """
