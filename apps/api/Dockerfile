@@ -21,8 +21,11 @@ RUN npm prune --production --workspace=@spotterspace/api
 
 # sharp requires platform-specific native binaries installed via postinstall,
 # which --ignore-scripts skips. npm prune may also remove optionalDependencies.
-# Explicitly install the Alpine (linuxmusl-x64) native packages after prune.
-RUN npm install --no-save @img/sharp-linuxmusl-x64@0.34.5
+# Explicitly install the correct Alpine native packages for the build architecture.
+RUN SHARP_ARCH=$(uname -m | sed 's/aarch64/arm64/' | sed 's/x86_64/x64/') && \
+    npm install --no-save --force \
+      @img/sharp-linuxmusl-${SHARP_ARCH}@0.34.5 \
+      @img/sharp-libvips-linuxmusl-${SHARP_ARCH}@1.2.4
 
 # Reinstall prisma CLI (needed at runtime for migrate deploy in entrypoint)
 # Pin to v6 to match project — v7 has breaking datasource config changes
