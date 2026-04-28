@@ -8,7 +8,8 @@ let _sharp: any = null;
 async function getSharp(): Promise<any> {
   if (!_sharp) {
     try {
-      _sharp = await import('sharp');
+      const mod = await import('sharp');
+      _sharp = mod.default ?? mod;
     } catch (err) {
       console.error('Failed to load sharp:', err);
       throw new Error(
