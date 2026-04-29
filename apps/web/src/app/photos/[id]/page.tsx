@@ -37,8 +37,8 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   const canDelete = isOwner || isPrivileged;
 
   // DEBUG
-  if (typeof window !== 'undefined') {
-    console.log('[DEBUG] ready:', ready, 'user:', user, 'isOwner:', isOwner, 'isPrivileged:', isPrivileged, 'canDelete:', canDelete);
+  if (typeof window !== 'undefined' && canDelete) {
+    console.log('[DEBUG] ready:', ready, 'user:', user?.role, 'canDelete:', canDelete);
   }
 
   const handleDelete = async () => {
@@ -201,6 +201,9 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     initialIsLiked={photo.isLikedByMe}
                   />
                   <span className={styles.stat}>💬 {photo.commentCount}</span>
+                  <span style={{ color: 'yellow', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    canDelete={String(canDelete)} role={user?.role}
+                  </span>
                   <ReportButton targetType="photo" targetId={photo.id} />
                   {canDelete && (
                     <button
@@ -208,8 +211,9 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                       onClick={handleDelete}
                       disabled={deleting}
                       title="Delete photo"
+                      style={{ background: 'red', color: 'white' }}
                     >
-                      🗑️ {deleting ? 'Deleting…' : 'Delete'}
+                      DELETE DEBUG canDelete={String(canDelete)}
                     </button>
                   )}
                 </div>
