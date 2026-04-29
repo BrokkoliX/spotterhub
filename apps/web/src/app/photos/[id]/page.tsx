@@ -24,7 +24,7 @@ interface PhotoVariant {
 
 export default function PhotoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const [result] = useQuery({ query: GET_PHOTO, variables: { id } });
   const { data, fetching, error } = result;
