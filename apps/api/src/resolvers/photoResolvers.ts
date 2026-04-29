@@ -647,7 +647,7 @@ export const photoMutationResolvers = {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!user) {
       throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
@@ -661,14 +661,17 @@ export const photoMutationResolvers = {
       throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
     }
 
-    // Owner can always delete their own photos
-    if (photo.userId === user.id) {
-      await ctx.prisma.photo.delete({ where: { id: args.id } });
-      return true;
+    // Admin/moderator/superuser can delete any photo
+    const isPrivileged =
+      user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser';
+
+    if (!isPrivileged && photo.userId !== user.id) {
+      throw new GraphQLError(
+        'You do not have permission to delete this photo',
+        { extensions: { code: 'FORBIDDEN' } },
+      );
     }
 
-    // Admin/moderator/superuser can delete any photo
-    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
     await ctx.prisma.photo.delete({ where: { id: args.id } });
     return true;
   },
