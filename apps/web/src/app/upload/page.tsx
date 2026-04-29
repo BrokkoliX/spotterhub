@@ -65,22 +65,6 @@ export default function UploadPage() {
     (e: { node: { id: string; name: string; country: string | null } }) => e.node,
   ) ?? [];
 
-  const [familiesResult] = useQuery({ query: GET_AIRCRAFT_FAMILIES, variables: { first: 10000 } });
-  const allFamilies = familiesResult.data?.aircraftFamilies?.edges?.map(
-    (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
-      ...e.node,
-      label: `${e.node.name} (${e.node.manufacturer.name})`,
-    }),
-  ) ?? [];
-
-  const [variantsResult] = useQuery({ query: GET_AIRCRAFT_VARIANTS, variables: { first: 10000 } });
-  const allVariants = variantsResult.data?.aircraftVariants?.edges?.map(
-    (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
-      ...e.node,
-      label: `${e.node.name} (${e.node.family.name})`,
-    }),
-  ) ?? [];
-
   const [airlinesResult] = useQuery({ query: GET_AIRLINES, variables: { first: 10000 } });
   const airlines = airlinesResult.data?.airlines?.edges?.map(
     (e: { node: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null } }) => e.node,
@@ -92,20 +76,9 @@ export default function UploadPage() {
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [selectedAirlineId, setSelectedAirlineId] = useState('');
 
-  // Filtered dropdown lists
-  const filteredFamilies = useMemo(
-    () => (selectedManufacturerId
-      ? allFamilies.filter((f: { manufacturer: { id: string } }) => f.manufacturer.id === selectedManufacturerId)
-      : allFamilies),
-    [selectedManufacturerId, allFamilies],
-  );
-
-  const filteredVariants = useMemo(
-    () => (selectedFamilyId
-      ? allVariants.filter((v: { family: { id: string } }) => v.family.id === selectedFamilyId)
-      : allVariants),
-    [selectedFamilyId, allVariants],
-  );
+  // Selected aircraft hierarchy names (for display)
+  const [selectedFamilyName, setSelectedFamilyName] = useState('');
+  const [selectedVariantName, setSelectedVariantName] = useState('');
 
   // Registration typeahead (for auto-fill)
   const [registrationSearch, setRegistrationSearch] = useState('');
@@ -157,6 +130,8 @@ export default function UploadPage() {
       setSelectedManufacturerId('');
       setSelectedFamilyId('');
       setSelectedVariantId('');
+      setSelectedFamilyName('');
+      setSelectedVariantName('');
       setSelectedAirlineId('');
       setOperatorType('');
       setMsn('');
@@ -180,8 +155,14 @@ export default function UploadPage() {
     setAircraftId(aircraft.id);
     // Capture hierarchy fields
     if (aircraft.manufacturer) setSelectedManufacturerId(aircraft.manufacturer.id);
-    if (aircraft.family) setSelectedFamilyId(aircraft.family.id);
-    if (aircraft.variant) setSelectedVariantId(aircraft.variant.id);
+    if (aircraft.family) {
+      setSelectedFamilyId(aircraft.family.id);
+      setSelectedFamilyName(aircraft.family.name);
+    }
+    if (aircraft.variant) {
+      setSelectedVariantId(aircraft.variant.id);
+      setSelectedVariantName(aircraft.variant.name);
+    }
     // Capture operatorType, msn, manufacturingDate from the Aircraft record
     if (aircraft.operatorType) setOperatorType(aircraft.operatorType);
     if (aircraft.msn) setMsn(aircraft.msn);
@@ -210,12 +191,16 @@ export default function UploadPage() {
     manufacturingDate?: string;
     airlineId?: string;
     airlineName?: string;
+    familyName?: string;
+    variantName?: string;
   }) => {
     setAircraftId(data.id);
     setRegistrationSearch(data.registration);
     if (data.manufacturerId) setSelectedManufacturerId(data.manufacturerId);
     if (data.familyId) setSelectedFamilyId(data.familyId);
     if (data.variantId) setSelectedVariantId(data.variantId);
+    if (data.familyName) setSelectedFamilyName(data.familyName);
+    if (data.variantName) setSelectedVariantName(data.variantName);
     if (data.operatorType) setOperatorType(data.operatorType);
     if (data.msn) setMsn(data.msn);
     if (data.manufacturingDate) setManufacturingDate(data.manufacturingDate);
@@ -420,6 +405,8 @@ export default function UploadPage() {
     setSelectedManufacturerId('');
     setSelectedFamilyId('');
     setSelectedVariantId('');
+    setSelectedFamilyName('');
+    setSelectedVariantName('');
     setSelectedAirlineId('');
     setLicense('ALL_RIGHTS_RESERVED');
     setWatermarkEnabled(false);
@@ -567,6 +554,8 @@ export default function UploadPage() {
                   setSelectedManufacturerId('');
                   setSelectedFamilyId('');
                   setSelectedVariantId('');
+                  setSelectedFamilyName('');
+                  setSelectedVariantName('');
                   setSelectedAirlineId('');
                   setLicense('ALL_RIGHTS_RESERVED');
                   setWatermarkEnabled(false);
@@ -697,6 +686,8 @@ export default function UploadPage() {
                           setSelectedManufacturerId('');
                           setSelectedFamilyId('');
                           setSelectedVariantId('');
+                          setSelectedFamilyName('');
+                          setSelectedVariantName('');
                           setSelectedAirlineId('');
                           setOperatorType('');
                           setMsn('');
@@ -803,14 +794,8 @@ export default function UploadPage() {
                         const m = manufacturers.find((m: { id: string }) => m.id === selectedManufacturerId);
                         return m ? <div><span style={{ color: 'var(--color-text-muted)' }}>Manufacturer</span><br/>{m.name}</div> : null;
                       })()}
-                      {selectedFamilyId && (() => {
-                        const f = allFamilies.find((f: { id: string }) => f.id === selectedFamilyId);
-                        return f ? <div><span style={{ color: 'var(--color-text-muted)' }}>Family</span><br/>{f.name}</div> : null;
-                      })()}
-                      {selectedVariantId && (() => {
-                        const v = allVariants.find((v: { id: string }) => v.id === selectedVariantId);
-                        return v ? <div><span style={{ color: 'var(--color-text-muted)' }}>Variant</span><br/>{v.name}</div> : null;
-                      })()}
+                      {selectedFamilyName && <div><span style={{ color: 'var(--color-text-muted)' }}>Family</span><br/>{selectedFamilyName}</div>}
+                      {selectedVariantName && <div><span style={{ color: 'var(--color-text-muted)' }}>Variant</span><br/>{selectedVariantName}</div>}
                       {operatorType && <div><span style={{ color: 'var(--color-text-muted)' }}>Operator Type</span><br/>{operatorType.replace(/_/g, ' ')}</div>}
                       {msn && <div><span style={{ color: 'var(--color-text-muted)' }}>MSN</span><br/>{msn}</div>}
                       {manufacturingDate && <div><span style={{ color: 'var(--color-text-muted)' }}>Built</span><br/>{manufacturingDate}</div>}
@@ -1082,8 +1067,6 @@ export default function UploadPage() {
         <NewAircraftModal
           registration={registrationSearch}
           manufacturers={manufacturers}
-          allFamilies={allFamilies}
-          allVariants={allVariants}
           airlines={airlines}
           onClose={() => setShowNewAircraftModal(false)}
           onCreated={handleNewAircraftCreated}
@@ -1099,8 +1082,6 @@ export default function UploadPage() {
 function NewAircraftModal({
   registration,
   manufacturers,
-  allFamilies,
-  allVariants,
   airlines,
   onClose,
   onCreated,
@@ -1108,8 +1089,6 @@ function NewAircraftModal({
 }: {
   registration: string;
   manufacturers: Array<{ id: string; name: string }>;
-  allFamilies: Array<{ id: string; name: string; label: string; manufacturer: { id: string } }>;
-  allVariants: Array<{ id: string; name: string; label: string; family: { id: string } }>;
   airlines: Array<{ id: string; name: string; icaoCode: string; iataCode: string | null }>;
   onClose: () => void;
   onCreated: (data: {
@@ -1118,6 +1097,8 @@ function NewAircraftModal({
     manufacturerId?: string;
     familyId?: string;
     variantId?: string;
+    familyName?: string;
+    variantName?: string;
     operatorType?: string;
     msn?: string;
     manufacturingDate?: string;
@@ -1137,19 +1118,31 @@ function NewAircraftModal({
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const filteredFamilies = useMemo(
-    () => (selectedManufacturerId
-      ? allFamilies.filter((f) => f.manufacturer?.id === selectedManufacturerId)
-      : allFamilies),
-    [selectedManufacturerId, allFamilies],
-  );
+  // Server-side filtered families — re-fetches when manufacturer changes
+  const [familiesResult] = useQuery({
+    query: GET_AIRCRAFT_FAMILIES,
+    variables: { manufacturerId: selectedManufacturerId || undefined, first: 1000 },
+    pause: !selectedManufacturerId,
+  });
+  const families = familiesResult.data?.aircraftFamilies?.edges?.map(
+    (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
+      ...e.node,
+      label: `${e.node.name} (${e.node.manufacturer.name})`,
+    }),
+  ) ?? [];
 
-  const filteredVariants = useMemo(
-    () => (selectedFamilyId
-      ? allVariants.filter((v) => v.family?.id === selectedFamilyId)
-      : allVariants),
-    [selectedFamilyId, allVariants],
-  );
+  // Server-side filtered variants — re-fetches when family changes
+  const [variantsResult] = useQuery({
+    query: GET_AIRCRAFT_VARIANTS,
+    variables: { familyId: selectedFamilyId || undefined, first: 1000 },
+    pause: !selectedFamilyId,
+  });
+  const variants = variantsResult.data?.aircraftVariants?.edges?.map(
+    (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
+      ...e.node,
+      label: `${e.node.name} (${e.node.family.name})`,
+    }),
+  ) ?? [];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -1182,12 +1175,16 @@ function NewAircraftModal({
     }
 
     const airline = airlines.find((a: { icaoCode: string }) => a.icaoCode === selectedAirlineId);
+    const familyObj = families.find((f: { id: string }) => f.id === selectedFamilyId);
+    const variantObj = variants.find((v: { id: string }) => v.id === selectedVariantId);
     onCreated({
       id: aircraft.id,
       registration: aircraft.registration,
       manufacturerId: selectedManufacturerId || undefined,
       familyId: selectedFamilyId || undefined,
       variantId: selectedVariantId || undefined,
+      familyName: familyObj?.name,
+      variantName: variantObj?.name,
       operatorType: operatorType || undefined,
       msn: msn || undefined,
       manufacturingDate: manufacturingDate || undefined,
@@ -1261,10 +1258,11 @@ function NewAircraftModal({
             <div>
               <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Family</label>
               <SearchableSelect
-                options={filteredFamilies.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
+                options={families.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
                 value={selectedFamilyId}
                 onChange={(id) => { setSelectedFamilyId(id); setSelectedVariantId(''); }}
-                placeholder="Search…"
+                placeholder={selectedManufacturerId ? 'Search…' : 'Select manufacturer first'}
+                isLoading={familiesResult.fetching}
               />
             </div>
           </div>
@@ -1273,10 +1271,11 @@ function NewAircraftModal({
             <div>
               <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Variant</label>
               <SearchableSelect
-                options={filteredVariants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
+                options={variants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
                 value={selectedVariantId}
                 onChange={(id) => setSelectedVariantId(id)}
-                placeholder="Search…"
+                placeholder={selectedFamilyId ? 'Search…' : 'Select family first'}
+                isLoading={variantsResult.fetching}
               />
             </div>
             <div>
