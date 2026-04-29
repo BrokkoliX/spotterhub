@@ -1180,7 +1180,7 @@ function NewAircraftModal({
       return;
     }
 
-    const airline = airlines.find((a: { icaoCode: string }) => a.icaoCode === selectedAirlineId);
+    const airline = airlines.find((a: { id: string }) => a.id === selectedAirlineId);
     const familyObj = families.find((f: { id: string }) => f.id === selectedFamilyId);
     const variantObj = variants.find((v: { id: string }) => v.id === selectedVariantId);
     onCreated({
@@ -1293,13 +1293,13 @@ function NewAircraftModal({
                 style={{ width: '100%' }}
               >
                 <option value="">Select type…</option>
-                <option value="airline">Airline</option>
-                <option value="general_aviation">General Aviation</option>
-                <option value="military">Military</option>
-                <option value="government">Government</option>
-                <option value="cargo">Cargo</option>
-                <option value="charter">Charter</option>
-                <option value="private">Private</option>
+                <option value="AIRLINE">Airline</option>
+                <option value="GENERAL_AVIATION">General Aviation</option>
+                <option value="MILITARY">Military</option>
+                <option value="GOVERNMENT">Government</option>
+                <option value="CARGO">Cargo</option>
+                <option value="CHARTER">Charter</option>
+                <option value="PRIVATE">Private</option>
               </select>
             </div>
           </div>
@@ -1331,14 +1331,14 @@ function NewAircraftModal({
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Airline</label>
             <SearchableSelect
-              options={airlines.map((a: { icaoCode: string; name: string; iataCode: string | null }) => ({
-                id: a.icaoCode,
+              options={airlines.map((a: { id: string; icaoCode: string; name: string; iataCode: string | null }) => ({
+                id: a.id,
                 label: `${a.name} (${a.icaoCode}${a.iataCode ? `/${a.iataCode}` : ''})`,
               }))}
               value={selectedAirlineId}
               onChange={(id) => {
                 setSelectedAirlineId(id);
-                const airline = airlines.find((a: { icaoCode: string }) => a.icaoCode === id);
+                const airline = airlines.find((a: { id: string }) => a.id === id);
                 if (airline) setAirlineDisplay(`${airline.name} (${[airline.iataCode, airline.icaoCode].filter(Boolean).join('/')})`);
               }}
               placeholder="Search airline…"
