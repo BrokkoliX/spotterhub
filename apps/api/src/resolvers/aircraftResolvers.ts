@@ -428,11 +428,15 @@ export interface AircraftParent {
   variantId?: string | null;
   airlineId?: string | null;
   operatorType?: string | null;
+  status?: string | null;
 }
 
 export const aircraftFieldResolvers = {
   manufacturingDate: (parent: AircraftParent) =>
     parent.manufacturingDate?.toISOString().split('T')[0] ?? null,
+
+  status: (parent: AircraftParent) =>
+    parent.status ? parent.status.toUpperCase() : 'ACTIVE',
 
   operatorType: (parent: AircraftParent) =>
     parent.operatorType
