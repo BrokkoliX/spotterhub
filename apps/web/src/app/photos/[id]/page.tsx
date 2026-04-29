@@ -36,6 +36,11 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
     ready && (user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser');
   const canDelete = isOwner || isPrivileged;
 
+  // DEBUG
+  if (typeof window !== 'undefined') {
+    console.log('[DEBUG] ready:', ready, 'user:', user, 'isOwner:', isOwner, 'isPrivileged:', isPrivileged, 'canDelete:', canDelete);
+  }
+
   const handleDelete = async () => {
     if (!confirm('Delete this photo? This cannot be undone.')) return;
     const res = await deletePhoto({ photoId: id });
