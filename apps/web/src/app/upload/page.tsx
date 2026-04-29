@@ -1118,29 +1118,37 @@ function NewAircraftModal({
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Server-side filtered families — re-fetches when manufacturer changes
+  // Server-side filtered families — only fetch when a manufacturer is selected
   const [familiesResult] = useQuery({
     query: GET_AIRCRAFT_FAMILIES,
-    variables: { manufacturerId: selectedManufacturerId || undefined, first: 1000 },
+    variables: { manufacturerId: selectedManufacturerId, first: 1000 },
+    pause: !selectedManufacturerId,
+    requestPolicy: 'cache-and-network',
   });
-  const families = familiesResult.data?.aircraftFamilies?.edges?.map(
-    (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
-      ...e.node,
-      label: `${e.node.name} (${e.node.manufacturer.name})`,
-    }),
-  ) ?? [];
+  const families = (selectedManufacturerId
+    ? familiesResult.data?.aircraftFamilies?.edges?.map(
+        (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
+          ...e.node,
+          label: `${e.node.name} (${e.node.manufacturer.name})`,
+        }),
+      )
+    : []) ?? [];
 
-  // Server-side filtered variants — re-fetches when family changes
+  // Server-side filtered variants — only fetch when a family is selected
   const [variantsResult] = useQuery({
     query: GET_AIRCRAFT_VARIANTS,
-    variables: { familyId: selectedFamilyId || undefined, first: 1000 },
+    variables: { familyId: selectedFamilyId, first: 1000 },
+    pause: !selectedFamilyId,
+    requestPolicy: 'cache-and-network',
   });
-  const variants = variantsResult.data?.aircraftVariants?.edges?.map(
-    (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
-      ...e.node,
-      label: `${e.node.name} (${e.node.family.name})`,
-    }),
-  ) ?? [];
+  const variants = (selectedFamilyId
+    ? variantsResult.data?.aircraftVariants?.edges?.map(
+        (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
+          ...e.node,
+          label: `${e.node.name} (${e.node.family.name})`,
+        }),
+      )
+    : []) ?? [];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
