@@ -31,9 +31,9 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   const [{ fetching: deleting }, deletePhoto] = useMutation(DELETE_PHOTO);
   const [imgError, setImgError] = useState(false);
 
-  const isOwner = user?.id === data?.photo?.user?.id;
+  const isOwner = ready && user?.id === data?.photo?.user?.id;
   const isPrivileged =
-    user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser';
+    ready && (user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser');
   const canDelete = isOwner || isPrivileged;
 
   const handleDelete = async () => {
