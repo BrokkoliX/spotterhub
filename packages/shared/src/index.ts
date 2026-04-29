@@ -149,6 +149,7 @@ export const ACCEPTED_IMAGE_TYPES = [
 /** Image derivative dimensions (long edge in pixels). */
 export const IMAGE_VARIANT_SIZES = {
   thumbnail: 150,
+  thumbnail16x9: 640,
   display: 640,
   fullRes2048: 2048,
   fullRes4096: 4096,

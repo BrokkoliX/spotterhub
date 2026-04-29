@@ -24,11 +24,16 @@ export interface PhotoData {
   operatorIcao?: string | null;
   operatorType?: string | null;
   originalUrl: string;
+  originalWidth?: number | null;
+  originalHeight?: number | null;
   tags: string[];
   likeCount: number;
   commentCount: number;
   isLikedByMe: boolean;
   createdAt: string;
+  takenAt?: string | null;
+  gearBody?: string | null;
+  gearLens?: string | null;
   user: {
     id: string;
     username: string;
@@ -72,13 +77,31 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
   const displayVariant = photo.variants.find(
     (v) => v.variantType === 'display',
   );
+  const thumbnail16x9Variant = photo.variants.find(
+    (v) => v.variantType === 'thumbnail_16x9',
+  );
   const thumbnailVariant = photo.variants.find(
     (v) => v.variantType === 'thumbnail',
   );
   const imageUrl =
-    watermarkedVariant?.url ?? displayVariant?.url ?? thumbnailVariant?.url ?? photo.originalUrl;
+    watermarkedVariant?.url ??
+    thumbnail16x9Variant?.url ??
+    displayVariant?.url ??
+    thumbnailVariant?.url ??
+    photo.originalUrl;
   const displayName =
     photo.user.profile?.displayName ?? photo.user.username;
+
+  // JetPhotos-style info
+  const infoRegistration = photo.aircraft?.registration;
+  const infoAirline = photo.airline || photo.operatorIcao;
+  const infoAirport = photo.airportCode;
+  const infoDate = photo.takenAt
+    ? new Date(photo.takenAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+    : null;
+  const infoCamera = photo.gearBody;
+  const infoLens = photo.gearLens;
+  const hasInfo = infoRegistration || infoAirline || infoAirport || infoDate || infoCamera || infoLens;
 
   return (
     <article className={styles.card}>
@@ -96,6 +119,22 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
         )}
         {photo.listing?.active && photo.listing?.priceUsd && (
           <span className={styles.priceBadge}>${photo.listing.priceUsd}</span>
+        )}
+        {hasInfo && (
+          <div className={styles.photoInfo}>
+            <div className={styles.photoInfoRow}>
+              {infoRegistration && <span className={styles.photoInfoReg}>{infoRegistration}</span>}
+              {infoAirline && <span className={styles.photoInfoOp}>{infoAirline}</span>}
+              {infoAirport && <span className={styles.photoInfoAirport}>📍 {infoAirport}</span>}
+              {infoDate && <span className={styles.photoInfoDate}>{infoDate}</span>}
+            </div>
+            {(infoCamera || infoLens) && (
+              <div className={styles.photoInfoRow}>
+                {infoCamera && <span className={styles.photoInfoGear}>{infoCamera}</span>}
+                {infoLens && <span className={styles.photoInfoGear}>{infoLens}</span>}
+              </div>
+            )}
+          </div>
         )}
       </Link>
 

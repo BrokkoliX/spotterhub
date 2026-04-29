@@ -25,7 +25,7 @@ import { getObject, getObjectUrl, uploadBuffer } from './s3.js';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface ImageVariantResult {
-  variantType: 'thumbnail' | 'display' | 'watermarked';
+  variantType: 'thumbnail' | 'thumbnail_16x9' | 'display' | 'watermarked';
   url: string;
   key: string;
   width: number;
@@ -125,6 +125,19 @@ export async function generateVariants(
     width: thumbnail.width,
     height: thumbnail.height,
     fileSizeBytes: thumbnail.buffer.length,
+  });
+
+  // Generate 16:9 cropped thumbnail for feed display
+  const thumbnail16x9 = await resizeImageCropped16x9(original, IMAGE_VARIANT_SIZES.thumbnail16x9);
+  const thumbnail16x9Key = deriveVariantKey(originalKey, 'thumbnail16x9');
+  await uploadBuffer(thumbnail16x9Key, thumbnail16x9.buffer, 'image/jpeg');
+  results.push({
+    variantType: 'thumbnail_16x9',
+    url: getObjectUrl(thumbnail16x9Key),
+    key: thumbnail16x9Key,
+    width: thumbnail16x9.width,
+    height: thumbnail16x9.height,
+    fileSizeBytes: thumbnail16x9.buffer.length,
   });
 
   // Generate display variant
@@ -245,6 +258,32 @@ async function resizeImage(input: Buffer, longEdge: number): Promise<ResizeResul
     .resize(targetLongEdge, targetLongEdge, {
       fit: 'inside',
       withoutEnlargement: targetLongEdge < longEdge ? false : true,
+    })
+    .jpeg({ quality: 85, progressive: true })
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    buffer: result.data,
+    width: result.info.width,
+    height: result.info.height,
+  };
+}
+
+/**
+ * Resizes and center-crops an image to a 16:9 aspect ratio at the given long-edge size.
+ * Converts to JPEG for consistent output.
+ * e.g. a 400x300 or 300x400 source becomes 640x360 (16:9 at 640 long edge).
+ */
+async function resizeImageCropped16x9(
+  input: Buffer,
+  longEdge: number,
+): Promise<ResizeResult> {
+  const result = await (
+    await getSharp()
+  )(input)
+    .resize(longEdge, Math.round((longEdge * 9) / 16), {
+      fit: 'cover',
+      position: 'center',
     })
     .jpeg({ quality: 85, progressive: true })
     .toBuffer({ resolveWithObject: true });

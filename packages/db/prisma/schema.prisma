@@ -66,6 +66,7 @@ enum SellerStatus {
 
 enum PhotoVariantType {
   thumbnail
+  thumbnail_16x9
   display
   full_res
   watermarked
