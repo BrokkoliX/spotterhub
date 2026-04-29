@@ -12,7 +12,7 @@ import styles from './ReportButton.module.css';
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface ReportButtonProps {
-  targetType: 'photo' | 'comment' | 'profile';
+  targetType: 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post';
   targetId: string;
 }
 

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
+import { ReportButton } from '@/components/ReportButton';
 import {
   CREATE_FORUM_POST,
   DELETE_FORUM_POST,
@@ -50,6 +51,7 @@ function authorInitial(author: ForumPostAuthor) {
 function PostItem({
   post,
   me,
+  user,
   isModerator,
   isMember,
   isLocked,
@@ -60,6 +62,7 @@ function PostItem({
 }: {
   post: ForumPost;
   me: { username: string; role: string } | null;
+  user: { id: string; username: string; role: string } | null;
   isModerator: boolean;
   isMember: boolean;
   isLocked: boolean;
@@ -118,6 +121,9 @@ function PostItem({
             >
               🗑 Delete
             </button>
+          )}
+          {user && (
+            <ReportButton targetType="forum_post" targetId={post.id} />
           )}
         </div>
       )}
@@ -339,6 +345,7 @@ export default function ThreadPage() {
               <PostItem
                 post={post}
                 me={user}
+                user={user}
                 isModerator={isModerator}
                 isMember={isMember}
                 isLocked={isLocked}
@@ -400,6 +407,7 @@ export default function ThreadPage() {
                       key={reply.id}
                       post={reply}
                       me={user}
+                      user={user}
                       isModerator={isModerator}
                       isMember={isMember}
                       isLocked={isLocked}

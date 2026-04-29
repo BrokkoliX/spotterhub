@@ -15,8 +15,21 @@ export interface CreateReportInput {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const VALID_TARGET_TYPES = ['photo', 'comment', 'profile', 'album'];
-const VALID_REASONS = ['inappropriate', 'spam', 'harassment', 'copyright', 'other'];
+const VALID_TARGET_TYPES = [
+  'photo',
+  'comment',
+  'profile',
+  'album',
+  'community',
+  'forum_post',
+];
+const VALID_REASONS = [
+  'inappropriate',
+  'spam',
+  'harassment',
+  'copyright',
+  'other',
+];
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
 
@@ -89,13 +102,43 @@ export const reportMutationResolvers = {
           extensions: { code: 'NOT_FOUND' },
         });
       }
+    } else if (targetType === 'album') {
+      const target = await ctx.prisma.album.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!target) {
+        throw new GraphQLError('Album not found', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+    } else if (targetType === 'community') {
+      const target = await ctx.prisma.community.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!target) {
+        throw new GraphQLError('Community not found', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+    } else if (targetType === 'forum_post') {
+      const target = await ctx.prisma.forumPost.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!target) {
+        throw new GraphQLError('Forum post not found', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
     }
 
     // Check for duplicate report
     const existingReport = await ctx.prisma.report.findFirst({
       where: {
         reporterId: user.id,
-        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album',
+        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post',
         targetId,
         status: { in: ['open', 'reviewed'] },
       },
@@ -109,7 +152,7 @@ export const reportMutationResolvers = {
     const report = await ctx.prisma.report.create({
       data: {
         reporterId: user.id,
-        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album',
+        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post',
         targetId,
         reason: reason as 'inappropriate' | 'spam' | 'harassment' | 'copyright' | 'other',
         description: description?.trim() || null,

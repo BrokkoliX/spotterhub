@@ -288,9 +288,29 @@ export default function UploadPage() {
       setError(null);
       setFile(selectedFile);
 
-      // Create preview
+      // Create preview and check dimensions
       const url = URL.createObjectURL(selectedFile);
       setPreview(url);
+
+      // Validate image dimensions before proceeding
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+          const MIN_LONG_EDGE = 800;
+          if (longEdge < MIN_LONG_EDGE) {
+            URL.revokeObjectURL(url);
+            setError(`Image is too small. Minimum ${MIN_LONG_EDGE}px on the long edge required (yours is ${longEdge}px).`);
+            setFile(null);
+            setPreview(null);
+            reject(new Error('Image too small'));
+            return;
+          }
+          resolve();
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = url;
+      });
 
       // Extract EXIF data
       try {
@@ -594,7 +614,7 @@ export default function UploadPage() {
                     Drop your photo here or click to browse
                   </p>
                   <p className={styles.dropzoneSub}>
-                    JPEG, PNG, WebP, HEIC — max 25 MB
+                    JPEG, PNG, WebP, HEIC — min 800px long edge, max 25 MB
                   </p>
                   <input
                     ref={fileInputRef}

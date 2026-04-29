@@ -87,6 +87,8 @@ enum ReportTargetType {
   comment
   profile
   album
+  community
+  forum_post
 }
 
 enum ReportReason {

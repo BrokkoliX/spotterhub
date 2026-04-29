@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import { useMutation } from 'urql';
 
 import { ImageUploader } from '@/components/ImageUploader';
+import { ReportButton } from '@/components/ReportButton';
 import { useAuth, type User } from '@/lib/auth';
 import {
   BAN_COMMUNITY_MEMBER,
@@ -447,6 +448,9 @@ function HeroSection({
             <Link href={`/communities/${community.slug}/admin`} className={styles.heroEditBtn}>
               🛡️ Admin
             </Link>
+          )}
+          {user && (
+            <ReportButton targetType="community" targetId={community.id} />
           )}
         </div>
 

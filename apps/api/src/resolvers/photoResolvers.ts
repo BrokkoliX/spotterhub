@@ -1,9 +1,9 @@
-import { validateUpload } from '@spotterspace/shared';
+import { validateUpload, validateImageDimensions, USER_TIER_LIMITS } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { generateVariants } from '../services/imageProcessing.js';
+import { generateVariants, getSharp } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
 import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 import { validateStringLength, validateArrayLength } from '../utils/validation.js';
@@ -315,6 +315,19 @@ export const photoMutationResolvers = {
     const { input } = args;
     validateStringLength(input.caption, 'Caption', 0, 2000);
     validateArrayLength(input.tags, 'Tags', 30);
+
+    // Validate image dimensions before creating the photo
+    const { getObject } = await import('../services/s3.js');
+    const originalBuffer = await getObject(input.s3Key);
+    const sharp = await getSharp();
+    const metadata = await sharp(originalBuffer).metadata();
+    const originalWidth = metadata.width ?? 0;
+    const originalHeight = metadata.height ?? 0;
+    const dimensionResult = validateImageDimensions(originalWidth, originalHeight, 'free');
+    if (!dimensionResult.valid) {
+      throw new GraphQLError(dimensionResult.error!, { extensions: { code: 'BAD_USER_INPUT' } });
+    }
+
     const originalUrl = getObjectUrl(input.s3Key);
 
     // Auto-credit photographer to uploader, photographerName from profile displayName
@@ -332,6 +345,8 @@ export const photoMutationResolvers = {
         originalUrl,
         fileSizeBytes: input.fileSizeBytes,
         mimeType: input.mimeType,
+        originalWidth,
+        originalHeight,
         photographerId,
         photographerName,
         aircraftId: input.aircraftId ?? null,

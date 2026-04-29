@@ -61,6 +61,8 @@ export const typeDefs = gql`
     comment
     profile
     album
+    community
+    forum_post
   }
 
   enum ReportReason {
@@ -2065,7 +2067,7 @@ export const typeDefs = gql`
 
   input CreateReportInput {
     """
-    Type of content: photo, comment, profile, or album.
+    Type of content: photo, comment, profile, album, community, or forum_post.
     """
     targetType: ReportTargetType!
     """

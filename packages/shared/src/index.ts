@@ -91,12 +91,14 @@ export enum ReportStatus {
 export const USER_TIER_LIMITS = {
   free: {
     uploadsPerMonth: 50,
+    minLongEdge: 800,
     maxResolution: 2048,
     maxFileSizeMB: 20,
     storageCapGB: 5,
   },
   premium: {
     uploadsPerMonth: 200,
+    minLongEdge: 800,
     maxResolution: 4096,
     maxFileSizeMB: 50,
     storageCapGB: 25,
@@ -180,7 +182,15 @@ export function validateUsername(username: string): string | null {
 }
 
 /**
- * Validates an uploaded file against tier limits.
+ * Result of validating an uploaded file.
+ */
+export interface UploadValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * Validates an uploaded file against tier limits (file size and type only).
  * @param fileSizeBytes - The file size in bytes.
  * @param mimeType - The MIME type of the file.
  * @param tier - The user's subscription tier.
@@ -200,4 +210,37 @@ export function validateUpload(
     return `File size exceeds ${limits.maxFileSizeMB} MB limit for ${tier} tier`;
   }
   return null;
+}
+
+/**
+ * Validates image dimensions against tier limits.
+ * @param width - Image width in pixels.
+ * @param height - Image height in pixels.
+ * @param tier - The user's subscription tier.
+ * @returns UploadValidationResult with error message if invalid.
+ */
+export function validateImageDimensions(
+  width: number,
+  height: number,
+  tier: keyof typeof USER_TIER_LIMITS,
+): UploadValidationResult {
+  const limits = USER_TIER_LIMITS[tier];
+  const longEdge = Math.max(width, height);
+  const shortEdge = Math.min(width, height);
+
+  if (longEdge < limits.minLongEdge) {
+    return {
+      valid: false,
+      error: `Image is too small. Minimum ${limits.minLongEdge}px on the long edge required (yours is ${longEdge}px).`,
+    };
+  }
+
+  if (longEdge > limits.maxResolution) {
+    return {
+      valid: false,
+      error: `Image resolution too high. Maximum ${limits.maxResolution}px on the long edge for ${tier} tier.`,
+    };
+  }
+
+  return { valid: true };
 }

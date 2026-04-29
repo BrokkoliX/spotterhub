@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
+import { ReportButton } from '@/components/ReportButton';
 import {
   CREATE_FORUM_POST,
   DELETE_FORUM_POST,
@@ -220,6 +221,9 @@ export default function GlobalForumThreadPage() {
                     Delete
                   </button>
                 )}
+                {ready && user && (
+                  <ReportButton targetType="forum_post" targetId={post.id} />
+                )}
               </div>
               {post.isDeleted ? (
                 <div className={styles.postDeleted}>[This post has been deleted]</div>
@@ -256,6 +260,9 @@ export default function GlobalForumThreadPage() {
                           >
                             Delete
                           </button>
+                        )}
+                        {ready && user && (
+                          <ReportButton targetType="forum_post" targetId={reply.id} />
                         )}
                       </div>
                       {reply.isDeleted ? (

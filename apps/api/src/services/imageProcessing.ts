@@ -5,7 +5,7 @@ import { IMAGE_VARIANT_SIZES } from '@spotterspace/shared';
 // so we handle the error gracefully and skip processing.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _sharp: any = null;
-async function getSharp(): Promise<any> {
+export async function getSharp(): Promise<any> {
   if (!_sharp) {
     try {
       const mod = await import('sharp');
@@ -229,14 +229,22 @@ interface ResizeResult {
 /**
  * Resizes an image to fit within the given long-edge dimension, preserving aspect ratio.
  * Converts to JPEG for consistent output.
+ * If the source is smaller than 50% of target, upscale to 50% of target (prevents
+ * tiny images passing through at tiny sizes). Otherwise just resize normally.
+ * Uses withoutEnlargement: true so images already >= target pass through at original size.
  */
 async function resizeImage(input: Buffer, longEdge: number): Promise<ResizeResult> {
-  const result = await (
-    await getSharp()
-  )(input)
-    .resize(longEdge, longEdge, {
+  const sharp = await getSharp();
+  const metadata = await sharp(input).metadata();
+  const sourceLongEdge = Math.max(metadata.width ?? 0, metadata.height ?? 0);
+
+  // If source is very small (< 50% of target), upscale to 50% of target
+  const targetLongEdge = sourceLongEdge < longEdge * 0.5 ? Math.floor(longEdge * 0.5) : longEdge;
+
+  const result = await sharp(input)
+    .resize(targetLongEdge, targetLongEdge, {
       fit: 'inside',
-      withoutEnlargement: true,
+      withoutEnlargement: targetLongEdge < longEdge ? false : true,
     })
     .jpeg({ quality: 85, progressive: true })
     .toBuffer({ resolveWithObject: true });
