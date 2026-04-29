@@ -194,31 +194,31 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
             {photo.caption && (
               <div className={styles.card}>
                 <p className={styles.caption}>{photo.caption}</p>
-                <div className={styles.stats}>
-                  <LikeButton
-                    photoId={photo.id}
-                    initialLikeCount={photo.likeCount}
-                    initialIsLiked={photo.isLikedByMe}
-                  />
-                  <span className={styles.stat}>💬 {photo.commentCount}</span>
-                  <span style={{ color: 'yellow', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                    canDelete={String(canDelete)} role={user?.role}
-                  </span>
-                  <ReportButton targetType="photo" targetId={photo.id} />
-                  {canDelete && (
-                    <button
-                      className={styles.deleteBtn}
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      title="Delete photo"
-                      style={{ background: 'red', color: 'white' }}
-                    >
-                      DELETE DEBUG canDelete={String(canDelete)}
-                    </button>
-                  )}
-                </div>
               </div>
             )}
+
+            {/* Actions: like, comment, report, delete */}
+            <div className={styles.card}>
+              <div className={styles.stats}>
+                <LikeButton
+                  photoId={photo.id}
+                  initialLikeCount={photo.likeCount}
+                  initialIsLiked={photo.isLikedByMe}
+                />
+                <span className={styles.stat}>💬 {photo.commentCount}</span>
+                <ReportButton targetType="photo" targetId={photo.id} />
+                {canDelete && (
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    title="Delete photo"
+                  >
+                    🗑️ {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Metadata */}
             <div className={styles.card}>
