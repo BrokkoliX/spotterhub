@@ -1122,7 +1122,6 @@ function NewAircraftModal({
   const [familiesResult] = useQuery({
     query: GET_AIRCRAFT_FAMILIES,
     variables: { manufacturerId: selectedManufacturerId || undefined, first: 1000 },
-    pause: !selectedManufacturerId,
   });
   const families = familiesResult.data?.aircraftFamilies?.edges?.map(
     (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
@@ -1135,7 +1134,6 @@ function NewAircraftModal({
   const [variantsResult] = useQuery({
     query: GET_AIRCRAFT_VARIANTS,
     variables: { familyId: selectedFamilyId || undefined, first: 1000 },
-    pause: !selectedFamilyId,
   });
   const variants = variantsResult.data?.aircraftVariants?.edges?.map(
     (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
