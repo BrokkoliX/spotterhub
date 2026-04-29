@@ -457,22 +457,26 @@ export const aircraftHierarchyFieldResolvers = {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     isFollowedByMe: async (parent: { name: string }, _args: unknown, ctx: Context) => {
       if (!ctx.user) return false;
-      const user = await ctx.prisma.user.findUnique({
-        where: { cognitoSub: ctx.user.sub },
-        select: { id: true },
-      });
-      if (!user) return false;
-      const follow = await ctx.prisma.follow.findUnique({
-        where: {
-          followerId_targetType_targetValue: {
-            followerId: user.id,
-            targetType: 'manufacturer',
-            targetValue: parent.name,
+      try {
+        const user = await ctx.prisma.user.findUnique({
+          where: { cognitoSub: ctx.user.sub },
+          select: { id: true },
+        });
+        if (!user) return false;
+        const follow = await ctx.prisma.follow.findUnique({
+          where: {
+            followerId_targetType_targetValue: {
+              followerId: user.id,
+              targetType: 'manufacturer',
+              targetValue: parent.name,
+            },
           },
-        },
-        select: { id: true },
-      });
-      return !!follow;
+          select: { id: true },
+        });
+        return !!follow;
+      } catch {
+        return false;
+      }
     },
   },
 
@@ -491,22 +495,26 @@ export const aircraftHierarchyFieldResolvers = {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     isFollowedByMe: async (parent: { name: string }, _args: unknown, ctx: Context) => {
       if (!ctx.user) return false;
-      const user = await ctx.prisma.user.findUnique({
-        where: { cognitoSub: ctx.user.sub },
-        select: { id: true },
-      });
-      if (!user) return false;
-      const follow = await ctx.prisma.follow.findUnique({
-        where: {
-          followerId_targetType_targetValue: {
-            followerId: user.id,
-            targetType: 'family',
-            targetValue: parent.name,
+      try {
+        const user = await ctx.prisma.user.findUnique({
+          where: { cognitoSub: ctx.user.sub },
+          select: { id: true },
+        });
+        if (!user) return false;
+        const follow = await ctx.prisma.follow.findUnique({
+          where: {
+            followerId_targetType_targetValue: {
+              followerId: user.id,
+              targetType: 'family',
+              targetValue: parent.name,
+            },
           },
-        },
-        select: { id: true },
-      });
-      return !!follow;
+          select: { id: true },
+        });
+        return !!follow;
+      } catch {
+        return false;
+      }
     },
   },
 
@@ -520,22 +528,26 @@ export const aircraftHierarchyFieldResolvers = {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     isFollowedByMe: async (parent: { name: string }, _args: unknown, ctx: Context) => {
       if (!ctx.user) return false;
-      const user = await ctx.prisma.user.findUnique({
-        where: { cognitoSub: ctx.user.sub },
-        select: { id: true },
-      });
-      if (!user) return false;
-      const follow = await ctx.prisma.follow.findUnique({
-        where: {
-          followerId_targetType_targetValue: {
-            followerId: user.id,
-            targetType: 'variant',
-            targetValue: parent.name,
+      try {
+        const user = await ctx.prisma.user.findUnique({
+          where: { cognitoSub: ctx.user.sub },
+          select: { id: true },
+        });
+        if (!user) return false;
+        const follow = await ctx.prisma.follow.findUnique({
+          where: {
+            followerId_targetType_targetValue: {
+              followerId: user.id,
+              targetType: 'variant',
+              targetValue: parent.name,
+            },
           },
-        },
-        select: { id: true },
-      });
-      return !!follow;
+          select: { id: true },
+        });
+        return !!follow;
+      } catch {
+        return false;
+      }
     },
   },
 };
