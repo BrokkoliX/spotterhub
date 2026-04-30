@@ -71,20 +71,18 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
   const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
 
-  const watermarkedVariant = photo.watermarkEnabled
-    ? photo.variants.find((v) => v.variantType === 'watermarked')
-    : undefined;
-  const displayVariant = photo.variants.find(
-    (v) => v.variantType === 'display',
-  );
   const thumbnail16x9Variant = photo.variants.find(
     (v) => v.variantType === 'thumbnail_16x9',
+  );
+  const displayVariant = photo.variants.find(
+    (v) => v.variantType === 'display',
   );
   const thumbnailVariant = photo.variants.find(
     (v) => v.variantType === 'thumbnail',
   );
+  // Always prefer the 16:9 cropped thumbnail for feed cards so every card
+  // renders at a uniform landscape aspect ratio regardless of orientation.
   const imageUrl =
-    watermarkedVariant?.url ??
     thumbnail16x9Variant?.url ??
     displayVariant?.url ??
     thumbnailVariant?.url ??

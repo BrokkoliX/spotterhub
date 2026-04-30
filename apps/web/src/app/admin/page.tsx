@@ -142,6 +142,13 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>User-submitted additions</div>
           </div>
         </Link>
+        <Link href="/admin/settings" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>⚙️</span>
+          <div>
+            <div className={styles.quickLinkLabel}>General Settings</div>
+            <div className={styles.quickLinkDesc}>Photo limits, site config</div>
+          </div>
+        </Link>
       </div>
     </div>
   );

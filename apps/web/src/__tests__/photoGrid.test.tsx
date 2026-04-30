@@ -43,6 +43,12 @@ function createMockPhoto(overrides: Partial<PhotoData> = {}): PhotoData {
         height: 150,
       },
       {
+        variantType: 'thumbnail_16x9',
+        url: 'https://example.com/thumb-16x9.jpg',
+        width: 640,
+        height: 360,
+      },
+      {
         variantType: 'display',
         url: 'https://example.com/display.jpg',
         width: 800,
@@ -143,5 +149,68 @@ describe('PhotoGrid', () => {
     );
 
     expect(screen.getByText('No photos yet')).toBeTruthy();
+  });
+
+  // ─── Variant priority tests ─────────────────────────────────────────────────
+
+  it('grid view prefers thumbnail_16x9 over watermarked and other variants', () => {
+    const photo = createMockPhoto({
+      id: 'p-priority',
+      watermarkEnabled: true,
+      variants: [
+        { variantType: 'thumbnail', url: 'https://example.com/thumb.jpg', width: 200, height: 150 },
+        { variantType: 'thumbnail_16x9', url: 'https://example.com/thumb-16x9.jpg', width: 640, height: 360 },
+        { variantType: 'display', url: 'https://example.com/display.jpg', width: 800, height: 600 },
+        { variantType: 'watermarked', url: 'https://example.com/watermarked.jpg', width: 4000, height: 3000 },
+      ],
+    });
+
+    render(
+      <AuthProvider>
+        <PhotoGrid photos={[photo]} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+      </AuthProvider>,
+    );
+
+    const img = screen.getByRole('img');
+    expect(img.getAttribute('src')).toBe('https://example.com/thumb-16x9.jpg');
+  });
+
+  it('grid view falls back to display when thumbnail_16x9 is missing', () => {
+    const photo = createMockPhoto({
+      id: 'p-fallback',
+      variants: [
+        { variantType: 'thumbnail', url: 'https://example.com/thumb.jpg', width: 200, height: 150 },
+        { variantType: 'display', url: 'https://example.com/display.jpg', width: 800, height: 600 },
+      ],
+    });
+
+    render(
+      <AuthProvider>
+        <PhotoGrid photos={[photo]} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+      </AuthProvider>,
+    );
+
+    const img = screen.getByRole('img');
+    expect(img.getAttribute('src')).toBe('https://example.com/display.jpg');
+  });
+
+  it('list view prefers thumbnail_16x9 for thumbnails', () => {
+    const photo = createMockPhoto({
+      id: 'p-list',
+      variants: [
+        { variantType: 'thumbnail', url: 'https://example.com/thumb.jpg', width: 200, height: 150 },
+        { variantType: 'thumbnail_16x9', url: 'https://example.com/thumb-16x9.jpg', width: 640, height: 360 },
+        { variantType: 'display', url: 'https://example.com/display.jpg', width: 800, height: 600 },
+      ],
+    });
+
+    render(
+      <AuthProvider>
+        <PhotoGrid photos={[photo]} hasNextPage={false} loading={false} onLoadMore={() => {}} viewMode="list" />
+      </AuthProvider>,
+    );
+
+    const img = screen.getByRole('img');
+    expect(img.getAttribute('src')).toBe('https://example.com/thumb-16x9.jpg');
   });
 });

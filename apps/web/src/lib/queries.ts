@@ -2778,6 +2778,8 @@ export const GET_SITE_SETTINGS = gql`
       id
       bannerUrl
       tagline
+      minPhotoLongEdge
+      maxPhotoLongEdge
       updatedAt
     }
   }
@@ -2789,6 +2791,8 @@ export const UPDATE_SITE_SETTINGS = gql`
       id
       bannerUrl
       tagline
+      minPhotoLongEdge
+      maxPhotoLongEdge
       updatedAt
     }
   }

@@ -1,6 +1,6 @@
 # SpotterHub — Product Documentation
 
-> **Last updated:** 2026-04-17
+> **Last updated:** 2026-04-30
 > **Live at:** https://www.spotterspace.com
 
 ---
@@ -20,7 +20,7 @@ SpotterHub is a community platform for aviation photographers and plane spotters
 | **Auth** | Email/password signup and sign-in. Mock JWT auth in dev; AWS Cognito in production. |
 | **Profiles** | Display name, bio, gear, experience level, interests, favorite aircraft and airports. |
 | **Photo Upload** | Drag-and-drop upload with aircraft type, airline, airport, caption, tags, date, location (EXIF GPS or manual pin). Privacy modes: exact / approximate (±500m) / hidden. License selection (All Rights Reserved, CC BY variants). Optional watermark toggle — when enabled, a "© SpotterSpace" overlay is composited onto the display variant via Sharp SVG composite. |
-| **Photo Feed** | Paginated home feed of recent approved photos. |
+| **Photo Feed** | Paginated home feed of recent approved photos. Uniform 16:9 thumbnails with center-crop. |
 | **Photo Detail** | Full photo with metadata, map pin, comments, likes, related aircraft photos. |
 | **Albums** | Personal albums with cover photo selection. Add/remove photos. |
 | **Follow Users** | Follow other spotters; follower/following counts. |
@@ -58,7 +58,7 @@ SpotterHub is a community platform for aviation photographers and plane spotters
 | **User Management** | `/admin/users` — list with role/status filters, search. Change role/status. |
 | **Photo Moderation** | `/admin/photos` — pending/approved/rejected queue with approve/reject actions. |
 | **Reports** | `/admin/reports` — flag queue with resolve/dismiss actions. |
-| **Site Settings** | `/settings/site` — custom banner and tagline (visible on homepage). |
+| **Site Settings** | `/admin/settings` — general settings: custom banner, tagline, photo dimension limits (min/max long edge). |
 | **Aircraft Admin** | `/admin/aircraft`, `/admin/manufacturers`, `/admin/families`, `/admin/variants`, `/admin/airlines`, `/admin/aircraft-specific-categories` — full CRUD for aircraft taxonomy. |
 | **Airport Admin** | `/admin/airports` — view and manage airports. |
 | **Pending List Items** | `/admin/pending-list-items` — manage pending aircraft types, variants, manufacturers, categories. |

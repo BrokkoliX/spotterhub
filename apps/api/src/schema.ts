@@ -2564,12 +2564,16 @@ export const typeDefs = gql`
     id: ID!
     bannerUrl: String
     tagline: String
+    minPhotoLongEdge: Int!
+    maxPhotoLongEdge: Int!
     updatedAt: String!
   }
 
   input UpdateSiteSettingsInput {
     bannerUrl: String
     tagline: String
+    minPhotoLongEdge: Int
+    maxPhotoLongEdge: Int
   }
 
   input CreateCommunityInput {

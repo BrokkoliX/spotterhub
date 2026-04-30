@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-29
+> **Last updated:** 2026-04-30
 > **Purpose:** Living document tracking implemented features and operational notes. See `PRODUCT.md` for current product overview.
 
 ---
@@ -35,7 +35,7 @@
 ### Photos
 
 - [x] Upload with S3 presigned URLs
-- [x] Sharp image processing (thumbnail 150px, display 640px, watermarked variant)
+- [x] Sharp image processing (thumbnail 150px, thumbnail 16:9 640×360, display 640px, watermarked variant)
 - [x] Photo license selection (All Rights Reserved, CC BY variants) on upload
 - [x] Watermark option (© SpotterSpace overlay) on upload
 - [x] Photo CRUD, variants, tags
@@ -143,6 +143,7 @@
 - [x] `/admin/photo-categories` — photo category CRUD
 - [x] `/admin/airports` — airport management
 - [x] `/admin/pending-list-items` — pending aircraft types/variants/manufacturers/categories
+- [x] `/admin/settings` — general settings (photo dimension limits)
 - [x] `/settings/site` — custom banner and tagline
 - [x] Admin/moderator soft-delete + hard-delete for photos, albums, forum threads, forum posts, comments (requires role + reason logged to moderation audit)
 
@@ -157,6 +158,7 @@
 ### Site Settings
 
 - [x] Custom homepage banner and tagline (stored in SiteSettings singleton)
+- [x] Admin-configurable photo dimension limits (min/max long edge)
 - [x] Dark/light mode toggle (persisted to localStorage)
 
 ### Pages & UI
@@ -227,7 +229,7 @@ npx turbo run generate --filter=@spotterspace/db
 - **Sharp image processing (production fix):** ESM dynamic `import('sharp')` was returning a module object instead of the Sharp function. Fixed with `mod.default ?? mod` to unwrap correctly. Docker image explicitly installs `@img/sharp-linuxmusl-arm64` and `@img/sharp-linuxmusl-x64` after `npm prune` to ensure native binaries survive the prune step.
 - **Watermark rendering:** Docker image installs `font-noto` and `fontconfig` packages so Sharp's SVG composite can render text. When `watermarkEnabled` is true during upload, a "© SpotterSpace" watermark is composited onto the display-size image in the bottom-right corner using Sharp's SVG overlay.
 - **`regeneratePhotoVariants` mutation:** Allows photo owners and admins to re-trigger variant generation (thumbnail, display, watermarked) for existing photos. Useful after fixing processing bugs or changing watermark logic.
-- **Frontend watermark preference:** `PhotoCard.tsx` and `photos/[id]/page.tsx` prefer the `watermarked` variant over `display` when `watermarkEnabled` is true on the photo.
+- **Feed thumbnail priority:** `PhotoCard.tsx` always prefers `thumbnail_16x9` for uniform 16:9 aspect ratio in feed cards, regardless of watermark setting. The watermarked variant is used only on the photo detail page.
 
 ---
 

@@ -848,10 +848,12 @@ model CommunityModerationLog {
 // ─── Site Settings ─────────────────────────────────────────────────────────────
 
 model SiteSettings {
-  id        String   @id @default("site_settings") @map("id")
-  bannerUrl String?  @map("banner_url")
-  tagline   String?  @map("tagline")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String   @id @default("site_settings") @map("id")
+  bannerUrl        String?  @map("banner_url")
+  tagline          String?  @map("tagline")
+  minPhotoLongEdge Int      @default(800) @map("min_photo_long_edge")
+  maxPhotoLongEdge Int      @default(4096) @map("max_photo_long_edge")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
 }

@@ -9,6 +9,8 @@ export interface SiteSettingsParent {
   id: string;
   bannerUrl: string | null;
   tagline: string | null;
+  minPhotoLongEdge: number;
+  maxPhotoLongEdge: number;
 }
 
 // ─── Query Resolvers ─────────────────────────────────────────────────────────
@@ -33,7 +35,14 @@ export const siteSettingsQueryResolvers = {
 export const siteSettingsMutationResolvers = {
   updateSiteSettings: async (
     _parent: unknown,
-    args: { input: { bannerUrl?: string | null; tagline?: string | null } },
+    args: {
+      input: {
+        bannerUrl?: string | null;
+        tagline?: string | null;
+        minPhotoLongEdge?: number | null;
+        maxPhotoLongEdge?: number | null;
+      };
+    },
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
@@ -43,17 +52,40 @@ export const siteSettingsMutationResolvers = {
       });
     }
 
+    // Validate photo dimension limits if provided
+    const minEdge = args.input.minPhotoLongEdge;
+    const maxEdge = args.input.maxPhotoLongEdge;
+
+    if (minEdge != null && (minEdge < 100 || minEdge > 10000)) {
+      throw new GraphQLError('minPhotoLongEdge must be between 100 and 10000', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    if (maxEdge != null && (maxEdge < 100 || maxEdge > 10000)) {
+      throw new GraphQLError('maxPhotoLongEdge must be between 100 and 10000', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    if (minEdge != null && maxEdge != null && minEdge >= maxEdge) {
+      throw new GraphQLError('minPhotoLongEdge must be less than maxPhotoLongEdge', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const data: Record<string, unknown> = {
+      bannerUrl: args.input.bannerUrl ?? null,
+      tagline: args.input.tagline ?? null,
+    };
+    if (minEdge != null) data.minPhotoLongEdge = minEdge;
+    if (maxEdge != null) data.maxPhotoLongEdge = maxEdge;
+
     return ctx.prisma.siteSettings.upsert({
       where: { id: 'site_settings' },
       create: {
         id: 'site_settings',
-        bannerUrl: args.input.bannerUrl ?? null,
-        tagline: args.input.tagline ?? null,
+        ...data,
       },
-      update: {
-        bannerUrl: args.input.bannerUrl ?? null,
-        tagline: args.input.tagline ?? null,
-      },
+      update: data,
     });
   },
 };

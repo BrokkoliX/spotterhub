@@ -47,9 +47,13 @@ export function PhotoGrid({
       <>
         <div className={styles.list}>
           {photos.map((photo) => {
-            const thumb = photo.variants?.find(
-              (v: { variantType: string }) => v.variantType === 'thumbnail',
-            );
+            const thumb =
+              photo.variants?.find(
+                (v: { variantType: string }) => v.variantType === 'thumbnail_16x9',
+              ) ??
+              photo.variants?.find(
+                (v: { variantType: string }) => v.variantType === 'thumbnail',
+              );
             const imgUrl = thumb?.url ?? photo.originalUrl;
             const isSelected = selectedIds.has(photo.id);
             return (
