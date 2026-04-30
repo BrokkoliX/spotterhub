@@ -109,7 +109,12 @@ export async function generateVariants(
   originalKey: string,
   options: { watermarkEnabled?: boolean } = {},
 ): Promise<ImageVariantResult[]> {
-  console.log('[IMG] generateVariants called with key:', originalKey, 'watermarkEnabled:', options.watermarkEnabled);
+  console.log(
+    '[IMG] generateVariants called with key:',
+    originalKey,
+    'watermarkEnabled:',
+    options.watermarkEnabled,
+  );
   const original = await getObject(originalKey);
   console.log('[IMG] Fetched original from S3, size:', original.length);
   const results: ImageVariantResult[] = [];
@@ -180,12 +185,13 @@ export async function generateVariants(
  * @param buffer - The original image buffer.
  * @returns The watermarked image buffer with dimensions.
  */
-async function generateWatermarked(buffer: Buffer): Promise<{ buffer: Buffer; width: number; height: number }> {
+async function generateWatermarked(
+  buffer: Buffer,
+): Promise<{ buffer: Buffer; width: number; height: number }> {
   console.log('[IMG] generateWatermarked called, buffer size:', buffer.length);
   const metadata = await (await getSharp())(buffer).metadata();
   console.log('[IMG] sharp metadata:', metadata.width, 'x', metadata.height);
   const width = metadata.width ?? 1920;
-  const height = metadata.height ?? 1080;
 
   // Create a single watermark label for the bottom-right corner.
   // Use XML entity for copyright symbol to avoid encoding issues in Alpine.
@@ -208,7 +214,9 @@ async function generateWatermarked(buffer: Buffer): Promise<{ buffer: Buffer; wi
 
   const watermarkBuffer = await (await getSharp())(svg).png().toBuffer();
 
-  const result = await (await getSharp())(buffer)
+  const result = await (
+    await getSharp()
+  )(buffer)
     .composite([{ input: watermarkBuffer, gravity: 'southeast' }])
     .jpeg({ quality: 90 })
     .toBuffer({ resolveWithObject: true });
@@ -270,23 +278,19 @@ async function resizeImage(input: Buffer, longEdge: number): Promise<ResizeResul
 }
 
 /**
- * Resizes an image to fit entirely within a 16:9 frame at the given width.
- * The full photo is always visible — non-16:9 images get dark letterbox bars.
- * Converts to JPEG for consistent output.
- * e.g. a 3000×4000 portrait becomes 640×360 with the photo centered and
- *      dark bars on the left and right sides.
+ * Resizes and center-crops an image to a 16:9 frame at the given width.
+ * The image is scaled to fill the frame, then the overflow is cropped from
+ * the centre — no letterbox bars. Converts to JPEG for consistent output.
+ * e.g. a 3000×4000 portrait is scaled up to cover 640×360, then the top/bottom
+ *      excess is trimmed so only the centre portion remains.
  */
-async function resizeImageCropped16x9(
-  input: Buffer,
-  longEdge: number,
-): Promise<ResizeResult> {
+async function resizeImageCropped16x9(input: Buffer, longEdge: number): Promise<ResizeResult> {
   const result = await (
     await getSharp()
   )(input)
     .resize(longEdge, Math.round((longEdge * 9) / 16), {
-      fit: 'contain',
-      position: 'center',
-      background: { r: 18, g: 18, b: 18, alpha: 1 },
+      fit: 'cover',
+      position: 'centre',
     })
     .jpeg({ quality: 85, progressive: true })
     .toBuffer({ resolveWithObject: true });
