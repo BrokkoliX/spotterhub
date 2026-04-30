@@ -270,9 +270,11 @@ async function resizeImage(input: Buffer, longEdge: number): Promise<ResizeResul
 }
 
 /**
- * Resizes and center-crops an image to a 16:9 aspect ratio at the given long-edge size.
+ * Resizes an image to fit entirely within a 16:9 frame at the given width.
+ * The full photo is always visible — non-16:9 images get dark letterbox bars.
  * Converts to JPEG for consistent output.
- * e.g. a 400x300 or 300x400 source becomes 640x360 (16:9 at 640 long edge).
+ * e.g. a 3000×4000 portrait becomes 640×360 with the photo centered and
+ *      dark bars on the left and right sides.
  */
 async function resizeImageCropped16x9(
   input: Buffer,
@@ -282,8 +284,9 @@ async function resizeImageCropped16x9(
     await getSharp()
   )(input)
     .resize(longEdge, Math.round((longEdge * 9) / 16), {
-      fit: 'cover',
+      fit: 'contain',
       position: 'center',
+      background: { r: 18, g: 18, b: 18, alpha: 1 },
     })
     .jpeg({ quality: 85, progressive: true })
     .toBuffer({ resolveWithObject: true });
