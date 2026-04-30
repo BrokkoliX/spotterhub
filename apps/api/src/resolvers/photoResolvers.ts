@@ -1,4 +1,4 @@
-import { validateUpload, validateImageDimensions, USER_TIER_LIMITS } from '@spotterspace/shared';
+import { validateUpload, USER_TIER_LIMITS } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
@@ -316,16 +316,32 @@ export const photoMutationResolvers = {
     validateStringLength(input.caption, 'Caption', 0, 2000);
     validateArrayLength(input.tags, 'Tags', 30);
 
-    // Validate image dimensions before creating the photo
+    // Validate image dimensions using admin-configured limits from SiteSettings
     const { getObject } = await import('../services/s3.js');
     const originalBuffer = await getObject(input.s3Key);
     const sharp = await getSharp();
     const metadata = await sharp(originalBuffer).metadata();
     const originalWidth = metadata.width ?? 0;
     const originalHeight = metadata.height ?? 0;
-    const dimensionResult = validateImageDimensions(originalWidth, originalHeight, 'free');
-    if (!dimensionResult.valid) {
-      throw new GraphQLError(dimensionResult.error!, { extensions: { code: 'BAD_USER_INPUT' } });
+    const longEdge = Math.max(originalWidth, originalHeight);
+
+    const siteSettings = await ctx.prisma.siteSettings.findUnique({
+      where: { id: 'site_settings' },
+    });
+    const minLongEdge = siteSettings?.minPhotoLongEdge ?? USER_TIER_LIMITS.free.minLongEdge;
+    const maxLongEdge = siteSettings?.maxPhotoLongEdge ?? USER_TIER_LIMITS.free.maxResolution;
+
+    if (longEdge < minLongEdge) {
+      throw new GraphQLError(
+        `Image is too small. Minimum ${minLongEdge}px on the long edge required (yours is ${longEdge}px).`,
+        { extensions: { code: 'BAD_USER_INPUT' } },
+      );
+    }
+    if (longEdge > maxLongEdge) {
+      throw new GraphQLError(
+        `Image resolution too high. Maximum ${maxLongEdge}px on the long edge (yours is ${longEdge}px).`,
+        { extensions: { code: 'BAD_USER_INPUT' } },
+      );
     }
 
     const originalUrl = getObjectUrl(input.s3Key);
@@ -666,10 +682,9 @@ export const photoMutationResolvers = {
       user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser';
 
     if (!isPrivileged && photo.userId !== user.id) {
-      throw new GraphQLError(
-        'You do not have permission to delete this photo',
-        { extensions: { code: 'FORBIDDEN' } },
-      );
+      throw new GraphQLError('You do not have permission to delete this photo', {
+        extensions: { code: 'FORBIDDEN' },
+      });
     }
 
     await ctx.prisma.photo.delete({ where: { id: args.id } });
