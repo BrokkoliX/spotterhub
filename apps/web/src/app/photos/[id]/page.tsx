@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -52,6 +52,18 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   // Marketplace purchase
   const [{ fetching: purchasing }, createPurchase] = useMutation(CREATE_PHOTO_PURCHASE);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Close fullscreen on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isFullscreen && e.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
 
   if (fetching) {
     return (
@@ -116,13 +128,15 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
 
         <div className={styles.layout}>
           {/* Image */}
-          <div className={styles.imageContainer}>
+          <div className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}>
             {imageUrl && !imgError ? (
               <img
                 src={imageUrl}
                 alt={photo.caption ?? `Photo by ${displayName}`}
-                className={styles.image}
+                className={`${styles.image} ${isFullscreen ? styles.fullscreenImage : ''}`}
                 onError={() => setImgError(true)}
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                style={{ cursor: 'pointer' }}
               />
             ) : (
               <div className={styles.imagePlaceholder}>📷</div>

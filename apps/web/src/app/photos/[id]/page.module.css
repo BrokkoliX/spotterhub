@@ -44,6 +44,28 @@
   background: #000;
 }
 
+/* ─── Fullscreen ────────────────────────────────────────────────────────── */
+
+.fullscreenImageContainer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.95);
+  border-radius: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreenImage {
+  max-height: 100vh;
+  max-width: 100vw;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
 .imagePlaceholder {
   width: 100%;
   aspect-ratio: 16 / 9;
