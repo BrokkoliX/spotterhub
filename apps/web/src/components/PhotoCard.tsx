@@ -1,10 +1,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { useAuth } from '@/lib/auth';
-import { FollowButton } from './FollowButton';
 import { LikeButton } from './LikeButton';
-import { TopicFollowButton } from './TopicFollowButton';
 import styles from './PhotoCard.module.css';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -68,7 +65,6 @@ export interface PhotoData {
  * Shows thumbnail variant if available, falls back to original URL.
  */
 export function PhotoCard({ photo }: { photo: PhotoData }) {
-  const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
 
   const thumbnail16x9Variant = photo.variants.find(
@@ -138,84 +134,11 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
 
       <div className={styles.body}>
         {photo.caption && <p className={styles.caption}>{photo.caption}</p>}
-
-        <div className={styles.meta}>
-          {photo.aircraft?.registration && (
-            <span className={styles.metaItem}>
-              📋 {photo.aircraft.registration}
-              {user && (
-                <TopicFollowButton
-                  targetType="registration"
-                  value={photo.aircraft.registration}
-                  initialIsFollowing={photo.aircraft.isFollowedByMe ?? false}
-                />
-              )}
-            </span>
-          )}
-          {photo.aircraft?.manufacturer?.name && (
-            <span className={styles.metaItem}>
-              {photo.aircraft.manufacturer.name}
-              {user && (
-                <TopicFollowButton
-                  targetType="manufacturer"
-                  value={photo.aircraft.manufacturer.name}
-                  initialIsFollowing={photo.aircraft.manufacturer.isFollowedByMe ?? false}
-                />
-              )}
-            </span>
-          )}
-          {photo.aircraft?.family?.name && (
-            <span className={styles.metaItem}>
-              {photo.aircraft.family.name}
-              {user && (
-                <TopicFollowButton
-                  targetType="family"
-                  value={photo.aircraft.family.name}
-                  initialIsFollowing={photo.aircraft.family.isFollowedByMe ?? false}
-                />
-              )}
-            </span>
-          )}
-          {photo.aircraft?.variant?.name && (
-            <span className={styles.metaItem}>
-              {photo.aircraft.variant.name}
-              {user && (
-                <TopicFollowButton
-                  targetType="variant"
-                  value={photo.aircraft.variant.name}
-                  initialIsFollowing={photo.aircraft.variant.isFollowedByMe ?? false}
-                />
-              )}
-            </span>
-          )}
-          {photo.airline && (
-            <span className={styles.metaItem}>
-              {photo.airline}
-              {user && (
-                <TopicFollowButton
-                  targetType="airline"
-                  value={photo.airline}
-                  initialIsFollowing={false}
-                />
-              )}
-            </span>
-          )}
-          {photo.operatorIcao && (
-            <span className={styles.metaItem}>
-              ✈ {photo.operatorIcao}
-              {user && (
-                <TopicFollowButton
-                  targetType="airline"
-                  value={photo.operatorIcao}
-                  initialIsFollowing={false}
-                />
-              )}
-            </span>
-          )}
-          {photo.airportCode && (
+        {photo.airportCode && (
+          <div className={styles.meta}>
             <span className={styles.metaItem}>📍 {photo.airportCode}</span>
-          )}
-        </div>
+          </div>
+        )}
 
         {photo.tags.length > 0 && (
           <div className={styles.tags}>
@@ -236,12 +159,6 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
           >
             {displayName}
           </Link>
-          {user?.id !== photo.user.id && (
-            <FollowButton
-              userId={photo.user.id}
-              initialIsFollowing={photo.user.isFollowedByMe ?? false}
-            />
-          )}
         </div>
         <div className={styles.stats}>
           <LikeButton
