@@ -157,7 +157,7 @@ select {
   padding: 0 var(--space-4);
 }
 
-@media (min-width: var(--bp-md)) {
+@media (min-width: 768px) {
   .container {
     padding: 0 var(--space-6);
   }
@@ -286,15 +286,15 @@ select {
 
 /* Stack layout on mobile, row on desktop */
 .stack { display: flex; flex-direction: column; gap: var(--space-4); }
-@media (min-width: var(--bp-md)) { .stack { flex-direction: row; } }
+@media (min-width: 768px) { .stack { flex-direction: row; } }
 
 /* Hide on mobile / show on desktop */
 .hide-mobile { display: none; }
-@media (min-width: var(--bp-md)) { .hide-mobile { display: block; } }
+@media (min-width: 768px) { .hide-mobile { display: block; } }
 
 /* Show on mobile / hide on desktop */
 .hide-desktop { display: block; }
-@media (min-width: var(--bp-md)) { .hide-desktop { display: none; } }
+@media (min-width: 768px) { .hide-desktop { display: none; } }
 
 /* Card base */
 .card {

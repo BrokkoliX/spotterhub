@@ -32,11 +32,12 @@
 }
 
 .nav {
+  display: flex;
   align-items: center;
   gap: 4px;
 }
 
-@media (max-width: calc(var(--bp-lg) - 1px)) {
+@media (max-width: 1023px) {
   .nav {
     display: none;
   }
@@ -77,11 +78,12 @@
 }
 
 .actions {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
 
-@media (max-width: calc(var(--bp-lg) - 1px)) {
+@media (max-width: 1023px) {
   .actions {
     display: none;
   }
@@ -253,15 +255,8 @@
   flex-shrink: 0;
 }
 
-@media (max-width: calc(var(--bp-lg) - 1px)) {
+@media (max-width: 1023px) {
   .hamburger {
-    display: flex;
-  }
-}
-
-/* Show desktop nav at bp-lg (1024px) and above */
-@media (min-width: var(--bp-lg)) {
-  .actions {
     display: flex;
   }
 }

@@ -9,7 +9,7 @@
   background-color: #0a0a1a;
 }
 
-@media (min-width: var(--bp-md)) {
+@media (min-width: 768px) {
   .hero { height: 380px; }
 }
 
@@ -55,7 +55,7 @@
   margin-bottom: 8px;
 }
 
-@media (min-width: var(--bp-md)) {
+@media (min-width: 768px) {
   .heroTitle { font-size: 3rem; }
 }
 
@@ -66,7 +66,7 @@
   max-width: 480px;
 }
 
-@media (min-width: var(--bp-md)) {
+@media (min-width: 768px) {
   .heroSubtitle { font-size: 1.125rem; }
 }
 
@@ -109,7 +109,7 @@
   min-width: 0;
 }
 
-@media (min-width: var(--bp-md)) {
+@media (min-width: 768px) {
   .filterInputWrap {
     flex: 1;
     min-width: 180px;
