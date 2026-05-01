@@ -100,3 +100,11 @@
   color: var(--color-text-muted);
   margin-top: 2px;
 }
+
+/* ─── Ad Slot ─────────────────────────────────────────────────────────────── */
+
+.adSlot {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+}

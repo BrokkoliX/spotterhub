@@ -1,0 +1,12 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90px;
+  padding: 8px 0;
+}
+
+.ins {
+  display: block !important;
+  max-width: 100%;
+}

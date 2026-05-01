@@ -14,6 +14,14 @@ export interface SiteSettingsParent {
   photoUploadTimeoutSeconds: number;
 }
 
+export interface AdSettingsParent {
+  enabled: boolean;
+  adSenseClientId: string;
+  slotFeed: string | null;
+  slotPhotoDetail: string | null;
+  slotSidebar: string | null;
+}
+
 // ─── Query Resolvers ─────────────────────────────────────────────────────────
 
 export const siteSettingsQueryResolvers = {
@@ -25,6 +33,18 @@ export const siteSettingsQueryResolvers = {
       // Auto-create the singleton record on first access
       settings = await ctx.prisma.siteSettings.create({
         data: { id: 'site_settings' },
+      });
+    }
+    return settings;
+  },
+
+  adSettings: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    let settings = await ctx.prisma.adSettings.findUnique({
+      where: { id: 'ad_settings' },
+    });
+    if (!settings) {
+      settings = await ctx.prisma.adSettings.create({
+        data: { id: 'ad_settings' },
       });
     }
     return settings;
@@ -93,6 +113,43 @@ export const siteSettingsMutationResolvers = {
       where: { id: 'site_settings' },
       create: {
         id: 'site_settings',
+        ...data,
+      },
+      update: data,
+    });
+  },
+
+  updateAdSettings: async (
+    _parent: unknown,
+    args: {
+      input: {
+        enabled?: boolean | null;
+        adSenseClientId?: string | null;
+        slotFeed?: string | null;
+        slotPhotoDetail?: string | null;
+        slotSidebar?: string | null;
+      };
+    },
+    ctx: Context,
+  ) => {
+    const dbUser = await getDbUser(ctx);
+    if (dbUser.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can update ad settings', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (args.input.enabled != null) data.enabled = args.input.enabled;
+    if (args.input.adSenseClientId != null) data.adSenseClientId = args.input.adSenseClientId;
+    if (args.input.slotFeed != null) data.slotFeed = args.input.slotFeed;
+    if (args.input.slotPhotoDetail != null) data.slotPhotoDetail = args.input.slotPhotoDetail;
+    if (args.input.slotSidebar != null) data.slotSidebar = args.input.slotSidebar;
+
+    return ctx.prisma.adSettings.upsert({
+      where: { id: 'ad_settings' },
+      create: {
+        id: 'ad_settings',
         ...data,
       },
       update: data,

@@ -30,6 +30,17 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);return;}if(window.matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();`,
           }}
         />
+        {/*
+          Google AdSense: set NEXT_PUBLIC_ADSENSE_CLIENT_ID env var to your ca-pub-XXXXXXXX
+          in your AWS container environment (SSM Parameter Store or task definition).
+          This loads the AdSense script globally. Slot-specific ads are rendered by
+          the AdBanner component using per-slot IDs from the DB.
+        */}
+        <script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? ''}`}
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         <Providers>

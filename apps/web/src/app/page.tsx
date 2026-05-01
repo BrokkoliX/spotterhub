@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
+import { AdBanner } from '@/components/AdBanner';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth';
 import {
@@ -14,6 +15,7 @@ import {
   GET_FOLLOWING_FEED,
   GET_PHOTOS,
   GET_SITE_SETTINGS,
+  GET_AD_SETTINGS,
   SEARCH_AIRLINES,
   SEARCH_AIRPORTS,
   SEARCH_USERS,
@@ -52,8 +54,10 @@ export default function HomePage() {
   const [debouncedVariant, setDebouncedVariant] = useState('');
 
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
+  const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
   const siteBannerUrl = siteData?.siteSettings?.bannerUrl;
   const siteTagline = siteData?.siteSettings?.tagline;
+  const feedAdSlot = adData?.adSettings?.slotFeed ?? null;
 
   const airportTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const airlineTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -262,6 +266,12 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {feedAdSlot && (
+        <div className="container">
+          <AdBanner slotId={feedAdSlot} />
+        </div>
+      )}
 
       <div className="container">
         {/* Filter Bar */}
@@ -594,6 +604,7 @@ export default function HomePage() {
             loading={isLoading}
             onLoadMore={() => {}}
             viewMode={viewMode}
+            adSlotId={feedAdSlot ?? undefined}
             emptyMessage={
               feedTab === 'following'
                 ? 'No photos yet. Follow users, airports, or topics to build your feed!'

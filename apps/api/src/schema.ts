@@ -379,6 +379,11 @@ export const typeDefs = gql`
     """
     siteSettings: SiteSettings
 
+    """
+    Fetch ad configuration (enabled, AdSense client ID, slot IDs).
+    """
+    adSettings: AdSettings
+
     # ─── Forum Queries ───────────────────────────────────────────────────────
 
     """
@@ -921,6 +926,11 @@ export const typeDefs = gql`
     Update site-wide settings (banner, tagline). Requires admin or superuser role.
     """
     updateSiteSettings(input: UpdateSiteSettingsInput!): SiteSettings!
+
+    """
+    Update ad configuration (enabled, AdSense client ID, slot IDs). Requires superuser role.
+    """
+    updateAdSettings(input: UpdateAdSettingsInput!): AdSettings!
 
     """
     Join a public community, or join an invite-only community with a valid invite code.
@@ -2576,6 +2586,25 @@ export const typeDefs = gql`
     minPhotoLongEdge: Int
     maxPhotoLongEdge: Int
     photoUploadTimeoutSeconds: Int
+  }
+
+  # ─── Ad Settings ───────────────────────────────────────────────────────────────
+
+  type AdSettings {
+    enabled: Boolean!
+    adSenseClientId: String!
+    slotFeed: String
+    slotPhotoDetail: String
+    slotSidebar: String
+    updatedAt: String!
+  }
+
+  input UpdateAdSettingsInput {
+    enabled: Boolean
+    adSenseClientId: String
+    slotFeed: String
+    slotPhotoDetail: String
+    slotSidebar: String
   }
 
   input CreateCommunityInput {

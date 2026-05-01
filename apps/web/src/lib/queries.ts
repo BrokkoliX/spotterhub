@@ -2798,6 +2798,32 @@ export const UPDATE_SITE_SETTINGS = gql`
   }
 `;
 
+// ─── Ad Settings ──────────────────────────────────────────────────────────────
+
+export const GET_AD_SETTINGS = gql`
+  query AdSettings {
+    adSettings {
+      enabled
+      adSenseClientId
+      slotFeed
+      slotPhotoDetail
+      slotSidebar
+    }
+  }
+`;
+
+export const UPDATE_AD_SETTINGS = gql`
+  mutation UpdateAdSettings($input: UpdateAdSettingsInput!) {
+    updateAdSettings(input: $input) {
+      enabled
+      adSenseClientId
+      slotFeed
+      slotPhotoDetail
+      slotSidebar
+    }
+  }
+`;
+
 // ─── Collectibles Marketplace ─────────────────────────────────────────────────
 
 export const GET_MARKETPLACE_ITEMS = gql`

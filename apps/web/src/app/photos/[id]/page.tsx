@@ -6,12 +6,13 @@ import { use, useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
+import { AdBanner } from '@/components/AdBanner';
 import { CommentSection } from '@/components/CommentSection';
 import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { ReportButton } from '@/components/ReportButton';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
-import { GET_PHOTO, DELETE_PHOTO, CREATE_PHOTO_PURCHASE } from '@/lib/queries';
+import { GET_PHOTO, DELETE_PHOTO, CREATE_PHOTO_PURCHASE, GET_AD_SETTINGS } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -27,6 +28,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   const { user, ready } = useAuth();
   const router = useRouter();
   const [result] = useQuery({ query: GET_PHOTO, variables: { id } });
+  const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
   const { data, fetching, error } = result;
   const [{ fetching: deleting }, deletePhoto] = useMutation(DELETE_PHOTO);
   const [imgError, setImgError] = useState(false);
@@ -142,6 +144,11 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
               <div className={styles.imagePlaceholder}>📷</div>
             )}
           </div>
+
+          {/* Ad after image */}
+          {adData?.adSettings?.slotPhotoDetail && (
+            <AdBanner slotId={adData.adSettings.slotPhotoDetail} />
+          )}
 
           {/* Buy Button (for priced photos not owned by viewer) */}
           {canBuy && listingPrice && (
@@ -715,6 +722,11 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
             <div className={styles.card}>
               <CommentSection photoId={photo.id} />
             </div>
+
+            {/* Ad after comments */}
+            {adData?.adSettings?.slotPhotoDetail && (
+              <AdBanner slotId={adData.adSettings.slotPhotoDetail} />
+            )}
           </div>
         </div>
       </div>

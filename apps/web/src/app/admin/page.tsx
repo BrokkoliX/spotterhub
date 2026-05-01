@@ -149,6 +149,13 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Photo limits, site config</div>
           </div>
         </Link>
+        <Link href="/admin/settings/ads" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>📺</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Ad Settings</div>
+            <div className={styles.quickLinkDesc}>Google AdSense configuration</div>
+          </div>
+        </Link>
       </div>
     </div>
   );

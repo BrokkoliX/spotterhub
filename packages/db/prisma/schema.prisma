@@ -859,6 +859,20 @@ model SiteSettings {
   @@map("site_settings")
 }
 
+// ─── Ad Settings ───────────────────────────────────────────────────────────────
+
+model AdSettings {
+  id              String   @id @default("ad_settings")
+  enabled         Boolean  @default(true)
+  adSenseClientId String   @default("ca-pub-XXXXXXXXXXXXXXXX") @map("adsense_client_id")
+  slotFeed        String?  @map("ad_slot_feed")
+  slotPhotoDetail String?  @map("ad_slot_photo_detail")
+  slotSidebar     String?  @map("ad_slot_sidebar")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("ad_settings")
+}
+
 // ─── Marketplace ─────────────────────────────────────────────────────────────
 
 model SellerProfile {

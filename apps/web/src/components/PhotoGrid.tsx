@@ -2,6 +2,7 @@
 
 import { PhotoCard, type PhotoData } from './PhotoCard';
 export type { PhotoData };
+import { AdBanner } from './AdBanner';
 import styles from './PhotoGrid.module.css';
 
 interface PhotoGridProps {
@@ -14,6 +15,10 @@ interface PhotoGridProps {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  /** Slot ID for in-feed AdSense ad. If omitted, no ads are injected. */
+  adSlotId?: string;
+  /** Insert an ad every N photos (default: 12). */
+  adInterval?: number;
 }
 
 /**
@@ -29,6 +34,8 @@ export function PhotoGrid({
   selectable = false,
   selectedIds = new Set(),
   onToggleSelect,
+  adSlotId,
+  adInterval = 12,
 }: PhotoGridProps) {
   if (!loading && photos.length === 0) {
     return (
@@ -110,9 +117,20 @@ export function PhotoGrid({
   return (
     <>
       <div className={styles.grid}>
-        {photos.map((photo) => (
-          <PhotoCard key={photo.id} photo={photo} />
-        ))}
+        {photos.map((photo, index) => {
+          const items = [
+            <PhotoCard key={photo.id} photo={photo} />,
+          ];
+          // Inject ad after every adInterval photos (not after the last batch)
+          if (adSlotId && (index + 1) % adInterval === 0 && index < photos.length - 1) {
+            items.push(
+              <div key={`ad-${photo.id}`} className={styles.adSlot}>
+                <AdBanner slotId={adSlotId} />
+              </div>,
+            );
+          }
+          return items;
+        }).flat()}
       </div>
 
       {hasNextPage && (
