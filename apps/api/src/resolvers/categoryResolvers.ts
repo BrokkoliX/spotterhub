@@ -29,6 +29,15 @@ export const categoryMutationResolvers = {
   ) => {
     await requireRole(ctx, ['admin', 'superuser']);
 
+    const existing = await ctx.prisma.photoCategory.findUnique({
+      where: { name: args.input.name },
+    });
+    if (existing) {
+      throw new GraphQLError(`A category named "${args.input.name}" already exists`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
     return ctx.prisma.photoCategory.create({
       data: {
         name: args.input.name,
