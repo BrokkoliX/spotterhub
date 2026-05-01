@@ -47,18 +47,27 @@ export function AdBanner({ slotId, format = 'autorelaxed', className, style }: A
   const [{ data }] = useQuery<AdSettingsData>({ query: GET_AD_SETTINGS });
 
   const settings = data?.adSettings;
-  if (!settings?.enabled || !slotId || !settings.adSenseClientId || settings.adSenseClientId === 'ca-pub-XXXXXXXXXXXXXXXX') {
-    return null;
-  }
+  const isConfigured =
+    settings?.enabled &&
+    slotId &&
+    settings.adSenseClientId &&
+    settings.adSenseClientId !== 'ca-pub-XXXXXXXXXXXXXXXX';
 
-  // Inject the AdSense script once (idempotent)
-  injectAdSenseScript(settings.adSenseClientId);
-
+  // Inject the AdSense script once when configured
   useEffect(() => {
+    if (!isConfigured || !settings?.adSenseClientId) return;
+    injectAdSenseScript(settings.adSenseClientId);
+  }, [isConfigured, settings?.adSenseClientId]);
+
+  // Push ad slot to AdSense when configured
+  useEffect(() => {
+    if (!isConfigured) return;
     if (typeof window !== 'undefined' && (window as unknown as { adsbygoogle: unknown[] }).adsbygoogle) {
       ((window as unknown as { adsbygoogle: unknown[] }).adsbygoogle = (window as unknown as { adsbygoogle: unknown[] }).adsbygoogle || []).push({});
     }
-  }, []);
+  }, [isConfigured]);
+
+  if (!isConfigured) return null;
 
   return (
     <div className={`${styles.container} ${className ?? ''}`} style={style}>

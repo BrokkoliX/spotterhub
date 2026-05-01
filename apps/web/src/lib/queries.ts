@@ -2584,7 +2584,7 @@ export const UPSERT_PHOTO_CATEGORY = gql`
 // ─── Admin Aircraft Specific Categories ───────────────────────────────────────
 
 export const ADMIN_AIRCRAFT_SPECIFIC_CATEGORIES = gql`
-  query AdminAircraftSpecificCategories($first: Int) {
+  query AdminAircraftSpecificCategories {
     aircraftSpecificCategories {
       id
       name

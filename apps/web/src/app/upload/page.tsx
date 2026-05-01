@@ -13,6 +13,8 @@ import {
   useMemo,
 } from 'react';
 import { useMutation, useQuery } from 'urql';
+import type { UseMutationExecute } from 'urql';
+import type { OperationResult } from '@urql/core';
 import exifr from 'exifr';
 
 import { useAuth } from '@/lib/auth';
@@ -31,6 +33,7 @@ import {
   GET_AIRCRAFT_VARIANTS,
   GET_AIRLINES,
 } from '@/lib/queries';
+import type { CreatePendingAircraftMutation, CreatePendingAircraftMutationVariables, CreateAircraftInput } from '@/lib/generated/graphql';
 import dynamic from 'next/dynamic';
 import AirportPicker, { type Airport } from '@/components/AirportPicker';
 
@@ -1140,7 +1143,8 @@ function NewAircraftModal({
     airlineId?: string;
     airlineName?: string;
   }) => void;
-  createPendingAircraft: ReturnType<typeof useMutation<any, any>>[1];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  createPendingAircraft: (vars: any) => Promise<any>;
 }) {
   const [selectedManufacturerId, setSelectedManufacturerId] = useState('');
   const [selectedFamilyId, setSelectedFamilyId] = useState('');
@@ -1189,14 +1193,14 @@ function NewAircraftModal({
     e.preventDefault();
     setError('');
 
-    const input: Record<string, unknown> = {
+    const input: CreateAircraftInput = {
       registration: registration.toUpperCase(),
     };
     if (selectedManufacturerId) input.manufacturerId = selectedManufacturerId;
     if (selectedFamilyId) input.familyId = selectedFamilyId;
     if (selectedVariantId) input.variantId = selectedVariantId;
     if (selectedAirlineId) input.airlineId = selectedAirlineId;
-    if (operatorType) input.operatorType = operatorType;
+    if (operatorType) input.operatorType = operatorType as CreatePendingAircraftMutationVariables['input']['operatorType'];
     if (msn) input.msn = msn;
     if (manufacturingDate) input.manufacturingDate = manufacturingDate;
 
