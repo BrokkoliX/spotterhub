@@ -32,14 +32,13 @@
 }
 
 .nav {
-  display: none;
   align-items: center;
   gap: 4px;
 }
 
-@media (min-width: var(--bp-lg)) {
+@media (max-width: calc(var(--bp-lg) - 1px)) {
   .nav {
-    display: flex;
+    display: none;
   }
 }
 
@@ -262,12 +261,6 @@
 }
 
 /* Show desktop nav at bp-lg (1024px) and above */
-@media (min-width: var(--bp-lg)) {
-  .nav {
-    display: flex;
-  }
-}
-
 @media (min-width: var(--bp-lg)) {
   .actions {
     display: flex;
