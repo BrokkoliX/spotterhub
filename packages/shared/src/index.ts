@@ -228,7 +228,6 @@ export function validateImageDimensions(
 ): UploadValidationResult {
   const limits = USER_TIER_LIMITS[tier];
   const longEdge = Math.max(width, height);
-  const shortEdge = Math.min(width, height);
 
   if (longEdge < limits.minLongEdge) {
     return {
