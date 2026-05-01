@@ -2566,6 +2566,7 @@ export const typeDefs = gql`
     tagline: String
     minPhotoLongEdge: Int!
     maxPhotoLongEdge: Int!
+    photoUploadTimeoutSeconds: Int!
     updatedAt: String!
   }
 
@@ -2574,6 +2575,7 @@ export const typeDefs = gql`
     tagline: String
     minPhotoLongEdge: Int
     maxPhotoLongEdge: Int
+    photoUploadTimeoutSeconds: Int
   }
 
   input CreateCommunityInput {

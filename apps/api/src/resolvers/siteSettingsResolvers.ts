@@ -11,6 +11,7 @@ export interface SiteSettingsParent {
   tagline: string | null;
   minPhotoLongEdge: number;
   maxPhotoLongEdge: number;
+  photoUploadTimeoutSeconds: number;
 }
 
 // ─── Query Resolvers ─────────────────────────────────────────────────────────
@@ -41,13 +42,14 @@ export const siteSettingsMutationResolvers = {
         tagline?: string | null;
         minPhotoLongEdge?: number | null;
         maxPhotoLongEdge?: number | null;
+        photoUploadTimeoutSeconds?: number | null;
       };
     },
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
-    if (!['admin', 'superuser'].includes(dbUser.role)) {
-      throw new GraphQLError('Only admins can update site settings', {
+    if (dbUser.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can update site settings', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
@@ -72,12 +74,20 @@ export const siteSettingsMutationResolvers = {
       });
     }
 
+    const timeout = args.input.photoUploadTimeoutSeconds;
+    if (timeout != null && (timeout < 30 || timeout > 3600)) {
+      throw new GraphQLError('photoUploadTimeoutSeconds must be between 30 and 3600', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
     const data: Record<string, unknown> = {
       bannerUrl: args.input.bannerUrl ?? null,
       tagline: args.input.tagline ?? null,
     };
     if (minEdge != null) data.minPhotoLongEdge = minEdge;
     if (maxEdge != null) data.maxPhotoLongEdge = maxEdge;
+    if (timeout != null) data.photoUploadTimeoutSeconds = timeout;
 
     return ctx.prisma.siteSettings.upsert({
       where: { id: 'site_settings' },

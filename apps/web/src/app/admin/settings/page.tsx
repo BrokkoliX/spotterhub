@@ -10,12 +10,11 @@ import styles from './page.module.css';
 
 export default function AdminSettingsPage() {
   const { user, ready } = useAuth();
-  const isAdmin =
-    user && (user.role === 'admin' || user.role === 'superuser');
+  const isSuperuser = user?.role === 'superuser';
 
   const [{ data, fetching }] = useQuery({
     query: GET_SITE_SETTINGS,
-    pause: !isAdmin,
+    pause: !isSuperuser,
   });
 
   const [, updateSettings] = useMutation(UPDATE_SITE_SETTINGS);
@@ -23,6 +22,7 @@ export default function AdminSettingsPage() {
   // ─── Form state ─────────────────────────────────────────────────────────
   const [minEdge, setMinEdge] = useState('800');
   const [maxEdge, setMaxEdge] = useState('4096');
+  const [timeoutSeconds, setTimeoutSeconds] = useState('300');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -31,11 +31,12 @@ export default function AdminSettingsPage() {
     if (data?.siteSettings) {
       setMinEdge(String(data.siteSettings.minPhotoLongEdge));
       setMaxEdge(String(data.siteSettings.maxPhotoLongEdge));
+      setTimeoutSeconds(String(data.siteSettings.photoUploadTimeoutSeconds));
     }
   }, [data]);
 
   if (!ready) return <div className={styles.loading}>Loading…</div>;
-  if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
+  if (!isSuperuser) return <div className={styles.denied}>Access denied — superuser only</div>;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +44,7 @@ export default function AdminSettingsPage() {
 
     const min = parseInt(minEdge, 10);
     const max = parseInt(maxEdge, 10);
+    const timeout = parseInt(timeoutSeconds, 10);
 
     if (isNaN(min) || isNaN(max)) {
       setMessage({ type: 'error', text: 'Please enter valid numbers.' });
@@ -60,11 +62,15 @@ export default function AdminSettingsPage() {
       setMessage({ type: 'error', text: 'Minimum must be less than maximum.' });
       return;
     }
+    if (isNaN(timeout) || timeout < 30 || timeout > 3600) {
+      setMessage({ type: 'error', text: 'Upload timeout must be between 30 and 3600 seconds.' });
+      return;
+    }
 
     setSaving(true);
     try {
       const result = await updateSettings({
-        input: { minPhotoLongEdge: min, maxPhotoLongEdge: max },
+        input: { minPhotoLongEdge: min, maxPhotoLongEdge: max, photoUploadTimeoutSeconds: timeout },
       });
       if (result.error) {
         setMessage({ type: 'error', text: result.error.message });
@@ -126,6 +132,29 @@ export default function AdminSettingsPage() {
             />
             <span className={styles.hint}>
               Photos larger than this are rejected. Default: 4096 px.
+            </span>
+          </div>
+
+          <h2 className={styles.sectionTitle}>⏱ Photo Upload Timeout</h2>
+          <p className={styles.sectionDesc}>
+            Maximum time allowed for a photo upload before it is cancelled. Must be between 30 and 3600 seconds.
+          </p>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label} htmlFor="timeout">
+              Upload timeout (seconds)
+            </label>
+            <input
+              id="timeout"
+              type="number"
+              className={styles.input}
+              value={timeoutSeconds}
+              onChange={(e) => setTimeoutSeconds(e.target.value)}
+              min={30}
+              max={3600}
+            />
+            <span className={styles.hint}>
+              Default: 300 seconds (5 minutes).
             </span>
           </div>
 
