@@ -77,14 +77,13 @@
 }
 
 .actions {
-  display: none;
   align-items: center;
   gap: 8px;
 }
 
-@media (min-width: var(--bp-lg)) {
+@media (max-width: calc(var(--bp-lg) - 1px)) {
   .actions {
-    display: flex;
+    display: none;
   }
 }
 
