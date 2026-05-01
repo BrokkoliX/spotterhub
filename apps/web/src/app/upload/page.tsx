@@ -123,6 +123,7 @@ export default function UploadPage() {
   const handleRegistrationSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.toUpperCase();
     setRegistrationSearch(val);
+    setRegistrationError(null); // Clear error when user types
     // Clear existing aircraft selection when user types new registration
     if (aircraftLocked) {
       // Reset everything if user clears/locks aircraft
@@ -177,6 +178,7 @@ export default function UploadPage() {
 
   const handleOpenNewAircraftModal = () => {
     setShowRegistrationDropdown(false);
+    setRegistrationError(null);
     setShowNewAircraftModal(true);
   };
 
@@ -221,6 +223,7 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [createdPhotoId, setCreatedPhotoId] = useState<string | null>(null);
 
   // Metadata form
@@ -462,6 +465,13 @@ export default function UploadPage() {
     e.preventDefault();
     if (!s3Key || !file) return;
 
+    // Validate required fields
+    if (!aircraftId && !registrationSearch.trim()) {
+      setRegistrationError('Registration is required. Please enter or create an aircraft.');
+      setStep('form');
+      return;
+    }
+
     setStep('creating');
     setError(null);
 
@@ -690,11 +700,12 @@ export default function UploadPage() {
                     <input
                       id="registration"
                       type="text"
-                      className="input"
+                      className={`input ${registrationError ? 'input-error' : ''}`}
                       value={registrationSearch}
                       onChange={handleRegistrationSearchChange}
                       placeholder="e.g. N12345"
                       disabled={aircraftLocked}
+                      required
                       style={{ textTransform: 'uppercase', paddingRight: 80 }}
                     />
                     {aircraftLocked && (
@@ -796,6 +807,9 @@ export default function UploadPage() {
                       </button>
                     )}
                   </div>
+                  {registrationError && (
+                    <p className="error-text" style={{ marginTop: 6 }}>{registrationError}</p>
+                  )}
                 </div>
 
                 {/* Aircraft Info — read-only once selected */}
@@ -1067,7 +1081,8 @@ export default function UploadPage() {
                     disabled={
                       step === 'creating' ||
                       step === 'uploading' ||
-                      !s3Key
+                      !s3Key ||
+                      !aircraftId
                     }
                     className="btn btn-primary btn-lg"
                   >
