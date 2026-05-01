@@ -10,7 +10,9 @@
 }
 
 @media (min-width: 768px) {
-  .hero { height: 380px; }
+  .hero {
+    height: 380px;
+  }
 }
 
 .heroGradient {
@@ -56,7 +58,9 @@
 }
 
 @media (min-width: 768px) {
-  .heroTitle { font-size: 3rem; }
+  .heroTitle {
+    font-size: 3rem;
+  }
 }
 
 .heroSubtitle {
@@ -67,7 +71,9 @@
 }
 
 @media (min-width: 768px) {
-  .heroSubtitle { font-size: 1.125rem; }
+  .heroSubtitle {
+    font-size: 1.125rem;
+  }
 }
 
 .heroStats {
@@ -103,6 +109,13 @@
   overflow-x: auto;
 }
 
+/* Hide inline desktop filter row on small/tablet screens — use drawer instead. */
+@media (max-width: 1023px) {
+  .filterRow {
+    display: none;
+  }
+}
+
 .filterInputWrap {
   position: relative;
   flex: 1 1 calc(50% - 10px);
@@ -114,6 +127,119 @@
     flex: 1;
     min-width: 180px;
   }
+}
+
+/* ─── Mobile Filter Bar (chips + "Filters" button) ───────────────────────── */
+
+.filterMobileBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 1024px) {
+  .filterMobileBar {
+    display: none;
+  }
+}
+
+.filterChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.filterChipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.filterChipRemove:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.filterMobileBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.filterMobileBtn:hover {
+  border-color: var(--color-border-focus);
+}
+
+.filterMobileBtnBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ─── Filter Drawer body — stacked full-width inputs w/ bigger touch target ── */
+
+.filterDrawerStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filterDrawerStack .filterInputWrap {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.filterDrawerStack .filterInput {
+  min-height: 44px;
+  font-size: 1rem;
 }
 
 .filterIcon {
@@ -262,7 +388,9 @@
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   margin-bottom: -1px;
 }
 

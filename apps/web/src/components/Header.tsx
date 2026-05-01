@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -15,6 +15,7 @@ import {
 } from '@/lib/queries';
 
 import { SearchModal } from '@/components/SearchModal';
+import { Portal } from '@/components/Portal';
 import styles from './Header.module.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -181,6 +182,23 @@ export function Header() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Lock body scroll + handle Escape while mobile menu is open
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function handleKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    }
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
   const handleSignOut = () => {
     signOut();
     router.push('/');
@@ -302,11 +320,8 @@ export function Header() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <>
-            <div
-              className={styles.mobileMenuOverlay}
-              onClick={() => setMobileMenuOpen(false)}
-            />
+          <Portal>
+            <div className={styles.mobileMenuOverlay} onClick={() => setMobileMenuOpen(false)} />
             <nav className={styles.mobileMenu} aria-label="Mobile navigation">
               <div className={styles.mobileMenuHeader}>
                 <span className={styles.mobileMenuTitle}>Menu</span>
@@ -425,7 +440,8 @@ export function Header() {
                     className={styles.mobileNavLink}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {isSuperuser && '🛡️ '}{user.username}
+                    {isSuperuser && '🛡️ '}
+                    {user.username}
                   </Link>
                   <Link
                     href="/settings/profile"
@@ -447,7 +463,7 @@ export function Header() {
                 </>
               )}
             </nav>
-          </>
+          </Portal>
         )}
       </div>
     </header>
