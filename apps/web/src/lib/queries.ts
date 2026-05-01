@@ -2540,7 +2540,7 @@ export const UPSERT_AIRLINE = gql`
 // ─── Admin Photo Categories ────────────────────────────────────────────────────
 
 export const ADMIN_PHOTO_CATEGORIES = gql`
-  query AdminPhotoCategories($first: Int) {
+  query AdminPhotoCategories {
     photoCategories {
       id
       name
