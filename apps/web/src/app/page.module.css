@@ -100,12 +100,21 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  overflow-x: auto;
 }
 
 .filterInputWrap {
   position: relative;
-  flex: 1;
-  min-width: 180px;
+  flex: 1 1 calc(50% - 10px);
+  min-width: 0;
+}
+
+@media (min-width: var(--bp-md)) {
+  .filterInputWrap {
+    flex: 1;
+    min-width: 180px;
+  }
+}
 }
 
 .filterIcon {

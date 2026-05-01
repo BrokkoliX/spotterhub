@@ -167,6 +167,7 @@ export function Header() {
   const { theme, ready: themeReady, toggleTheme } = useTheme();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Cmd+K / Ctrl+K to open search modal
   useEffect(() => {
@@ -244,6 +245,16 @@ export function Header() {
           🔍
         </button>
 
+        <button
+          type="button"
+          className={styles.hamburger}
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="Open menu"
+          title="Menu"
+        >
+          ☰
+        </button>
+
         <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
         <div className={styles.actions}>
@@ -288,6 +299,156 @@ export function Header() {
             </>
           )}
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <>
+            <div
+              className={styles.mobileMenuOverlay}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <nav className={styles.mobileMenu} aria-label="Mobile navigation">
+              <div className={styles.mobileMenuHeader}>
+                <span className={styles.mobileMenuTitle}>Menu</span>
+                <button
+                  type="button"
+                  className={styles.mobileMenuClose}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close menu"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <Link
+                href="/"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Feed
+              </Link>
+              <Link
+                href="/map"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Map
+              </Link>
+              <Link
+                href="/explore"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Explore
+              </Link>
+              <Link
+                href="/forum"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Forum
+              </Link>
+              <Link
+                href="/communities"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Communities
+              </Link>
+              <Link
+                href="/marketplace"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Marketplace
+              </Link>
+
+              {showUser && (
+                <>
+                  <div className={styles.mobileMenuDivider} />
+                  <Link
+                    href="/albums"
+                    className={styles.mobileNavLink}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Albums
+                  </Link>
+                  <Link
+                    href="/upload"
+                    className={styles.mobileNavLink}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Upload
+                  </Link>
+                </>
+              )}
+
+              {(isAdmin || isSuperuser) && (
+                <>
+                  <div className={styles.mobileMenuDivider} />
+                  <Link
+                    href="/admin"
+                    className={styles.mobileNavLink}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Admin
+                  </Link>
+                </>
+              )}
+
+              <div className={styles.mobileMenuDivider} />
+
+              {showGuest && (
+                <div className={styles.mobileAuthSection}>
+                  <Link
+                    href="/signin"
+                    className="btn btn-secondary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="btn btn-primary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              )}
+
+              {showUser && (
+                <>
+                  <div className={styles.mobileMenuDivider} />
+                  <Link
+                    href={`/u/${user.username}/photos`}
+                    className={styles.mobileNavLink}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {isSuperuser && '🛡️ '}{user.username}
+                  </Link>
+                  <Link
+                    href="/settings/profile"
+                    className={styles.mobileNavLink}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                  <button
+                    type="button"
+                    className={`${styles.mobileNavLink}`}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleSignOut();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </>
+              )}
+            </nav>
+          </>
+        )}
       </div>
     </header>
   );
