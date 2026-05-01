@@ -19,6 +19,16 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type AdSettings = {
+  __typename?: 'AdSettings';
+  adSenseClientId: Scalars['String']['output'];
+  enabled: Scalars['Boolean']['output'];
+  slotFeed?: Maybe<Scalars['String']['output']>;
+  slotPhotoDetail?: Maybe<Scalars['String']['output']>;
+  slotSidebar?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['String']['output'];
+};
+
 export type AddCommentInput = {
   /** The comment text (1-2000 characters). */
   body: Scalars['String']['input'];
@@ -248,6 +258,8 @@ export type Album = {
   createdAt: Scalars['String']['output'];
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  /** Whether this album has been soft-deleted by an admin. */
+  isDeleted: Scalars['Boolean']['output'];
   isPublic: Scalars['Boolean']['output'];
   /** Current user's membership in the community this album belongs to (null if not a community album). */
   myMembership?: Maybe<CommunityMember>;
@@ -316,6 +328,8 @@ export type Comment = {
   body: Scalars['String']['output'];
   createdAt: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  /** Whether this comment has been soft-deleted by an admin. */
+  isDeleted: Scalars['Boolean']['output'];
   /** Nested replies to this comment. */
   replies: Array<Comment>;
   updatedAt: Scalars['String']['output'];
@@ -693,7 +707,7 @@ export type CreateReportInput = {
   reason: ReportReason;
   /** ID of the content to report. */
   targetId: Scalars['ID']['input'];
-  /** Type of content: photo, comment, profile, or album. */
+  /** Type of content: photo, comment, profile, album, community, or forum_post. */
   targetType: ReportTargetType;
 };
 
@@ -820,6 +834,8 @@ export type ForumThread = {
   /** The opening post of the thread. */
   firstPost?: Maybe<ForumPost>;
   id: Scalars['ID']['output'];
+  /** Whether this thread has been soft-deleted by an admin. */
+  isDeleted: Scalars['Boolean']['output'];
   isLocked: Scalars['Boolean']['output'];
   isPinned: Scalars['Boolean']['output'];
   lastPostAt: Scalars['String']['output'];
@@ -1176,6 +1192,19 @@ export type Mutation = {
    * The client uploads directly to S3, then calls createPhoto with the returned key.
    */
   getUploadUrl: UploadUrlPayload;
+  /**
+   * Permanently delete an album. Requires admin or moderator role and a reason.
+   * Photos are unlinked from the album but not deleted.
+   */
+  hardDeleteAlbum: Scalars['Boolean']['output'];
+  /** Permanently delete a comment. Requires admin or moderator role and a reason. */
+  hardDeleteComment: Scalars['Boolean']['output'];
+  /** Permanently delete a forum post. Requires admin or moderator role and a reason. */
+  hardDeleteForumPost: Scalars['Boolean']['output'];
+  /** Permanently delete a forum thread. Requires admin or moderator role and a reason. */
+  hardDeleteForumThread: Scalars['Boolean']['output'];
+  /** Permanently delete a photo. Requires admin or moderator role and a reason. */
+  hardDeletePhoto: Scalars['Boolean']['output'];
   /** Join a public community, or join an invite-only community with a valid invite code. */
   joinCommunity: CommunityMember;
   /** Leave a community. Owners cannot leave (must transfer ownership or delete). */
@@ -1200,6 +1229,11 @@ export type Mutation = {
    * Implements token rotation: the old refresh token is deleted and a new one is issued.
    */
   refreshToken: AuthPayload;
+  /**
+   * Regenerate image variants (thumbnail, display, watermark) for an existing photo.
+   * Useful when variants failed to generate during upload. Owner or admin only.
+   */
+  regeneratePhotoVariants: Photo;
   /**
    * Reject a pending aircraft. Only admin or superuser can reject.
    * The aircraft record is deleted.
@@ -1246,6 +1280,14 @@ export type Mutation = {
    * In production, registration is handled by AWS Cognito.
    */
   signUp: SignUpPayload;
+  /** Soft-delete an album. Requires admin or moderator role. */
+  softDeleteAlbum: Scalars['Boolean']['output'];
+  /** Soft-delete a comment. Requires admin or moderator role. */
+  softDeleteComment: Scalars['Boolean']['output'];
+  /** Soft-delete a forum thread. Requires admin or moderator role. */
+  softDeleteForumThread: Scalars['Boolean']['output'];
+  /** Soft-delete a photo. Requires admin or moderator role. */
+  softDeletePhoto: Scalars['Boolean']['output'];
   /** Submit a new item for addition to a lookup list. Requires authentication. */
   submitListItem: PendingListItem;
   /** Submit feedback for a seller after contacting them. One feedback per buyer per seller. */
@@ -1274,6 +1316,8 @@ export type Mutation = {
    * Returns the updated photo.
    */
   unlikePhoto: Photo;
+  /** Update ad configuration (enabled, AdSense client ID, slot IDs). Requires superuser role. */
+  updateAdSettings: AdSettings;
   /** Update an aircraft record. Requires admin or superuser role. */
   updateAircraft: Aircraft;
   /** Update an aircraft-specific category. Requires admin or superuser role. */
@@ -1717,6 +1761,36 @@ export type MutationGetUploadUrlArgs = {
 };
 
 
+export type MutationHardDeleteAlbumArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationHardDeleteCommentArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationHardDeleteForumPostArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationHardDeleteForumThreadArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationHardDeletePhotoArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationJoinCommunityArgs = {
   communityId: Scalars['ID']['input'];
   inviteCode?: InputMaybe<Scalars['String']['input']>;
@@ -1754,6 +1828,11 @@ export type MutationModerateMarketplaceItemArgs = {
 export type MutationPinForumThreadArgs = {
   id: Scalars['ID']['input'];
   pinned: Scalars['Boolean']['input'];
+};
+
+
+export type MutationRegeneratePhotoVariantsArgs = {
+  photoId: Scalars['ID']['input'];
 };
 
 
@@ -1830,6 +1909,30 @@ export type MutationSignUpArgs = {
 };
 
 
+export type MutationSoftDeleteAlbumArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationSoftDeleteCommentArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationSoftDeleteForumThreadArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationSoftDeletePhotoArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationSubmitListItemArgs = {
   input: SubmitListItemInput;
 };
@@ -1870,6 +1973,11 @@ export type MutationUnfollowUserArgs = {
 
 export type MutationUnlikePhotoArgs = {
   photoId: Scalars['ID']['input'];
+};
+
+
+export type MutationUpdateAdSettingsArgs = {
+  input: UpdateAdSettingsInput;
 };
 
 
@@ -2204,6 +2312,8 @@ export type Photo = {
   /** Whether this photo has an active marketplace listing. */
   hasActiveListing: Scalars['Boolean']['output'];
   id: Scalars['ID']['output'];
+  /** Whether this photo has been soft-deleted by an admin. */
+  isDeleted: Scalars['Boolean']['output'];
   /** Whether the currently authenticated user has liked this photo. */
   isLikedByMe: Scalars['Boolean']['output'];
   /** License under which the photo is published. */
@@ -2399,6 +2509,8 @@ export type PurchasePayload = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Fetch ad configuration (enabled, AdSense client ID, slot IDs). */
+  adSettings?: Maybe<AdSettings>;
   /** Paginated list of all aircraft registrations (admin only). */
   adminAircraft: AircraftConnection;
   /** List all airports with optional search and pagination. Requires admin or superuser role. */
@@ -2972,6 +3084,8 @@ export enum ReportStatus {
 export enum ReportTargetType {
   Album = 'album',
   Comment = 'comment',
+  Community = 'community',
+  ForumPost = 'forum_post',
   Photo = 'photo',
   Profile = 'profile'
 }
@@ -3080,6 +3194,9 @@ export type SiteSettings = {
   __typename?: 'SiteSettings';
   bannerUrl?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  maxPhotoLongEdge: Scalars['Int']['output'];
+  minPhotoLongEdge: Scalars['Int']['output'];
+  photoUploadTimeoutSeconds: Scalars['Int']['output'];
   tagline?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['String']['output'];
 };
@@ -3107,6 +3224,14 @@ export type SubmitSellerFeedbackInput = {
   itemId?: InputMaybe<Scalars['ID']['input']>;
   rating: Scalars['Int']['input'];
   sellerId: Scalars['ID']['input'];
+};
+
+export type UpdateAdSettingsInput = {
+  adSenseClientId?: InputMaybe<Scalars['String']['input']>;
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  slotFeed?: InputMaybe<Scalars['String']['input']>;
+  slotPhotoDetail?: InputMaybe<Scalars['String']['input']>;
+  slotSidebar?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateAircraftInput = {
@@ -3251,6 +3376,9 @@ export type UpdateProfileInput = {
 
 export type UpdateSiteSettingsInput = {
   bannerUrl?: InputMaybe<Scalars['String']['input']>;
+  maxPhotoLongEdge?: InputMaybe<Scalars['Int']['input']>;
+  minPhotoLongEdge?: InputMaybe<Scalars['Int']['input']>;
+  photoUploadTimeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
   tagline?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -4508,9 +4636,7 @@ export type UpsertAirlineMutationVariables = Exact<{
 
 export type UpsertAirlineMutation = { __typename?: 'Mutation', upsertAirline: { __typename?: 'Airline', id: string } };
 
-export type AdminPhotoCategoriesQueryVariables = Exact<{
-  first?: InputMaybe<Scalars['Int']['input']>;
-}>;
+export type AdminPhotoCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type AdminPhotoCategoriesQuery = { __typename?: 'Query', photoCategories: Array<{ __typename?: 'PhotoCategory', id: string, name: string, label: string, sortOrder: number, createdAt: string }> };
@@ -4544,9 +4670,7 @@ export type UpsertPhotoCategoryMutationVariables = Exact<{
 
 export type UpsertPhotoCategoryMutation = { __typename?: 'Mutation', upsertPhotoCategory: { __typename?: 'PhotoCategory', id: string } };
 
-export type AdminAircraftSpecificCategoriesQueryVariables = Exact<{
-  first?: InputMaybe<Scalars['Int']['input']>;
-}>;
+export type AdminAircraftSpecificCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type AdminAircraftSpecificCategoriesQuery = { __typename?: 'Query', aircraftSpecificCategories: Array<{ __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string, sortOrder: number, createdAt: string }> };
@@ -4631,14 +4755,26 @@ export type ExportAircraftSpecificCategoriesQuery = { __typename?: 'Query', airc
 export type SiteSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SiteSettingsQuery = { __typename?: 'Query', siteSettings?: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, updatedAt: string } | null };
+export type SiteSettingsQuery = { __typename?: 'Query', siteSettings?: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, minPhotoLongEdge: number, maxPhotoLongEdge: number, updatedAt: string } | null };
 
 export type UpdateSiteSettingsMutationVariables = Exact<{
   input: UpdateSiteSettingsInput;
 }>;
 
 
-export type UpdateSiteSettingsMutation = { __typename?: 'Mutation', updateSiteSettings: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, updatedAt: string } };
+export type UpdateSiteSettingsMutation = { __typename?: 'Mutation', updateSiteSettings: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, minPhotoLongEdge: number, maxPhotoLongEdge: number, updatedAt: string } };
+
+export type AdSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdSettingsQuery = { __typename?: 'Query', adSettings?: { __typename?: 'AdSettings', enabled: boolean, adSenseClientId: string, slotFeed?: string | null, slotPhotoDetail?: string | null, slotSidebar?: string | null } | null };
+
+export type UpdateAdSettingsMutationVariables = Exact<{
+  input: UpdateAdSettingsInput;
+}>;
+
+
+export type UpdateAdSettingsMutation = { __typename?: 'Mutation', updateAdSettings: { __typename?: 'AdSettings', enabled: boolean, adSenseClientId: string, slotFeed?: string | null, slotPhotoDetail?: string | null, slotSidebar?: string | null } };
 
 export type GetMarketplaceItemsQueryVariables = Exact<{
   category?: InputMaybe<Scalars['String']['input']>;
@@ -7780,7 +7916,7 @@ export function useUpsertAirlineMutation() {
   return Urql.useMutation<UpsertAirlineMutation, UpsertAirlineMutationVariables>(UpsertAirlineDocument);
 };
 export const AdminPhotoCategoriesDocument = gql`
-    query AdminPhotoCategories($first: Int) {
+    query AdminPhotoCategories {
   photoCategories {
     id
     name
@@ -7837,7 +7973,7 @@ export function useUpsertPhotoCategoryMutation() {
   return Urql.useMutation<UpsertPhotoCategoryMutation, UpsertPhotoCategoryMutationVariables>(UpsertPhotoCategoryDocument);
 };
 export const AdminAircraftSpecificCategoriesDocument = gql`
-    query AdminAircraftSpecificCategories($first: Int) {
+    query AdminAircraftSpecificCategories {
   aircraftSpecificCategories {
     id
     name
@@ -8064,6 +8200,8 @@ export const SiteSettingsDocument = gql`
     id
     bannerUrl
     tagline
+    minPhotoLongEdge
+    maxPhotoLongEdge
     updatedAt
   }
 }
@@ -8078,6 +8216,8 @@ export const UpdateSiteSettingsDocument = gql`
     id
     bannerUrl
     tagline
+    minPhotoLongEdge
+    maxPhotoLongEdge
     updatedAt
   }
 }
@@ -8085,6 +8225,36 @@ export const UpdateSiteSettingsDocument = gql`
 
 export function useUpdateSiteSettingsMutation() {
   return Urql.useMutation<UpdateSiteSettingsMutation, UpdateSiteSettingsMutationVariables>(UpdateSiteSettingsDocument);
+};
+export const AdSettingsDocument = gql`
+    query AdSettings {
+  adSettings {
+    enabled
+    adSenseClientId
+    slotFeed
+    slotPhotoDetail
+    slotSidebar
+  }
+}
+    `;
+
+export function useAdSettingsQuery(options?: Omit<Urql.UseQueryArgs<AdSettingsQueryVariables>, 'query'>) {
+  return Urql.useQuery<AdSettingsQuery, AdSettingsQueryVariables>({ query: AdSettingsDocument, ...options });
+};
+export const UpdateAdSettingsDocument = gql`
+    mutation UpdateAdSettings($input: UpdateAdSettingsInput!) {
+  updateAdSettings(input: $input) {
+    enabled
+    adSenseClientId
+    slotFeed
+    slotPhotoDetail
+    slotSidebar
+  }
+}
+    `;
+
+export function useUpdateAdSettingsMutation() {
+  return Urql.useMutation<UpdateAdSettingsMutation, UpdateAdSettingsMutationVariables>(UpdateAdSettingsDocument);
 };
 export const GetMarketplaceItemsDocument = gql`
     query GetMarketplaceItems($category: String, $minPrice: Float, $maxPrice: Float, $condition: String, $search: String, $sortBy: MarketplaceSort, $first: Int, $after: String) {
