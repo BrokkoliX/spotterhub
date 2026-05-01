@@ -107,7 +107,7 @@ export default function GlobalForumPage() {
   const [, deleteCategory] = useMutation(DELETE_FORUM_CATEGORY);
 
   const categories = data?.globalForumCategories ?? [];
-  const isAdmin = ready && user?.role === 'admin';
+  const isAdmin = ready && (user?.role === 'admin' || user?.role === 'superuser');
 
   const handleDeleteCategory = async (id: string, name: string) => {
     if (!confirm(`Delete category "${name}" and all its threads? This cannot be undone.`)) return;

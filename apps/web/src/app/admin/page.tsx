@@ -135,6 +135,13 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Vintage, narrowbody, widebody…</div>
           </div>
         </Link>
+        <Link href="/admin/forum-categories" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>💬</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Forum Categories</div>
+            <div className={styles.quickLinkDesc}>Global forum sections &amp; topics</div>
+          </div>
+        </Link>
         <Link href="/admin/pending-list-items" className={styles.quickLink}>
           <span className={styles.quickLinkIcon}>📋</span>
           <div>
