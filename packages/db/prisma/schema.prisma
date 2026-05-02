@@ -110,6 +110,7 @@ enum ReportStatus {
 enum FollowTargetType {
   user
   airport
+  aircraft_type
   manufacturer
   family
   variant

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-
 import {
   createTestUser,
   cleanDatabase,
@@ -13,8 +12,6 @@ import {
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
 let server: Awaited<ReturnType<typeof setupTestServer>>;
-
-
 
 beforeAll(async () => {
   server = await setupTestServer();
@@ -80,7 +77,9 @@ describe('Follow mutations', () => {
       );
 
       expect(res.body.kind).toBe('single');
-      const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+      const data = (
+        res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+      ).singleResult;
       expect(data.errors).toBeUndefined();
       expect(data.data?.followUser).toMatchObject({
         id: targetUser.id,
@@ -109,7 +108,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+      const data = (
+        res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+      ).singleResult;
       expect(data.errors).toBeUndefined();
       expect(data.data?.followUser).toMatchObject({
         id: targetUser.id,
@@ -126,7 +127,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+      const data = (
+        res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+      ).singleResult;
       expect(data.errors).toBeDefined();
       expect(data.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
     });
@@ -140,7 +143,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+      const data = (
+        res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+      ).singleResult;
       expect(data.errors).toBeDefined();
       expect(data.errors?.[0]?.extensions?.code).toBe('UNAUTHENTICATED');
     });
@@ -153,7 +158,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+      const data = (
+        res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+      ).singleResult;
       expect(data.errors).toBeDefined();
       expect(data.errors?.[0]?.extensions?.code).toBe('NOT_FOUND');
     });
@@ -180,7 +187,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+      const data = (
+        res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+      ).singleResult;
       expect(data.errors).toBeUndefined();
       expect(data.data?.unfollowUser).toMatchObject({
         id: targetUser.id,
@@ -202,7 +211,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+      const data = (
+        res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+      ).singleResult;
       expect(data.errors).toBeUndefined();
       expect(data.data?.unfollowUser).toMatchObject({
         id: targetUser.id,
@@ -220,7 +231,9 @@ describe('Follow mutations', () => {
         { contextValue: ctx },
       );
 
-      const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+      const data = (
+        res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+      ).singleResult;
       expect(data.errors).toBeDefined();
       expect(data.errors?.[0]?.extensions?.code).toBe('UNAUTHENTICATED');
     });
@@ -376,7 +389,9 @@ const FOLLOWING_FEED = `
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-async function createTestAirport(overrides: Partial<{ icaoCode: string; iataCode: string; name: string }> = {}) {
+async function createTestAirport(
+  overrides: Partial<{ icaoCode: string; iataCode: string; name: string }> = {},
+) {
   return prisma.airport.create({
     data: {
       icaoCode: overrides.icaoCode ?? 'KJFK',
@@ -390,7 +405,10 @@ async function createTestAirport(overrides: Partial<{ icaoCode: string; iataCode
   });
 }
 
-async function createTestPhoto(userId: string, overrides: Partial<{ airline: string; airportCode: string; caption: string }> = {}) {
+async function createTestPhoto(
+  userId: string,
+  overrides: Partial<{ airline: string; airportCode: string; caption: string }> = {},
+) {
   const key = `test/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
   return prisma.photo.create({
     data: {
@@ -399,6 +417,7 @@ async function createTestPhoto(userId: string, overrides: Partial<{ airline: str
       originalUrl: `https://localhost:4566/spotterspace-photos/${key}`,
       airline: overrides.airline ?? null,
       airportCode: overrides.airportCode ?? null,
+      moderationStatus: 'approved',
     },
   });
 }
@@ -415,7 +434,9 @@ describe('Airport follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.followAirport).toMatchObject({
       id: airport.id,
@@ -438,7 +459,9 @@ describe('Airport follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.followAirport).toMatchObject({ followerCount: 1 });
   });
@@ -456,7 +479,9 @@ describe('Airport follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.unfollowAirport).toMatchObject({
       isFollowedByMe: false,
@@ -472,7 +497,9 @@ describe('Airport follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+    const data = (
+      res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors?.[0]?.extensions?.code).toBe('NOT_FOUND');
   });
@@ -489,7 +516,9 @@ describe('Topic follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.followTopic).toEqual({ targetType: 'aircraft_type', value: 'Boeing 747' });
   });
@@ -502,7 +531,9 @@ describe('Topic follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.followTopic).toEqual({ targetType: 'manufacturer', value: 'Airbus' });
   });
@@ -519,7 +550,9 @@ describe('Topic follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
   });
 
@@ -535,7 +568,9 @@ describe('Topic follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.unfollowTopic).toEqual({ targetType: 'aircraft_type', value: 'A320' });
   });
@@ -548,7 +583,9 @@ describe('Topic follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+    const data = (
+      res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
   });
@@ -561,7 +598,9 @@ describe('Topic follow mutations', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }).singleResult;
+    const data = (
+      res.body as { singleResult: { errors?: Array<{ extensions?: { code?: string } }> } }
+    ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
   });
@@ -592,12 +631,11 @@ describe('myFollowing query', () => {
       { contextValue: ctx },
     );
 
-    const res = await server.executeOperation(
-      { query: MY_FOLLOWING },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: MY_FOLLOWING }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     const following = data.data?.myFollowing as Array<Record<string, unknown>>;
     expect(following).toHaveLength(3);
@@ -630,7 +668,9 @@ describe('myFollowing query', () => {
       { contextValue: ctx },
     );
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     const following = data.data?.myFollowing as Array<Record<string, unknown>>;
     expect(following).toHaveLength(1);
@@ -640,12 +680,11 @@ describe('myFollowing query', () => {
   it('should return empty when nothing is followed', async () => {
     const { ctx } = await createTestUser();
 
-    const res = await server.executeOperation(
-      { query: MY_FOLLOWING },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: MY_FOLLOWING }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     expect(data.data?.myFollowing).toEqual([]);
   });
@@ -669,21 +708,27 @@ describe('followingFeed query', () => {
       { contextValue: ctx },
     );
 
-    const res = await server.executeOperation(
-      { query: FOLLOWING_FEED },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: FOLLOWING_FEED }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
-    const feed = data.data?.followingFeed as { edges: Array<{ node: Record<string, unknown> }>; totalCount: number };
+    const feed = data.data?.followingFeed as {
+      edges: Array<{ node: Record<string, unknown> }>;
+      totalCount: number;
+    };
     expect(feed.totalCount).toBe(1);
     expect(feed.edges[0].node.user).toMatchObject({ username: 'target2' });
   });
 
   it('should return photos matching followed airport codes', async () => {
     const { user, ctx } = await createTestUser();
-    const airport = await createTestAirport({ icaoCode: 'EGLL', iataCode: 'LHR', name: 'Heathrow' });
+    const airport = await createTestAirport({
+      icaoCode: 'EGLL',
+      iataCode: 'LHR',
+      name: 'Heathrow',
+    });
 
     await createTestPhoto(user.id, { airportCode: 'EGLL' });
 
@@ -692,14 +737,16 @@ describe('followingFeed query', () => {
       { contextValue: ctx },
     );
 
-    const res = await server.executeOperation(
-      { query: FOLLOWING_FEED },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: FOLLOWING_FEED }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
-    const feed = data.data?.followingFeed as { totalCount: number; edges: Array<{ node: Record<string, unknown> }> };
+    const feed = data.data?.followingFeed as {
+      totalCount: number;
+      edges: Array<{ node: Record<string, unknown> }>;
+    };
     expect(feed.totalCount).toBe(1);
     expect(feed.edges[0].node.airportCode).toBe('EGLL');
   });
@@ -713,33 +760,52 @@ describe('followingFeed query', () => {
       { contextValue: ctx },
     );
 
-    const res = await server.executeOperation(
-      { query: FOLLOWING_FEED },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: FOLLOWING_FEED }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
-    const feed = data.data?.followingFeed as { totalCount: number; edges: Array<{ node: Record<string, unknown> }> };
+    const feed = data.data?.followingFeed as {
+      totalCount: number;
+      edges: Array<{ node: Record<string, unknown> }>;
+    };
     expect(feed.totalCount).toBe(1);
     expect(feed.edges[0].node.airline).toBe('Lufthansa');
   });
 
   it('should return photos matching followed manufacturers', async () => {
     const { user, ctx } = await createTestUser();
-    await createTestPhoto(user.id, { airline: 'Airbus' });
+
+    // Create a proper manufacturer → aircraft → photo chain
+    const manufacturer = await prisma.aircraftManufacturer.create({
+      data: { name: 'Airbus' },
+    });
+    const aircraft = await prisma.aircraft.create({
+      data: {
+        registration: 'D-AIAA',
+        manufacturerId: manufacturer.id,
+      },
+    });
+    await prisma.photo.create({
+      data: {
+        userId: user.id,
+        originalUrl: 'https://localhost:4566/spotterspace-photos/test-mfr.jpg',
+        moderationStatus: 'approved',
+        aircraftId: aircraft.id,
+      },
+    });
 
     await server.executeOperation(
       { query: FOLLOW_TOPIC, variables: { targetType: 'manufacturer', value: 'Airbus' } },
       { contextValue: ctx },
     );
 
-    const res = await server.executeOperation(
-      { query: FOLLOWING_FEED },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: FOLLOWING_FEED }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     const feed = data.data?.followingFeed as { totalCount: number };
     expect(feed.totalCount).toBe(1);
@@ -748,12 +814,11 @@ describe('followingFeed query', () => {
   it('should return empty when nothing is followed', async () => {
     const { ctx } = await createTestUser();
 
-    const res = await server.executeOperation(
-      { query: FOLLOWING_FEED },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: FOLLOWING_FEED }, { contextValue: ctx });
 
-    const data = (res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }).singleResult;
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
     expect(data.errors).toBeUndefined();
     const feed = data.data?.followingFeed as { totalCount: number; edges: unknown[] };
     expect(feed.totalCount).toBe(0);
@@ -786,7 +851,11 @@ describe('followingFeed query', () => {
       { contextValue: ctx },
     );
     const data1 = (res1.body as { singleResult: { data: Record<string, unknown> } }).singleResult;
-    const feed1 = data1.data?.followingFeed as { edges: Array<{ cursor: string }>; pageInfo: { endCursor: string; hasNextPage: boolean }; totalCount: number };
+    const feed1 = data1.data?.followingFeed as {
+      edges: Array<{ cursor: string }>;
+      pageInfo: { endCursor: string; hasNextPage: boolean };
+      totalCount: number;
+    };
     expect(feed1.edges).toHaveLength(2);
     expect(feed1.pageInfo.hasNextPage).toBe(true);
     expect(feed1.totalCount).toBe(3);
@@ -797,7 +866,10 @@ describe('followingFeed query', () => {
       { contextValue: ctx },
     );
     const data2 = (res2.body as { singleResult: { data: Record<string, unknown> } }).singleResult;
-    const feed2 = data2.data?.followingFeed as { edges: Array<{ cursor: string }>; pageInfo: { hasNextPage: boolean } };
+    const feed2 = data2.data?.followingFeed as {
+      edges: Array<{ cursor: string }>;
+      pageInfo: { hasNextPage: boolean };
+    };
     expect(feed2.edges).toHaveLength(1);
     expect(feed2.pageInfo.hasNextPage).toBe(false);
   });

@@ -28,11 +28,7 @@ interface RawPhotoMarker {
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const locationQueryResolvers = {
-  photosInBounds: async (
-    _parent: unknown,
-    args: PhotosInBoundsArgs,
-    ctx: Context,
-  ) => {
+  photosInBounds: async (_parent: unknown, args: PhotosInBoundsArgs, ctx: Context) => {
     const limit = Math.min(args.first ?? 100, 500);
 
     const rows = await ctx.prisma.$queryRaw<RawPhotoMarker[]>`
@@ -62,16 +58,13 @@ export const locationQueryResolvers = {
     }));
   },
 
-  photosNearby: async (
-    _parent: unknown,
-    args: PhotosNearbyArgs,
-    ctx: Context,
-  ) => {
+  photosNearby: async (_parent: unknown, args: PhotosNearbyArgs, ctx: Context) => {
     const limit = Math.min(args.first ?? 50, 200);
     const radius = args.radiusMeters ?? 5000;
 
-    // Uses the pre-computed `geom` geography column (added via raw SQL migration)
-    // which has a PostGIS GIST spatial index for fast distance queries.
+    // Constructs geography points on-the-fly from display coordinates.
+    // A dedicated geom column with a GIST index would be faster at scale
+    // but this works without a raw SQL migration for the computed column.
     const rows = await ctx.prisma.$queryRaw<RawPhotoMarker[]>`
       SELECT
         pl.id,
@@ -85,12 +78,12 @@ export const locationQueryResolvers = {
       WHERE pl.privacy_mode != 'hidden'
         AND p.moderation_status = 'approved'
         AND ST_DWithin(
-          pl.geom,
+          ST_SetSRID(ST_MakePoint(pl.display_longitude, pl.display_latitude), 4326)::geography,
           ST_SetSRID(ST_MakePoint(${args.longitude}, ${args.latitude}), 4326)::geography,
           ${radius}
         )
       ORDER BY ST_Distance(
-        pl.geom,
+        ST_SetSRID(ST_MakePoint(pl.display_longitude, pl.display_latitude), 4326)::geography,
         ST_SetSRID(ST_MakePoint(${args.longitude}, ${args.latitude}), 4326)::geography
       )
       LIMIT ${limit}

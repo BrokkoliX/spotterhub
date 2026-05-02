@@ -79,7 +79,9 @@ const DELETE_SPOTTING_LOCATION = `
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-async function createUser(overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {}) {
+async function createUser(
+  overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {},
+) {
   return prisma.user.create({
     data: {
       email: overrides.email ?? 'loc@test.com',
@@ -103,7 +105,12 @@ async function createAirport() {
   });
 }
 
-async function createPhotoWithLocation(userId: string, lat: number, lng: number, privacyMode = 'exact') {
+async function createPhotoWithLocation(
+  userId: string,
+  lat: number,
+  lng: number,
+  privacyMode = 'exact',
+) {
   const photo = await prisma.photo.create({
     data: {
       userId,
@@ -137,7 +144,7 @@ describe('photosInBounds', () => {
   it('returns photos within the bounding box', async () => {
     const user = await createUser();
     await createPhotoWithLocation(user.id, 47.45, -122.31);
-    await createPhotoWithLocation(user.id, 47.46, -122.30);
+    await createPhotoWithLocation(user.id, 47.46, -122.3);
     // Outside bounds
     await createPhotoWithLocation(user.id, 33.94, -118.41);
 
@@ -156,7 +163,7 @@ describe('photosInBounds', () => {
   it('excludes photos with hidden privacy', async () => {
     const user = await createUser();
     await createPhotoWithLocation(user.id, 47.45, -122.31, 'exact');
-    await createPhotoWithLocation(user.id, 47.46, -122.30, 'hidden');
+    await createPhotoWithLocation(user.id, 47.46, -122.3, 'hidden');
 
     const res = await server.executeOperation(
       {
@@ -173,7 +180,7 @@ describe('photosInBounds', () => {
   it('respects the first limit', async () => {
     const user = await createUser();
     await createPhotoWithLocation(user.id, 47.45, -122.31);
-    await createPhotoWithLocation(user.id, 47.46, -122.30);
+    await createPhotoWithLocation(user.id, 47.46, -122.3);
     await createPhotoWithLocation(user.id, 47.47, -122.29);
 
     const res = await server.executeOperation(
@@ -213,6 +220,7 @@ describe('photosNearby', () => {
 
 describe('createSpottingLocation', () => {
   it('creates a spotting location', async () => {
+    await createUser();
     const airport = await createAirport();
 
     const res = await server.executeOperation(
@@ -307,8 +315,12 @@ describe('deleteSpottingLocation', () => {
     expect(found).toBeNull();
   });
 
-  it('rejects deleting another user\'s spotting location', async () => {
-    const owner = await createUser({ email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' });
+  it("rejects deleting another user's spotting location", async () => {
+    const owner = await createUser({
+      email: 'owner@test.com',
+      username: 'owner',
+      cognitoSub: 'sub-owner',
+    });
     await createUser();
     const airport = await createAirport();
     const spot = await prisma.spottingLocation.create({

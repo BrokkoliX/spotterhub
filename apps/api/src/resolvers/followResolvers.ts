@@ -179,10 +179,17 @@ export const followMutationResolvers = {
     const followerId = await resolveUserId(ctx);
     const { targetType, value } = args;
 
-    const validTopicTypes = ['manufacturer', 'family', 'variant', 'airline', 'registration'];
+    const validTopicTypes = [
+      'aircraft_type',
+      'manufacturer',
+      'family',
+      'variant',
+      'airline',
+      'registration',
+    ];
     if (!validTopicTypes.includes(targetType)) {
       throw new GraphQLError(
-        'targetType must be "manufacturer", "family", "variant", "airline", or "registration"',
+        'targetType must be "aircraft_type", "manufacturer", "family", "variant", "airline", or "registration"',
         {
           extensions: { code: 'BAD_USER_INPUT' },
         },
@@ -227,10 +234,17 @@ export const followMutationResolvers = {
     const followerId = await resolveUserId(ctx);
     const { targetType, value } = args;
 
-    const validTopicTypes = ['manufacturer', 'family', 'variant', 'airline', 'registration'];
+    const validTopicTypes = [
+      'aircraft_type',
+      'manufacturer',
+      'family',
+      'variant',
+      'airline',
+      'registration',
+    ];
     if (!validTopicTypes.includes(targetType)) {
       throw new GraphQLError(
-        'targetType must be "manufacturer", "family", "variant", "airline", or "registration"',
+        'targetType must be "aircraft_type", "manufacturer", "family", "variant", "airline", or "registration"',
         {
           extensions: { code: 'BAD_USER_INPUT' },
         },
@@ -327,12 +341,13 @@ export const followQueryResolvers = {
       .map((f) => f.targetValue!);
     if (followedAirlines.length > 0) {
       orConditions.push({
-        aircraft: {
-          OR: [
-            { airline: { in: followedAirlines, mode: 'insensitive' } },
-            { airlineRef: { icaoCode: { in: followedAirlines, mode: 'insensitive' } } },
-          ],
-        },
+        OR: [
+          // Match airline set directly on the photo
+          { airline: { in: followedAirlines, mode: 'insensitive' } },
+          // Match airline through the aircraft relation
+          { aircraft: { airline: { in: followedAirlines, mode: 'insensitive' } } },
+          { aircraft: { airlineRef: { icaoCode: { in: followedAirlines, mode: 'insensitive' } } } },
+        ],
       });
     }
 

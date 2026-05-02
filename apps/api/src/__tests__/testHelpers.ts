@@ -88,6 +88,10 @@ export async function cleanDatabase(): Promise<void> {
   await prisma.report.deleteMany();
   await prisma.album.deleteMany();
   await prisma.spottingLocation.deleteMany();
+  await prisma.aircraft.deleteMany();
+  await prisma.aircraftVariant.deleteMany();
+  await prisma.aircraftFamily.deleteMany();
+  await prisma.aircraftManufacturer.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.airport.deleteMany();
   await prisma.refreshToken.deleteMany();

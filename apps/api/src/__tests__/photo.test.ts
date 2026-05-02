@@ -9,7 +9,16 @@ import {
   teardownTestServer,
 } from './testHelpers.js';
 
-// Mock generateVariants so test doesn't emit NoSuchKey errors from S3
+// Mock S3 getObject so createPhoto's dimension validation doesn't hit real S3
+vi.mock('../services/s3.js', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    getObject: vi.fn().mockResolvedValue(Buffer.from('fake-image-data')),
+  };
+});
+
+// Mock generateVariants AND getSharp so tests don't depend on S3 or sharp
 vi.mock('../services/imageProcessing.js', () => ({
   generateVariants: vi.fn().mockResolvedValue([
     {
@@ -29,6 +38,9 @@ vi.mock('../services/imageProcessing.js', () => ({
       fileSizeBytes: 30000,
     },
   ]),
+  getSharp: vi
+    .fn()
+    .mockResolvedValue(() => ({ metadata: () => Promise.resolve({ width: 1920, height: 1080 }) })),
 }));
 
 // ─── Test helpers ───────────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ export const typeDefs = gql`
   enum FollowTargetType {
     user
     airport
+    aircraft_type
     manufacturer
     family
     variant

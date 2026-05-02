@@ -161,7 +161,10 @@ describe('createCommunity', () => {
 
   it('creates an invite-only community with auto-generated invite code', async () => {
     await createUsers();
-    const result = await createCommunityViaApi({ visibility: 'invite_only', slug: 'private-group' });
+    const result = await createCommunityViaApi({
+      visibility: 'invite_only',
+      slug: 'private-group',
+    });
 
     expect(result.data.createCommunity.visibility).toBe('invite_only');
   });
@@ -241,10 +244,7 @@ describe('communities query', () => {
     await createCommunityViaApi();
     await createCommunityViaApi({ name: 'SFO Group', slug: 'sfo-group' });
 
-    const res = await server.executeOperation(
-      { query: GET_COMMUNITIES },
-      ctx(null),
-    );
+    const res = await server.executeOperation({ query: GET_COMMUNITIES }, ctx(null));
 
     expect((res.body as any).singleResult.data.communities.totalCount).toBe(2);
   });
@@ -252,7 +252,11 @@ describe('communities query', () => {
   it('filters by search term', async () => {
     await createUsers();
     await createCommunityViaApi();
-    await createCommunityViaApi({ name: 'SFO Group', slug: 'sfo-group', description: 'Spotting at SFO' });
+    await createCommunityViaApi({
+      name: 'SFO Group',
+      slug: 'sfo-group',
+      description: 'Spotting at SFO',
+    });
 
     const res = await server.executeOperation(
       { query: GET_COMMUNITIES, variables: { search: 'LAX' } },
@@ -278,12 +282,13 @@ describe('communities query', () => {
   it('excludes invite-only communities', async () => {
     await createUsers();
     await createCommunityViaApi();
-    await createCommunityViaApi({ visibility: 'invite_only', slug: 'private-club', name: 'Private Club' });
+    await createCommunityViaApi({
+      visibility: 'invite_only',
+      slug: 'private-club',
+      name: 'Private Club',
+    });
 
-    const res = await server.executeOperation(
-      { query: GET_COMMUNITIES },
-      ctx(null),
-    );
+    const res = await server.executeOperation({ query: GET_COMMUNITIES }, ctx(null));
 
     expect((res.body as any).singleResult.data.communities.totalCount).toBe(1);
   });
@@ -294,10 +299,7 @@ describe('myCommunities', () => {
     await createUsers();
     await createCommunityViaApi();
 
-    const res = await server.executeOperation(
-      { query: MY_COMMUNITIES },
-      ctx(ALICE),
-    );
+    const res = await server.executeOperation({ query: MY_COMMUNITIES }, ctx(ALICE));
 
     const data = (res.body as any).singleResult.data;
     expect(data.myCommunities).toHaveLength(1);
@@ -307,10 +309,7 @@ describe('myCommunities', () => {
   it('returns empty for user with no memberships', async () => {
     await createUsers();
 
-    const res = await server.executeOperation(
-      { query: MY_COMMUNITIES },
-      ctx(BOB),
-    );
+    const res = await server.executeOperation({ query: MY_COMMUNITIES }, ctx(BOB));
 
     expect((res.body as any).singleResult.data.myCommunities).toHaveLength(0);
   });
@@ -393,10 +392,7 @@ describe('joinCommunity', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
     const res = await server.executeOperation(
       { query: JOIN_COMMUNITY, variables: { communityId } },
       ctx(BOB),
@@ -407,7 +403,11 @@ describe('joinCommunity', () => {
 
   it('requires invite code for invite-only community', async () => {
     await createUsers();
-    const created = await createCommunityViaApi({ visibility: 'invite_only', slug: 'private-club', name: 'Private' });
+    const created = await createCommunityViaApi({
+      visibility: 'invite_only',
+      slug: 'private-club',
+      name: 'Private',
+    });
     const communityId = created.data.createCommunity.id;
 
     const res = await server.executeOperation(
@@ -420,7 +420,11 @@ describe('joinCommunity', () => {
 
   it('accepts valid invite code', async () => {
     await createUsers();
-    const created = await createCommunityViaApi({ visibility: 'invite_only', slug: 'private-club', name: 'Private' });
+    const created = await createCommunityViaApi({
+      visibility: 'invite_only',
+      slug: 'private-club',
+      name: 'Private',
+    });
     const communityId = created.data.createCommunity.id;
 
     // Get the invite code from the DB directly
@@ -441,10 +445,7 @@ describe('leaveCommunity', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
       { query: LEAVE_COMMUNITY, variables: { communityId } },
@@ -474,10 +475,7 @@ describe('removeCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
       { query: REMOVE_MEMBER, variables: { communityId, userId: bob.id } },
@@ -492,10 +490,7 @@ describe('removeCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
     await server.executeOperation(
       { query: JOIN_COMMUNITY, variables: { communityId } },
       ctx(CHARLIE),
@@ -516,10 +511,7 @@ describe('updateCommunityMemberRole', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
       { query: UPDATE_ROLE, variables: { communityId, userId: bob.id, role: 'moderator' } },
@@ -534,10 +526,7 @@ describe('updateCommunityMemberRole', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
       { query: UPDATE_ROLE, variables: { communityId, userId: bob.id, role: 'owner' } },
@@ -552,10 +541,7 @@ describe('updateCommunityMemberRole', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
     await server.executeOperation(
       { query: JOIN_COMMUNITY, variables: { communityId } },
       ctx(CHARLIE),
@@ -591,10 +577,7 @@ describe('generateInviteCode', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
       { query: GENERATE_INVITE, variables: { communityId } },
@@ -641,13 +624,17 @@ describe('banCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
-      { query: BAN_MEMBER, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, reason: 'Spam behavior' } },
+      {
+        query: BAN_MEMBER,
+        variables: {
+          communityId,
+          userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id,
+          reason: 'Spam behavior',
+        },
+      },
       ctx(ALICE),
     );
 
@@ -660,12 +647,16 @@ describe('banCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
     await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
-    await server.executeOperation(
-      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, role: 'moderator' } },
+      {
+        query: UPDATE_ROLE,
+        variables: {
+          communityId,
+          userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id,
+          role: 'moderator',
+        },
+      },
       ctx(ALICE),
     );
 
@@ -684,12 +675,16 @@ describe('banCommunityMember', () => {
     const communityId = created.data.createCommunity.id;
 
     // Add bob as admin
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
     await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
-    await server.executeOperation(
-      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, role: 'admin' } },
+      {
+        query: UPDATE_ROLE,
+        variables: {
+          communityId,
+          userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id,
+          role: 'admin',
+        },
+      },
       ctx(ALICE),
     );
     // Add charlie as admin too
@@ -698,15 +693,22 @@ describe('banCommunityMember', () => {
       ctx(CHARLIE),
     );
     await server.executeOperation(
-      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'charlie' } }))!.id, role: 'admin' } },
+      {
+        query: UPDATE_ROLE,
+        variables: {
+          communityId,
+          userId: (await prisma.user.findUnique({ where: { username: 'charlie' } }))!.id,
+          role: 'admin',
+        },
+      },
       ctx(ALICE),
     );
 
-    // Bob (admin) tries to ban another admin - should fail (equal weight)
+    // Charlie (admin) tries to ban Bob (also admin) - should fail (equal weight)
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     const res = await server.executeOperation(
       { query: BAN_MEMBER, variables: { communityId, userId: bobId } },
-      { contextValue: createTestContext(BOB) },
+      { contextValue: createTestContext(CHARLIE) },
     );
 
     expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');
@@ -717,12 +719,16 @@ describe('banCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
     await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
-    await server.executeOperation(
-      { query: UPDATE_ROLE, variables: { communityId, userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id, role: 'admin' } },
+      {
+        query: UPDATE_ROLE,
+        variables: {
+          communityId,
+          userId: (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id,
+          role: 'admin',
+        },
+      },
       ctx(ALICE),
     );
 
@@ -755,10 +761,7 @@ describe('banCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
@@ -780,10 +783,7 @@ describe('banCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
@@ -805,10 +805,7 @@ describe('unbanCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
@@ -829,10 +826,7 @@ describe('unbanCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     const res = await server.executeOperation(
@@ -848,10 +842,7 @@ describe('unbanCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
@@ -874,10 +865,7 @@ describe('unbanCommunityMember', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
@@ -890,10 +878,7 @@ describe('unbanCommunityMember', () => {
     );
 
     // Bob leaves
-    await server.executeOperation(
-      { query: LEAVE_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: LEAVE_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     // Bob rejoins
     const res = await server.executeOperation(
@@ -911,10 +896,7 @@ describe('communityModerationLogs', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
@@ -937,10 +919,7 @@ describe('communityModerationLogs', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const res = await server.executeOperation(
       { query: GET_MOD_LOGS, variables: { communityId, first: 10 } },
@@ -955,10 +934,7 @@ describe('communityModerationLogs', () => {
     const created = await createCommunityViaApi();
     const communityId = created.data.createCommunity.id;
 
-    await server.executeOperation(
-      { query: JOIN_COMMUNITY, variables: { communityId } },
-      ctx(BOB),
-    );
+    await server.executeOperation({ query: JOIN_COMMUNITY, variables: { communityId } }, ctx(BOB));
 
     const bobId = (await prisma.user.findUnique({ where: { username: 'bob' } }))!.id;
     await server.executeOperation(
