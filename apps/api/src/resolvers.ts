@@ -91,6 +91,11 @@ import {
   notificationQueryResolvers,
 } from './resolvers/notificationResolvers.js';
 import {
+  contactMessageQueryResolvers,
+  contactMessageMutationResolvers,
+  contactMessageFieldResolvers,
+} from './resolvers/contactMessageResolvers.js';
+import {
   pendingListItemFieldResolvers,
   pendingListItemMutationResolvers,
   pendingListItemQueryResolvers,
@@ -203,6 +208,7 @@ export const resolvers = {
     ...pendingListItemQueryResolvers,
     ...marketplaceQueryResolvers,
     ...marketplaceCollectiblesQueryResolvers,
+    ...contactMessageQueryResolvers,
   },
 
   Mutation: {
@@ -230,6 +236,7 @@ export const resolvers = {
     ...pendingListItemMutationResolvers,
     ...marketplaceMutationResolvers,
     ...marketplaceCollectiblesMutationResolvers,
+    ...contactMessageMutationResolvers,
   },
 
   User: {
@@ -303,4 +310,6 @@ export const resolvers = {
   SellerFeedback: sellerFeedbackFieldResolvers,
 
   MarketplaceCategory: marketplaceCategoryFieldResolvers,
+
+  ContactMessage: contactMessageFieldResolvers,
 };

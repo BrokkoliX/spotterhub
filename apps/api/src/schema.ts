@@ -64,6 +64,7 @@ export const typeDefs = gql`
     album
     community
     forum_post
+    marketplace_item
   }
 
   enum ReportReason {
@@ -79,6 +80,12 @@ export const typeDefs = gql`
     reviewed
     resolved
     dismissed
+  }
+
+  enum ContactMessageStatus {
+    unread
+    read
+    resolved
   }
 
   enum CommunityRole {
@@ -314,6 +321,13 @@ export const typeDefs = gql`
     Requires admin or moderator role.
     """
     adminReports(status: String, first: Int = 20, after: String): ReportConnection!
+
+    """
+    Paginated list of contact messages to admins.
+    Optionally filtered by status.
+    Requires admin or moderator role.
+    """
+    contactMessages(status: ContactMessageStatus, first: Int = 20, after: String): ContactMessageConnection!
 
     """
     Paginated list of users for admin management.
@@ -800,6 +814,12 @@ export const typeDefs = gql`
     createReport(input: CreateReportInput!): Report!
 
     """
+    Submit a message to admins.
+    Any authenticated user can submit a contact message.
+    """
+    createContactMessage(input: CreateContactMessageInput!): ContactMessage!
+
+    """
     Create a spotting location near an airport. Requires authentication.
     """
     createSpottingLocation(input: CreateSpottingLocationInput!): SpottingLocation!
@@ -854,6 +874,11 @@ export const typeDefs = gql`
     Resolve or dismiss a report. Requires admin or moderator role.
     """
     adminResolveReport(id: ID!, action: String!): Report!
+
+    """
+    Mark a contact message as read or resolved. Requires admin or moderator role.
+    """
+    reviewContactMessage(id: ID!, status: ContactMessageStatus!): ContactMessage!
 
     """
     Update a user's account status (active, suspended, banned).
@@ -2062,6 +2087,34 @@ export const typeDefs = gql`
     totalCount: Int!
   }
 
+  # ─── Contact Message Types ───────────────────────────────────────────────
+
+  """
+  A message submitted by a user to admin.
+  """
+  type ContactMessage {
+    id: ID!
+    user: User
+    email: String
+    subject: String!
+    body: String!
+    status: ContactMessageStatus!
+    reviewedByUser: User
+    createdAt: String!
+    reviewedAt: String
+  }
+
+  type ContactMessageEdge {
+    cursor: String!
+    node: ContactMessage!
+  }
+
+  type ContactMessageConnection {
+    edges: [ContactMessageEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
   # ─── Admin Types ──────────────────────────────────────────────────────
 
   """
@@ -2078,7 +2131,7 @@ export const typeDefs = gql`
 
   input CreateReportInput {
     """
-    Type of content: photo, comment, profile, album, community, or forum_post.
+    Type of content: photo, comment, profile, album, community, forum_post, or marketplace_item.
     """
     targetType: ReportTargetType!
     """
@@ -2093,6 +2146,12 @@ export const typeDefs = gql`
     Additional details (required when reason is 'other').
     """
     description: String
+  }
+
+  input CreateContactMessageInput {
+    subject: String!
+    body: String!
+    email: String
   }
 
   # ─── Follow Types ────────────────────────────────────────────────────────

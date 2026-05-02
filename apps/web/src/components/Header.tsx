@@ -246,6 +246,11 @@ export function Header() {
               Upload
             </Link>
           )}
+          {showUser && (
+            <Link href="/contact" className={styles.navLink}>
+              Contact
+            </Link>
+          )}
           {(isAdmin || isSuperuser) && (
             <Link href="/admin" className={styles.navLink}>
               Admin
@@ -394,6 +399,13 @@ export function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Upload
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className={styles.mobileNavLink}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Contact
                   </Link>
                 </>
               )}

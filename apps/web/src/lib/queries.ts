@@ -469,6 +469,62 @@ export const CREATE_REPORT = gql`
   }
 `;
 
+// ─── Contact Messages ────────────────────────────────────────────────────────
+
+export const GET_CONTACT_MESSAGES = gql`
+  query GetContactMessages($status: ContactMessageStatus, $first: Int, $after: String) {
+    contactMessages(status: $status, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          subject
+          body
+          email
+          status
+          createdAt
+          reviewedAt
+          user {
+            id
+            username
+            email
+          }
+          reviewedByUser {
+            id
+            username
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
+export const CREATE_CONTACT_MESSAGE = gql`
+  mutation CreateContactMessage($input: CreateContactMessageInput!) {
+    createContactMessage(input: $input) {
+      id
+      subject
+      body
+      status
+    }
+  }
+`;
+
+export const REVIEW_CONTACT_MESSAGE = gql`
+  mutation ReviewContactMessage($id: ID!, $status: ContactMessageStatus!) {
+    reviewContactMessage(id: $id, status: $status) {
+      id
+      status
+      reviewedAt
+    }
+  }
+`;
+
 // ─── Me ─────────────────────────────────────────────────────────────────────
 
 export const GET_ME = gql`

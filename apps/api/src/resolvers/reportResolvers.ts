@@ -22,6 +22,7 @@ const VALID_TARGET_TYPES = [
   'album',
   'community',
   'forum_post',
+  'marketplace_item',
 ];
 const VALID_REASONS = [
   'inappropriate',
@@ -132,13 +133,23 @@ export const reportMutationResolvers = {
           extensions: { code: 'NOT_FOUND' },
         });
       }
+    } else if (targetType === 'marketplace_item') {
+      const target = await ctx.prisma.marketplaceItem.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!target) {
+        throw new GraphQLError('Marketplace item not found', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
     }
 
     // Check for duplicate report
     const existingReport = await ctx.prisma.report.findFirst({
       where: {
         reporterId: user.id,
-        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post',
+        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post' | 'marketplace_item',
         targetId,
         status: { in: ['open', 'reviewed'] },
       },
@@ -152,7 +163,7 @@ export const reportMutationResolvers = {
     const report = await ctx.prisma.report.create({
       data: {
         reporterId: user.id,
-        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post',
+        targetType: targetType as 'photo' | 'comment' | 'profile' | 'album' | 'community' | 'forum_post' | 'marketplace_item',
         targetId,
         reason: reason as 'inappropriate' | 'spam' | 'harassment' | 'copyright' | 'other',
         description: description?.trim() || null,

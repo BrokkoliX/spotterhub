@@ -90,6 +90,7 @@ enum ReportTargetType {
   album
   community
   forum_post
+  marketplace_item
 }
 
 enum ReportReason {
@@ -105,6 +106,12 @@ enum ReportStatus {
   reviewed
   resolved
   dismissed
+}
+
+enum ContactMessageStatus {
+  unread
+  read
+  resolved
 }
 
 enum FollowTargetType {
@@ -309,6 +316,8 @@ model User {
   sellerListings  PhotoListing[]
   marketplaceItems MarketplaceItem[] @relation("SellerItems")
   sellerFeedback  SellerFeedback[] @relation("SellerReceivedFeedback")
+  contactMessages ContactMessage[]
+  reviewedContactMessages ContactMessage[] @relation("ContactMessageReviewer")
 
   @@map("users")
 }
@@ -626,6 +635,23 @@ model Report {
   reviewer User? @relation("Reviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
   @@map("reports")
+}
+
+model ContactMessage {
+  id         String              @id @default(uuid()) @db.Uuid
+  userId     String?             @map("user_id") @db.Uuid
+  email      String?
+  subject    String
+  body       String
+  status     ContactMessageStatus @default(unread)
+  reviewedBy String?             @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime?           @map("reviewed_at")
+  createdAt  DateTime            @default(now()) @map("created_at")
+
+  user     User?     @relation(fields: [userId], references: [id])
+  reviewer User?     @relation("ContactMessageReviewer", fields: [reviewedBy], references: [id])
+
+  @@map("contact_message")
 }
 
 model Notification {

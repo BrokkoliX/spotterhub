@@ -357,3 +357,11 @@
   padding: 40px 24px;
   color: #dc2626;
 }
+
+/* ─── Report Row ────────────────────────────────────────────────────────────── */
+
+.reportRow {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}

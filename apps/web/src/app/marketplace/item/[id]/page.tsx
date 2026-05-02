@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { GET_MARKETPLACE_ITEM, GET_MARKETPLACE_ITEM as GET_SIMILAR_ITEMS } from '@/lib/queries';
+import { ReportButton } from '@/components/ReportButton';
 
 import styles from './page.module.css';
 
@@ -260,6 +261,10 @@ export default function MarketplaceItemPage() {
               <Link href={`/marketplace/seller/${item.seller.user.id}`} className={styles.feedbackLink}>
                 ★ Leave feedback for this seller
               </Link>
+            </div>
+
+            <div className={styles.reportRow}>
+              <ReportButton targetType="marketplace_item" targetId={item.id} />
             </div>
 
             {item.moderationStatus === 'pending' && (

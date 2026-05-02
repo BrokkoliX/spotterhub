@@ -65,6 +65,13 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Review flagged content</div>
           </div>
         </Link>
+        <Link href="/admin/contact-messages" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>📬</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Contact Messages</div>
+            <div className={styles.quickLinkDesc}>User inquiries and feedback</div>
+          </div>
+        </Link>
         <Link href="/admin/users" className={styles.quickLink}>
           <span className={styles.quickLinkIcon}>👥</span>
           <div>
