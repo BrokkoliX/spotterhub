@@ -24,10 +24,12 @@ export default function AdminSellersPage() {
     try {
       const result = await approveSeller({ sellerProfileId });
       if (result.data?.approveSeller?.onboardingUrl) {
-        window.location.href = result.data.approveSeller.onboardingUrl;
-      } else {
-        setProcessed((p) => new Set([...p, sellerProfileId]));
+        const confirmCopy = window.confirm('Seller approved. Stripe onboarding link:\n' + result.data.approveSeller.onboardingUrl + '\n\nClick OK to open Stripe onboarding, or Cancel to copy the link manually.');
+        if (confirmCopy) {
+          window.open(result.data.approveSeller.onboardingUrl, '_blank');
+        }
       }
+      setProcessed((p) => new Set([...p, sellerProfileId]));
     } finally {
       setProcessingId(null);
     }
@@ -96,7 +98,7 @@ export default function AdminSellersPage() {
                       disabled={processingId === node.id || approving}
                       type="button"
                     >
-                      {processingId === node.id ? 'Approving…' : 'Approve & Send Onboarding Link'}
+                      {processingId === node.id ? 'Approving…' : 'Approve Seller'}
                     </button>
                   )}
                 </div>
