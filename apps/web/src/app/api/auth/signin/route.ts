@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
               email
               username
               role
+              sellerProfile {
+                approved
+                stripeOnboardingComplete
+              }
             }
           }
         }
