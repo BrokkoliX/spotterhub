@@ -2,7 +2,9 @@ import Stripe from 'stripe';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
-export const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+export const stripe: InstanceType<typeof Stripe> | null = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY)
+  : null;
 
 const PLATFORM_FEE_PERCENT = parseInt(process.env.PLATFORM_FEE_PERCENT ?? '20', 10);
 
@@ -138,7 +140,7 @@ export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string,
   webhookSecret: string,
-) {
+): ReturnType<InstanceType<typeof Stripe>['webhooks']['constructEvent']> {
   if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 }
