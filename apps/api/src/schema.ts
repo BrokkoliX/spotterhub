@@ -538,7 +538,7 @@ export const typeDefs = gql`
     """
     List of all pending seller applications. Requires admin or superuser role.
     """
-    adminSellerApplications(first: Int = 20, after: String): SellerProfileConnection!
+    adminSellerApplications(first: Int = 20, after: String, status: String = "pending"): SellerProfileConnection!
 
     # ─── Admin: Pending List Items ───────────────────────────────────────────
 

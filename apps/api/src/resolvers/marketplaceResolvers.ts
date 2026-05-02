@@ -170,24 +170,24 @@ export const marketplaceQueryResolvers = {
 
   adminSellerApplications: async (
     _parent: unknown,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; status?: string },
     ctx: Context,
   ) => {
     requireRole(ctx, ['admin', 'superuser']);
     const take = Math.min(args.first ?? 20, 50);
 
-    const paginateWhere = args.after
-      ? { createdAt: { lt: decodeCursor(args.after) } }
-      : {};
+    const where: Record<string, unknown> = {};
+    if (args.status) where.status = args.status;
+    if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
 
     const [applications, totalCount] = await Promise.all([
       ctx.prisma.sellerProfile.findMany({
-        where: paginateWhere,
+        where,
         orderBy: { createdAt: 'desc' },
         take: take + 1,
         include: { user: { include: { profile: true } } },
       }),
-      ctx.prisma.sellerProfile.count({ where: paginateWhere }),
+      ctx.prisma.sellerProfile.count({ where }),
     ]);
 
     const hasNextPage = applications.length > take;

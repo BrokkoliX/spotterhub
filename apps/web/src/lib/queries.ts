@@ -3450,7 +3450,7 @@ export const MY_SALES = gql`
 
 export const ADMIN_SELLER_APPLICATIONS = gql`
   query AdminSellerApplications($first: Int, $after: String) {
-    adminSellerApplications(first: $first, after: $after) {
+    adminSellerApplications(first: $first, after: $after, status: "pending") {
       edges {
         cursor
         node {
