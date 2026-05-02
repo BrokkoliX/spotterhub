@@ -2,7 +2,8 @@
 
 .page {
   min-height: calc(100vh - var(--header-height));
-  background: var(--bg-primary, #fff);
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .inner {
@@ -26,13 +27,13 @@
 .title {
   font-size: 1.8rem;
   font-weight: 800;
-  color: var(--text-primary, #111827);
+  color: var(--color-text);
   margin: 0 0 8px;
 }
 
 .subtitle {
   font-size: 0.95rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
   margin: 0 0 32px;
 }
 
@@ -47,7 +48,7 @@
 /* ─── Section ─────────────────────────────────────────────────────────────── */
 
 .section {
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
   display: flex;
@@ -58,13 +59,13 @@
 .sectionTitle {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--text-primary, #111827);
+  color: var(--color-text);
   margin: 0;
 }
 
 .sectionHint {
   font-size: 0.85rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -73,7 +74,7 @@
 }
 
 .optional {
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
   font-weight: 400;
 }
 
@@ -88,17 +89,17 @@
 .label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-primary, #111827);
+  color: var(--color-text);
 }
 
 .input,
 .select,
 .textarea {
   padding: 10px 14px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: var(--bg-primary, #fff);
-  color: var(--text-primary, #111827);
+  background: var(--color-bg-input);
+  color: var(--color-text);
   font-size: 0.95rem;
   font-family: inherit;
   width: 100%;
@@ -123,7 +124,7 @@
 
 .hint {
   font-size: 0.8rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
 }
 
 /* ─── Price Input ────────────────────────────────────────────────────────── */
@@ -136,11 +137,11 @@
 
 .pricePrefix {
   padding: 10px 12px;
-  background: var(--bg-secondary, #f9fafb);
-  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
   border-right: none;
   border-radius: 8px 0 0 8px;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
   font-weight: 600;
 }
 
@@ -161,10 +162,11 @@
   flex-direction: column;
   gap: 2px;
   padding: 12px;
-  border: 2px solid var(--border-color, #e5e7eb);
+  border: 2px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
+  background: transparent;
 }
 
 .conditionCard:hover {
@@ -173,29 +175,29 @@
 
 .conditionSelected {
   border-color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.05);
+  background: var(--color-accent-soft);
 }
 
 .conditionLabel {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text-primary, #111827);
+  color: var(--color-text);
 }
 
 .conditionDesc {
   font-size: 0.75rem;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
 }
 
 /* ─── Error ─────────────────────────────────────────────────────────────── */
 
 .error {
-  color: #dc2626;
+  color: var(--color-danger);
   font-size: 0.875rem;
   margin: 0;
   padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'urql';
 
+import { useAuth } from '@/lib/auth';
 import {
+  GET_ME,
   GET_MARKETPLACE_CATEGORIES,
   GET_MARKETPLACE_UPLOAD_URL,
   CREATE_MARKETPLACE_ITEM,
@@ -30,6 +32,12 @@ const CONDITIONS = [
 
 export default function NewListingPage() {
   const router = useRouter();
+  const { user, ready } = useAuth();
+
+  const [{ data: meData, fetching: meFetching }] = useQuery({
+    query: GET_ME,
+    pause: !ready || !user,
+  });
 
   const [{ data: categoriesData, fetching: categoriesFetching }] = useQuery({
     query: GET_MARKETPLACE_CATEGORIES,
@@ -50,6 +58,24 @@ export default function NewListingPage() {
   const [contactPhone, setContactPhone] = useState('');
   const [imageS3Keys, setImageS3Keys] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect if user is not a fully active seller
+  useEffect(() => {
+    if (!ready || !user || meFetching) return;
+    const sellerProfile = meData?.me?.sellerProfile;
+    if (!sellerProfile) {
+      router.replace('/sell');
+      return;
+    }
+    if (!sellerProfile.approved) {
+      router.replace('/settings/seller');
+      return;
+    }
+    if (!sellerProfile.stripeOnboardingComplete && sellerProfile.stripeAccountId) {
+      router.replace('/settings/seller');
+      return;
+    }
+  }, [ready, user, meFetching, meData, router]);
 
   const uploadUrlFn = async (file: File): Promise<string> => {
     const result = await getUploadUrl({
@@ -132,6 +158,9 @@ export default function NewListingPage() {
                 onChange={(e) => setCategoryId(e.target.value)}
               >
                 <option value="">Select a category…</option>
+                {categories.length === 0 && !categoriesFetching && (
+                  <option value="" disabled>No categories available — contact admin</option>
+                )}
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.label}</option>
                 ))}

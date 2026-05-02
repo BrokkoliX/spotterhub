@@ -493,6 +493,13 @@ export const GET_ME = gql`
         cameraBodies
         lenses
       }
+      sellerProfile {
+        id
+        status
+        approved
+        stripeOnboardingComplete
+        stripeAccountId
+      }
     }
   }
 `;
