@@ -142,6 +142,13 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Vintage, narrowbody, widebody…</div>
           </div>
         </Link>
+        <Link href="/admin/sellers" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🏪</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Sellers</div>
+            <div className={styles.quickLinkDesc}>Approve &amp; manage seller applications</div>
+          </div>
+        </Link>
         <Link href="/admin/forum-categories" className={styles.quickLink}>
           <span className={styles.quickLinkIcon}>💬</span>
           <div>

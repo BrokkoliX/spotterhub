@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useQuery } from 'urql';
 import Link from 'next/link';
 
+import { useAuth } from '@/lib/auth';
 import { GET_MARKETPLACE_ITEMS, GET_MARKETPLACE_CATEGORIES } from '@/lib/queries';
 
 import styles from './page.module.css';
@@ -216,6 +217,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 const PAGE_SIZE = 24;
 
 export default function MarketplacePage() {
+  const { user } = useAuth();
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -328,9 +330,15 @@ export default function MarketplacePage() {
             )}
 
             <div className={styles.sellCta}>
-              <Link href="/sell" className="btn btn-primary">
-                ✈️ Start Selling
-              </Link>
+              {user?.sellerProfile?.approved ? (
+                <Link href="/sell/listings/new" className="btn btn-primary">
+                  ✈️ Add Item
+                </Link>
+              ) : (
+                <Link href="/sell" className="btn btn-primary">
+                  ✈️ Start Selling
+                </Link>
+              )}
             </div>
 
             {/* Grid */}

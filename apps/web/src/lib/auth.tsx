@@ -18,6 +18,7 @@ export interface User {
   email: string;
   username: string;
   role: string;
+  sellerProfile?: { approved: boolean } | null;
 }
 
 interface AuthContextValue {

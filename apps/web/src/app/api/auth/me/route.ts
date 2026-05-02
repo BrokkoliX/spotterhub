@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
             email
             username
             role
+            sellerProfile {
+              approved
+            }
           }
         }
       `,
