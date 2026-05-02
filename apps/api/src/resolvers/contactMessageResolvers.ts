@@ -180,13 +180,5 @@ export const contactMessageFieldResolvers = {
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
     reviewedAt: (parent: { reviewedAt: Date | null }) =>
       parent.reviewedAt?.toISOString() ?? null,
-    user: async (parent: { userId: string | null }, _args: unknown, ctx: Context) => {
-      if (!parent.userId) return null;
-      return ctx.prisma.user.findUnique({ where: { id: parent.userId } });
-    },
-    reviewedByUser: async (parent: { reviewedBy: string | null }, _args: unknown, ctx: Context) => {
-      if (!parent.reviewedBy) return null;
-      return ctx.prisma.user.findUnique({ where: { id: parent.reviewedBy } });
-    },
   },
 };

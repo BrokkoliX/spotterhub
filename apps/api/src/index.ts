@@ -12,6 +12,7 @@ import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';
 import { typeDefs } from './schema.js';
 import { ensureBucket } from './services/s3.js';
+import { makeExecutableSchema } from '@graphql-tools/schema';
 
 const PORT = parseInt(process.env.API_PORT ?? '4000', 10);
 
@@ -79,8 +80,11 @@ async function main() {
   await ensureBucket();
 
   const server = new ApolloServer<Context>({
-    typeDefs,
-    resolvers,
+    schema: makeExecutableSchema({
+      typeDefs,
+      resolvers,
+      resolverValidationOptions: { requireResolversToMatchSchema: 'ignore' },
+    }),
     introspection: process.env.NODE_ENV !== 'production',
   });
 
