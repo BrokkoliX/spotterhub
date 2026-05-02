@@ -2,14 +2,11 @@ import Stripe from 'stripe';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
-export const stripe = STRIPE_SECRET_KEY
-  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' as const })
+export const stripe: InstanceType<typeof Stripe> | null = STRIPE_SECRET_KEY
+  ? new Stripe(STRIPE_SECRET_KEY)
   : null;
 
-const PLATFORM_FEE_PERCENT = parseInt(
-  process.env.PLATFORM_FEE_PERCENT ?? '20',
-  10,
-);
+const PLATFORM_FEE_PERCENT = parseInt(process.env.PLATFORM_FEE_PERCENT ?? '20', 10);
 
 export function getPlatformFeePercent(): number {
   return PLATFORM_FEE_PERCENT;
@@ -20,10 +17,7 @@ export function getPlatformFeePercent(): number {
 /**
  * Creates a Stripe Connect Standard account for a seller.
  */
-export async function createConnectAccount(
-  email: string,
-  userId: string,
-): Promise<string> {
+export async function createConnectAccount(email: string, userId: string): Promise<string> {
   if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   const account = await stripe.accounts.create({
     type: 'standard',
@@ -95,7 +89,8 @@ export async function createCheckoutSession({
 }): Promise<{ sessionId: string; checkoutUrl: string }> {
   const unitAmount = Math.round(listing.priceUsd * 100); // Convert to cents
 
-  const sessionParams: Stripe.Checkout.SessionCreateParams = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessionParams: Record<string, any> = {
     mode: 'payment',
     customer_email: buyerEmail,
     line_items: [
@@ -145,7 +140,7 @@ export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string,
   webhookSecret: string,
-): Stripe.Event {
+): ReturnType<InstanceType<typeof Stripe>['webhooks']['constructEvent']> {
   if (!stripe) throw new Error('STRIPE_SECRET_KEY is not configured');
   return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 }

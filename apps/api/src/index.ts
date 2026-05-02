@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
+import { makeExecutableSchema } from '@graphql-tools/schema';
 import { prisma } from '@spotterspace/db';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -12,7 +13,6 @@ import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';
 import { typeDefs } from './schema.js';
 import { ensureBucket } from './services/s3.js';
-import { makeExecutableSchema } from '@graphql-tools/schema';
 
 const PORT = parseInt(process.env.API_PORT ?? '4000', 10);
 
@@ -235,7 +235,8 @@ async function main() {
       return;
     }
 
-    let event: import('stripe').Stripe.Event;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let event: any;
     try {
       const { constructWebhookEvent } = await import('./services/stripe.js');
       event = constructWebhookEvent(req.body, signature, webhookSecret);
@@ -247,7 +248,8 @@ async function main() {
 
     try {
       if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as import('stripe').Stripe.Checkout.Session;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const session = event.data.object as any;
         const orderId = session.metadata?.orderId;
         if (orderId) {
           await prisma.order.update({
@@ -271,7 +273,8 @@ async function main() {
           }
         }
       } else if (event.type === 'checkout.session.expired') {
-        const session = event.data.object as import('stripe').Stripe.Checkout.Session;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const session = event.data.object as any;
         const orderId = session.metadata?.orderId;
         if (orderId) {
           await prisma.order.update({
