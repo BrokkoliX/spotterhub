@@ -1,6 +1,6 @@
 # SpotterHub — Product Documentation
 
-> **Last updated:** 2026-04-30
+> **Last updated:** 2026-05-02
 > **Live at:** https://www.spotterspace.com
 
 ---
@@ -15,65 +15,65 @@ SpotterHub is a community platform for aviation photographers and plane spotters
 
 ### For All Users
 
-| Feature | Description |
-|---------|-------------|
-| **Auth** | Email/password signup and sign-in. Mock JWT auth in dev; AWS Cognito in production. |
-| **Profiles** | Display name, bio, gear, experience level, interests, favorite aircraft and airports. |
-| **Photo Upload** | Drag-and-drop upload with aircraft type, airline, airport, caption, tags, date, location (EXIF GPS or manual pin). Privacy modes: exact / approximate (±500m) / hidden. License selection (All Rights Reserved, CC BY variants). Optional watermark toggle — when enabled, a "© SpotterSpace" overlay is composited onto the display variant via Sharp SVG composite. |
-| **Photo Feed** | Paginated home feed of recent approved photos. Uniform 16:9 thumbnails with center-crop. |
-| **Photo Detail** | Full photo with metadata, map pin, comments, likes, related aircraft photos. |
-| **Albums** | Personal albums with cover photo selection. Add/remove photos. |
-| **Follow Users** | Follow other spotters; follower/following counts. |
-| **Map** | Mapbox GL JS map with photo markers clustered via Supercluster. Airport and spotting location pages. |
-| **Search** | PostgreSQL full-text search across photos, users, airports. |
-| **Global Forum** | Platform-wide discussion categories. Thread list and thread detail with nested replies. Collapse/expand reply threads. |
-| **Notifications** | In-app notification bell (polling every 30s). New: likes, comments, follows, community joins, event RSVPs. |
-| **Dark / Light Mode** | User-toggleable theme. |
+| Feature               | Description                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auth**              | Email/password signup and sign-in. Mock JWT auth in dev; AWS Cognito in production.                                                                                                                                                                                                                                                                                   |
+| **Profiles**          | Display name, bio, gear, experience level, interests, favorite aircraft and airports.                                                                                                                                                                                                                                                                                 |
+| **Photo Upload**      | Drag-and-drop upload with aircraft type, airline, airport, caption, tags, date, location (EXIF GPS or manual pin). Privacy modes: exact / approximate (±500m) / hidden. License selection (All Rights Reserved, CC BY variants). Optional watermark toggle — when enabled, a "© SpotterSpace" overlay is composited onto the display variant via Sharp SVG composite. |
+| **Photo Feed**        | Paginated home feed of recent approved photos. Uniform 16:9 thumbnails with center-crop.                                                                                                                                                                                                                                                                              |
+| **Photo Detail**      | Full photo with metadata, map pin, comments, likes, related aircraft photos.                                                                                                                                                                                                                                                                                          |
+| **Albums**            | Personal albums with cover photo selection. Add/remove photos.                                                                                                                                                                                                                                                                                                        |
+| **Follow Users**      | Follow other spotters; follower/following counts.                                                                                                                                                                                                                                                                                                                     |
+| **Map**               | Mapbox GL JS map with photo markers clustered via Supercluster. Airport and spotting location pages.                                                                                                                                                                                                                                                                  |
+| **Search**            | PostgreSQL full-text search across photos, users, airports.                                                                                                                                                                                                                                                                                                           |
+| **Global Forum**      | Platform-wide discussion categories. Thread list and thread detail with nested replies. Collapse/expand reply threads.                                                                                                                                                                                                                                                |
+| **Notifications**     | In-app notification bell (polling every 30s). New: likes, comments, follows, community joins, event RSVPs.                                                                                                                                                                                                                                                            |
+| **Dark / Light Mode** | User-toggleable theme.                                                                                                                                                                                                                                                                                                                                                |
 
 ### For Community Members
 
-| Feature | Description |
-|---------|-------------|
-| **Communities** | Create/join public communities. Each has name, description, banner, category, location. |
-| **Community Members** | Role-based membership (owner, admin, moderator, member). Join/leave, invite codes for invite-only communities. |
-| **Community Forum** | Per-community forum categories, threads, posts. Pin/lock threads. Soft-delete posts. |
-| **Community Albums** | Shared albums within a community. Add photos from personal collection. |
-| **Community Events** | Create events with title, description, location, start/end times, capacity. RSVP (going/maybe/not going). Attendee count. |
-| **Moderation Log** | Community-level moderation actions (ban, unban, role changes) logged and viewable by admins. |
+| Feature               | Description                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Communities**       | Create/join public communities. Each has name, description, banner, category, location.                                   |
+| **Community Members** | Role-based membership (owner, admin, moderator, member). Join/leave, invite codes for invite-only communities.            |
+| **Community Forum**   | Per-community forum categories, threads, posts. Pin/lock threads. Soft-delete posts.                                      |
+| **Community Albums**  | Shared albums within a community. Add photos from personal collection.                                                    |
+| **Community Events**  | Create events with title, description, location, start/end times, capacity. RSVP (going/maybe/not going). Attendee count. |
+| **Moderation Log**    | Community-level moderation actions (ban, unban, role changes) logged and viewable by admins.                              |
 
 ### For Community Leaders (Owners / Admins)
 
-| Feature | Description |
-|---------|-------------|
-| **Admin Panel** | `/communities/[slug]/admin` — centralized panel with Overview / Members / Roles / Moderation tabs. |
-| **Member Management** | Search members, filter by role/status, paginated list. Ban/unban, kick, change role. Banned members shown separately. |
-| **Transfer Ownership** | Transfer community ownership to another member. |
-| **Community Settings** | Edit name, description, banner, avatar, category, visibility, location. Regenerate invite code. |
+| Feature                | Description                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Admin Panel**        | `/communities/[slug]/admin` — centralized panel with Overview / Members / Roles / Moderation tabs.                    |
+| **Member Management**  | Search members, filter by role/status, paginated list. Ban/unban, kick, change role. Banned members shown separately. |
+| **Transfer Ownership** | Transfer community ownership to another member.                                                                       |
+| **Community Settings** | Edit name, description, banner, avatar, category, visibility, location. Regenerate invite code.                       |
 
 ### For Platform Admins (superuser / admin role)
 
-| Feature | Description |
-|---------|-------------|
-| **Admin Dashboard** | `/admin` — stats overview, quick navigation. |
-| **User Management** | `/admin/users` — list with role/status filters, search. Change role/status. |
-| **Photo Moderation** | `/admin/photos` — pending/approved/rejected queue with approve/reject actions. |
-| **Reports** | `/admin/reports` — flag queue with resolve/dismiss actions. |
-| **Site Settings** | `/admin/settings` — general settings: custom banner, tagline, photo dimension limits (min/max long edge). |
-| **Aircraft Admin** | `/admin/aircraft`, `/admin/manufacturers`, `/admin/families`, `/admin/variants`, `/admin/airlines`, `/admin/aircraft-specific-categories` — full CRUD for aircraft taxonomy. |
-| **Airport Admin** | `/admin/airports` — view and manage airports. |
-| **Pending List Items** | `/admin/pending-list-items` — manage pending aircraft types, variants, manufacturers, categories. |
-| **Email Verification** | Admin can verify user emails. |
-| **Password Reset** | Admin can trigger password reset for users. |
+| Feature                | Description                                                                                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Admin Dashboard**    | `/admin` — stats overview, quick navigation.                                                                                                                                 |
+| **User Management**    | `/admin/users` — list with role/status filters, search. Change role/status.                                                                                                  |
+| **Photo Moderation**   | `/admin/photos` — pending/approved/rejected queue with approve/reject actions.                                                                                               |
+| **Reports**            | `/admin/reports` — flag queue with resolve/dismiss actions.                                                                                                                  |
+| **Site Settings**      | `/admin/settings` — general settings: custom banner, tagline, photo dimension limits (min/max long edge).                                                                    |
+| **Aircraft Admin**     | `/admin/aircraft`, `/admin/manufacturers`, `/admin/families`, `/admin/variants`, `/admin/airlines`, `/admin/aircraft-specific-categories` — full CRUD for aircraft taxonomy. |
+| **Airport Admin**      | `/admin/airports` — view and manage airports.                                                                                                                                |
+| **Pending List Items** | `/admin/pending-list-items` — manage pending aircraft types, variants, manufacturers, categories.                                                                            |
+| **Email Verification** | Admin can verify user emails.                                                                                                                                                |
+| **Password Reset**     | Admin can trigger password reset for users.                                                                                                                                  |
 
 ---
 
 ## User Roles
 
-| Role | Description |
-|------|-------------|
-| `user` | Regular user — upload photos, join communities, post in forums |
-| `moderator` | Can access `/admin` dashboard, review reports and photos |
-| `admin` | Full admin access — manage users, photos, site settings, all communities |
+| Role        | Description                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| `user`      | Regular user — upload photos, join communities, post in forums                                   |
+| `moderator` | Can access `/admin` dashboard, review reports and photos                                         |
+| `admin`     | Full admin access — manage users, photos, site settings, all communities                         |
 | `superuser` | Bypasses ALL role checks — for security oversight; cannot be demoted or banned by non-superusers |
 
 Production superuser: `robi_sz@yahoo.com` / `Jerusalem!25`
@@ -84,46 +84,46 @@ Production superuser: `robi_sz@yahoo.com` / `Jerusalem!25`
 
 ### Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | Next.js (App Router), URQL GraphQL client, CSS Modules |
-| **API** | Apollo Server, GraphQL, Prisma ORM |
-| **Database** | PostgreSQL 16 + PostGIS, RDS (us-east-1, private subnets) |
-| **Frontend container** | ECS Fargate, Next.js standalone output |
-| **API container** | ECS Fargate, Node.js 20 Alpine |
-| **Load balancer** | AWS ALB (spotterspace-alb) |
-| **Image storage** | AWS S3 (spotterspace-photos bucket) |
-| **Secrets** | AWS Secrets Manager (`spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET`) |
-| **CDN** | CloudFront |
-| **CI/CD** | GitHub Actions (CI: lint → typecheck → test → build; Deploy: Docker build → ECR push → ECS redeploy) |
-| **Maps** | Mapbox GL JS |
+| Layer                  | Technology                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Frontend**           | Next.js (App Router), URQL GraphQL client, CSS Modules                                               |
+| **API**                | Apollo Server, GraphQL, Prisma ORM                                                                   |
+| **Database**           | PostgreSQL 16 + PostGIS, RDS (us-east-1, private subnets)                                            |
+| **Frontend container** | ECS Fargate, Next.js standalone output                                                               |
+| **API container**      | ECS Fargate, Node.js 20 Alpine                                                                       |
+| **Load balancer**      | AWS ALB (spotterspace-alb)                                                                           |
+| **Image storage**      | AWS S3 (spotterspace-photos bucket)                                                                  |
+| **Secrets**            | AWS Secrets Manager (`spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET`)                             |
+| **CDN**                | CloudFront                                                                                           |
+| **CI/CD**              | GitHub Actions (CI: lint → typecheck → test → build; Deploy: Docker build → ECR push → ECS redeploy) |
+| **Maps**               | Mapbox GL JS                                                                                         |
 
 ### Key Files
 
-| Area | Path |
-|------|------|
-| Frontend monorepo | `apps/web/` |
-| API monorepo | `apps/api/` |
-| Database schema | `packages/db/prisma/schema.prisma` |
-| GraphQL schema | `apps/api/src/schema.ts` |
-| API resolvers | `apps/api/src/resolvers/` |
-| Frontend queries | `apps/web/src/lib/queries.ts` |
-| Generated GraphQL types | `apps/web/src/lib/generated/graphql.ts` |
-| Web Docker build | `apps/web/Dockerfile` |
-| API Docker build | `apps/api/Dockerfile` |
-| API startup (runs migrations) | `apps/api/docker-entrypoint.sh` |
+| Area                          | Path                                    |
+| ----------------------------- | --------------------------------------- |
+| Frontend monorepo             | `apps/web/`                             |
+| API monorepo                  | `apps/api/`                             |
+| Database schema               | `packages/db/prisma/schema.prisma`      |
+| GraphQL schema                | `apps/api/src/schema.ts`                |
+| API resolvers                 | `apps/api/src/resolvers/`               |
+| Frontend queries              | `apps/web/src/lib/queries.ts`           |
+| Generated GraphQL types       | `apps/web/src/lib/generated/graphql.ts` |
+| Web Docker build              | `apps/web/Dockerfile`                   |
+| API Docker build              | `apps/api/Dockerfile`                   |
+| API startup (runs migrations) | `apps/api/docker-entrypoint.sh`         |
 
 ### API Design
 
 - GraphQL endpoint: `POST /api/graphql` (proxied through Next.js rewrite in production)
 - Health check: `GET /health` (API), `GET /api/health` (Web)
 - Auth: Bearer JWT in `Authorization` header (mock JWT in dev, production uses same flow with real tokens)
-- Migrations: run automatically on API container startup via `prisma migrate deploy` (idempotent)
+- Migrations: run automatically on API container startup via `prisma migrate deploy` (idempotent, no recovery logic)
 
 ### API Mutations (Notable)
 
-| Mutation | Description |
-|----------|-------------|
+| Mutation                                        | Description                                                                                                                                                                                     |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `regeneratePhotoVariants(photoId: ID!): Photo!` | Re-triggers variant generation (thumbnail, display, watermarked) for an existing photo. Accessible to the photo owner and admins. Useful after processing bug fixes or watermark logic changes. |
 
 ---
@@ -165,12 +165,12 @@ See [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md) for full details.
 
 ### Live Endpoints
 
-| Endpoint | URL |
-|----------|-----|
-| Web App | https://www.spotterspace.com |
-| API GraphQL | https://api.spotterspace.com/graphql |
-| API Health | https://api.spotterspace.com/health |
-| Apex Redirect | https://spotterspace.com → www |
+| Endpoint      | URL                                  |
+| ------------- | ------------------------------------ |
+| Web App       | https://www.spotterspace.com         |
+| API GraphQL   | https://api.spotterspace.com/graphql |
+| API Health    | https://api.spotterspace.com/health  |
+| Apex Redirect | https://spotterspace.com → www       |
 
 ### Deploy Flow
 
@@ -180,10 +180,10 @@ Push to `main` → GitHub Actions CI runs (lint → typecheck → test → build
 
 ## Related Documentation
 
-| Document | Purpose |
-|----------|---------|
-| `DEPLOYMENT_STATUS.md` | Full deployment, operations, DNS, secrets, troubleshooting |
-| `docs/PROJECT_STATUS.md` | Development session log and feature tracking |
-| `docs/implementation_plan_phase_0_1a.md` | Historical implementation plan (Phase 0 and Phase 1a sessions) |
+| Document                                       | Purpose                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------- |
+| `DEPLOYMENT_STATUS.md`                         | Full deployment, operations, DNS, secrets, troubleshooting           |
+| `docs/PROJECT_STATUS.md`                       | Development session log and feature tracking                         |
+| `docs/implementation_plan_phase_0_1a.md`       | Historical implementation plan (Phase 0 and Phase 1a sessions)       |
 | `docs/spotter_portal_production_ready_plan.md` | Original product/architecture specification (foundational reference) |
-| `docs/aircraft-photo-fields-v2.md` | Aircraft taxonomy and photo metadata field reference |
+| `docs/aircraft-photo-fields-v2.md`             | Aircraft taxonomy and photo metadata field reference                 |

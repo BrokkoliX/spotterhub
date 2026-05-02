@@ -1,6 +1,6 @@
 # SpotterHub — Deployment & Operations Guide
 
-> **Last updated:** 2026-04-17
+> **Last updated:** 2026-05-02
 > **Domain:** spotterspace.com (registered 2026-04-11 via Amazon Registrar)
 > **AWS Region:** us-east-1
 > **AWS Account:** 654654553862
@@ -263,9 +263,50 @@ aws ecs update-service --cluster spotterspace-cluster \
 
 - RDS is in **private subnets** — it is **NOT accessible** from CloudShell, the internet, or your local machine
 - Only ECS tasks (running in the same VPC private subnets) can reach it
-- The API container runs **Prisma migrations automatically on startup** via `docker-entrypoint.sh` (idempotent — runs on every container start)
-- The entrypoint also performs a one-time migration history cleanup: if old migration entries exist that are no longer in the migrations directory, it resets the history and marks the squashed init as applied
+- The API container runs **Prisma migrations automatically on startup** via `docker-entrypoint.sh` — it simply runs `prisma migrate deploy` and starts the server (idempotent, no recovery or cleanup logic)
 - To run ad-hoc SQL, enable **ECS Exec** on the API service and run commands inside the container
+
+### Emergency Schema Repair (via ECS run-task)
+
+If the database schema drifts from the Prisma schema (e.g., missing tables while `_prisma_migrations` still has records), you cannot fix this with `prisma migrate deploy` alone. Use this technique to run one-off Prisma commands inside the VPC:
+
+```bash
+# 1. Export current API task definition and create a one-off version with entrypoint override
+aws ecs describe-task-definition --task-definition spotterspace-dev-api \
+  --query 'taskDefinition' --no-cli-pager > /tmp/td.json
+
+jq '{family: "spotterspace-db-repair", containerDefinitions: (.containerDefinitions | map(. + {
+  entryPoint: ["/bin/sh", "-c"],
+  command: ["npx prisma db push --schema packages/db/prisma/schema.prisma --accept-data-loss && echo DONE"],
+  essential: true
+})), taskRoleArn, executionRoleArn, networkMode, requiresCompatibilities, cpu, memory}' \
+  /tmp/td.json > /tmp/repair-td.json
+
+# 2. Register the one-off task definition
+aws ecs register-task-definition --cli-input-json file:///tmp/repair-td.json \
+  --region us-east-1 --no-cli-pager
+
+# 3. Run it in the VPC (use the same subnets and security groups as the API service)
+aws ecs run-task --cluster spotterspace-cluster \
+  --task-definition spotterspace-db-repair \
+  --launch-type FARGATE \
+  --network-configuration '{
+    "awsvpcConfiguration": {
+      "subnets": ["subnet-082c94f0897298f6e","subnet-096b774ed307c85ed"],
+      "securityGroups": ["sg-08e5864c53710a095"],
+      "assignPublicIp": "DISABLED"
+    }
+  }' --region us-east-1 --no-cli-pager
+
+# 4. After tables are recreated, re-baseline migration history:
+#    Register another one-off task with command:
+#    "npx prisma migrate resolve --applied <migration_name> --schema packages/db/prisma/schema.prisma"
+#    Repeat for each migration.
+
+# 5. Clean up: deregister the one-off task definitions
+aws ecs deregister-task-definition --task-definition spotterspace-db-repair:1 \
+  --region us-east-1 --no-cli-pager
+```
 
 ### Connection String
 
@@ -363,10 +404,10 @@ aws secretsmanager get-secret-value --secret-id spotterhub/JWT_SECRET --query Se
 - **Multi-stage:** Node 20 Alpine (build) → Node 20 Alpine (runtime)
 - **Build:** Copies monorepo → `npm install --workspaces --ignore-scripts` → `prisma generate` → `turbo build --filter=@spotterspace/api` → `npm prune --production`
 - **Runtime:** Non-root user (`nodeapp:1001`)
-- **Entrypoint:** `docker-entrypoint.sh` → `prisma migrate deploy` → `node dist/index.js`
+- **Entrypoint:** `docker-entrypoint.sh` → runs `prisma migrate deploy` (idempotent, no recovery logic) → `node dist/index.js`
 - **Port:** 4000
 - **Health check:** `wget -qO- http://localhost:4000/health` (start-period 60s accounts for migration time on cold starts)
-- **Startup sequence:** Run migrations → Start Apollo Server
+- **Startup sequence:** Run `prisma migrate deploy` → Start Apollo Server
 
 ### Web (`apps/web/Dockerfile`)
 
@@ -487,6 +528,27 @@ sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
 
 ```bash
 aws secretsmanager list-secrets --query "SecretList[].Name" --output table
+```
+
+### Missing Database Tables (Migration Drift)
+
+**Symptoms:** ECS API tasks crash on startup with Prisma errors like `P3005` ("table does not exist") or `The table public.users does not exist`. ALB returns 503 because no healthy targets are available.
+
+**Cause:** Tables were dropped or lost, but `_prisma_migrations` still records them as applied. `prisma migrate deploy` sees all migrations as applied and does nothing.
+
+**Fix:**
+
+1. Use the **Emergency Schema Repair** procedure in [Database Access](#emergency-schema-repair-via-ecs-run-task) to run `prisma db push --accept-data-loss` inside the VPC, recreating all missing tables.
+2. Re-baseline the migration history with `prisma migrate resolve --applied` for each migration.
+3. Force a new ECS deployment to restart the API tasks.
+
+```bash
+# Verify recovery
+aws ecs describe-services --cluster spotterspace-cluster \
+  --services spotterspace-dev-api --region us-east-1 --no-cli-pager \
+  --query 'services[0].{Running:runningCount,Desired:desiredCount,Status:deployments[0].rolloutState}'
+
+curl -s https://api.spotterspace.com/health
 ```
 
 ---

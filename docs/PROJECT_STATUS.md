@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-04-30
+> **Last updated:** 2026-05-02
 > **Purpose:** Living document tracking implemented features and operational notes. See `PRODUCT.md` for current product overview.
 
 ---
@@ -221,7 +221,7 @@ npx turbo run generate --filter=@spotterspace/db
 ## Key Notes
 
 - **LocalStack S3:** Community edition doesn't persist across restarts. Re-run `npm run db:seed-images` after LocalStack restarts.
-- **Migrations:** Run automatically on API container startup via `docker-entrypoint.sh`. The entrypoint also performs a one-time migration history reset if old squashed migration entries exist.
+- **Migrations:** Run automatically on API container startup via `docker-entrypoint.sh`. The entrypoint simply runs `prisma migrate deploy` and starts the server (no recovery or cleanup logic).
 - **Photo URLs:** Seed data photos have `original_url` pointing to LocalStack bucket paths that must be seeded separately via `seed-images.ts`.
 - **ECS Fargate migration:** Previously used App Runner. Migrated to ECS Fargate + ALB to fix ALB health check timeout issues (ECS services need `loadBalancers` config to register with ALB target groups).
 - **Explore page:** The `/explore` page replaced the separate `/discover` and `/following` pages. It shows "Your Following" sections at the top of each tab and "Browse All" below.
@@ -230,6 +230,31 @@ npx turbo run generate --filter=@spotterspace/db
 - **Watermark rendering:** Docker image installs `font-noto` and `fontconfig` packages so Sharp's SVG composite can render text. When `watermarkEnabled` is true during upload, a "© SpotterSpace" watermark is composited onto the display-size image in the bottom-right corner using Sharp's SVG overlay.
 - **`regeneratePhotoVariants` mutation:** Allows photo owners and admins to re-trigger variant generation (thumbnail, display, watermarked) for existing photos. Useful after fixing processing bugs or changing watermark logic.
 - **Feed thumbnail priority:** `PhotoCard.tsx` always prefers `thumbnail_16x9` for uniform 16:9 aspect ratio in feed cards, regardless of watermark setting. The watermarked variant is used only on the photo detail page.
+
+---
+
+## Incident Log
+
+### 2026-05-02 — Production Database Missing Tables (P1)
+
+**Impact:** API completely down (503). ALB had no healthy targets because all ECS tasks crashed on startup.
+
+**Root cause:** The production RDS PostgreSQL database was missing ~45 tables (including `users`, `refresh_tokens`, `forum_threads`, `contact_message`, `seller_profiles`, etc.). The `_prisma_migrations` table still had records for all 20 migrations, so `prisma migrate deploy` in `docker-entrypoint.sh` considered them already applied and skipped recreation. Additionally, the entrypoint contained a destructive recovery block that dropped `refresh_tokens` and `_prisma_migrations` on migration failure, making the situation worse.
+
+**Resolution:**
+
+1. Registered a one-off ECS task definition with an entrypoint override to get a shell inside the VPC.
+2. Ran `prisma db push --accept-data-loss` to recreate all missing tables from the Prisma schema.
+3. Ran `prisma migrate resolve --applied` for all 20 migrations to baseline `_prisma_migrations`.
+4. Forced a new ECS deployment → 2/2 API tasks became healthy, ALB returned 200.
+5. Removed the destructive recovery logic from `docker-entrypoint.sh` (DROP TABLE statements for `refresh_tokens` and `_prisma_migrations`). The entrypoint now simply runs `prisma migrate deploy` and starts the server.
+6. Deregistered the one-off task definitions after use.
+
+**Lessons learned:**
+
+- Never include DROP TABLE statements in automated startup scripts.
+- `prisma migrate deploy` is safe and idempotent, but it cannot recover from missing tables when `_prisma_migrations` says they were already created.
+- For schema drift emergencies, `prisma db push` can recreate tables, followed by `prisma migrate resolve --applied` to re-baseline migration history.
 
 ---
 
