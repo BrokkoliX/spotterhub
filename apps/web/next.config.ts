@@ -2,11 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
   async rewrites() {
     const apiUrl =
       process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/graphql';
