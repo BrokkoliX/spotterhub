@@ -17,6 +17,9 @@ jobs:
     timeout-minutes: 15
 
     services:
+      # PostGIS image matches docker-compose and production — several Prisma
+      # migrations CREATE EXTENSION postgis, so a plain postgres image would
+      # fail `prisma migrate deploy`.
       postgres:
         image: postgis/postgis:16-3.4
         env:
@@ -32,7 +35,11 @@ jobs:
           --health-retries 5
 
     env:
+      # Migrations run against the main CI database.
       DATABASE_URL: postgresql://spotterspace:spotterspace_dev@localhost:5432/spotterspace
+      # Tests run against an isolated database so `prisma db push` in vitest
+      # never clobbers the migrated schema. Created in the "Create test DB" step.
+      TEST_DATABASE_URL: postgresql://spotterspace:spotterspace_dev@localhost:5432/spotterspace_test
       NODE_ENV: test
 
     steps:
@@ -50,6 +57,18 @@ jobs:
 
       - name: Generate Prisma client
         run: npx turbo run generate --filter=@spotterspace/db
+
+      - name: Create test database
+        # GitHub Actions `services:` blocks can't run init SQL, so create the
+        # test DB explicitly. IF NOT EXISTS makes the step idempotent for reruns.
+        env:
+          PGPASSWORD: spotterspace_dev
+        run: |
+          psql -h localhost -p 5432 -U spotterspace -d spotterspace 
+            -tc "SELECT 1 FROM pg_database WHERE datname = 'spotterspace_test'" 
+            | grep -q 1 
+            || psql -h localhost -p 5432 -U spotterspace -d spotterspace 
+                 -c "CREATE DATABASE spotterspace_test OWNER spotterspace"
 
       - name: Run Prisma migrations
         run: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma

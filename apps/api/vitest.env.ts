@@ -6,10 +6,27 @@
  *
  * This MUST run before any module imports PrismaClient, which is why
  * it's listed in `setupFiles` (not `globalSetup`).
+ *
+ * Configuration
+ * -------------
+ * Set `TEST_DATABASE_URL` in your environment (see .env.example). For local
+ * development, the docker-compose in `docker/` exposes a ready-to-use test DB:
+ *
+ *   export TEST_DATABASE_URL=postgresql://spotterspace:spotterspace_dev@localhost:5433/spotterspace_test
+ *
+ * CI sets it via the workflow env block. There is intentionally NO fallback —
+ * silent fallbacks caused production-vs-test DB confusion in the past.
  */
 
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  'postgresql://spotterhub:spotterhub_dev@localhost:5433/spotterhub';
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
-process.env.DATABASE_URL = TEST_DATABASE_URL;
+if (!testDatabaseUrl) {
+  throw new Error(
+    'TEST_DATABASE_URL is not set. Export it before running vitest.\n' +
+      'Example (matches docker-compose):\n' +
+      '  export TEST_DATABASE_URL=postgresql://spotterspace:spotterspace_dev@localhost:5433/spotterspace_test\n' +
+      'See .env.example for details.',
+  );
+}
+
+process.env.DATABASE_URL = testDatabaseUrl;
