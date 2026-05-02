@@ -6,6 +6,7 @@ import type { Context } from '../context.js';
 import {
   cleanDatabase,
   createTestContext,
+  createTestUser,
   prisma,
   setupTestServer,
   teardownTestServer,
@@ -36,7 +37,7 @@ beforeEach(cleanDatabase);
 // ─── GraphQL Operations ─────────────────────────────────────────────────────
 
 const CREATE_CATEGORY = `
-  mutation CreateForumCategory($communityId: ID!, $name: String!, $description: String, $slug: String) {
+  mutation CreateForumCategory($communityId: ID, $name: String!, $description: String, $slug: String) {
     createForumCategory(communityId: $communityId, name: $name, description: $description, slug: $slug) {
       id name slug description position threadCount
     }
@@ -180,7 +181,11 @@ async function createThread(categoryId: string, user = ALICE) {
   const res = await server.executeOperation(
     {
       query: CREATE_THREAD,
-      variables: { categoryId, title: 'Best spotting spots at LAX', body: 'I love the In-N-Out rooftop!' },
+      variables: {
+        categoryId,
+        title: 'Best spotting spots at LAX',
+        body: 'I love the In-N-Out rooftop!',
+      },
     },
     ctx(user),
   );
@@ -196,7 +201,11 @@ describe('createForumCategory', () => {
     const res = await server.executeOperation(
       {
         query: CREATE_CATEGORY,
-        variables: { communityId: community.id, name: 'General Discussion', description: 'Talk about anything' },
+        variables: {
+          communityId: community.id,
+          name: 'General Discussion',
+          description: 'Talk about anything',
+        },
       },
       ctx(ALICE),
     );
@@ -225,7 +234,10 @@ describe('createForumCategory', () => {
     const { community } = await createCommunityWithMembers();
 
     const res = await server.executeOperation(
-      { query: CREATE_CATEGORY, variables: { communityId: community.id, name: 'Q&A', slug: 'qanda' } },
+      {
+        query: CREATE_CATEGORY,
+        variables: { communityId: community.id, name: 'Q&A', slug: 'qanda' },
+      },
       ctx(ALICE),
     );
     const result = (res.body as any).singleResult;
@@ -237,7 +249,14 @@ describe('createForumCategory', () => {
     await createCategory(community.id);
 
     const res = await server.executeOperation(
-      { query: CREATE_CATEGORY, variables: { communityId: community.id, name: 'Another General', slug: 'general-discussion' } },
+      {
+        query: CREATE_CATEGORY,
+        variables: {
+          communityId: community.id,
+          name: 'Another General',
+          slug: 'general-discussion',
+        },
+      },
       ctx(ALICE),
     );
     const result = (res.body as any).singleResult;
@@ -354,6 +373,55 @@ describe('deleteForumCategory', () => {
   });
 });
 
+describe('Global forum categories', () => {
+  it('admin can create a global category (no communityId)', async () => {
+    await createTestUser({
+      email: 'admin@test.com',
+      username: 'admin',
+      cognitoSub: 'admin-sub',
+    });
+    await prisma.user.update({
+      where: { cognitoSub: 'admin-sub' },
+      data: { role: 'superuser' },
+    });
+
+    const res = await server.executeOperation(
+      { query: CREATE_CATEGORY, variables: { name: 'General Discussion' } },
+      {
+        contextValue: createTestContext({
+          sub: 'admin-sub',
+          email: 'admin@test.com',
+          username: 'admin',
+        }),
+      },
+    );
+
+    const data = (res.body as any).singleResult;
+    expect(data.errors).toBeUndefined();
+    expect(data.data.createForumCategory.name).toBe('General Discussion');
+    expect(data.data.createForumCategory.slug).toBe('general-discussion');
+  });
+
+  it('non-admin cannot create a global category', async () => {
+    await createTestUser();
+
+    const res = await server.executeOperation(
+      { query: CREATE_CATEGORY, variables: { name: 'Hack Category' } },
+      {
+        contextValue: createTestContext({
+          sub: 'test-sub-1',
+          email: 'test@example.com',
+          username: 'testuser',
+        }),
+      },
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeDefined();
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+});
+
 describe('createForumThread', () => {
   it('creates thread with first post as member', async () => {
     const { community } = await createCommunityWithMembers();
@@ -382,7 +450,10 @@ describe('createForumThread', () => {
     const cat = await createCategory(community.id);
 
     const res = await server.executeOperation(
-      { query: CREATE_THREAD, variables: { categoryId: cat.id, title: 'Hi', body: 'Trying to post' } },
+      {
+        query: CREATE_THREAD,
+        variables: { categoryId: cat.id, title: 'Hi', body: 'Trying to post' },
+      },
       ctx(CHARLIE),
     );
     expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');
@@ -534,7 +605,10 @@ describe('createForumPost', () => {
     const firstPost = await prisma.forumPost.findFirst({ where: { threadId: thread.id } });
 
     const res = await server.executeOperation(
-      { query: CREATE_POST, variables: { threadId: thread.id, body: 'Replying to you!', parentPostId: firstPost!.id } },
+      {
+        query: CREATE_POST,
+        variables: { threadId: thread.id, body: 'Replying to you!', parentPostId: firstPost!.id },
+      },
       ctx(BOB),
     );
     const result = (res.body as any).singleResult;
@@ -588,7 +662,10 @@ describe('forumPosts', () => {
 
     // Add a nested reply to the first post
     await server.executeOperation(
-      { query: CREATE_POST, variables: { threadId: thread.id, body: 'Nested!', parentPostId: firstPost!.id } },
+      {
+        query: CREATE_POST,
+        variables: { threadId: thread.id, body: 'Nested!', parentPostId: firstPost!.id },
+      },
       ctx(BOB),
     );
 

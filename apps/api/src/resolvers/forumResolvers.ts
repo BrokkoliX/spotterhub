@@ -258,8 +258,8 @@ export const forumMutationResolvers = {
       });
     }
 
-    const existing = await ctx.prisma.forumCategory.findUnique({
-      where: { communityId_slug: { communityId: null as unknown as string, slug } },
+    const existing = await ctx.prisma.forumCategory.findFirst({
+      where: { communityId: null, slug },
     });
     if (existing) {
       throw new GraphQLError('A global category with this slug already exists', {
@@ -288,11 +288,12 @@ export const forumMutationResolvers = {
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
+    const communityId = args.communityId ?? null;
 
-    if (args.communityId === null) {
+    if (!communityId) {
       await requireAdmin(ctx);
     } else {
-      const role = await getMemberRole(args.communityId, dbUser.id, ctx);
+      const role = await getMemberRole(communityId, dbUser.id, ctx);
       if (!role || !['owner', 'admin'].includes(role)) {
         throw new GraphQLError('Only community owners and admins can create forum categories', {
           extensions: { code: 'FORBIDDEN' },
@@ -314,24 +315,30 @@ export const forumMutationResolvers = {
       });
     }
 
-    // Check slug uniqueness within community
-    const communityIdForSlug = args.communityId as string;
-    const existing = await ctx.prisma.forumCategory.findUnique({
-      where: { communityId_slug: { communityId: communityIdForSlug, slug } },
-    });
+    // Check slug uniqueness — composite unique doesn't work with NULL in Prisma
+    const existing = communityId
+      ? await ctx.prisma.forumCategory.findUnique({
+          where: { communityId_slug: { communityId, slug } },
+        })
+      : await ctx.prisma.forumCategory.findFirst({
+          where: { communityId: null, slug },
+        });
     if (existing) {
-      throw new GraphQLError('A category with this slug already exists in this community', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
+      throw new GraphQLError(
+        communityId
+          ? 'A category with this slug already exists in this community'
+          : 'A global category with this slug already exists',
+        { extensions: { code: 'BAD_USER_INPUT' } },
+      );
     }
 
     const position = await ctx.prisma.forumCategory.count({
-      where: { communityId: communityIdForSlug },
+      where: { communityId },
     });
 
     return ctx.prisma.forumCategory.create({
       data: {
-        communityId: communityIdForSlug,
+        communityId,
         name,
         description: args.description?.trim() ?? null,
         slug,
