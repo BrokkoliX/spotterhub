@@ -269,7 +269,7 @@ export const marketplaceMutationResolvers = {
 
     const updated = await ctx.prisma.sellerProfile.update({
       where: { id: args.sellerProfileId },
-      data: { approved: true, stripeAccountId, stripeOnboardingComplete: false },
+      data: { approved: true, status: 'approved', stripeAccountId, stripeOnboardingComplete: false },
       include: { user: { include: { profile: true } } },
     });
 
