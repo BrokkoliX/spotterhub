@@ -3455,6 +3455,7 @@ export const ADMIN_SELLER_APPLICATIONS = gql`
         cursor
         node {
           id
+          status
           approved
           bio
           website

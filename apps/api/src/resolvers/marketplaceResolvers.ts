@@ -179,6 +179,8 @@ export const marketplaceQueryResolvers = {
     const where: Record<string, unknown> = {};
     if (args.status) where.status = args.status;
     if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
+    // Always exclude already-approved sellers from the pending list
+    where.approved = false;
 
     const [applications, totalCount] = await Promise.all([
       ctx.prisma.sellerProfile.findMany({

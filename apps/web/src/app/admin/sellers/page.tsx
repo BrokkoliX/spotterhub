@@ -54,12 +54,12 @@ export default function AdminSellersPage() {
           </div>
         ) : (
           <div className={styles.applicationList}>
-            {applications.map(({ node }: { node: { id: string; bio?: string | null; website?: string | null; approved: boolean; stripeOnboardingComplete: boolean; createdAt: string; user: { username: string; email: string; profile?: { displayName?: string | null; avatarUrl?: string | null } | null } } }) => (
+            {applications.map(({ node }: { node: { id: string; status?: string; bio?: string | null; website?: string | null; approved: boolean; stripeOnboardingComplete: boolean; createdAt: string; user: { username: string; email: string; profile?: { displayName?: string | null; avatarUrl?: string | null } | null } } }) => (
               <div key={node.id} className={styles.applicationCard}>
                 <div className={styles.applicant}>
                   <div className={styles.applicantAvatar}>
                     {node.user.profile?.avatarUrl ? (
-                      <img src={node.user.profile.avatarUrl} alt={node.user.username} />
+                      <img src={node.user.profile?.avatarUrl} alt={node.user.username} />
                     ) : (
                       '👤'
                     )}
@@ -70,6 +70,7 @@ export default function AdminSellersPage() {
                     </div>
                     <div className={styles.applicantMeta}>
                       @{node.user.username} · {node.user.email} · Applied {new Date(node.createdAt).toLocaleDateString()}
+                      {node.status && <span> · status={node.status}</span>}
                     </div>
                   </div>
                 </div>
