@@ -1,0 +1,22 @@
+
+    1 #!/bin/bash
+    2 FILE="$1"
+    3
+    4 # API resolvers
+    5 if [[ "$FILE" == *"/resolvers/"* ]]; then
+    6   echo "- All resolvers must call requireAuth()"
+    7   echo "- Use DataLoader from context for N+1 prevention"
+    8   echo "- Return proper GraphQL errors, not thrown exceptions"
+    9 fi
+   10
+   11 # GraphQL schema
+   12 if [[ "$FILE" == *"schema.ts"* ]]; then
+   13   echo "- Keep types in sync with Prisma schema"
+   14   echo "- Add JSDoc descriptions for all new fields"
+   15 fi
+   16
+   17 # React components
+   18 if [[ "$FILE" == *"/components/"* ]]; then
+   19   echo "- Use 'use client' directive for interactive components"
+   20   echo "- Follow existing naming: PascalCase files, camelCase hooks"
+   21 fi
