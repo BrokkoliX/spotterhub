@@ -151,7 +151,7 @@ export const authMutationResolvers = {
 
     const user = await ctx.prisma.user.findUnique({
       where: { email },
-      include: { profile: true },
+      include: { profile: true, sellerProfile: true },
     });
 
     if (!user || !user.passwordHash) {

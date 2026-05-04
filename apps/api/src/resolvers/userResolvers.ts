@@ -30,7 +30,7 @@ export const userQueryResolvers = {
     if (!ctx.user) return null;
     return ctx.prisma.user.findUnique({
       where: { cognitoSub: ctx.user.sub },
-      include: { profile: true },
+      include: { profile: true, sellerProfile: true },
     });
   },
 
