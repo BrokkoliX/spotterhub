@@ -2,6 +2,7 @@ import { validateUpload, USER_TIER_LIMITS } from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
+import { getDbUser } from '../utils/resolverHelpers.js';
 import type { Context } from '../context.js';
 import { generateVariants, getSharp } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
@@ -202,23 +203,19 @@ export const photoQueryResolvers = {
       where.photographerName = { contains: args.photographer, mode: 'insensitive' };
     }
 
-    // Aircraft hierarchy filters — manufacturer was declared but never applied
+    // Aircraft hierarchy filters — all three can be applied simultaneously
+    const aircraftFilter: Record<string, unknown> = {};
     if (args.manufacturer) {
-      where.aircraft = {
-        manufacturer: { name: { contains: args.manufacturer, mode: 'insensitive' } },
-      };
+      aircraftFilter.manufacturer = { name: { contains: args.manufacturer, mode: 'insensitive' } };
     }
     if (args.family) {
-      where.aircraft = {
-        ...((where.aircraft as Record<string, unknown>) || {}),
-        family: { name: { contains: args.family, mode: 'insensitive' } },
-      };
+      aircraftFilter.family = { name: { contains: args.family, mode: 'insensitive' } };
     }
     if (args.variant) {
-      where.aircraft = {
-        ...((where.aircraft as Record<string, unknown>) || {}),
-        variant: { name: { contains: args.variant, mode: 'insensitive' } },
-      };
+      aircraftFilter.variant = { name: { contains: args.variant, mode: 'insensitive' } };
+    }
+    if (Object.keys(aircraftFilter).length > 0) {
+      where.aircraft = aircraftFilter;
     }
 
     // Determine sort order
@@ -297,6 +294,21 @@ export const photoMutationResolvers = {
     const uploadError = validateUpload(args.input.fileSizeBytes, args.input.mimeType, 'free');
     if (uploadError) {
       throw new GraphQLError(uploadError, { extensions: { code: 'BAD_USER_INPUT' } });
+    }
+
+    // Enforce monthly upload quota
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const uploadsThisMonth = await ctx.prisma.photo.count({
+      where: { userId: user.id, createdAt: { gte: monthStart } },
+    });
+    const limit = USER_TIER_LIMITS.free.uploadsPerMonth;
+    if (uploadsThisMonth >= limit) {
+      throw new GraphQLError(
+        `Monthly upload limit reached (${limit} photos/month). Upgrade for higher limits.`,
+        { extensions: { code: 'FORBIDDEN' } },
+      );
     }
 
     return getPresignedUploadUrl(user.id, args.input.mimeType);
@@ -432,6 +444,18 @@ export const photoMutationResolvers = {
       console.error('Variant generation failed:', err);
     }
 
+    // Validate latitude/longitude ranges before storing
+    if (input.latitude != null && (input.latitude < -90 || input.latitude > 90)) {
+      throw new GraphQLError('Latitude must be between -90 and 90', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    if (input.longitude != null && (input.longitude < -180 || input.longitude > 180)) {
+      throw new GraphQLError('Longitude must be between -180 and 180', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
     // Create location if coordinates provided
     if (input.latitude != null && input.longitude != null) {
       const privacyMode = input.locationPrivacy ?? 'exact';
@@ -499,6 +523,18 @@ export const photoMutationResolvers = {
     if (photo.userId !== user.id) {
       throw new GraphQLError('You can only edit your own photos', {
         extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Validate latitude/longitude ranges if provided
+    if (args.input.latitude !== undefined && args.input.latitude !== null && (args.input.latitude < -90 || args.input.latitude > 90)) {
+      throw new GraphQLError('Latitude must be between -90 and 90', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    if (args.input.longitude !== undefined && args.input.longitude !== null && (args.input.longitude < -180 || args.input.longitude > 180)) {
+      throw new GraphQLError('Longitude must be between -180 and 180', {
+        extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
@@ -697,6 +733,7 @@ export const photoMutationResolvers = {
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+    const dbUser = await getDbUser(ctx);
 
     const photo = await ctx.prisma.photo.findUnique({ where: { id: args.id } });
     if (!photo) {
@@ -706,7 +743,7 @@ export const photoMutationResolvers = {
     await ctx.prisma.communityModerationLog.create({
       data: {
         communityId: 'global',
-        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        moderatorId: dbUser.id,
         targetUserId: photo.userId,
         action: 'delete_photo',
         reason: args.reason ?? 'Soft delete requested',
@@ -723,6 +760,7 @@ export const photoMutationResolvers = {
 
   hardDeletePhoto: async (_parent: unknown, args: { id: string; reason: string }, ctx: Context) => {
     await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+    const dbUser = await getDbUser(ctx);
 
     if (!args.reason) {
       throw new GraphQLError('A reason is required for hard deletion', {
@@ -738,7 +776,7 @@ export const photoMutationResolvers = {
     await ctx.prisma.communityModerationLog.create({
       data: {
         communityId: 'global',
-        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        moderatorId: dbUser.id,
         targetUserId: photo.userId,
         action: 'delete_photo',
         reason: args.reason,

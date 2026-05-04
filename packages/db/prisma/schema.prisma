@@ -286,6 +286,10 @@ model User {
   createdAt              DateTime   @default(now()) @map("created_at")
   updatedAt              DateTime   @updatedAt @map("updated_at")
 
+  // Account lockout: increment on failed password, reset on successful sign-in
+  failedAttempts    Int       @default(0) @map("failed_attempts")
+  lockoutUntil      DateTime? @map("lockout_until")
+
   profile            Profile?
   photos             Photo[]
   albums             Album[]
@@ -456,6 +460,7 @@ model Photo {
   @@index([photoCategoryId])
   @@index([aircraftSpecificCategoryId])
   @@index([aircraftId])
+  @@index([aircraftId, createdAt(sort: Desc)])
   @@map("photos")
 }
 
@@ -935,6 +940,7 @@ model PhotoListing {
   orders   Order[]
 
   @@index([sellerId])
+  @@index([active, createdAt(sort: Desc)])
   @@map("photo_listings")
 }
 

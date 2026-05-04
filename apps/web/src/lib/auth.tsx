@@ -1,15 +1,8 @@
 'use client';
 
-import React from 'react';
-
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext } from 'react';
+import { Provider as UrqlProvider } from 'urql';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,19 +44,51 @@ export function useAuth(): AuthContextValue {
 
 // ─── Provider ───────────────────────────────────────────────────────────────
 
+type AuthProviderProps = {
+  children: React.ReactNode;
+  serverAuth?: {
+    user: { id: string; email: string; username: string; role: string; sellerProfile?: { approved: boolean } | null } | null;
+  };
+};
+
 /**
- * AuthProvider hydrates user from the HttpOnly cookie on mount
- * and exposes signIn/signOut methods that manage the cookie.
+ * AuthProvider hydrates user from the server-rendered auth state on first render
+ * (avoiding hydration flash), then falls back to a client-side /api/auth/me fetch
+ * to refresh the state on mount.
  */
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children, serverAuth }: AuthProviderProps) {
   const [state, setState] = useState<{
     user: User | null;
     token: string | null;
     ready: boolean;
-  }>({ user: null, token: null, ready: false });
+  }>({
+    // Initialize from server-rendered auth state to avoid hydration flash
+    user: serverAuth?.user ?? null,
+    token: null,
+    ready: !!serverAuth,
+  });
 
-  // Hydrate user from cookie on mount (client-only).
+  // On mount, refresh from the API to pick up any server-side changes
+  // (the serverAuth prop covers the initial render)
   useEffect(() => {
+    // If we already have server auth, revalidate in the background but don't block ready
+    if (serverAuth?.user) {
+      fetch('/api/auth/me')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.user) {
+            setState((prev) =>
+              prev.user?.id === data.user.id ? prev : { user: data.user, token: null, ready: true },
+            );
+          }
+        })
+        .catch(() => {
+          // Ignore network errors — server auth is already set
+        });
+      return;
+    }
+
+    // No server auth — do a full client-side hydration
     fetch('/api/auth/me')
       .then((r) => r.json())
       .then((data) => {
@@ -76,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         setState({ user: null, token: null, ready: true });
       });
-  }, []);
+  }, [serverAuth]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const res = await fetch('/api/auth/signin', {

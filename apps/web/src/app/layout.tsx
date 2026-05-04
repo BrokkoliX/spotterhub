@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { cookies } from 'next/headers';
 
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
-import { Providers } from '@/lib/providers';
+import { Providers, type ServerAuthState } from '@/lib/providers';
 
 import './globals.css';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+// Always render fresh auth state server-side (no stale data)
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'SpotterSpace — Aviation Photography Community',
@@ -17,11 +23,46 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Server-side auth hydration: fetch user data before render to avoid hydration flash
+  let serverAuth: ServerAuthState = { user: null };
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
+    if (accessToken) {
+      const res = await fetch(`${API_URL}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            query Me {
+              me {
+                id
+                email
+                username
+                role
+                sellerProfile { approved }
+              }
+            }
+          `,
+        }),
+      });
+      const data = await res.json();
+      if (data.data?.me) {
+        serverAuth = { user: data.data.me };
+      }
+    }
+  } catch {
+    // Auth fetch failed — client will revalidate via /api/auth/me
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -43,7 +84,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Providers>
+        <Providers serverAuth={serverAuth}>
           <Header />
           <main style={{ flex: 1 }}>{children}</main>
           <Footer />

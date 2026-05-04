@@ -271,7 +271,17 @@ export const marketplaceMutationResolvers = {
 
     const updated = await ctx.prisma.sellerProfile.update({
       where: { id: args.sellerProfileId },
-      data: { approved: true, status: 'approved', stripeAccountId, stripeOnboardingComplete: false },
+      data: {
+        approved: true,
+        status: 'approved',
+        // Only update Stripe fields when Stripe account creation succeeded
+        ...(stripeAccountId != null && { stripeAccountId }),
+        // Only set stripeOnboardingComplete: false when we have a new Stripe account
+        // (meaning onboarding is NOT yet complete — seller must still complete Stripe onboarding).
+        // If stripeAccountId is null, leave stripeOnboardingComplete unchanged to preserve
+        // any prior state (existing account may already be onboarded).
+        ...(stripeAccountId != null && { stripeOnboardingComplete: false }),
+      },
       include: { user: { include: { profile: true } } },
     });
 

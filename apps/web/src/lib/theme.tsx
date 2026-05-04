@@ -69,16 +69,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [state.theme, state.ready]);
 
   const toggleTheme = useCallback(() => {
+    const next = state.theme === 'dark' ? 'light' : 'dark';
+    // Apply to DOM immediately to prevent visual flash — useEffect syncs on re-render
+    document.documentElement.setAttribute('data-theme', next);
     document.documentElement.classList.add('theme-transitioning');
-    setState((prev) => ({
-      theme: prev.theme === 'dark' ? 'light' : 'dark',
-      ready: true,
-    }));
+    setState({ theme: next, ready: true });
     // Remove class after the longest transition completes
     setTimeout(() => {
       document.documentElement.classList.remove('theme-transitioning');
     }, 300);
-  }, []);
+  }, [state.theme]);
 
   const value = useMemo(
     () => ({ theme: state.theme, ready: state.ready, toggleTheme }),

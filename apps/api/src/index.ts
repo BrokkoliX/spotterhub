@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';
@@ -202,6 +203,27 @@ async function main() {
       : []),
   ];
 
+  // ─── CSRF Guard ───────────────────────────────────────────────────────────
+  // Verifies Origin header on state-changing requests to prevent cross-site attacks.
+  // Browsers automatically omit Origin on same-site requests; custom header required for mutations.
+  const csrfGuard = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Only protect mutations — GET queries are read-only
+    if (req.method !== 'POST' && req.method !== 'PATCH' && req.method !== 'DELETE') {
+      return next();
+    }
+    const origin = req.headers.origin;
+    if (!origin) {
+      // No Origin header — same-site request (browser omits it automatically)
+      return next();
+    }
+    // Validate origin matches one of our allowed domains
+    if (!allowedOrigins.includes(origin)) {
+      res.status(403).json({ error: 'Invalid origin' });
+      return;
+    }
+    next();
+  };
+
   // ─── GraphQL Rate Limiting ─────────────────────────────────────────────
   // General rate limiter for all GraphQL operations (prevents abuse/cost attacks)
   const graphqlLimiter = rateLimit({
@@ -210,16 +232,35 @@ async function main() {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'Too many GraphQL requests, please try again later' },
+    keyGenerator: (req) => {
+      // Use authenticated user sub for per-user rate limiting when available
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const decoded = jwt.verify(
+            authHeader.slice(7),
+            process.env.JWT_SECRET!,
+          ) as { sub: string };
+          return `user:${decoded.sub}`;
+        } catch {
+          // fall through to IP-based
+        }
+      }
+      // Fall back to IP for unauthenticated requests
+      return `ip:${req.ip}`;
+    },
   });
 
   app.use(
     '/graphql',
+    // Order matters: parse body FIRST so rate limiters can read req.body.query
+    express.json(),
+    csrfGuard,
     graphqlLimiter,
     cors<cors.CorsRequest>({
       origin: process.env.NODE_ENV === 'production' ? allowedOrigins : true,
       credentials: true,
     }),
-    express.json(),
     authRateLimiter,
     expressMiddleware(server, {
       context: createContext,

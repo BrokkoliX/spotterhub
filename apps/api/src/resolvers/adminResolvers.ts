@@ -295,6 +295,19 @@ export const adminMutationResolvers = {
     });
   },
 
+  adminUnlockUser: async (
+    _parent: unknown,
+    args: { userId: string },
+    ctx: Context,
+  ) => {
+    await requireRole(ctx, ['admin', 'superuser']);
+
+    return ctx.prisma.user.update({
+      where: { id: args.userId },
+      data: { failedAttempts: 0, lockoutUntil: null },
+    });
+  },
+
   adminUpdatePhotoModeration: async (
     _parent: unknown,
     args: { photoId: string; status: string },

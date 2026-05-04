@@ -160,8 +160,24 @@ export const authMutationResolvers = {
       });
     }
 
+    // Check account lockout
+    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+      const remaining = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 1000 / 60);
+      throw new GraphQLError(
+        `Account temporarily locked due to too many failed attempts. Try again in ${remaining} minute(s).`,
+        { extensions: { code: 'FORBIDDEN' } },
+      );
+    }
+
     const passwordValid = await verifyPassword(password, user.passwordHash);
     if (!passwordValid) {
+      // Increment failed attempts; lock out for 15 minutes after 5 consecutive failures
+      const attempts = user.failedAttempts + 1;
+      const lockoutUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { failedAttempts: attempts, lockoutUntil },
+      });
       throw new GraphQLError('Invalid email or password', {
         extensions: { code: 'UNAUTHENTICATED' },
       });
@@ -178,6 +194,18 @@ export const authMutationResolvers = {
         extensions: { code: 'EMAIL_NOT_VERIFIED' },
       });
     }
+
+    // Reset failed attempts and lockout on successful sign-in
+    await ctx.prisma.user.update({
+      where: { id: user.id },
+      data: { failedAttempts: 0, lockoutUntil: null },
+    });
+
+    // Rotate: delete all existing refresh tokens for this user before issuing a new one.
+    // This invalidates any previously stolen tokens.
+    await ctx.prisma.refreshToken.deleteMany({
+      where: { userId: user.id },
+    });
 
     const { accessToken, refreshToken } = await issueSession(ctx, {
       id: user.id,
