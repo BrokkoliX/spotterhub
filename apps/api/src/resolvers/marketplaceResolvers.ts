@@ -257,7 +257,6 @@ export const marketplaceMutationResolvers = {
       }
     }
 
-    let onboardingUrl = '';
     if (stripeAccountId) {
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
       const returnUrl = `${appUrl}/settings/seller?onboarding=complete`;
