@@ -252,11 +252,12 @@ export const marketplaceMutationResolvers = {
       try {
         stripeAccountId = await createConnectAccount(profile.user.email, profile.user.id);
       } catch (err) {
-        console.error('Failed to create Stripe Connect account:', err);
-        throw new GraphQLError('Failed to create Stripe account. Check Stripe configuration.');
+        console.error('Failed to create Stripe Connect account (non-fatal):', err);
+        // Non-fatal: proceed with approval even if Stripe account creation fails
       }
     }
 
+    let onboardingUrl = '';
     if (stripeAccountId) {
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
       const returnUrl = `${appUrl}/settings/seller?onboarding=complete`;
@@ -264,8 +265,8 @@ export const marketplaceMutationResolvers = {
       try {
         onboardingUrl = await createAccountOnboardingLink(stripeAccountId, returnUrl, refreshUrl);
       } catch (err) {
-        console.error('Failed to create Stripe onboarding link:', err);
-        throw new GraphQLError('Failed to create Stripe onboarding link.');
+        console.error('Failed to create Stripe onboarding link (non-fatal):', err);
+        // Non-fatal: seller is still approved, just no onboarding URL returned
       }
     }
 
