@@ -149,6 +149,20 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>Approve &amp; manage seller applications</div>
           </div>
         </Link>
+        <Link href="/admin/marketplace-categories" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🏷️</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Marketplace Categories</div>
+            <div className={styles.quickLinkDesc}>Categories for collectibles listings</div>
+          </div>
+        </Link>
+        <Link href="/admin/marketplace-items" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>📦</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Marketplace Items</div>
+            <div className={styles.quickLinkDesc}>Moderate collectibles listings</div>
+          </div>
+        </Link>
         <Link href="/admin/forum-categories" className={styles.quickLink}>
           <span className={styles.quickLinkIcon}>💬</span>
           <div>
