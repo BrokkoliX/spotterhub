@@ -1464,9 +1464,9 @@ export const typeDefs = gql`
   type User {
     id: ID!
     """
-    Unique email address.
+    Email address. Only visible to the account owner.
     """
-    email: String!
+    email: String
     """
     Unique username, used in profile URLs (/u/username).
     """
