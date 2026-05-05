@@ -123,6 +123,26 @@ async function main() {
     },
   });
 
+  // Per-email rate limit for password reset requests: max 3 per hour per email
+  const passwordResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3, // 3 requests per hour per email
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many password reset requests for this email. Please try again later.' },
+    // Only apply this limiter to requestPasswordReset mutations
+    skip: (req) => {
+      const body = req.body as { query?: string } | undefined;
+      if (!body?.query) return true;
+      return !body.query.toLowerCase().includes('requestpasswordreset');
+    },
+    keyGenerator: (req) => {
+      const body = req.body as { variables?: { email?: string } } | undefined;
+      const email = body?.variables?.email?.toLowerCase();
+      return email ? `email:${email}` : `ip:${req.ip}`;
+    },
+  });
+
   const seedRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 5,
@@ -257,6 +277,7 @@ async function main() {
     express.json(),
     csrfGuard,
     graphqlLimiter,
+    passwordResetLimiter,
     cors<cors.CorsRequest>({
       origin: process.env.NODE_ENV === 'production' ? allowedOrigins : true,
       credentials: true,

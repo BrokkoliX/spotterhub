@@ -242,9 +242,9 @@ export const typeDefs = gql`
     followingFeed(first: Int = 20, after: String): PhotoConnection!
 
     """
-    List all airports. Used to populate map markers.
+    List all airports with optional pagination.
     """
-    airports: [Airport!]!
+    airports(first: Int = 100, after: String): AirportConnection!
 
     """
     List all airports with optional search and pagination. Requires admin or superuser role.

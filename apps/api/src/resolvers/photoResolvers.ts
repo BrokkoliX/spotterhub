@@ -356,6 +356,18 @@ export const photoMutationResolvers = {
       );
     }
 
+    // Validate latitude/longitude ranges before creating the photo
+    if (input.latitude != null && (input.latitude < -90 || input.latitude > 90)) {
+      throw new GraphQLError('Latitude must be between -90 and 90', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    if (input.longitude != null && (input.longitude < -180 || input.longitude > 180)) {
+      throw new GraphQLError('Longitude must be between -180 and 180', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
     const originalUrl = getObjectUrl(input.s3Key);
 
     // Auto-credit photographer to uploader, photographerName from profile displayName
@@ -444,18 +456,6 @@ export const photoMutationResolvers = {
       console.error('Variant generation failed:', err);
     }
 
-    // Validate latitude/longitude ranges before storing
-    if (input.latitude != null && (input.latitude < -90 || input.latitude > 90)) {
-      throw new GraphQLError('Latitude must be between -90 and 90', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
-    if (input.longitude != null && (input.longitude < -180 || input.longitude > 180)) {
-      throw new GraphQLError('Longitude must be between -180 and 180', {
-        extensions: { code: 'BAD_USER_INPUT' },
-      });
-    }
-
     // Create location if coordinates provided
     if (input.latitude != null && input.longitude != null) {
       const privacyMode = input.locationPrivacy ?? 'exact';
@@ -478,8 +478,9 @@ export const photoMutationResolvers = {
       await ctx.prisma.photoLocation.create({
         data: {
           photoId: photo.id,
-          rawLatitude: input.latitude,
-          rawLongitude: input.longitude,
+          // Don't store raw coordinates when privacy is hidden — only display coords
+          rawLatitude: privacyMode !== 'hidden' ? input.latitude : null,
+          rawLongitude: privacyMode !== 'hidden' ? input.longitude : null,
           displayLatitude: displayLat,
           displayLongitude: displayLng,
           privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
@@ -598,8 +599,9 @@ export const photoMutationResolvers = {
         await ctx.prisma.photoLocation.upsert({
           where: { photoId: args.id },
           update: {
-            rawLatitude: latitude,
-            rawLongitude: longitude,
+            // Don't store raw coordinates when privacy is hidden
+            rawLatitude: privacyMode !== 'hidden' ? latitude : null,
+            rawLongitude: privacyMode !== 'hidden' ? longitude : null,
             displayLatitude: displayLat,
             displayLongitude: displayLng,
             privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',
@@ -609,8 +611,9 @@ export const photoMutationResolvers = {
           },
           create: {
             photoId: args.id,
-            rawLatitude: latitude,
-            rawLongitude: longitude,
+            // Don't store raw coordinates when privacy is hidden
+            rawLatitude: privacyMode !== 'hidden' ? latitude : null,
+            rawLongitude: privacyMode !== 'hidden' ? longitude : null,
             displayLatitude: displayLat,
             displayLongitude: displayLng,
             privacyMode: privacyMode as 'exact' | 'approximate' | 'hidden',

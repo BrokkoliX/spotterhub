@@ -1,3 +1,4 @@
+import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
 
@@ -54,6 +55,7 @@ export const userQueryResolvers = {
     args: { first: number; after?: string },
     ctx: Context,
   ) => {
+    requireAuth(ctx); // Require authentication for user list
     const take = Math.min(args.first ?? 20, 50);
     const where = args.after
       ? { createdAt: { lt: decodeCursor(args.after) } }
@@ -89,6 +91,17 @@ export const userQueryResolvers = {
 // ─── Field Resolvers ────────────────────────────────────────────────────────
 
 export const userFieldResolvers = {
+  email: (parent: UserParent, _args: unknown, ctx: Context) => {
+    // Only expose email to the account owner
+    if (!ctx.user || ctx.user.sub !== parent.cognitoSub) {
+      return null;
+    }
+    return ctx.prisma.user.findUnique({
+      where: { id: parent.id },
+      select: { email: true },
+    }).then(u => u?.email ?? null);
+  },
+
   profile: (parent: UserParent, _args: unknown, ctx: Context) => {
     return ctx.prisma.profile.findUnique({
       where: { userId: parent.id },

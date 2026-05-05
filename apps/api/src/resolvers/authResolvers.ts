@@ -56,12 +56,10 @@ async function issueSession(
   const refreshToken = await createRefreshToken(ctx.prisma, user.id);
 
   // Access token: short-lived HttpOnly cookie (1 hour)
+  // Refresh token: long-lived HttpOnly cookie (7 days), used to obtain new access tokens
+  // Both cookies set in a single setHeader call to avoid overwriting each other
   ctx.res?.setHeader('Set-Cookie', [
     `access_token=${accessToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}`,
-  ]);
-
-  // Refresh token: long-lived HttpOnly cookie (7 days), used to obtain new access tokens
-  ctx.res?.setHeader('Set-Cookie', [
     `refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}`,
   ]);
 
@@ -264,13 +262,26 @@ export const authMutationResolvers = {
   },
 
   signOut: async (_parent: unknown, _args: unknown, ctx: Context) => {
-    const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } }).cookies
-      ?.refresh_token;
-
-    if (refreshTokenStr) {
-      await ctx.prisma.refreshToken.deleteMany({
-        where: { token: refreshTokenStr },
+    // Delete all refresh tokens for this user (sign out all sessions)
+    if (ctx.user) {
+      const user = await ctx.prisma.user.findUnique({
+        where: { cognitoSub: ctx.user.sub },
+        select: { id: true },
       });
+      if (user) {
+        await ctx.prisma.refreshToken.deleteMany({
+          where: { userId: user.id },
+        });
+      }
+    } else {
+      // Unauthenticated — delete the specific token from cookie if present
+      const refreshTokenStr = (ctx.req as { cookies?: { refresh_token?: string } }).cookies
+        ?.refresh_token;
+      if (refreshTokenStr) {
+        await ctx.prisma.refreshToken.deleteMany({
+          where: { token: refreshTokenStr },
+        });
+      }
     }
 
     ctx.res?.setHeader('Set-Cookie', [
@@ -301,6 +312,11 @@ export const authMutationResolvers = {
     if (user) {
       const token = randomBytes(32).toString('base64url');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      // Clean up any existing unused/expired tokens for this user before creating a new one
+      await ctx.prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id },
+      });
 
       await ctx.prisma.passwordResetToken.create({
         data: { userId: user.id, token, expiresAt },
@@ -363,6 +379,11 @@ export const authMutationResolvers = {
     await ctx.prisma.passwordResetToken.update({
       where: { id: resetToken.id },
       data: { usedAt: new Date() },
+    });
+
+    // Clean up all expired/used tokens for this user (there should only be one at a time)
+    await ctx.prisma.passwordResetToken.deleteMany({
+      where: { userId: resetToken.userId },
     });
 
     const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {

@@ -54,14 +54,18 @@ export async function ensureBucket(): Promise<void> {
   }
 
   // Configure CORS so the browser can load images and upload files directly
+  // In production, restrict to the configured web domain only
   try {
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? [process.env.WEB_BASE_URL ?? 'https://www.spotterspace.com']
+      : ['*'];
     await s3.send(
       new PutBucketCorsCommand({
         Bucket: S3_BUCKET,
         CORSConfiguration: {
           CORSRules: [
             {
-              AllowedOrigins: ['*'],
+              AllowedOrigins: allowedOrigins,
               AllowedMethods: ['GET', 'PUT', 'HEAD'],
               AllowedHeaders: ['*'],
               MaxAgeSeconds: 3600,

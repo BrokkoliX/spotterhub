@@ -115,7 +115,10 @@ export const handler = async (event: {
     // Decode JWT if present
     if (authHeader.startsWith('Bearer ')) {
       const jwt = await import('jsonwebtoken');
-      const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-do-not-use-in-production';
+      const JWT_SECRET = process.env.JWT_SECRET;
+      if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is not set');
+      }
       try {
         const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET) as {
           sub: string;

@@ -20,10 +20,37 @@ export const airportQueryResolvers = {
     });
   },
 
-  airports: async (_parent: unknown, _args: unknown, ctx: Context) => {
-    return ctx.prisma.airport.findMany({
-      orderBy: { icaoCode: 'asc' },
-    });
+  airports: async (
+    _parent: unknown,
+    args: { first?: number; after?: string },
+    ctx: Context,
+  ) => {
+    const take = Math.min(args.first ?? 100, 500);
+    const where = args.after ? { id: { gt: args.after } } : {};
+
+    const [items, totalCount] = await Promise.all([
+      ctx.prisma.airport.findMany({
+        where,
+        orderBy: { icaoCode: 'asc' },
+        take,
+      }),
+      ctx.prisma.airport.count(),
+    ]);
+
+    const hasNextPage = items.length === take;
+    const edges = items.map((airport) => ({
+      cursor: airport.id,
+      node: airport,
+    }));
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      },
+      totalCount,
+    };
   },
 
   airport: async (_parent: unknown, args: { code: string }, ctx: Context) => {

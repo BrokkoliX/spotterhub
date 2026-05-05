@@ -1,8 +1,8 @@
 import { GraphQLError } from 'graphql';
 
-import { requireAuth, requireRole } from '../auth/requireAuth.js';
+import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, resolveUserId } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
 import { createNotification } from './notificationResolvers.js';
@@ -256,7 +256,10 @@ export const commentMutationResolvers = {
     args: { id: string; reason?: string },
     ctx: Context,
   ) => {
-    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+    const dbUser = await getDbUser(ctx);
+    if (!['admin', 'moderator', 'superuser'].includes(dbUser.role)) {
+      throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+    }
 
     const comment = await ctx.prisma.comment.findUnique({ where: { id: args.id } });
     if (!comment) {
@@ -266,7 +269,7 @@ export const commentMutationResolvers = {
     await ctx.prisma.communityModerationLog.create({
       data: {
         communityId: 'global',
-        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        moderatorId: dbUser.id,
         targetUserId: comment.userId,
         action: 'delete_comment',
         reason: args.reason ?? 'Soft delete requested',
@@ -286,7 +289,10 @@ export const commentMutationResolvers = {
     args: { id: string; reason: string },
     ctx: Context,
   ) => {
-    await requireRole(ctx, ['admin', 'moderator', 'superuser']);
+    const dbUser = await getDbUser(ctx);
+    if (!['admin', 'moderator', 'superuser'].includes(dbUser.role)) {
+      throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+    }
 
     if (!args.reason) {
       throw new GraphQLError('A reason is required for hard deletion', {
@@ -302,7 +308,7 @@ export const commentMutationResolvers = {
     await ctx.prisma.communityModerationLog.create({
       data: {
         communityId: 'global',
-        moderatorId: (await requireRole(ctx, ['admin', 'moderator', 'superuser'])).sub,
+        moderatorId: dbUser.id,
         targetUserId: comment.userId,
         action: 'delete_comment',
         reason: args.reason,
@@ -331,6 +337,7 @@ export const commentFieldResolvers = {
     return ctx.prisma.comment.findMany({
       where: { parentCommentId: parent.id },
       orderBy: { createdAt: 'asc' },
+      take: 50, // Limit to 50 to prevent memory exhaustion
       include: {
         user: { include: { profile: true } },
       },
