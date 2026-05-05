@@ -72,15 +72,17 @@ jobs:
         env:
           FULL_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.API_ECR_REPO }}:${{ github.sha }}
         run: |
-          # Get the current API task definition (latest revision)
+          # Get the latest API task definition
           TASK_DEF=$(aws ecs describe-task-definition --task-definition spotterspace-dev-api --region ${{ env.AWS_REGION }})
 
-          # Extract the first container name so we preserve it (avoids stale revision mismatches)
+          # Extract the actual container name from the latest revision (guards against stale task defs)
           CONTAINER_NAME=$(echo "$TASK_DEF" | jq -r '.taskDefinition.containerDefinitions[0].name')
 
-          # Register new revision with the new image, preserving container name and all settings
+          # Register new revision with only the fields register-task-definition accepts
           NEW_ARN=$(echo "$TASK_DEF" | jq --arg IMG "$FULL_IMAGE" --arg CNAME "$CONTAINER_NAME" \
-            '.taskDefinition | .containerDefinitions[0].name = $CNAME | .containerDefinitions[0].image = $IMG | del(.taskDefinitionArn, .registeredAt, .registeredBy, .version, .status)' \
+            '.taskDefinition | .containerDefinitions[0].name = $CNAME | .containerDefinitions[0].image = $IMG
+             | { family, containerDefinitions, cpu, memory, networkMode, requiresCompatibilities,
+                 executionRoleArn, taskRoleArn, volumes, placementConstraints }' \
             | aws ecs register-task-definition --cli-input-json "$(cat)" --region ${{ env.AWS_REGION }} \
             | jq -r '.taskDefinition.taskDefinitionArn')
 
