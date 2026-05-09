@@ -12,6 +12,7 @@ import {
   UPSERT_AIRPORT,
   UPDATE_AIRPORT,
 } from '@/lib/queries';
+import MapPicker from '@/components/MapPicker';
 import { parseCSV } from '@/lib/csv';
 
 import styles from '../page.module.css';
@@ -352,6 +353,13 @@ export default function AdminAirportsPage() {
                   <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Longitude *</label>
                   <input className="input" type="number" step="any" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: e.target.value })} required placeholder="-0.4543" style={{ width: '100%' }} />
                 </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 8 }}>Pick on map</label>
+                <MapPicker
+                  position={formData.latitude && formData.longitude ? { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) } : null}
+                  onSelect={(lat, lng) => setFormData((prev) => ({ ...prev, latitude: String(lat), longitude: String(lng) }))}
+                />
               </div>
               {formError && <p className="error-text" style={{ marginBottom: 12 }}>{formError}</p>}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

@@ -480,7 +480,7 @@ export default function AdminAircraftPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturer</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturer <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <SearchableSelect
                     options={allManufacturers.map((m: { id: string; name: string }) => ({ id: m.id, label: m.name }))}
                     value={formData.manufacturerId}
@@ -491,7 +491,7 @@ export default function AdminAircraftPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Family</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Family <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <SearchableSelect
                     options={allFamilies.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
                     value={formData.familyId}
@@ -502,7 +502,7 @@ export default function AdminAircraftPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Variant</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Variant <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <SearchableSelect
                     options={allVariants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
                     value={formData.variantId}
@@ -511,7 +511,7 @@ export default function AdminAircraftPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Operator Type</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Operator Type <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <select
                     className="input"
                     value={formData.operatorType}
@@ -525,7 +525,7 @@ export default function AdminAircraftPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Airline</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Airline <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <SearchableSelect
                     options={allAirlines.map((a: { id: string; label: string }) => ({ id: a.id, label: a.label }))}
                     value={formData.airlineId}
@@ -534,7 +534,7 @@ export default function AdminAircraftPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>MSN</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>MSN <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <input
                     className="input"
                     value={formData.msn}
@@ -544,7 +544,7 @@ export default function AdminAircraftPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturing Date</label>
+                  <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturing Date <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span></label>
                   <input
                     className="input"
                     type="date"

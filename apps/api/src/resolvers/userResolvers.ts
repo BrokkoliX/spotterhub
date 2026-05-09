@@ -126,6 +126,12 @@ export const userFieldResolvers = {
     });
   },
 
+  lastLoginAt: (parent: UserParent & { lastLoginAt?: Date | string | null }, _args: unknown) => {
+    if (!parent.lastLoginAt) return null;
+    if (typeof parent.lastLoginAt === 'string') return parent.lastLoginAt;
+    return parent.lastLoginAt.toISOString();
+  },
+
   canSell: (parent: UserParent, _args: unknown, ctx: Context) => {
     // Look up the user's role to determine if they can sell
     return ctx.prisma.user.findUnique({

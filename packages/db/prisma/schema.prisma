@@ -289,6 +289,8 @@ model User {
   // Account lockout: increment on failed password, reset on successful sign-in
   failedAttempts    Int       @default(0) @map("failed_attempts")
   lockoutUntil      DateTime? @map("lockout_until")
+  // Last successful sign-in timestamp (updated on each login)
+  lastLoginAt       DateTime? @map("last_login_at")
 
   profile            Profile?
   photos             Photo[]

@@ -1515,6 +1515,10 @@ export const typeDefs = gql`
     Whether the user can sell (approved seller or admin/superuser).
     """
     canSell: Boolean!
+    """
+    Last sign-in timestamp, if ever signed in.
+    """
+    lastLoginAt: String
     createdAt: String!
     updatedAt: String!
   }

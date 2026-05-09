@@ -120,7 +120,8 @@ export const adminQueryResolvers = {
     const hasNextPage = items.length > take;
     const edges = items.slice(0, take).map((user) => ({
       cursor: encodeCursor(user.createdAt),
-      node: user,
+      // Serialize dates so GraphQL doesn't get raw Date objects for top-level edges
+      node: { ...user, createdAt: user.createdAt.toISOString() },
     }));
 
     return {

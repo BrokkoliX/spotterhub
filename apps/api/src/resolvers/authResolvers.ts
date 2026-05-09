@@ -199,10 +199,10 @@ export const authMutationResolvers = {
       });
     }
 
-    // Reset failed attempts and lockout on successful sign-in
+    // Reset failed attempts, lockout, and last login on successful sign-in
     await ctx.prisma.user.update({
       where: { id: user.id },
-      data: { failedAttempts: 0, lockoutUntil: null },
+      data: { failedAttempts: 0, lockoutUntil: null, lastLoginAt: new Date() },
     });
 
     // Rotate: delete all existing refresh tokens for this user before issuing a new one.

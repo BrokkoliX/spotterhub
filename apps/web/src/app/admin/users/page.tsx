@@ -121,6 +121,7 @@ export default function AdminUsersPage() {
               <th>Role</th>
               <th>Status</th>
               <th>Joined</th>
+              <th>Last Login</th>
               {canManage && <th>Actions</th>}
             </tr>
           </thead>
@@ -140,6 +141,7 @@ export default function AdminUsersPage() {
                   </span>
                 </td>
                 <td>{new Date(node.createdAt).toLocaleDateString()}</td>
+                <td>{node.lastLoginAt ? new Date(node.lastLoginAt).toLocaleDateString() : 'Never'}</td>
                 {canManage && (
                   <td>
                     <select
