@@ -71,10 +71,16 @@ async function issueSession(
 export const authMutationResolvers = {
   signUp: async (
     _parent: unknown,
-    args: { input: { email: string; username: string; password: string; displayName?: string } },
+    args: { input: { email: string; username: string; password: string; displayName?: string; acceptTerms: boolean } },
     ctx: Context,
   ) => {
-    const { email, username, password } = args.input;
+    const { email, username, password, acceptTerms } = args.input;
+
+    if (!acceptTerms) {
+      throw new GraphQLError('You must accept the Terms of Service to create an account', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
 
     const usernameError = validateUsername(username);
     if (usernameError) {

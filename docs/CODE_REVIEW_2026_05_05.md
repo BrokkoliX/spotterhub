@@ -17,6 +17,8 @@
 - H6: `airports` query unpaginated (cursor pagination added)
 - H12: softDelete/hardDeleteComment wrong moderatorId (cognitoSub → DB id)
 - M10: signOut only cleared current token (now clears all user sessions)
+- NEW: SignUp requires `acceptTerms: Boolean!` — confirms user owns all uploaded content
+- NEW: User.email schema type made nullable (was non-null with null-returning resolver)
 
 ---
 

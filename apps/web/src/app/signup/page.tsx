@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function SignUpPage() {
     setLoading(true);
 
     const result = await executeMutation({
-      input: { email, username, password, displayName: displayName || undefined },
+      input: { email, username, password, displayName: displayName || undefined, acceptTerms },
     });
 
     if (result.error) {
@@ -136,11 +137,27 @@ export default function SignUpPage() {
             />
           </div>
 
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              style={{ marginTop: 3, flexShrink: 0 }}
+            />
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+              I agree to the{' '}
+              <Link href="/terms" target="_blank" style={{ color: 'var(--color-primary)' }}>
+                Terms of Service
+              </Link>{' '}
+              and confirm that all photos I upload are my own original work.
+            </span>
+          </label>
+
           {error && <p className="error-text">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !acceptTerms}
             className="btn btn-primary btn-lg"
             style={{ width: '100%', marginTop: 8 }}
           >

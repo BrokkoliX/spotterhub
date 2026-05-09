@@ -1414,6 +1414,10 @@ export const typeDefs = gql`
     Display name shown on your profile.
     """
     displayName: String
+    """
+    Must be true to create an account. Indicates acceptance of the Terms of Service.
+    """
+    acceptTerms: Boolean!
   }
 
   input SignInInput {
