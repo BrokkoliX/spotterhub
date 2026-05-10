@@ -1058,6 +1058,7 @@ export const ADMIN_USERS = gql`
           role
           status
           createdAt
+          lastLoginAt
           profile {
             displayName
             avatarUrl

@@ -3399,8 +3399,6 @@ export type UploadUrlPayload = {
 /** A registered SpotterSpace user. */
 export type User = {
   __typename?: 'User';
-  /** Whether the user can sell (approved seller or admin/superuser). */
-  canSell: Scalars['Boolean']['output'];
   createdAt: Scalars['String']['output'];
   /** Unique email address. */
   email: Scalars['String']['output'];
@@ -3421,6 +3419,10 @@ export type User = {
   role: UserRole;
   /** The user's seller profile, if any. */
   sellerProfile?: Maybe<SellerProfile>;
+  /** Whether the user can sell (approved seller or admin/superuser). */
+  canSell: Scalars['Boolean']['output'];
+  /** Last sign-in timestamp, if ever signed in. */
+  lastLoginAt?: Maybe<Scalars['String']['output']>;
   /** Account status: active, suspended, or banned. */
   status: UserStatus;
   updatedAt: Scalars['String']['output'];
@@ -3852,7 +3854,7 @@ export type AdminUsersQueryVariables = Exact<{
 }>;
 
 
-export type AdminUsersQuery = { __typename?: 'Query', adminUsers: { __typename?: 'UserConnection', totalCount: number, edges: Array<{ __typename?: 'UserEdge', cursor: string, node: { __typename?: 'User', id: string, username: string, email: string, role: UserRole, status: UserStatus, createdAt: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type AdminUsersQuery = { __typename?: 'Query', adminUsers: { __typename?: 'UserConnection', totalCount: number, edges: Array<{ __typename?: 'UserEdge', cursor: string, node: { __typename?: 'User', id: string, username: string, email: string, role: UserRole, status: UserStatus, createdAt: string, lastLoginAt?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type AdminPhotosQueryVariables = Exact<{
   moderationStatus?: InputMaybe<Scalars['String']['input']>;
