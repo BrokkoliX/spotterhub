@@ -63,12 +63,14 @@ ENV PORT=3000
 ENV HOSTNAME=""
 
 # Copy Next.js standalone output + static assets
-# The standalone output has server.js at apps/web/server.js
-# and looks for .next/ at apps/web/.next/ (relative to server.js location)
+# The standalone output has server.js at apps/web/apps/web/server.js
+# and looks for .next/ relative to its location at apps/web/apps/web/
+# We place .next at apps/web/.next so it's accessible from both
+# apps/web/ (where server.js chdirs to) and apps/web/apps/web/ (where server.js lives)
 COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
 COPY --from=builder /app/apps/web/.next/static /app/apps/web/.next/static
 COPY --from=builder /app/apps/web/public /app/apps/web/public
 
 EXPOSE 3000
 
-CMD ["node", "apps/web/apps/web/server.js"]
+CMD ["node", "apps/web/server.js"]
