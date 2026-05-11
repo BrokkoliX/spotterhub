@@ -60,17 +60,21 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV HOSTNAME=""
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy Next.js standalone output + static assets
-# server.js at /app/apps/web/server.js does chdir(__dirname) = /app/apps/web/
-# distDir="./.next" means it looks for /app/apps/web/.next/{static,server}
-# Both standalone (which includes .next/server) and static are placed at /app/apps/web/.next/
-COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
-COPY --from=builder /app/apps/web/.next/static /app/apps/web/.next/static
-COPY --from=builder /app/apps/web/public /app/apps/web/public
+# Copy the entire standalone output preserving its monorepo mirror structure.
+# This places server.js at /app/apps/web/server.js and .next/server alongside it.
+COPY --from=builder /app/apps/web/.next/standalone ./
+
+# Copy static assets to where server.js expects them after chdir.
+# server.js does process.chdir(__dirname) → /app/apps/web/
+# then looks for .next/static relative to that.
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+
+# Copy public directory alongside server.js
+COPY --from=builder /app/apps/web/public ./apps/web/public
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]
