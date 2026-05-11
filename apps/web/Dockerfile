@@ -66,7 +66,7 @@ ENV HOSTNAME=""
 # The standalone output has server.js at apps/web/server.js
 # and looks for .next/ at apps/web/.next/ (relative to server.js location)
 COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
-COPY --from=builder /app/apps/web/.next/static /app/apps/web/apps/web/.next/static
+COPY --from=builder /app/apps/web/.next/static /app/apps/web/.next/static
 COPY --from=builder /app/apps/web/public /app/apps/web/public
 
 EXPOSE 3000
