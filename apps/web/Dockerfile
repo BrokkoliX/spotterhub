@@ -61,16 +61,16 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=""
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy Next.js standalone output + static assets
-# The standalone output has server.js at apps/web/apps/web/server.js
-# and looks for .next/ relative to its location at apps/web/apps/web/
-# We place .next at apps/web/.next so it's accessible from both
-# apps/web/ (where server.js chdirs to) and apps/web/apps/web/ (where server.js lives)
+# server.js at /app/apps/web/server.js does chdir(__dirname) = /app/apps/web/
+# distDir="./.next" means it looks for /app/apps/web/.next/{static,server}
+# Both standalone (which includes .next/server) and static are placed at /app/apps/web/.next/
 COPY --from=builder /app/apps/web/.next/standalone /app/apps/web
 COPY --from=builder /app/apps/web/.next/static /app/apps/web/.next/static
 COPY --from=builder /app/apps/web/public /app/apps/web/public
 
 EXPOSE 3000
 
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "server.js"]
