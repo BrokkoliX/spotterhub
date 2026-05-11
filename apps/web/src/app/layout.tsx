@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: 'SpotterSpace — Aviation Photography Community',
   description:
     'The premier platform for aviation photographers to share, discover, and connect.',
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export const viewport: Viewport = {

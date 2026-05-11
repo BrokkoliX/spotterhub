@@ -27,8 +27,9 @@
   letter-spacing: -0.02em;
 }
 
-.logoIcon {
-  font-size: 1.25rem;
+.logoImg {
+  height: 28px;
+  width: auto;
 }
 
 .nav {

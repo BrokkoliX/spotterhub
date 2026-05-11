@@ -213,8 +213,7 @@ export function Header() {
     <header className={styles.header}>
       <div className={styles.inner}>
         <Link href="/" className={styles.logo}>
-          <span className={styles.logoIcon}>✈️</span>
-          <span>SpotterSpace</span>
+          <img src="/logo.png" alt="SpotterSpace Logo" className={styles.logoImg} />
         </Link>
 
         <nav className={styles.nav}>
