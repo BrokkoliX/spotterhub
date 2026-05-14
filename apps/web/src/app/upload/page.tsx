@@ -495,7 +495,8 @@ export default function UploadPage() {
     if (gearLens === '__custom__' ? gearLensCustom : gearLens) input.gearLens = gearLens === '__custom__' ? gearLensCustom : gearLens;
     if (photoCategoryId) input.photoCategoryId = photoCategoryId;
     if (aircraftSpecificCategoryId) input.aircraftSpecificCategoryId = aircraftSpecificCategoryId;
-    if (selectedAirlineId) input.operatorIcao = selectedAirlineId;
+    const selectedAirline = airlines.find((a: { id: string }) => a.id === selectedAirlineId);
+    if (selectedAirlineId) input.operatorIcao = selectedAirline?.icaoCode ?? selectedAirlineId;
     if (operatorType) input.operatorType = operatorType.toUpperCase();
     if (msn) input.msn = msn;
     if (manufacturingDate) input.manufacturingDate = manufacturingDate;

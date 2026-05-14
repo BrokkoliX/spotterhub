@@ -538,33 +538,7 @@ export default function HomePage() {
         {siteBannerUrl && <div className={styles.heroBannerOverlay} />}
         {!siteBannerUrl && <div className={styles.heroGradient} />}
         <div className={styles.heroContent}>
-          {!siteBannerUrl && <div className={styles.heroEmoji}>🛩️</div>}
           <h1 className={styles.heroTitle}>SpotterSpace</h1>
-          <p className={styles.heroSubtitle}>
-            {siteTagline || "The world's community for aviation photography"}
-          </p>
-          <div className={styles.heroStats}>
-            <span>📷 Thousands of photos</span>
-            <span>✈️ Aircraft from around the world</span>
-            <span>👥 Join a global community</span>
-          </div>
-          {!user && (
-            <div className={styles.heroCta}>
-              <Link href="/signin" className="btn btn-primary">
-                Sign in to upload
-              </Link>
-              <Link href="/communities" className="btn btn-secondary">
-                Explore Communities
-              </Link>
-            </div>
-          )}
-          {user && (
-            <div className={styles.heroCta}>
-              <Link href="/upload" className="btn btn-primary">
-                📷 Upload to My Collection
-              </Link>
-            </div>
-          )}
         </div>
       </div>
 

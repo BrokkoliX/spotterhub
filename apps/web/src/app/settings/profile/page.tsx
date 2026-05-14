@@ -139,7 +139,7 @@ export default function ProfileSettingsPage() {
       try {
         // 1. Get presigned URL
         const urlResult = await executeGetUploadUrl({
-          input: { mimeType: file.type },
+          input: { mimeType: file.type, fileSizeBytes: file.size },
         });
         if (urlResult.error || !urlResult.data?.getUploadUrl) {
           throw new Error('Failed to get upload URL');
