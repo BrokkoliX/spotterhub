@@ -215,6 +215,46 @@ async function main() {
     });
   });
 
+  // Admin endpoint to fix photos where operator_icao contains an airline UUID
+  // instead of the actual ICAO code (e.g. "AAL"). Protected by JWT_SECRET header.
+  app.post('/admin/fix-operator-icao', adminRateLimiter, express.json(), async (req, res) => {
+    const authHeader = req.headers['x-jwt-secret'];
+    if (authHeader !== process.env.JWT_SECRET) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      // Preview: count affected rows before fixing
+      const preview = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
+        `SELECT COUNT(*) as count FROM photos p
+         JOIN airlines a ON p.operator_icao = a.id::text
+         WHERE p.operator_icao IS NOT NULL
+           AND p.operator_icao LIKE '%-%'
+           AND length(p.operator_icao) > 10`,
+      );
+      const affected = Number(preview[0]?.count ?? 0);
+
+      if (affected === 0) {
+        return res.json({ ok: true, fixed: 0, message: 'No photos need fixing' });
+      }
+
+      // Fix: replace airline UUIDs with their ICAO codes
+      const result = await prisma.$executeRawUnsafe(
+        `UPDATE photos
+         SET operator_icao = a."icaoCode"
+         FROM airlines a
+         WHERE photos.operator_icao = a.id::text
+           AND photos.operator_icao IS NOT NULL
+           AND photos.operator_icao LIKE '%-%'
+           AND length(photos.operator_icao) > 10`,
+      );
+
+      res.json({ ok: true, fixed: result, message: `Fixed ${result} photos` });
+    } catch (err) {
+      console.error('fix-operator-icao failed:', err);
+      res.status(500).json({ error: 'Fix failed', details: (err as Error).message });
+    }
+  });
+
   const allowedOrigins = [
     process.env.WEB_BASE_URL ?? 'http://localhost:3000',
     // Allow www and non-www variants in production
