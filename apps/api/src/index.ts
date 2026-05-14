@@ -240,7 +240,7 @@ async function main() {
       // Fix: replace airline UUIDs with their ICAO codes
       const result = await prisma.$executeRawUnsafe(
         `UPDATE photos
-         SET operator_icao = a."icaoCode"
+         SET operator_icao = a.icao_code
          FROM airlines a
          WHERE photos.operator_icao = a.id::text
            AND photos.operator_icao IS NOT NULL

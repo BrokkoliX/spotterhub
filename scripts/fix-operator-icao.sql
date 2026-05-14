@@ -11,7 +11,7 @@
 -- Step 2: Match them to airlines.id, then update operator_icao to airlines.icaoCode
 
 UPDATE photos
-SET operator_icao = a."icaoCode"
+SET operator_icao = a.icao_code
 FROM airlines a
 WHERE photos.operator_icao = a.id
   AND photos.operator_icao IS NOT NULL
