@@ -495,8 +495,16 @@ export default function UploadPage() {
     if (gearLens === '__custom__' ? gearLensCustom : gearLens) input.gearLens = gearLens === '__custom__' ? gearLensCustom : gearLens;
     if (photoCategoryId) input.photoCategoryId = photoCategoryId;
     if (aircraftSpecificCategoryId) input.aircraftSpecificCategoryId = aircraftSpecificCategoryId;
-    const selectedAirline = airlines.find((a: { id: string }) => a.id === selectedAirlineId);
-    if (selectedAirlineId) input.operatorIcao = selectedAirline?.icaoCode ?? selectedAirlineId;
+    if (selectedAirlineId) {
+      // selectedAirlineId may be a UUID (from NewAircraftModal) or an icaoCode (from selectRegistration)
+      const selectedAirline = airlines.find(
+        (a: { id: string; icaoCode: string }) => a.id === selectedAirlineId || a.icaoCode === selectedAirlineId,
+      );
+      if (selectedAirline?.icaoCode) {
+        input.operatorIcao = selectedAirline.icaoCode;
+      }
+      // If airline has no icaoCode (e.g. military operators), skip operatorIcao rather than storing a UUID
+    }
     if (operatorType) input.operatorType = operatorType.toUpperCase();
     if (msn) input.msn = msn;
     if (manufacturingDate) input.manufacturingDate = manufacturingDate;
