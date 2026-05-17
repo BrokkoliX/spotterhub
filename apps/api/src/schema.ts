@@ -899,6 +899,12 @@ export const typeDefs = gql`
     adminUpdatePhotoModeration(photoId: ID!, status: String!): Photo!
 
     """
+    Bulk import airports from CSV data. Requires superuser role.
+    CSV format: icaoCode,iataCode,name,city,country,latitude,longitude (one per line)
+    """
+    adminImportAirports(csvData: String!): ImportResult!
+
+    """
     Approve a pending photo, making it visible in the public feed.
     Requires admin or moderator role.
     """
@@ -2135,6 +2141,11 @@ export const typeDefs = gql`
     openReports: Int!
     totalAirports: Int!
     totalSpottingLocations: Int!
+  }
+
+  type ImportResult {
+    imported: Int!
+    errors: [String!]!
   }
 
   input CreateReportInput {

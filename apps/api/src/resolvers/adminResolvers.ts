@@ -340,4 +340,59 @@ export const adminMutationResolvers = {
       include: { user: true, variants: true, tags: true },
     });
   },
+
+  adminImportAirports: async (_parent: unknown, args: { csvData: string }, ctx: Context) => {
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can import airports', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Parse CSV: icaoCode, name, city, country, latitude, longitude, iataCode
+    const lines = args.csvData.split('\n').filter((l) => l.trim());
+    let imported = 0;
+    const errors: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(',').map((p) => p.trim());
+      if (parts.length < 7) {
+        errors.push(`Skipped line (need 7 fields): ${line.slice(0, 50)}`);
+        continue;
+      }
+      const [icaoCode, iataCode, name, city, country, lat, lng] = parts;
+      if (!icaoCode || icaoCode.length !== 4) {
+        errors.push(`Skipped invalid ICAO: ${icaoCode}`);
+        continue;
+      }
+
+      try {
+        await ctx.prisma.airport.upsert({
+          where: { icaoCode },
+          create: {
+            icaoCode,
+            iataCode: iataCode || null,
+            name: name || 'Unknown',
+            city: city || null,
+            country: country || 'Unknown',
+            latitude: parseFloat(lat) || 0,
+            longitude: parseFloat(lng) || 0,
+          },
+          update: {
+            iataCode: iataCode || null,
+            name: name || 'Unknown',
+            city: city || null,
+            country: country || 'Unknown',
+            latitude: parseFloat(lat) || 0,
+            longitude: parseFloat(lng) || 0,
+          },
+        });
+        imported++;
+      } catch (e) {
+        errors.push(`Failed to import ${icaoCode}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    return { imported, errors: errors.slice(0, 50) };
+  },
 };
