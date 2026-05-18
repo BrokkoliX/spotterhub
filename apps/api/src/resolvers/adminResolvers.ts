@@ -395,4 +395,76 @@ export const adminMutationResolvers = {
 
     return { imported, errors: errors.slice(0, 50) };
   },
+
+  adminImportAirlines: async (_parent: unknown, args: { csvData: string }, ctx: Context) => {
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can import airlines', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Parse CSV: icaoCode,iataCode,name,country,callsign (5 fields)
+    // IATA can be empty/null
+    const lines = args.csvData.split('\n').filter((l) => l.trim());
+    let imported = 0;
+    const errors: string[] = [];
+
+    for (const line of lines) {
+      // Parse CSV properly handling quoted fields
+      const fields = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      fields.push(current.trim());
+
+      if (fields.length < 5) {
+        errors.push(`Skipped line (need 5 fields): ${line.slice(0, 50)}`);
+        continue;
+      }
+
+      const [icaoCode, iataCode, name, country, callsign] = fields;
+      const cleanIcao = icaoCode?.replace(/\W/g, '').toUpperCase();
+      const cleanIata = iataCode?.replace(/\W/g, '').toUpperCase() || null;
+
+      if (!cleanIcao || cleanIcao.length < 2 || cleanIcao.length > 3) {
+        errors.push(`Skipped invalid ICAO: ${icaoCode}`);
+        continue;
+      }
+
+      try {
+        await ctx.prisma.airline.upsert({
+          where: { icaoCode: cleanIcao },
+          create: {
+            name: name || 'Unknown',
+            icaoCode: cleanIcao,
+            iataCode: cleanIata || null,
+            country: country || null,
+            callsign: callsign || null,
+          },
+          update: {
+            name: name || 'Unknown',
+            iataCode: cleanIata || null,
+            country: country || null,
+            callsign: callsign || null,
+          },
+        });
+        imported++;
+      } catch (e) {
+        errors.push(`Failed to import ${cleanIcao}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    return { imported, errors: errors.slice(0, 50) };
+  },
 };

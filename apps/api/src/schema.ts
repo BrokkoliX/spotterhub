@@ -903,6 +903,7 @@ export const typeDefs = gql`
     CSV format: icaoCode,iataCode,name,city,country,latitude,longitude (one per line)
     """
     adminImportAirports(csvData: String!): ImportResult!
+    adminImportAirlines(csvData: String!): ImportResult!
 
     """
     Approve a pending photo, making it visible in the public feed.
