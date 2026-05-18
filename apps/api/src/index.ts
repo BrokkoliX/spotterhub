@@ -288,7 +288,7 @@ async function main() {
   // General rate limiter for all GraphQL operations (prevents abuse/cost attacks)
   const graphqlLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 100, // 100 requests per minute per IP
+    max: 1000, // 1000 requests per minute per IP (raised for bulk imports)
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'Too many GraphQL requests, please try again later' },
