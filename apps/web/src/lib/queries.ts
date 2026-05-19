@@ -236,6 +236,7 @@ export const GET_PHOTOS = gql`
   query Photos(
     $first: Int
     $after: String
+    $page: Int
     $userId: ID
     $albumId: ID
     $airportCode: String
@@ -250,6 +251,7 @@ export const GET_PHOTOS = gql`
     photos(
       first: $first
       after: $after
+      page: $page
       userId: $userId
       albumId: $albumId
       airportCode: $airportCode
