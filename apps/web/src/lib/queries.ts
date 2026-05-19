@@ -3562,3 +3562,41 @@ export const CREATE_PHOTO_PURCHASE = gql`
     }
   }
 `;
+
+// ─── My Uploads ──────────────────────────────────────────────────────────────
+
+export const MY_UPLOADS = gql`
+  query MyUploads($moderationStatus: String, $first: Int, $after: String, $page: Int) {
+    myUploads(moderationStatus: $moderationStatus, first: $first, after: $after, page: $page) {
+      edges {
+        cursor
+        node {
+          id
+          caption
+          originalUrl
+          moderationStatus
+          createdAt
+          variants {
+            variantType
+            url
+            width
+            height
+          }
+          aircraft {
+            registration
+            variant {
+              name
+            }
+          }
+        }
+        queuePosition
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+      totalPendingCount
+    }
+  }
+`;

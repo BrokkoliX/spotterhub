@@ -1,0 +1,193 @@
+.page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.queueInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.queueIcon {
+  font-size: 1.125rem;
+}
+
+.filters {
+  margin-bottom: 20px;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--color-text-muted);
+}
+
+.denied {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--color-text-muted);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.emptyText {
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.imageWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: var(--color-bg-subtle);
+}
+
+.image {
+  object-fit: cover;
+}
+
+.cardBody {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.statusBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.statusPending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusApproved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.statusRejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.statusReview {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.time {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.caption {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aircraft {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.queuePosition {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  padding: 6px 8px;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.queuePositionIcon {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

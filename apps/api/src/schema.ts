@@ -213,6 +213,18 @@ export const typeDefs = gql`
       page: Int): PhotoConnection!
 
     """
+    Paginated list of the authenticated user's uploads, grouped by moderation status.
+    Each photo includes its queue position (1-based) among all pending photos, ordered
+    by upload date (oldest = position 1). Requires authentication.
+    """
+    myUploads(
+      moderationStatus: String
+      first: Int = 20
+      after: String
+      page: Int
+    ): MyUploadsConnection!
+
+    """
     Search users by username or display name.
     """
     searchUsers(query: String!, first: Int = 20, after: String
@@ -2000,6 +2012,29 @@ export const typeDefs = gql`
     edges: [PhotoEdge!]!
     pageInfo: PageInfo!
     totalCount: Int!
+  }
+
+  """
+  A photo upload with its position in the moderation queue.
+  """
+  type MyUploadEdge {
+    cursor: String!
+    node: Photo!
+    """
+    Position in the global pending queue (1 = next to be reviewed).
+    Null if the photo is not in pending status.
+    """
+    queuePosition: Int
+  }
+
+  type MyUploadsConnection {
+    edges: [MyUploadEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+    """
+    Total number of photos currently in the global pending queue.
+    """
+    totalPendingCount: Int!
   }
 
   type AircraftConnection {

@@ -277,6 +277,71 @@ export const photoQueryResolvers = {
       totalCount,
     };
   },
+
+  myUploads: async (
+    _parent: unknown,
+    args: { moderationStatus?: string; first?: number; after?: string; page?: number },
+    ctx: Context,
+  ) => {
+    const authUser = requireAuth(ctx);
+    const dbUser = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: authUser.sub },
+      select: { id: true },
+    });
+    if (!dbUser) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
+
+    const where: Record<string, unknown> = { userId: dbUser.id };
+    if (args.moderationStatus) {
+      where.moderationStatus = args.moderationStatus;
+    }
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
+    }
+
+    const [items, totalCount, totalPendingCount, pendingPositions] = await Promise.all([
+      ctx.prisma.photo.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: take + 1,
+        include: { user: true, variants: true, tags: true },
+      }),
+      ctx.prisma.photo.count({ where }),
+      ctx.prisma.photo.count({ where: { moderationStatus: 'pending' } }),
+      ctx.prisma.$queryRawUnsafe<{ id: string; position: bigint }[]>(
+        `SELECT id, ROW_NUMBER() OVER (ORDER BY created_at ASC) as position FROM photos WHERE moderation_status = 'pending'`,
+      ),
+    ]);
+
+    const positionMap = new Map(
+      pendingPositions.map((r) => [r.id, Number(r.position)]),
+    );
+
+    const hasNextPage = items.length > take;
+    const edges = items.slice(0, take).map((photo) => ({
+      cursor: encodeCursor(photo.createdAt),
+      node: photo,
+      queuePosition: photo.moderationStatus === 'pending' ? (positionMap.get(photo.id) ?? null) : null,
+    }));
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      },
+      totalCount,
+      totalPendingCount,
+    };
+  },
 };
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
