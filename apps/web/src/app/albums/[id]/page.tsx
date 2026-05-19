@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { use, useCallback, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, use, useCallback, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -28,9 +28,22 @@ export default function AlbumDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className={styles.page}><div className="container"><p className={styles.loading}>Loading album…</p></div></div>}>
+      <AlbumDetailPageInner params={params} />
+    </Suspense>
+  );
+}
+
+function AlbumDetailPageInner({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -41,7 +54,8 @@ export default function AlbumDetailPage({
   const [editDesc, setEditDesc] = useState('');
   const [editPublic, setEditPublic] = useState(true);
   const [editCoverPhotoId, setEditCoverPhotoId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   const [albumResult, reexecuteAlbumQuery] = useQuery({
     query: GET_ALBUM,
@@ -65,6 +79,9 @@ export default function AlbumDetailPage({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/albums/${id}?${params.toString()}`, { scroll: false });
   };
 
   const totalCount = connection?.totalCount ?? 0;

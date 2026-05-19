@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, use, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, use, useState, Suspense } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { AirportFollowButton } from '@/components/AirportFollowButton';
@@ -37,9 +38,24 @@ export default function AirportPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className={styles.page}><div className="container"><p className={styles.loading}>Loading airport…</p></div></div>}>
+      <AirportPageInner params={params} />
+    </Suspense>
+  );
+}
+
+function AirportPageInner({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
   const { code } = use(params);
   const { user } = useAuth();
-  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Spotting location form state
   const [showSpotForm, setShowSpotForm] = useState(false);
@@ -73,6 +89,9 @@ export default function AirportPage({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/airports/${code.toUpperCase()}?${params.toString()}`, { scroll: false });
   };
 
   const totalCount = connection?.totalCount ?? 0;

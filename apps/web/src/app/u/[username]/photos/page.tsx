@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, use, useState } from 'react';
 import { useQuery } from 'urql';
 
 import { FollowButton } from '@/components/FollowButton';
@@ -19,8 +20,23 @@ export default function UserPhotosPage({
 }: {
   params: Promise<{ username: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className={styles.page}><div className="container"><p className={styles.loading}>Loading…</p></div></div>}>
+      <UserPhotosPageInner params={params} />
+    </Suspense>
+  );
+}
+
+function UserPhotosPageInner({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
   const { username } = use(params);
-  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   const [userResult] = useQuery({
     query: GET_USER,
@@ -48,6 +64,9 @@ export default function UserPhotosPage({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/u/${username}/photos?${params.toString()}`, { scroll: false });
   };
 
   const totalCount = connection?.totalCount ?? 0;
