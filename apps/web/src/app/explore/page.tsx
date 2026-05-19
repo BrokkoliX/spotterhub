@@ -90,7 +90,8 @@ function ExplorePageInner() {
 
   const [activeTab, setActiveTab] = useState<TabType>('airlines');
   const [search, setSearch] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Read selected entity from URL params
   const selectedType = (searchParams.get('type') as TabType) ?? null;
@@ -101,6 +102,14 @@ function ExplorePageInner() {
   const photoFilter = selectedType && selectedValue
     ? getPhotoFilter(selectedType, selectedValue)
     : null;
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    const base = selectedType ? `/explore?${params.toString()}` : '/explore';
+    router.push(base, { scroll: false });
+  };
 
   // ─── Photo query ──────────────────────────────────────────────────────────
 
@@ -463,7 +472,7 @@ function ExplorePageInner() {
                     photos={displayedPhotos}
                     currentPage={currentPage}
                     totalPages={Math.ceil((photoData?.photos?.totalCount ?? 0) / PAGE_SIZE)}
-                    onPageChange={setCurrentPage}
+                    onPageChange={handlePageChange}
                     loading={photoFetching}
                     emptyMessage={`No photos yet for ${selectedName}`}
                   />

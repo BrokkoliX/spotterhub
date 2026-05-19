@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 
@@ -116,6 +117,8 @@ function TypeaheadInput<T>({
 
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [feedTab, setFeedTab] = useState<FeedTab>('recent');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [airportFilter, setAirportFilter] = useState('');
@@ -131,7 +134,8 @@ export default function HomePage() {
   const [debouncedFamily, setDebouncedFamily] = useState('');
   const [debouncedVariant, setDebouncedVariant] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
   const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
@@ -334,6 +338,9 @@ export default function HomePage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/?${params.toString()}`, { scroll: false });
   };
 
   const connection = feedTab === 'recent' ? data?.photos : followingData?.followingFeed;

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useState } from 'react';
 import { useQuery } from 'urql';
 
@@ -42,12 +42,14 @@ export default function SearchPage() {
 
 function SearchPageInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialQuery = searchParams.get('q') ?? '';
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
   const [inputValue, setInputValue] = useState(initialQuery);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState<Tab>('photos');
-  const [photosPage, setPhotosPage] = useState(1);
-  const [usersPage, setUsersPage] = useState(1);
+  const [photosPage, setPhotosPage] = useState(initialPage);
+  const [usersPage, setUsersPage] = useState(initialPage);
 
   const hasQuery = searchQuery.length > 0;
 
@@ -91,16 +93,28 @@ function SearchPageInner() {
       setSearchQuery(q);
       setPhotosPage(1);
       setUsersPage(1);
+      router.push(`/search?q=${encodeURIComponent(q)}`, { scroll: false });
     },
-    [inputValue],
+    [inputValue, router],
   );
 
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
   }, []);
 
-  const handlePhotosPageChange = (page: number) => setPhotosPage(page);
-  const handleUsersPageChange = (page: number) => setUsersPage(page);
+  const handlePhotosPageChange = (page: number) => {
+    setPhotosPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/search?${params.toString()}`, { scroll: false });
+  };
+
+  const handleUsersPageChange = (page: number) => {
+    setUsersPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/search?${params.toString()}`, { scroll: false });
+  };
 
   const photosTotalPages = Math.ceil(photosTotalCount / PAGE_SIZE);
   const usersTotalPages = Math.ceil(usersTotalCount / PAGE_SIZE);
