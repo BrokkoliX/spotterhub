@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser, resolveUserId } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
 import { createNotification } from './notificationResolvers.js';
@@ -19,6 +19,7 @@ export interface CommentsArgs {
   photoId: string;
   first?: number;
   after?: string;
+  page?: number;
 }
 
 export interface AddCommentInput {
@@ -52,7 +53,11 @@ async function deletedFilter(ctx: Context): Promise<Record<string, unknown>> {
 
 export const commentQueryResolvers = {
   comments: async (_parent: unknown, args: CommentsArgs, ctx: Context) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const filter = await deletedFilter(ctx);
 
     const where: Record<string, unknown> = {
@@ -69,6 +74,7 @@ export const commentQueryResolvers = {
       ctx.prisma.comment.findMany({
         where,
         orderBy: { createdAt: 'asc' },
+        skip,
         take: take + 1,
         include: {
           user: { include: { profile: true } },

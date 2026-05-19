@@ -2,16 +2,21 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Query Resolvers ──────────────────────────────────────────────────────────
 
 export const aircraftHierarchyQueryResolvers = {
   aircraftManufacturers: async (
     _parent: unknown,
-    args: { search?: string; first?: number; after?: string },
+    args: { search?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 10000);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = {};
     if (args.search) {
@@ -35,6 +40,7 @@ export const aircraftHierarchyQueryResolvers = {
       ctx.prisma.aircraftManufacturer.findMany({
         where,
         orderBy: { name: 'asc' },
+        skip,
         take: take + 1,
       }),
       ctx.prisma.aircraftManufacturer.count({ where }),
@@ -58,10 +64,14 @@ export const aircraftHierarchyQueryResolvers = {
 
   aircraftFamilies: async (
     _parent: unknown,
-    args: { manufacturerId?: string; search?: string; first?: number; after?: string },
+    args: { manufacturerId?: string; search?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 10000);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = {};
     if (args.manufacturerId) {
@@ -85,6 +95,7 @@ export const aircraftHierarchyQueryResolvers = {
       ctx.prisma.aircraftFamily.findMany({
         where,
         orderBy: { name: 'asc' },
+        skip,
         take: take + 1,
         include: { manufacturer: true, variants: true },
       }),
@@ -109,10 +120,14 @@ export const aircraftHierarchyQueryResolvers = {
 
   aircraftVariants: async (
     _parent: unknown,
-    args: { familyId?: string; search?: string; first?: number; after?: string },
+    args: { familyId?: string; search?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 10000);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = {};
     if (args.familyId) {
@@ -136,6 +151,7 @@ export const aircraftHierarchyQueryResolvers = {
       ctx.prisma.aircraftVariant.findMany({
         where,
         orderBy: { name: 'asc' },
+        skip,
         take: take + 1,
         include: { family: { include: { manufacturer: true } } },
       }),

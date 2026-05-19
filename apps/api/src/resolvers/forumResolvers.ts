@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -148,10 +148,14 @@ export const forumQueryResolvers = {
 
   forumThreads: async (
     _parent: unknown,
-    args: { categoryId: string; first?: number; after?: string },
+    args: { categoryId: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const filter = await deletedFilter(ctx);
 
     // Pinned threads always come first, then by lastPostAt desc
@@ -165,6 +169,7 @@ export const forumQueryResolvers = {
       ctx.prisma.forumThread.findMany({
         where,
         orderBy: [{ isPinned: 'desc' }, { lastPostAt: 'desc' }],
+        skip,
         take: take + 1,
       }),
       ctx.prisma.forumThread.count({ where: { categoryId: args.categoryId } }),
@@ -193,10 +198,14 @@ export const forumQueryResolvers = {
 
   forumPosts: async (
     _parent: unknown,
-    args: { threadId: string; first?: number; after?: string },
+    args: { threadId: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 30, 100);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const filter = await deletedFilter(ctx);
     const where: Record<string, unknown> = {
       threadId: args.threadId,
@@ -212,6 +221,7 @@ export const forumQueryResolvers = {
       ctx.prisma.forumPost.findMany({
         where,
         orderBy: { createdAt: 'asc' },
+        skip,
         take: take + 1,
       }),
       ctx.prisma.forumPost.count({ where: { threadId: args.threadId, parentPostId: null } }),

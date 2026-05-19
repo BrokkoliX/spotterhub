@@ -705,8 +705,12 @@ export const albumFieldResolvers = {
     });
   },
 
-  photos: async (parent: AlbumParent, args: { first?: number; after?: string }, ctx: Context) => {
-    const take = Math.min(args.first ?? 20, 50);
+  photos: async (parent: AlbumParent, args: { first?: number; after?: string; page?: number }, ctx: Context) => {
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     let items: Awaited<ReturnType<typeof ctx.prisma.photo.findMany>>;
 
     if (parent.communityId) {
@@ -714,6 +718,7 @@ export const albumFieldResolvers = {
       const junctionEntries = await ctx.prisma.albumPhoto.findMany({
         where: { albumId: parent.id },
         orderBy: { addedAt: 'desc' },
+        skip,
         take: take + 1,
       });
 
@@ -763,6 +768,7 @@ export const albumFieldResolvers = {
         ctx.prisma.photo.findMany({
           where,
           orderBy: { createdAt: 'desc' },
+          skip,
           take: take + 1,
           include: { user: true, variants: true, tags: true },
         }),

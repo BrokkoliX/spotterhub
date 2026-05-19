@@ -2,16 +2,21 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Query Resolvers ──────────────────────────────────────────────────────────
 
 export const airlineQueryResolvers = {
   airlines: async (
     _parent: unknown,
-    args: { search?: string; first?: number; after?: string },
+    args: { search?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = {};
     if (args.search) {
@@ -29,15 +34,12 @@ export const airlineQueryResolvers = {
         }));
     }
 
-    if (args.after) {
-      where.id = { gt: args.after };
-    }
-
     const [items, totalCount] = await Promise.all([
       ctx.prisma.airline.findMany({
-        where,
+        where: { ...where, ...cursorWhere },
         orderBy: { name: 'asc' },
-        take,
+        skip,
+        take: take + 1,
       }),
       ctx.prisma.airline.count({ where }),
     ]);

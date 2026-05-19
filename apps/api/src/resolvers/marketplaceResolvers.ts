@@ -78,23 +78,29 @@ export const marketplaceQueryResolvers = {
 
   myPurchases: async (
     _parent: unknown,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     const authUser = requireAuth(ctx);
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const user = await ctx.prisma.user.findUnique({ where: { cognitoSub: authUser.sub } });
     if (!user) throw new GraphQLError('User not found');
 
-    const paginateWhere = args.after
-      ? { buyerId: user.id, createdAt: { lt: decodeCursor(args.after) } }
-      : { buyerId: user.id };
+    const paginateWhere: Record<string, unknown> = { buyerId: user.id };
+    if (cursorWhere) {
+      Object.assign(paginateWhere, cursorWhere);
+    }
 
     const [orders, totalCount] = await Promise.all([
       ctx.prisma.order.findMany({
         where: paginateWhere,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: {
           buyer: { include: { profile: true } },
@@ -124,23 +130,29 @@ export const marketplaceQueryResolvers = {
 
   mySales: async (
     _parent: unknown,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     const authUser = requireAuth(ctx);
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const user = await ctx.prisma.user.findUnique({ where: { cognitoSub: authUser.sub } });
     if (!user) throw new GraphQLError('User not found');
 
-    const paginateWhere = args.after
-      ? { sellerId: user.id, createdAt: { lt: decodeCursor(args.after) } }
-      : { sellerId: user.id };
+    const paginateWhere: Record<string, unknown> = { sellerId: user.id };
+    if (cursorWhere) {
+      Object.assign(paginateWhere, cursorWhere);
+    }
 
     const [orders, totalCount] = await Promise.all([
       ctx.prisma.order.findMany({
         where: paginateWhere,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: {
           buyer: { include: { profile: true } },
@@ -170,15 +182,21 @@ export const marketplaceQueryResolvers = {
 
   adminSellerApplications: async (
     _parent: unknown,
-    args: { first?: number; after?: string; status?: string },
+    args: { first?: number; after?: string; status?: string; page?: number },
     ctx: Context,
   ) => {
     requireRole(ctx, ['admin', 'superuser']);
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = {};
     if (args.status) where.status = args.status;
-    if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
+    }
     // Always exclude already-approved sellers from the pending list
     where.approved = false;
 
@@ -186,6 +204,7 @@ export const marketplaceQueryResolvers = {
       ctx.prisma.sellerProfile.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { user: { include: { profile: true } } },
       }),

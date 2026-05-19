@@ -899,10 +899,14 @@ export const communityFieldResolvers = {
 
   members: async (
     parent: CommunityParent,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = {
       communityId: parent.id,
       status: 'active',
@@ -916,6 +920,7 @@ export const communityFieldResolvers = {
       ctx.prisma.communityMember.findMany({
         where,
         orderBy: { joinedAt: 'desc' },
+        skip,
         take: take + 1,
       }),
       ctx.prisma.communityMember.count({ where }),
@@ -940,10 +945,14 @@ export const communityFieldResolvers = {
   // Photos in community albums
   photos: async (
     parent: CommunityParent,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     // Get all album IDs for this community
     const communityAlbumIds = await ctx.prisma.album.findMany({
@@ -972,6 +981,7 @@ export const communityFieldResolvers = {
       ctx.prisma.albumPhoto.findMany({
         where,
         orderBy: { addedAt: 'desc' },
+        skip,
         take: take + 1,
         include: {
           photo: {
@@ -1001,10 +1011,14 @@ export const communityFieldResolvers = {
   // Community albums
   albums: async (
     parent: CommunityParent,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = { communityId: parent.id };
 
     if (args.after) {
@@ -1015,6 +1029,7 @@ export const communityFieldResolvers = {
       ctx.prisma.album.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: {
           user: { include: { profile: true } },

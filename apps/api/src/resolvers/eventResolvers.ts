@@ -2,7 +2,7 @@ import { EventRsvpStatus } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 import { createNotification } from './notificationResolvers.js';
 
@@ -49,10 +49,14 @@ const VALID_RSVP_STATUSES = ['going', 'maybe', 'not_going'];
 export const eventQueryResolvers = {
   communityEvents: async (
     _parent: unknown,
-    args: { communityId: string; first?: number; after?: string; includePast?: boolean },
+    args: { communityId: string; first?: number; after?: string; includePast?: boolean; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const now = new Date();
 
     let whereClause: Record<string, unknown> = { communityId: args.communityId };
@@ -76,6 +80,7 @@ export const eventQueryResolvers = {
       ctx.prisma.communityEvent.findMany({
         where: whereClause,
         orderBy: { startsAt: 'asc' },
+        skip,
         take: take + 1,
       }),
       ctx.prisma.communityEvent.count({ where: { communityId: args.communityId } }),

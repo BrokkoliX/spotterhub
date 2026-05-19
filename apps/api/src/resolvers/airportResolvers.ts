@@ -3,6 +3,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -22,22 +23,31 @@ export const airportQueryResolvers = {
 
   airports: async (
     _parent: unknown,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 100, 500);
-    const where = args.after ? { id: { gt: args.after } } : {};
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
+    const where: Record<string, unknown> = {};
+
+    if (args.after) {
+      where.id = { gt: args.after };
+    }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.airport.findMany({
         where,
         orderBy: { icaoCode: 'asc' },
-        take,
+        skip,
+        take: take + 1,
       }),
       ctx.prisma.airport.count(),
     ]);
 
-    const hasNextPage = items.length === take;
+    const hasNextPage = items.length > take;
     const edges = items.map((airport) => ({
       cursor: airport.id,
       node: airport,
@@ -70,12 +80,16 @@ export const airportQueryResolvers = {
 
   adminAirports: async (
     _parent: unknown,
-    args: { search?: string; first?: number; after?: string },
+    args: { search?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'superuser']);
 
-    const take = Math.min(args.first ?? 50, 100);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = {};
 
     if (args.search) {
@@ -99,7 +113,8 @@ export const airportQueryResolvers = {
       ctx.prisma.airport.findMany({
         where,
         orderBy: { icaoCode: 'asc' },
-        take,
+        skip,
+        take: take + 1,
       }),
       ctx.prisma.airport.count({ where }),
     ]);

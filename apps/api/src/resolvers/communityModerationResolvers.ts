@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // Reuse roleWeight from communityResolvers — keep in sync
 function roleWeight(role: string): number {
@@ -20,7 +20,7 @@ async function getMembership(ctx: Context, communityId: string, userId: string) 
 export const communityModerationQueryResolvers = {
   communityModerationLogs: async (
     _parent: unknown,
-    args: { communityId: string; action?: string; first?: number; after?: string },
+    args: { communityId: string; action?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
@@ -33,15 +33,22 @@ export const communityModerationQueryResolvers = {
       });
     }
 
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = { communityId: args.communityId };
     if (args.action) where.action = args.action;
-    if (args.after) where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
+    }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.communityModerationLog.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { moderator: true, targetUser: true },
       }),

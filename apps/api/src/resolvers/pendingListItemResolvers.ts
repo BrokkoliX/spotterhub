@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // Metadata validation rules per listType
 const METADATA_VALIDATION: Record<string, { required: string[]; optional: string[] }> = {
@@ -21,12 +22,16 @@ const VALID_STATUSES = ['pending', 'approved', 'rejected'];
 export const pendingListItemQueryResolvers = {
   pendingListItems: async (
     _parent: unknown,
-    args: { status?: string; listType?: string; first?: number; after?: string },
+    args: { status?: string; listType?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'superuser']);
 
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = {};
     if (args.status) {
@@ -44,7 +49,8 @@ export const pendingListItemQueryResolvers = {
       ctx.prisma.pendingListItem.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        take,
+        skip,
+        take: take + 1,
         include: { submitter: true, reviewer: true },
       }),
       ctx.prisma.pendingListItem.count({ where }),
