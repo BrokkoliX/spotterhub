@@ -383,8 +383,8 @@ export const UNFOLLOW_USER = gql`
 // ─── Comments ───────────────────────────────────────────────────────────────
 
 export const GET_COMMENTS = gql`
-  query Comments($photoId: ID!, $first: Int, $after: String) {
-    comments(photoId: $photoId, first: $first, after: $after) {
+  query Comments($photoId: ID!, $first: Int, $after: String, $page: Int) {
+    comments(photoId: $photoId, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -474,8 +474,8 @@ export const CREATE_REPORT = gql`
 // ─── Contact Messages ────────────────────────────────────────────────────────
 
 export const GET_CONTACT_MESSAGES = gql`
-  query GetContactMessages($status: ContactMessageStatus, $first: Int, $after: String) {
-    contactMessages(status: $status, first: $first, after: $after) {
+  query GetContactMessages($status: ContactMessageStatus, $first: Int, $after: String, $page: Int) {
+    contactMessages(status: $status, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -819,8 +819,8 @@ export const GET_ALBUM = gql`
 `;
 
 export const GET_ALBUMS = gql`
-  query Albums($userId: ID, $first: Int, $after: String) {
-    albums(userId: $userId, first: $first, after: $after) {
+  query Albums($userId: ID, $first: Int, $after: String, $page: Int) {
+    albums(userId: $userId, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1102,8 +1102,8 @@ export const ADMIN_PHOTOS = gql`
 // ─── Admin Reference Data ────────────────────────────────────────────────────
 
 export const ADMIN_AIRPORTS = gql`
-  query AdminAirports($search: String, $first: Int, $after: String) {
-    adminAirports(search: $search, first: $first, after: $after) {
+  query AdminAirports($search: String, $first: Int, $after: String, $page: Int) {
+    adminAirports(search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1325,8 +1325,8 @@ export const GET_COMMUNITY = gql`
 `;
 
 export const GET_COMMUNITIES = gql`
-  query Communities($search: String, $category: String, $first: Int, $after: String) {
-    communities(search: $search, category: $category, first: $first, after: $after) {
+  query Communities($search: String, $category: String, $first: Int, $after: String, $page: Int) {
+    communities(search: $search, category: $category, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1519,12 +1519,13 @@ export const DELETE_COMMUNITY_POST = gql`
 `;
 
 export const GET_COMMUNITY_MODERATION_LOGS = gql`
-  query CommunityModerationLogs($communityId: ID!, $action: String, $first: Int, $after: String) {
+  query CommunityModerationLogs($communityId: ID!, $action: String, $first: Int, $after: String, $page: Int) {
     communityModerationLogs(
       communityId: $communityId
       action: $action
       first: $first
-      after: $after
+      after: $after,
+      page: $page
     ) {
       edges {
         cursor
@@ -1585,8 +1586,8 @@ export const GET_FORUM_CATEGORIES = gql`
 `;
 
 export const GET_FORUM_THREADS = gql`
-  query ForumThreads($categoryId: ID!, $first: Int, $after: String) {
-    forumThreads(categoryId: $categoryId, first: $first, after: $after) {
+  query ForumThreads($categoryId: ID!, $first: Int, $after: String, $page: Int) {
+    forumThreads(categoryId: $categoryId, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1646,8 +1647,8 @@ export const GET_FORUM_THREAD = gql`
 `;
 
 export const GET_FORUM_POSTS = gql`
-  query ForumPosts($threadId: ID!, $first: Int, $after: String) {
-    forumPosts(threadId: $threadId, first: $first, after: $after) {
+  query ForumPosts($threadId: ID!, $first: Int, $after: String, $page: Int) {
+    forumPosts(threadId: $threadId, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1850,11 +1851,12 @@ export const DELETE_FORUM_POST = gql`
 // ─── Events ──────────────────────────────────────────────────────────────────
 
 export const GET_COMMUNITY_EVENTS = gql`
-  query GetCommunityEvents($communityId: ID!, $first: Int, $after: String, $includePast: Boolean) {
+  query GetCommunityEvents($communityId: ID!, $first: Int, $after: String, $page: Int, $includePast: Boolean) {
     communityEvents(
       communityId: $communityId
       first: $first
-      after: $after
+      after: $after,
+      page: $page
       includePast: $includePast
     ) {
       edges {
@@ -1971,8 +1973,8 @@ export const CANCEL_RSVP = gql`
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export const GET_NOTIFICATIONS = gql`
-  query GetNotifications($first: Int, $after: String, $unreadOnly: Boolean) {
-    notifications(first: $first, after: $after, unreadOnly: $unreadOnly) {
+  query GetNotifications($first: Int, $after: String, $page: Int, $unreadOnly: Boolean) {
+    notifications(first: $first, after: $after, page: $page, unreadOnly: $unreadOnly) {
       edges {
         cursor
         node {
@@ -2188,8 +2190,8 @@ export const GET_AIRCRAFT_BY_REGISTRATION = gql`
 `;
 
 export const ADMIN_AIRCRAFT = gql`
-  query AdminAircraft($search: String, $first: Int, $after: String) {
-    adminAircraft(search: $search, first: $first, after: $after) {
+  query AdminAircraft($search: String, $first: Int, $after: String, $page: Int) {
+    adminAircraft(search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -2387,8 +2389,8 @@ export const SUBMIT_LIST_ITEM = gql`
 // ─── Admin Aircraft Hierarchy ──────────────────────────────────────────────────
 
 export const ADMIN_MANUFACTURERS = gql`
-  query AdminManufacturers($search: String, $first: Int, $after: String) {
-    aircraftManufacturers(search: $search, first: $first, after: $after) {
+  query AdminManufacturers($search: String, $first: Int, $after: String, $page: Int) {
+    aircraftManufacturers(search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -2438,8 +2440,8 @@ export const UPSERT_MANUFACTURER = gql`
 `;
 
 export const ADMIN_FAMILIES = gql`
-  query AdminFamilies($search: String, $first: Int, $after: String) {
-    aircraftFamilies(search: $search, first: $first, after: $after) {
+  query AdminFamilies($search: String, $first: Int, $after: String, $page: Int) {
+    aircraftFamilies(search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -2498,8 +2500,8 @@ export const DELETE_VARIANT = gql`
 `;
 
 export const ADMIN_VARIANTS = gql`
-  query AdminVariants($search: String, $first: Int, $after: String) {
-    aircraftVariants(search: $search, first: $first, after: $after) {
+  query AdminVariants($search: String, $first: Int, $after: String, $page: Int) {
+    aircraftVariants(search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -2554,8 +2556,8 @@ export const UPSERT_VARIANT = gql`
 // ─── Admin Airlines ─────────────────────────────────────────────────────────────
 
 export const ADMIN_AIRLINES = gql`
-  query AdminAirlines($search: String, $first: Int, $after: String) {
-    airlines(search: $search, first: $first, after: $after) {
+  query AdminAirlines($search: String, $first: Int, $after: String, $page: Int) {
+    airlines(search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -2698,8 +2700,8 @@ export const UPSERT_AIRCRAFT_SPECIFIC_CATEGORY = gql`
 // ─── Admin Pending List Items ───────────────────────────────────────────────────
 
 export const ADMIN_PENDING_LIST_ITEMS = gql`
-  query AdminPendingListItems($status: String, $first: Int, $after: String) {
-    pendingListItems(status: $status, first: $first, after: $after) {
+  query AdminPendingListItems($status: String, $first: Int, $after: String, $page: Int) {
+    pendingListItems(status: $status, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -2905,7 +2907,8 @@ export const GET_MARKETPLACE_ITEMS = gql`
     $search: String
     $sortBy: MarketplaceSort
     $first: Int
-    $after: String
+    $after: String,
+    $page: Int
   ) {
     marketplaceItems(
       category: $category
@@ -2915,7 +2918,8 @@ export const GET_MARKETPLACE_ITEMS = gql`
       search: $search
       sortBy: $sortBy
       first: $first
-      after: $after
+      after: $after,
+      page: $page
     ) {
       edges {
         cursor
@@ -3058,8 +3062,8 @@ export const GET_SELLER_PROFILE = gql`
 `;
 
 export const GET_SELLER_FEEDBACK = gql`
-  query GetSellerFeedback($sellerId: ID!, $first: Int, $after: String) {
-    sellerFeedback(sellerId: $sellerId, first: $first, after: $after) {
+  query GetSellerFeedback($sellerId: ID!, $first: Int, $after: String, $page: Int) {
+    sellerFeedback(sellerId: $sellerId, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -3091,8 +3095,8 @@ export const GET_SELLER_FEEDBACK = gql`
 `;
 
 export const GET_MY_LISTINGS = gql`
-  query GetMyListings($first: Int, $after: String) {
-    myListings(first: $first, after: $after) {
+  query GetMyListings($first: Int, $after: String, $page: Int) {
+    myListings(first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -3130,8 +3134,8 @@ export const GET_MY_LISTINGS = gql`
 `;
 
 export const GET_ADMIN_MARKETPLACE_ITEMS = gql`
-  query GetAdminMarketplaceItems($moderationStatus: String, $first: Int, $after: String) {
-    adminMarketplaceItems(moderationStatus: $moderationStatus, first: $first, after: $after) {
+  query GetAdminMarketplaceItems($moderationStatus: String, $first: Int, $after: String, $page: Int) {
+    adminMarketplaceItems(moderationStatus: $moderationStatus, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -3314,8 +3318,8 @@ export const DELETE_MARKETPLACE_CATEGORY = gql`
 // ─── Marketplace ─────────────────────────────────────────────────────────────
 
 export const MARKETPLACE_LISTINGS = gql`
-  query MarketplaceListings($first: Int, $after: String, $sortBy: MarketplaceSort) {
-    marketplaceListings(first: $first, after: $after, sortBy: $sortBy) {
+  query MarketplaceListings($first: Int, $after: String, $page: Int, $sortBy: MarketplaceSort) {
+    marketplaceListings(first: $first, after: $after, page: $page, sortBy: $sortBy) {
       edges {
         cursor
         node {
@@ -3372,8 +3376,8 @@ export const MARKETPLACE_LISTINGS = gql`
 `;
 
 export const MY_PURCHASES = gql`
-  query MyPurchases($first: Int, $after: String) {
-    myPurchases(first: $first, after: $after) {
+  query MyPurchases($first: Int, $after: String, $page: Int) {
+    myPurchases(first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -3414,8 +3418,8 @@ export const MY_PURCHASES = gql`
 `;
 
 export const MY_SALES = gql`
-  query MySales($first: Int, $after: String) {
-    mySales(first: $first, after: $after) {
+  query MySales($first: Int, $after: String, $page: Int) {
+    mySales(first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -3456,8 +3460,8 @@ export const MY_SALES = gql`
 `;
 
 export const ADMIN_SELLER_APPLICATIONS = gql`
-  query AdminSellerApplications($first: Int, $after: String) {
-    adminSellerApplications(first: $first, after: $after, status: "pending") {
+  query AdminSellerApplications($first: Int, $after: String, $page: Int) {
+    adminSellerApplications(first: $first, after: $after, page: $page, status: "pending") {
       edges {
         cursor
         node {
