@@ -176,3 +176,94 @@
 .empty p {
   margin-bottom: 12px;
 }
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+
+.badgeSection {
+  margin-bottom: 24px;
+  padding: 16px 0;
+}
+
+.badgeSectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.badgeGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badgeItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  cursor: default;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.badgeItem:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.badgeIcon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.badgeName {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.badgeTierLabel {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+.badgeTierBronze {
+  border-color: #cd7f32;
+}
+
+.badgeTierBronze .badgeTierLabel {
+  color: #cd7f32;
+}
+
+.badgeTierSilver {
+  border-color: #c0c0c0;
+}
+
+.badgeTierSilver .badgeTierLabel {
+  color: #c0c0c0;
+}
+
+.badgeTierGold {
+  border-color: #ffd700;
+}
+
+.badgeTierGold .badgeTierLabel {
+  color: #ffd700;
+}
+
+.badgeTierPlatinum {
+  border-color: #e5e4e2;
+  background: linear-gradient(135deg, var(--color-bg-card), rgba(229, 228, 226, 0.1));
+}
+
+.badgeTierPlatinum .badgeTierLabel {
+  color: #e5e4e2;
+}

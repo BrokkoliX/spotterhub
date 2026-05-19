@@ -96,6 +96,11 @@ import {
   contactMessageFieldResolvers,
 } from './resolvers/contactMessageResolvers.js';
 import {
+  badgeFieldResolvers,
+  badgeMutationResolvers,
+  badgeQueryResolvers,
+} from './resolvers/badgeResolvers.js';
+import {
   pendingListItemFieldResolvers,
   pendingListItemMutationResolvers,
   pendingListItemQueryResolvers,
@@ -209,6 +214,7 @@ export const resolvers = {
     ...marketplaceQueryResolvers,
     ...marketplaceCollectiblesQueryResolvers,
     ...contactMessageQueryResolvers,
+    ...badgeQueryResolvers,
   },
 
   Mutation: {
@@ -237,6 +243,7 @@ export const resolvers = {
     ...marketplaceMutationResolvers,
     ...marketplaceCollectiblesMutationResolvers,
     ...contactMessageMutationResolvers,
+    ...badgeMutationResolvers,
   },
 
   User: {
@@ -312,4 +319,6 @@ export const resolvers = {
   MarketplaceCategory: marketplaceCategoryFieldResolvers,
 
   ContactMessage: contactMessageFieldResolvers,
+
+  UserBadge: badgeFieldResolvers.UserBadge,
 };

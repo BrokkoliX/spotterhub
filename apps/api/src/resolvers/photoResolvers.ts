@@ -8,6 +8,7 @@ import { generateVariants, getSharp } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
 import { decodeCursor, encodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength, validateArrayLength } from '../utils/validation.js';
+import { checkAndAwardBadges } from './badgeResolvers.js';
 
 // ─── Privacy Helpers ────────────────────────────────────────────────────────
 
@@ -561,6 +562,11 @@ export const photoMutationResolvers = {
         },
       });
     }
+
+    // Check for badge awards (fire-and-forget)
+    checkAndAwardBadges(ctx, user.id, 'photo_count').catch(() => {});
+    checkAndAwardBadges(ctx, user.id, 'unique_airport_count').catch(() => {});
+    checkAndAwardBadges(ctx, user.id, 'upload_streak_days').catch(() => {});
 
     // Re-fetch to include location data
     return (

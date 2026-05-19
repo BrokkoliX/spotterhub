@@ -342,6 +342,19 @@ export const GET_USER = gql`
       followerCount
       followingCount
       isFollowedByMe
+      badges {
+        id
+        awardedAt
+        badgeDefinition {
+          id
+          slug
+          name
+          description
+          iconUrl
+          category
+          tier
+        }
+      }
       profile {
         displayName
         bio
@@ -3598,5 +3611,94 @@ export const MY_UPLOADS = gql`
       totalCount
       totalPendingCount
     }
+  }
+`;
+
+// ─── Badges ─────────────────────────────────────────────────────────────────
+
+export const GET_BADGE_DEFINITIONS = gql`
+  query BadgeDefinitions($category: BadgeCategory, $isActive: Boolean) {
+    badgeDefinitions(category: $category, isActive: $isActive) {
+      id
+      slug
+      name
+      description
+      iconUrl
+      category
+      tier
+      triggerType
+      triggerMetric
+      triggerThreshold
+      isActive
+      displayOrder
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const CREATE_BADGE_DEFINITION = gql`
+  mutation CreateBadgeDefinition($input: CreateBadgeDefinitionInput!) {
+    createBadgeDefinition(input: $input) {
+      id
+      slug
+      name
+      description
+      category
+      tier
+      triggerType
+      triggerMetric
+      triggerThreshold
+      isActive
+      displayOrder
+    }
+  }
+`;
+
+export const UPDATE_BADGE_DEFINITION = gql`
+  mutation UpdateBadgeDefinition($id: ID!, $input: UpdateBadgeDefinitionInput!) {
+    updateBadgeDefinition(id: $id, input: $input) {
+      id
+      slug
+      name
+      description
+      category
+      tier
+      triggerType
+      triggerMetric
+      triggerThreshold
+      isActive
+      displayOrder
+    }
+  }
+`;
+
+export const DELETE_BADGE_DEFINITION = gql`
+  mutation DeleteBadgeDefinition($id: ID!) {
+    deleteBadgeDefinition(id: $id)
+  }
+`;
+
+export const AWARD_BADGE = gql`
+  mutation AwardBadge($userId: ID!, $badgeDefinitionId: ID!, $photoId: ID) {
+    awardBadge(userId: $userId, badgeDefinitionId: $badgeDefinitionId, photoId: $photoId) {
+      id
+      awardedAt
+      badgeDefinition {
+        id
+        name
+        tier
+      }
+      user {
+        id
+        username
+      }
+    }
+  }
+`;
+
+export const REVOKE_BADGE = gql`
+  mutation RevokeBadge($userId: ID!, $badgeDefinitionId: ID!) {
+    revokeBadge(userId: $userId, badgeDefinitionId: $badgeDefinitionId)
   }
 `;

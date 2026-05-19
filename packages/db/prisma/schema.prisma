@@ -58,6 +58,33 @@ enum PhotoLicense {
   CC_BY_SA
 }
 
+enum BadgeCategory {
+  UPLOAD
+  ENGAGEMENT
+  COMMUNITY
+  STREAK
+  DIVERSITY
+  AWARD
+}
+
+enum BadgeTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum BadgeTriggerType {
+  AUTOMATIC
+  AWARDED
+}
+
+enum PhotoAwardPeriod {
+  DAY
+  WEEK
+  MONTH
+}
+
 enum SellerStatus {
   pending
   approved
@@ -81,6 +108,7 @@ enum NotificationType {
   system
   community_join
   community_event
+  badge_earned
 }
 
 enum ReportTargetType {
@@ -324,6 +352,8 @@ model User {
   sellerFeedback  SellerFeedback[] @relation("SellerReceivedFeedback")
   contactMessages ContactMessage[]
   reviewedContactMessages ContactMessage[] @relation("ContactMessageReviewer")
+  badges           UserBadge[]
+  awardedBadges    UserBadge[]    @relation("BadgeAwarder")
 
   @@map("users")
 }
@@ -458,6 +488,8 @@ model Photo {
   aircraftSpecificCategory AircraftSpecificCategory? @relation(fields: [aircraftSpecificCategoryId], references: [id], onDelete: SetNull)
   listing             PhotoListing?
   orders             Order[]
+  photoAwards     PhotoAward[]
+  awardedBadges   UserBadge[]
 
   @@index([photoCategoryId])
   @@index([aircraftSpecificCategoryId])
@@ -1061,4 +1093,64 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_reset_tokens")
+}
+
+// ─── Badge System ────────────────────────────────────────────────────────────
+
+model BadgeDefinition {
+  id               String           @id @default(uuid()) @db.Uuid
+  slug             String           @unique
+  name             String
+  description      String
+  iconUrl          String?          @map("icon_url")
+  category         BadgeCategory
+  tier             BadgeTier
+  triggerType       BadgeTriggerType @map("trigger_type")
+  triggerMetric    String?          @map("trigger_metric")
+  triggerThreshold Int?             @map("trigger_threshold")
+  isActive         Boolean          @default(true) @map("is_active")
+  displayOrder     Int              @default(0) @map("display_order")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  userBadges UserBadge[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("badge_definitions")
+}
+
+model UserBadge {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  badgeDefinitionId String   @map("badge_definition_id") @db.Uuid
+  awardedAt         DateTime @default(now()) @map("awarded_at")
+  awardedPhotoId    String?  @map("awarded_photo_id") @db.Uuid
+  awardedBy         String?  @map("awarded_by") @db.Uuid
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeDefinition BadgeDefinition @relation(fields: [badgeDefinitionId], references: [id], onDelete: Cascade)
+  awardedPhoto    Photo?          @relation(fields: [awardedPhotoId], references: [id], onDelete: SetNull)
+  awarder         User?           @relation("BadgeAwarder", fields: [awardedBy], references: [id], onDelete: SetNull)
+
+  @@unique([userId, badgeDefinitionId])
+  @@index([userId])
+  @@index([badgeDefinitionId])
+  @@map("user_badges")
+}
+
+model PhotoAward {
+  id          String           @id @default(uuid()) @db.Uuid
+  photoId     String           @map("photo_id") @db.Uuid
+  period      PhotoAwardPeriod
+  periodStart DateTime         @map("period_start")
+  periodEnd   DateTime         @map("period_end")
+  likeCount   Int              @map("like_count")
+  awardedAt   DateTime         @default(now()) @map("awarded_at")
+
+  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@unique([period, periodStart])
+  @@index([photoId])
+  @@map("photo_awards")
 }

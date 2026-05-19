@@ -177,6 +177,13 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>User-submitted additions</div>
           </div>
         </Link>
+        <Link href="/admin/badges" className={styles.quickLink}>
+          <span className={styles.quickLinkIcon}>🏅</span>
+          <div>
+            <div className={styles.quickLinkLabel}>Badges</div>
+            <div className={styles.quickLinkDesc}>Badge definitions &amp; awards</div>
+          </div>
+        </Link>
         <Link href="/admin/settings" className={styles.quickLink}>
           <span className={styles.quickLinkIcon}>⚙️</span>
           <div>

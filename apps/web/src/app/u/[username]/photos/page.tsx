@@ -15,6 +15,18 @@ import styles from './page.module.css';
 
 const PAGE_SIZE = 12;
 
+function getBadgeCategoryIcon(category: string): string {
+  switch (category) {
+    case 'UPLOAD': return '📸';
+    case 'ENGAGEMENT': return '❤️';
+    case 'COMMUNITY': return '🤝';
+    case 'STREAK': return '🔥';
+    case 'DIVERSITY': return '🌍';
+    case 'AWARD': return '🏆';
+    default: return '🏅';
+  }
+}
+
 export default function UserPhotosPage({
   params,
 }: {
@@ -159,6 +171,28 @@ function UserPhotosPageInner({
             </div>
           </div>
         </div>
+
+        {/* Badges */}
+        {user.badges && user.badges.length > 0 && (
+          <div className={styles.badgeSection}>
+            <h3 className={styles.badgeSectionTitle}>Badges</h3>
+            <div className={styles.badgeGrid}>
+              {user.badges.map((ub: { id: string; awardedAt: string; badgeDefinition: { id: string; slug: string; name: string; description: string; category: string; tier: string } }) => (
+                <div
+                  key={ub.id}
+                  className={`${styles.badgeItem} ${styles[`badgeTier${ub.badgeDefinition.tier.charAt(0) + ub.badgeDefinition.tier.slice(1).toLowerCase()}`]}`}
+                  title={`${ub.badgeDefinition.name} (${ub.badgeDefinition.tier}) — ${ub.badgeDefinition.description}`}
+                >
+                  <span className={styles.badgeIcon}>
+                    {getBadgeCategoryIcon(ub.badgeDefinition.category)}
+                  </span>
+                  <span className={styles.badgeName}>{ub.badgeDefinition.name}</span>
+                  <span className={styles.badgeTierLabel}>{ub.badgeDefinition.tier}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className={styles.tabs}>
           <Link

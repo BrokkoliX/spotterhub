@@ -148,4 +148,19 @@ export const userFieldResolvers = {
       return user.sellerProfile?.approved ?? false;
     });
   },
+
+  badges: async (parent: UserParent, _args: unknown, ctx: Context) => {
+    return ctx.prisma.userBadge.findMany({
+      where: { userId: parent.id },
+      include: {
+        badgeDefinition: true,
+        awardedPhoto: { include: { variants: true } },
+        awarder: true,
+      },
+      orderBy: [
+        { badgeDefinition: { displayOrder: 'asc' } },
+        { awardedAt: 'desc' },
+      ],
+    });
+  },
 };

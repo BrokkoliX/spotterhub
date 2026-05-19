@@ -135,6 +135,33 @@ export const typeDefs = gql`
     failed
   }
 
+  enum BadgeCategory {
+    UPLOAD
+    ENGAGEMENT
+    COMMUNITY
+    STREAK
+    DIVERSITY
+    AWARD
+  }
+
+  enum BadgeTier {
+    BRONZE
+    SILVER
+    GOLD
+    PLATINUM
+  }
+
+  enum BadgeTriggerType {
+    AUTOMATIC
+    AWARDED
+  }
+
+  enum PhotoAwardPeriod {
+    DAY
+    WEEK
+    MONTH
+  }
+
   enum MarketplaceSort {
     newest
     price_asc
@@ -378,6 +405,21 @@ export const typeDefs = gql`
       after: String
       page: Int
     ): PhotoConnection!
+
+    """
+    List all badge definitions. Optionally filter by category or active status.
+    """
+    badgeDefinitions(category: BadgeCategory, isActive: Boolean): [BadgeDefinition!]!
+
+    """
+    List badges earned by a specific user.
+    """
+    userBadges(userId: ID!): [UserBadge!]!
+
+    """
+    Photo awards for a given period type. Returns recent awards.
+    """
+    photoAwards(period: PhotoAwardPeriod!, first: Int = 10): [PhotoAward!]!
 
     # ─── Community Queries ──────────────────────────────────────────────────
 
@@ -1452,6 +1494,33 @@ export const typeDefs = gql`
     Review a pending list item (approve or reject). Requires admin or superuser role.
     """
     reviewListItem(id: ID!, status: String!, reviewNote: String): PendingListItem!
+
+    # ─── Badge Management (Superuser) ──────────────────────────────────────
+
+    """
+    Create a new badge definition. Requires superuser role.
+    """
+    createBadgeDefinition(input: CreateBadgeDefinitionInput!): BadgeDefinition!
+
+    """
+    Update an existing badge definition. Requires superuser role.
+    """
+    updateBadgeDefinition(id: ID!, input: UpdateBadgeDefinitionInput!): BadgeDefinition!
+
+    """
+    Delete a badge definition. Requires superuser role.
+    """
+    deleteBadgeDefinition(id: ID!): Boolean!
+
+    """
+    Manually award a badge to a user. Requires superuser role.
+    """
+    awardBadge(userId: ID!, badgeDefinitionId: ID!, photoId: ID): UserBadge!
+
+    """
+    Revoke a badge from a user. Requires superuser role.
+    """
+    revokeBadge(userId: ID!, badgeDefinitionId: ID!): Boolean!
   }
 
   # ─── Auth Types ──────────────────────────────────────────────────────────
@@ -1574,6 +1643,10 @@ export const typeDefs = gql`
     Whether the user can sell (approved seller or admin/superuser).
     """
     canSell: Boolean!
+    """
+    Badges earned by this user, ordered by display order.
+    """
+    badges: [UserBadge!]!
     """
     Last sign-in timestamp, if ever signed in.
     """
@@ -3634,6 +3707,71 @@ export const typeDefs = gql`
     name: String
     label: String
     sortOrder: Int
+  }
+
+  # ─── Badge Types ──────────────────────────────────────────────────────────
+
+  type BadgeDefinition {
+    id: ID!
+    slug: String!
+    name: String!
+    description: String!
+    iconUrl: String
+    category: BadgeCategory!
+    tier: BadgeTier!
+    triggerType: BadgeTriggerType!
+    triggerMetric: String
+    triggerThreshold: Int
+    isActive: Boolean!
+    displayOrder: Int!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type UserBadge {
+    id: ID!
+    user: User!
+    badgeDefinition: BadgeDefinition!
+    awardedAt: String!
+    awardedPhoto: Photo
+    awardedBy: User
+  }
+
+  type PhotoAward {
+    id: ID!
+    photo: Photo!
+    period: PhotoAwardPeriod!
+    periodStart: String!
+    periodEnd: String!
+    likeCount: Int!
+    awardedAt: String!
+  }
+
+  input CreateBadgeDefinitionInput {
+    slug: String!
+    name: String!
+    description: String!
+    iconUrl: String
+    category: BadgeCategory!
+    tier: BadgeTier!
+    triggerType: BadgeTriggerType!
+    triggerMetric: String
+    triggerThreshold: Int
+    isActive: Boolean
+    displayOrder: Int
+  }
+
+  input UpdateBadgeDefinitionInput {
+    name: String
+    description: String
+    iconUrl: String
+    category: BadgeCategory
+    tier: BadgeTier
+    triggerType: BadgeTriggerType
+    triggerMetric: String
+    triggerThreshold: Int
+    isActive: Boolean
+    displayOrder: Int
   }
 
   # ─── Health ──────────────────────────────────────────────────────────────

@@ -1,3 +1,6 @@
+-- Ensure uuid-ossp extension exists (needed for shadow database replay)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create contact_message table for user-to-admin contact form
 
 CREATE TABLE "contact_message" (
