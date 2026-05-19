@@ -661,17 +661,21 @@ export const SEARCH_AIRPORTS = gql`
 // ─── Aircraft ────────────────────────────────────────────────────────────────
 
 export const GET_AIRPORTS = gql`
-  query Airports {
-    airports {
-      id
-      icaoCode
-      iataCode
-      name
-      city
-      country
-      latitude
-      longitude
-      photoCount
+  query Airports($first: Int) {
+    airports(first: $first) {
+      edges {
+        node {
+          id
+          icaoCode
+          iataCode
+          name
+          city
+          country
+          latitude
+          longitude
+        }
+      }
+      totalCount
     }
   }
 `;

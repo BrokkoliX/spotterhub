@@ -22,7 +22,6 @@ interface AirportData {
   country?: string | null;
   latitude: number;
   longitude: number;
-  photoCount: number;
 }
 
 interface PhotoMarkerData {
@@ -56,7 +55,7 @@ export default function MapPage() {
     neLng: number;
   } | null>(null);
 
-  const [airportsResult] = useQuery({ query: GET_AIRPORTS });
+  const [airportsResult] = useQuery({ query: GET_AIRPORTS, variables: { first: 10000 } });
 
   const [photosResult] = useQuery({
     query: PHOTOS_IN_BOUNDS,
@@ -118,10 +117,7 @@ export default function MapPage() {
 
       for (const airport of airports) {
         const code = airport.iataCode ?? airport.icaoCode;
-        const photoLabel =
-          airport.photoCount === 1
-            ? '1 photo'
-            : `${airport.photoCount} photos`;
+        const photoLabel = '';
 
         const el = document.createElement('div');
         el.style.cssText =
@@ -133,7 +129,7 @@ export default function MapPage() {
           `<div style="font-family:system-ui,sans-serif;">
             <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${airport.name}</div>
             <div style="font-size:12px;color:#888;margin-bottom:4px;">${code}${airport.city ? ` · ${airport.city}` : ''}${airport.country ? `, ${airport.country}` : ''}</div>
-            <div style="font-size:12px;color:#aaa;margin-bottom:8px;">📷 ${photoLabel}</div>
+            <div style="font-size:12px;color:#aaa;margin-bottom:8px;">📷</div>
             <a href="/airports/${airport.icaoCode}" style="display:inline-block;padding:5px 12px;background:#3b82f6;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;font-weight:500;">View Airport</a>
           </div>`,
         );
@@ -148,8 +144,11 @@ export default function MapPage() {
   );
 
   useEffect(() => {
-    if (mapReady && airportsResult.data?.airports) {
-      addAirportMarkers(airportsResult.data.airports);
+    if (mapReady && airportsResult.data?.airports?.edges) {
+      const airports = airportsResult.data.airports.edges.map(
+        (e: { node: AirportData }) => e.node,
+      );
+      addAirportMarkers(airports);
     }
   }, [mapReady, airportsResult.data, addAirportMarkers]);
 

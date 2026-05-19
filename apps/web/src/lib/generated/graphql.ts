@@ -278,6 +278,7 @@ export type Album = {
 export type AlbumPhotosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type AlbumConnection = {
@@ -385,6 +386,7 @@ export type Community = {
 export type CommunityAlbumsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -392,6 +394,7 @@ export type CommunityAlbumsArgs = {
 export type CommunityMembersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -399,6 +402,7 @@ export type CommunityMembersArgs = {
 export type CommunityPhotosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type CommunityConnection = {
@@ -483,6 +487,7 @@ export type CommunityMemberFilter = {
   after?: InputMaybe<Scalars['String']['input']>;
   /** Pagination page size. */
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   /** Filter by community role. */
   role?: InputMaybe<Array<CommunityRole>>;
   /** Search by username or display name. */
@@ -533,6 +538,39 @@ export enum CommunityRole {
 export enum CommunityVisibility {
   InviteOnly = 'invite_only',
   Public = 'public'
+}
+
+/** A message submitted by a user to admin. */
+export type ContactMessage = {
+  __typename?: 'ContactMessage';
+  body: Scalars['String']['output'];
+  createdAt: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  reviewedAt?: Maybe<Scalars['String']['output']>;
+  reviewedByUser?: Maybe<User>;
+  status: ContactMessageStatus;
+  subject: Scalars['String']['output'];
+  user?: Maybe<User>;
+};
+
+export type ContactMessageConnection = {
+  __typename?: 'ContactMessageConnection';
+  edges: Array<ContactMessageEdge>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ContactMessageEdge = {
+  __typename?: 'ContactMessageEdge';
+  cursor: Scalars['String']['output'];
+  node: ContactMessage;
+};
+
+export enum ContactMessageStatus {
+  Read = 'read',
+  Resolved = 'resolved',
+  Unread = 'unread'
 }
 
 export type CreateAircraftInput = {
@@ -605,6 +643,12 @@ export type CreateCommunityInput = {
   slug: Scalars['String']['input'];
   /** Visibility: 'public' or 'invite_only'. */
   visibility?: InputMaybe<CommunityVisibility>;
+};
+
+export type CreateContactMessageInput = {
+  body: Scalars['String']['input'];
+  email?: InputMaybe<Scalars['String']['input']>;
+  subject: Scalars['String']['input'];
 };
 
 export type CreateFamilyInput = {
@@ -707,7 +751,7 @@ export type CreateReportInput = {
   reason: ReportReason;
   /** ID of the content to report. */
   targetId: Scalars['ID']['input'];
-  /** Type of content: photo, comment, profile, album, community, or forum_post. */
+  /** Type of content: photo, comment, profile, album, community, forum_post, or marketplace_item. */
   targetType: ReportTargetType;
 };
 
@@ -763,6 +807,7 @@ export type FollowEntry = {
 };
 
 export enum FollowTargetType {
+  AircraftType = 'aircraft_type',
   Airline = 'airline',
   Airport = 'airport',
   Family = 'family',
@@ -869,6 +914,12 @@ export type HealthCheck = {
   dbConnected: Scalars['Boolean']['output'];
   status: Scalars['String']['output'];
   timestamp: Scalars['String']['output'];
+};
+
+export type ImportResult = {
+  __typename?: 'ImportResult';
+  errors: Array<Scalars['String']['output']>;
+  imported: Scalars['Int']['output'];
 };
 
 export enum ItemCondition {
@@ -1001,6 +1052,17 @@ export type Mutation = {
    * their own previously-uploaded photos.
    */
   addPhotosToCommunityAlbum: Album;
+  /**
+   * Bulk import aircraft hierarchy from CSV data. Requires superuser role.
+   * CSV format: manufacturer|family|variant|iataCode|icaoCode (one per line)
+   */
+  adminImportAircraftHierarchy: ImportResult;
+  adminImportAirlines: ImportResult;
+  /**
+   * Bulk import airports from CSV data. Requires superuser role.
+   * CSV format: icaoCode,iataCode,name,city,country,latitude,longitude (one per line)
+   */
+  adminImportAirports: ImportResult;
   /** Resolve or dismiss a report. Requires admin or moderator role. */
   adminResolveReport: Report;
   /**
@@ -1056,6 +1118,11 @@ export type Mutation = {
   createCommunityAlbum: Album;
   /** Create an event in a community. Requires owner or admin role. */
   createCommunityEvent: CommunityEvent;
+  /**
+   * Submit a message to admins.
+   * Any authenticated user can submit a contact message.
+   */
+  createContactMessage: ContactMessage;
   /** Create an aircraft family. Requires admin or superuser role. */
   createFamily: AircraftFamily;
   /** Create a forum category in a community. Requires owner or admin role. Pass communityId: null for global categories (admin only). */
@@ -1261,6 +1328,8 @@ export type Mutation = {
   requestPasswordReset: Scalars['Boolean']['output'];
   /** Reset password using a token from the email link. Token is single-use and expires in 1 hour. */
   resetPassword: AuthPayload;
+  /** Mark a contact message as read or resolved. Requires admin or moderator role. */
+  reviewContactMessage: ContactMessage;
   /** Review a pending list item (approve or reject). Requires admin or superuser role. */
   reviewListItem: PendingListItem;
   /** RSVP to an event. status: going | maybe | not_going. */
@@ -1415,6 +1484,21 @@ export type MutationAddPhotosToCommunityAlbumArgs = {
 };
 
 
+export type MutationAdminImportAircraftHierarchyArgs = {
+  csvData: Scalars['String']['input'];
+};
+
+
+export type MutationAdminImportAirlinesArgs = {
+  csvData: Scalars['String']['input'];
+};
+
+
+export type MutationAdminImportAirportsArgs = {
+  csvData: Scalars['String']['input'];
+};
+
+
 export type MutationAdminResolveReportArgs = {
   action: Scalars['String']['input'];
   id: Scalars['ID']['input'];
@@ -1510,6 +1594,11 @@ export type MutationCreateCommunityAlbumArgs = {
 export type MutationCreateCommunityEventArgs = {
   communityId: Scalars['ID']['input'];
   input: CreateCommunityEventInput;
+};
+
+
+export type MutationCreateContactMessageArgs = {
+  input: CreateContactMessageInput;
 };
 
 
@@ -1883,6 +1972,12 @@ export type MutationRequestPasswordResetArgs = {
 export type MutationResetPasswordArgs = {
   newPassword: Scalars['String']['input'];
   token: Scalars['String']['input'];
+};
+
+
+export type MutationReviewContactMessageArgs = {
+  id: Scalars['ID']['input'];
+  status: ContactMessageStatus;
 };
 
 
@@ -2368,6 +2463,7 @@ export type Photo = {
 export type PhotoSimilarAircraftPhotosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /** A photo category for classification (e.g., cabin, cockpit, exterior). */
@@ -2555,8 +2651,8 @@ export type Query = {
   airlines: AirlineConnection;
   /** Fetch a single airport by ICAO or IATA code. */
   airport?: Maybe<Airport>;
-  /** List all airports. Used to populate map markers. */
-  airports: Array<Airport>;
+  /** List all airports with optional pagination. */
+  airports: AirportConnection;
   /** Fetch a single album by ID. */
   album?: Maybe<Album>;
   /**
@@ -2578,6 +2674,12 @@ export type Query = {
   communityMembers: CommunityMemberConnection;
   /** Paginated moderation log for a community. Requires owner or admin role. */
   communityModerationLogs: CommunityModerationLogConnection;
+  /**
+   * Paginated list of contact messages to admins.
+   * Optionally filtered by status.
+   * Requires admin or moderator role.
+   */
+  contactMessages: ContactMessageConnection;
   /** Export all airports as a flat list. Requires admin or superuser role. */
   exportAirports: Array<Airport>;
   /**
@@ -2689,6 +2791,7 @@ export type Query = {
 export type QueryAdminAircraftArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2696,6 +2799,7 @@ export type QueryAdminAircraftArgs = {
 export type QueryAdminAirportsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2704,6 +2808,7 @@ export type QueryAdminMarketplaceItemsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   moderationStatus?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2711,12 +2816,14 @@ export type QueryAdminPhotosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   moderationStatus?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type QueryAdminReportsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2724,12 +2831,15 @@ export type QueryAdminReportsArgs = {
 export type QueryAdminSellerApplicationsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryAdminUsersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   role?: InputMaybe<Scalars['String']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
@@ -2745,6 +2855,7 @@ export type QueryAircraftFamiliesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   manufacturerId?: InputMaybe<Scalars['ID']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2752,6 +2863,7 @@ export type QueryAircraftFamiliesArgs = {
 export type QueryAircraftManufacturersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2759,6 +2871,7 @@ export type QueryAircraftManufacturersArgs = {
 export type QueryAircraftSearchArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2767,6 +2880,7 @@ export type QueryAircraftVariantsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   familyId?: InputMaybe<Scalars['ID']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2779,12 +2893,20 @@ export type QueryAirlineArgs = {
 export type QueryAirlinesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryAirportArgs = {
   code: Scalars['String']['input'];
+};
+
+
+export type QueryAirportsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2796,6 +2918,7 @@ export type QueryAlbumArgs = {
 export type QueryAlbumsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   userId?: InputMaybe<Scalars['ID']['input']>;
 };
 
@@ -2803,6 +2926,7 @@ export type QueryAlbumsArgs = {
 export type QueryCommentsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   photoId: Scalars['ID']['input'];
 };
 
@@ -2811,6 +2935,7 @@ export type QueryCommunitiesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   category?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2830,6 +2955,7 @@ export type QueryCommunityEventsArgs = {
   communityId: Scalars['ID']['input'];
   first?: InputMaybe<Scalars['Int']['input']>;
   includePast?: InputMaybe<Scalars['Boolean']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2844,12 +2970,22 @@ export type QueryCommunityModerationLogsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   communityId: Scalars['ID']['input'];
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryContactMessagesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  status?: InputMaybe<ContactMessageStatus>;
 };
 
 
 export type QueryFollowingFeedArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2866,6 +3002,7 @@ export type QueryForumCategoryArgs = {
 export type QueryForumPostsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   threadId: Scalars['ID']['input'];
 };
 
@@ -2879,6 +3016,7 @@ export type QueryForumThreadsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   categoryId: Scalars['ID']['input'];
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2894,6 +3032,7 @@ export type QueryMarketplaceItemsArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   maxPrice?: InputMaybe<Scalars['Float']['input']>;
   minPrice?: InputMaybe<Scalars['Float']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   sortBy?: InputMaybe<MarketplaceSort>;
 };
@@ -2902,6 +3041,7 @@ export type QueryMarketplaceItemsArgs = {
 export type QueryMarketplaceListingsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   sortBy?: InputMaybe<MarketplaceSort>;
 };
 
@@ -2914,24 +3054,28 @@ export type QueryMyFollowingArgs = {
 export type QueryMyListingsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type QueryMyPurchasesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type QueryMySalesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type QueryNotificationsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   unreadOnly?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
@@ -2940,6 +3084,7 @@ export type QueryPendingListItemsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   listType?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2957,6 +3102,7 @@ export type QueryPhotosArgs = {
   family?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   manufacturer?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   photographer?: InputMaybe<Scalars['String']['input']>;
   sortBy?: InputMaybe<PhotoSortBy>;
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -2997,6 +3143,7 @@ export type QuerySearchAirportsArgs = {
 export type QuerySearchPhotosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   query: Scalars['String']['input'];
 };
 
@@ -3004,6 +3151,7 @@ export type QuerySearchPhotosArgs = {
 export type QuerySearchUsersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   query: Scalars['String']['input'];
 };
 
@@ -3011,6 +3159,7 @@ export type QuerySearchUsersArgs = {
 export type QuerySellerFeedbackArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   sellerId: Scalars['ID']['input'];
 };
 
@@ -3028,6 +3177,7 @@ export type QueryUserArgs = {
 export type QueryUsersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /** A content moderation report. */
@@ -3086,6 +3236,7 @@ export enum ReportTargetType {
   Comment = 'comment',
   Community = 'community',
   ForumPost = 'forum_post',
+  MarketplaceItem = 'marketplace_item',
   Photo = 'photo',
   Profile = 'profile'
 }
@@ -3173,6 +3324,8 @@ export type SignInInput = {
 };
 
 export type SignUpInput = {
+  /** Must be true to create an account. Indicates acceptance of the Terms of Service. */
+  acceptTerms: Scalars['Boolean']['input'];
   /** Display name shown on your profile. */
   displayName?: InputMaybe<Scalars['String']['input']>;
   /** Email address for the new account. */
@@ -3399,9 +3552,11 @@ export type UploadUrlPayload = {
 /** A registered SpotterSpace user. */
 export type User = {
   __typename?: 'User';
+  /** Whether the user can sell (approved seller or admin/superuser). */
+  canSell: Scalars['Boolean']['output'];
   createdAt: Scalars['String']['output'];
-  /** Unique email address. */
-  email: Scalars['String']['output'];
+  /** Email address. Only visible to the account owner. */
+  email?: Maybe<Scalars['String']['output']>;
   /** Whether the email has been verified. */
   emailVerified: Scalars['Boolean']['output'];
   /** Number of users following this user. */
@@ -3411,6 +3566,8 @@ export type User = {
   id: Scalars['ID']['output'];
   /** Whether the currently authenticated user follows this user. */
   isFollowedByMe: Scalars['Boolean']['output'];
+  /** Last sign-in timestamp, if ever signed in. */
+  lastLoginAt?: Maybe<Scalars['String']['output']>;
   /** Number of photos uploaded by this user. */
   photoCount: Scalars['Int']['output'];
   /** The user's profile, if one has been created. */
@@ -3419,10 +3576,6 @@ export type User = {
   role: UserRole;
   /** The user's seller profile, if any. */
   sellerProfile?: Maybe<SellerProfile>;
-  /** Whether the user can sell (approved seller or admin/superuser). */
-  canSell: Scalars['Boolean']['output'];
-  /** Last sign-in timestamp, if ever signed in. */
-  lastLoginAt?: Maybe<Scalars['String']['output']>;
   /** Account status: active, suspended, or banned. */
   status: UserStatus;
   updatedAt: Scalars['String']['output'];
@@ -3462,21 +3615,21 @@ export type SignUpMutationVariables = Exact<{
 }>;
 
 
-export type SignUpMutation = { __typename?: 'Mutation', signUp: { __typename?: 'SignUpPayload', user: { __typename?: 'User', id: string, email: string, username: string, role: UserRole } } };
+export type SignUpMutation = { __typename?: 'Mutation', signUp: { __typename?: 'SignUpPayload', user: { __typename?: 'User', id: string, email?: string | null, username: string, role: UserRole } } };
 
 export type VerifyEmailMutationVariables = Exact<{
   token: Scalars['String']['input'];
 }>;
 
 
-export type VerifyEmailMutation = { __typename?: 'Mutation', verifyEmail: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email: string, username: string, role: UserRole } } };
+export type VerifyEmailMutation = { __typename?: 'Mutation', verifyEmail: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email?: string | null, username: string, role: UserRole } } };
 
 export type SignInMutationVariables = Exact<{
   input: SignInInput;
 }>;
 
 
-export type SignInMutation = { __typename?: 'Mutation', signIn: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email: string, username: string, role: UserRole } } };
+export type SignInMutation = { __typename?: 'Mutation', signIn: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email?: string | null, username: string, role: UserRole } } };
 
 export type RequestPasswordResetMutationVariables = Exact<{
   email: Scalars['String']['input'];
@@ -3491,13 +3644,14 @@ export type ResetPasswordMutationVariables = Exact<{
 }>;
 
 
-export type ResetPasswordMutation = { __typename?: 'Mutation', resetPassword: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email: string, username: string, role: UserRole } } };
+export type ResetPasswordMutation = { __typename?: 'Mutation', resetPassword: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email?: string | null, username: string, role: UserRole } } };
 
 export type PhotoFieldsFragment = { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type PhotosQueryVariables = Exact<{
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
   userId?: InputMaybe<Scalars['ID']['input']>;
   albumId?: InputMaybe<Scalars['ID']['input']>;
   airportCode?: InputMaybe<Scalars['String']['input']>;
@@ -3606,10 +3760,34 @@ export type CreateReportMutationVariables = Exact<{
 
 export type CreateReportMutation = { __typename?: 'Mutation', createReport: { __typename?: 'Report', id: string, status: ReportStatus } };
 
+export type GetContactMessagesQueryVariables = Exact<{
+  status?: InputMaybe<ContactMessageStatus>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  after?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GetContactMessagesQuery = { __typename?: 'Query', contactMessages: { __typename?: 'ContactMessageConnection', totalCount: number, edges: Array<{ __typename?: 'ContactMessageEdge', cursor: string, node: { __typename?: 'ContactMessage', id: string, subject: string, body: string, email?: string | null, status: ContactMessageStatus, createdAt: string, reviewedAt?: string | null, user?: { __typename?: 'User', id: string, username: string, email?: string | null } | null, reviewedByUser?: { __typename?: 'User', id: string, username: string } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+
+export type CreateContactMessageMutationVariables = Exact<{
+  input: CreateContactMessageInput;
+}>;
+
+
+export type CreateContactMessageMutation = { __typename?: 'Mutation', createContactMessage: { __typename?: 'ContactMessage', id: string, subject: string, body: string, status: ContactMessageStatus } };
+
+export type ReviewContactMessageMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  status: ContactMessageStatus;
+}>;
+
+
+export type ReviewContactMessageMutation = { __typename?: 'Mutation', reviewContactMessage: { __typename?: 'ContactMessage', id: string, status: ContactMessageStatus, reviewedAt?: string | null } };
+
 export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', id: string, email: string, username: string, role: UserRole, photoCount: number, profile?: { __typename?: 'Profile', displayName?: string | null, bio?: string | null, avatarUrl?: string | null, locationRegion?: string | null, experienceLevel?: string | null, gear?: string | null, interests: Array<string>, favoriteAircraft: Array<string>, favoriteAirports: Array<string>, isPublic: boolean, cameraBodies: Array<string>, lenses: Array<string> } | null } | null };
+export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', id: string, email?: string | null, username: string, role: UserRole, photoCount: number, profile?: { __typename?: 'Profile', displayName?: string | null, bio?: string | null, avatarUrl?: string | null, locationRegion?: string | null, experienceLevel?: string | null, gear?: string | null, interests: Array<string>, favoriteAircraft: Array<string>, favoriteAirports: Array<string>, isPublic: boolean, cameraBodies: Array<string>, lenses: Array<string> } | null, sellerProfile?: { __typename?: 'SellerProfile', id: string, status: SellerStatus, approved: boolean, stripeOnboardingComplete: boolean, stripeAccountId?: string | null } | null } | null };
 
 export type UpdateProfileMutationVariables = Exact<{
   input: UpdateProfileInput;
@@ -3629,6 +3807,7 @@ export type SearchPhotosQueryVariables = Exact<{
   query: Scalars['String']['input'];
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -3638,6 +3817,7 @@ export type SearchUsersQueryVariables = Exact<{
   query: Scalars['String']['input'];
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -3659,10 +3839,12 @@ export type SearchAirportsQueryVariables = Exact<{
 
 export type SearchAirportsQuery = { __typename?: 'Query', searchAirports: Array<{ __typename?: 'AirportSearchResult', icaoCode: string, iataCode?: string | null, name: string, city?: string | null, country?: string | null, latitude: number, longitude: number }> };
 
-export type AirportsQueryVariables = Exact<{ [key: string]: never; }>;
+export type AirportsQueryVariables = Exact<{
+  first?: InputMaybe<Scalars['Int']['input']>;
+}>;
 
 
-export type AirportsQuery = { __typename?: 'Query', airports: Array<{ __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string, city?: string | null, country?: string | null, latitude: number, longitude: number, photoCount: number }> };
+export type AirportsQuery = { __typename?: 'Query', airports: { __typename?: 'AirportConnection', totalCount: number, edges: Array<{ __typename?: 'AirportEdge', node: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string, city?: string | null, country?: string | null, latitude: number, longitude: number } }> } };
 
 export type AirportQueryVariables = Exact<{
   code: Scalars['String']['input'];
@@ -3826,6 +4008,7 @@ export type MyFollowingQuery = { __typename?: 'Query', myFollowing: Array<{ __ty
 export type FollowingFeedQueryVariables = Exact<{
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -3840,6 +4023,7 @@ export type AdminReportsQueryVariables = Exact<{
   status?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -3851,15 +4035,17 @@ export type AdminUsersQueryVariables = Exact<{
   search?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
-export type AdminUsersQuery = { __typename?: 'Query', adminUsers: { __typename?: 'UserConnection', totalCount: number, edges: Array<{ __typename?: 'UserEdge', cursor: string, node: { __typename?: 'User', id: string, username: string, email: string, role: UserRole, status: UserStatus, createdAt: string, lastLoginAt?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type AdminUsersQuery = { __typename?: 'Query', adminUsers: { __typename?: 'UserConnection', totalCount: number, edges: Array<{ __typename?: 'UserEdge', cursor: string, node: { __typename?: 'User', id: string, username: string, email?: string | null, role: UserRole, status: UserStatus, createdAt: string, lastLoginAt?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type AdminPhotosQueryVariables = Exact<{
   moderationStatus?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -4835,7 +5021,7 @@ export type GetAdminMarketplaceItemsQueryVariables = Exact<{
 }>;
 
 
-export type GetAdminMarketplaceItemsQuery = { __typename?: 'Query', adminMarketplaceItems: { __typename?: 'MarketplaceItemConnection', totalCount: number, edges: Array<{ __typename?: 'MarketplaceItemEdge', cursor: string, node: { __typename?: 'MarketplaceItem', id: string, title: string, description?: string | null, priceUsd: string, condition: string, location?: string | null, moderationStatus: ModerationStatus, active: boolean, createdAt: string, category: { __typename?: 'MarketplaceCategory', id: string, name: string, label: string }, seller: { __typename?: 'SellerProfile', id: string, user: { __typename?: 'User', id: string, username: string, email: string, profile?: { __typename?: 'Profile', displayName?: string | null } | null } }, images: Array<{ __typename?: 'MarketplaceItemImage', id: string, url: string, variantType: string }> } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type GetAdminMarketplaceItemsQuery = { __typename?: 'Query', adminMarketplaceItems: { __typename?: 'MarketplaceItemConnection', totalCount: number, edges: Array<{ __typename?: 'MarketplaceItemEdge', cursor: string, node: { __typename?: 'MarketplaceItem', id: string, title: string, description?: string | null, priceUsd: string, condition: string, location?: string | null, moderationStatus: ModerationStatus, active: boolean, createdAt: string, category: { __typename?: 'MarketplaceCategory', id: string, name: string, label: string }, seller: { __typename?: 'SellerProfile', id: string, user: { __typename?: 'User', id: string, username: string, email?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null } | null } }, images: Array<{ __typename?: 'MarketplaceItemImage', id: string, url: string, variantType: string }> } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type UpdateSellerStatusMutationVariables = Exact<{
   sellerProfileId: Scalars['ID']['input'];
@@ -4943,14 +5129,14 @@ export type AdminSellerApplicationsQueryVariables = Exact<{
 }>;
 
 
-export type AdminSellerApplicationsQuery = { __typename?: 'Query', adminSellerApplications: { __typename?: 'SellerProfileConnection', totalCount: number, edges: Array<{ __typename?: 'SellerProfileEdge', cursor: string, node: { __typename?: 'SellerProfile', id: string, approved: boolean, bio?: string | null, website?: string | null, stripeOnboardingComplete: boolean, createdAt: string, user: { __typename?: 'User', id: string, username: string, email: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type AdminSellerApplicationsQuery = { __typename?: 'Query', adminSellerApplications: { __typename?: 'SellerProfileConnection', totalCount: number, edges: Array<{ __typename?: 'SellerProfileEdge', cursor: string, node: { __typename?: 'SellerProfile', id: string, status: SellerStatus, approved: boolean, bio?: string | null, website?: string | null, stripeOnboardingComplete: boolean, createdAt: string, user: { __typename?: 'User', id: string, username: string, email?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type ApplyToSellMutationVariables = Exact<{
   input: ApplyToSellInput;
 }>;
 
 
-export type ApplyToSellMutation = { __typename?: 'Mutation', applyToSell: { __typename?: 'SellerProfile', id: string, approved: boolean, bio?: string | null, website?: string | null, stripeOnboardingComplete: boolean, createdAt: string, user: { __typename?: 'User', id: string, username: string, email: string } } };
+export type ApplyToSellMutation = { __typename?: 'Mutation', applyToSell: { __typename?: 'SellerProfile', id: string, approved: boolean, bio?: string | null, website?: string | null, stripeOnboardingComplete: boolean, createdAt: string, user: { __typename?: 'User', id: string, username: string, email?: string | null } } };
 
 export type ApproveSellerMutationVariables = Exact<{
   sellerProfileId: Scalars['ID']['input'];
@@ -5257,10 +5443,11 @@ export function useResetPasswordMutation() {
   return Urql.useMutation<ResetPasswordMutation, ResetPasswordMutationVariables>(ResetPasswordDocument);
 };
 export const PhotosDocument = gql`
-    query Photos($first: Int, $after: String, $userId: ID, $albumId: ID, $airportCode: String, $tags: [String!], $manufacturer: String, $family: String, $variant: String, $airline: String, $photographer: String, $sortBy: PhotoSortBy) {
+    query Photos($first: Int, $after: String, $page: Int, $userId: ID, $albumId: ID, $airportCode: String, $tags: [String!], $manufacturer: String, $family: String, $variant: String, $airline: String, $photographer: String, $sortBy: PhotoSortBy) {
   photos(
     first: $first
     after: $after
+    page: $page
     userId: $userId
     albumId: $albumId
     airportCode: $airportCode
@@ -5511,6 +5698,69 @@ export const CreateReportDocument = gql`
 export function useCreateReportMutation() {
   return Urql.useMutation<CreateReportMutation, CreateReportMutationVariables>(CreateReportDocument);
 };
+export const GetContactMessagesDocument = gql`
+    query GetContactMessages($status: ContactMessageStatus, $first: Int, $after: String) {
+  contactMessages(status: $status, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        subject
+        body
+        email
+        status
+        createdAt
+        reviewedAt
+        user {
+          id
+          username
+          email
+        }
+        reviewedByUser {
+          id
+          username
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+    `;
+
+export function useGetContactMessagesQuery(options?: Omit<Urql.UseQueryArgs<GetContactMessagesQueryVariables>, 'query'>) {
+  return Urql.useQuery<GetContactMessagesQuery, GetContactMessagesQueryVariables>({ query: GetContactMessagesDocument, ...options });
+};
+export const CreateContactMessageDocument = gql`
+    mutation CreateContactMessage($input: CreateContactMessageInput!) {
+  createContactMessage(input: $input) {
+    id
+    subject
+    body
+    status
+  }
+}
+    `;
+
+export function useCreateContactMessageMutation() {
+  return Urql.useMutation<CreateContactMessageMutation, CreateContactMessageMutationVariables>(CreateContactMessageDocument);
+};
+export const ReviewContactMessageDocument = gql`
+    mutation ReviewContactMessage($id: ID!, $status: ContactMessageStatus!) {
+  reviewContactMessage(id: $id, status: $status) {
+    id
+    status
+    reviewedAt
+  }
+}
+    `;
+
+export function useReviewContactMessageMutation() {
+  return Urql.useMutation<ReviewContactMessageMutation, ReviewContactMessageMutationVariables>(ReviewContactMessageDocument);
+};
 export const MeDocument = gql`
     query Me {
   me {
@@ -5532,6 +5782,13 @@ export const MeDocument = gql`
       isPublic
       cameraBodies
       lenses
+    }
+    sellerProfile {
+      id
+      status
+      approved
+      stripeOnboardingComplete
+      stripeAccountId
     }
   }
 }
@@ -5574,8 +5831,8 @@ export function useUpdateAvatarMutation() {
   return Urql.useMutation<UpdateAvatarMutation, UpdateAvatarMutationVariables>(UpdateAvatarDocument);
 };
 export const SearchPhotosDocument = gql`
-    query SearchPhotos($query: String!, $first: Int, $after: String) {
-  searchPhotos(query: $query, first: $first, after: $after) {
+    query SearchPhotos($query: String!, $first: Int, $after: String, $page: Int) {
+  searchPhotos(query: $query, first: $first, after: $after, page: $page) {
     edges {
       cursor
       node {
@@ -5595,8 +5852,8 @@ export function useSearchPhotosQuery(options: Omit<Urql.UseQueryArgs<SearchPhoto
   return Urql.useQuery<SearchPhotosQuery, SearchPhotosQueryVariables>({ query: SearchPhotosDocument, ...options });
 };
 export const SearchUsersDocument = gql`
-    query SearchUsers($query: String!, $first: Int, $after: String) {
-  searchUsers(query: $query, first: $first, after: $after) {
+    query SearchUsers($query: String!, $first: Int, $after: String, $page: Int) {
+  searchUsers(query: $query, first: $first, after: $after, page: $page) {
     edges {
       cursor
       node {
@@ -5650,17 +5907,21 @@ export function useSearchAirportsQuery(options: Omit<Urql.UseQueryArgs<SearchAir
   return Urql.useQuery<SearchAirportsQuery, SearchAirportsQueryVariables>({ query: SearchAirportsDocument, ...options });
 };
 export const AirportsDocument = gql`
-    query Airports {
-  airports {
-    id
-    icaoCode
-    iataCode
-    name
-    city
-    country
-    latitude
-    longitude
-    photoCount
+    query Airports($first: Int) {
+  airports(first: $first) {
+    edges {
+      node {
+        id
+        icaoCode
+        iataCode
+        name
+        city
+        country
+        latitude
+        longitude
+      }
+    }
+    totalCount
   }
 }
     `;
@@ -5982,8 +6243,8 @@ export function useMyFollowingQuery(options?: Omit<Urql.UseQueryArgs<MyFollowing
   return Urql.useQuery<MyFollowingQuery, MyFollowingQueryVariables>({ query: MyFollowingDocument, ...options });
 };
 export const FollowingFeedDocument = gql`
-    query FollowingFeed($first: Int, $after: String) {
-  followingFeed(first: $first, after: $after) {
+    query FollowingFeed($first: Int, $after: String, $page: Int) {
+  followingFeed(first: $first, after: $after, page: $page) {
     edges {
       cursor
       node {
@@ -6019,8 +6280,8 @@ export function useAdminStatsQuery(options?: Omit<Urql.UseQueryArgs<AdminStatsQu
   return Urql.useQuery<AdminStatsQuery, AdminStatsQueryVariables>({ query: AdminStatsDocument, ...options });
 };
 export const AdminReportsDocument = gql`
-    query AdminReports($status: String, $first: Int, $after: String) {
-  adminReports(status: $status, first: $first, after: $after) {
+    query AdminReports($status: String, $first: Int, $after: String, $page: Int) {
+  adminReports(status: $status, first: $first, after: $after, page: $page) {
     edges {
       cursor
       node {
@@ -6055,13 +6316,14 @@ export function useAdminReportsQuery(options?: Omit<Urql.UseQueryArgs<AdminRepor
   return Urql.useQuery<AdminReportsQuery, AdminReportsQueryVariables>({ query: AdminReportsDocument, ...options });
 };
 export const AdminUsersDocument = gql`
-    query AdminUsers($role: String, $status: String, $search: String, $first: Int, $after: String) {
+    query AdminUsers($role: String, $status: String, $search: String, $first: Int, $after: String, $page: Int) {
   adminUsers(
     role: $role
     status: $status
     search: $search
     first: $first
     after: $after
+    page: $page
   ) {
     edges {
       cursor
@@ -6072,6 +6334,7 @@ export const AdminUsersDocument = gql`
         role
         status
         createdAt
+        lastLoginAt
         profile {
           displayName
           avatarUrl
@@ -6091,8 +6354,13 @@ export function useAdminUsersQuery(options?: Omit<Urql.UseQueryArgs<AdminUsersQu
   return Urql.useQuery<AdminUsersQuery, AdminUsersQueryVariables>({ query: AdminUsersDocument, ...options });
 };
 export const AdminPhotosDocument = gql`
-    query AdminPhotos($moderationStatus: String, $first: Int, $after: String) {
-  adminPhotos(moderationStatus: $moderationStatus, first: $first, after: $after) {
+    query AdminPhotos($moderationStatus: String, $first: Int, $after: String, $page: Int) {
+  adminPhotos(
+    moderationStatus: $moderationStatus
+    first: $first
+    after: $after
+    page: $page
+  ) {
     edges {
       cursor
       node {
@@ -8872,11 +9140,12 @@ export function useMySalesQuery(options?: Omit<Urql.UseQueryArgs<MySalesQueryVar
 };
 export const AdminSellerApplicationsDocument = gql`
     query AdminSellerApplications($first: Int, $after: String) {
-  adminSellerApplications(first: $first, after: $after) {
+  adminSellerApplications(first: $first, after: $after, status: "pending") {
     edges {
       cursor
       node {
         id
+        status
         approved
         bio
         website
