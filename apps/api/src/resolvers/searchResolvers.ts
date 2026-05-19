@@ -1,5 +1,5 @@
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
+import { buildPaginationArgs, encodeCursor } from '../utils/resolverHelpers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -7,13 +7,18 @@ export interface SearchArgs {
   query: string;
   first?: number;
   after?: string;
+  page?: number;
 }
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const searchQueryResolvers = {
   searchPhotos: async (_parent: unknown, args: SearchArgs, ctx: Context) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const q = args.query.trim();
 
     if (!q) {
@@ -22,6 +27,7 @@ export const searchQueryResolvers = {
 
     const where: Record<string, unknown> = {
       moderationStatus: 'approved',
+      ...cursorWhere,
       OR: [
         { caption: { contains: q, mode: 'insensitive' } },
         { airline: { contains: q, mode: 'insensitive' } },
@@ -34,14 +40,11 @@ export const searchQueryResolvers = {
       ],
     };
 
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
-    }
-
     const [items, totalCount] = await Promise.all([
       ctx.prisma.photo.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { user: true, variants: true, tags: true },
       }),
@@ -65,7 +68,11 @@ export const searchQueryResolvers = {
   },
 
   searchUsers: async (_parent: unknown, args: SearchArgs, ctx: Context) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const q = args.query.trim();
 
     if (!q) {
@@ -73,20 +80,18 @@ export const searchQueryResolvers = {
     }
 
     const where: Record<string, unknown> = {
+      ...cursorWhere,
       OR: [
         { username: { contains: q, mode: 'insensitive' } },
         { profile: { displayName: { contains: q, mode: 'insensitive' } } },
       ],
     };
 
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
-    }
-
     const [items, totalCount] = await Promise.all([
       ctx.prisma.user.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { profile: true },
       }),

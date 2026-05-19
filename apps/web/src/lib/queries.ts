@@ -590,8 +590,8 @@ export const UPDATE_AVATAR = gql`
 // ─── Search ─────────────────────────────────────────────────────────────────
 
 export const SEARCH_PHOTOS = gql`
-  query SearchPhotos($query: String!, $first: Int, $after: String) {
-    searchPhotos(query: $query, first: $first, after: $after) {
+  query SearchPhotos($query: String!, $first: Int, $after: String, $page: Int) {
+    searchPhotos(query: $query, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -609,8 +609,8 @@ export const SEARCH_PHOTOS = gql`
 `;
 
 export const SEARCH_USERS = gql`
-  query SearchUsers($query: String!, $first: Int, $after: String) {
-    searchUsers(query: $query, first: $first, after: $after) {
+  query SearchUsers($query: String!, $first: Int, $after: String, $page: Int) {
+    searchUsers(query: $query, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -980,8 +980,8 @@ export const GET_MY_FOLLOWING = gql`
 // ─── Following Feed ─────────────────────────────────────────────────────────
 
 export const GET_FOLLOWING_FEED = gql`
-  query FollowingFeed($first: Int, $after: String) {
-    followingFeed(first: $first, after: $after) {
+  query FollowingFeed($first: Int, $after: String, $page: Int) {
+    followingFeed(first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {

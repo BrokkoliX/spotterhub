@@ -2,7 +2,7 @@ import type { FollowTargetType } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import { encodeCursor, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 import { createNotification } from './notificationResolvers.js';
 
@@ -269,11 +269,15 @@ export const followMutationResolvers = {
 export const followQueryResolvers = {
   followingFeed: async (
     _parent: unknown,
-    args: { first?: number; after?: string },
+    args: { first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     const followerId = await resolveUserId(ctx);
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     // Gather all follows for the authenticated user
     const follows = await ctx.prisma.follow.findMany({
@@ -366,17 +370,15 @@ export const followQueryResolvers = {
 
     const where: Record<string, unknown> = {
       moderationStatus: 'approved',
+      ...cursorWhere,
       OR: orConditions,
     };
-
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
-    }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.photo.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { user: true, variants: true, tags: true },
       }),
