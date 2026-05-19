@@ -8,6 +8,7 @@ import { useQuery } from 'urql';
 import { useAuth } from '@/lib/auth';
 import { MY_UPLOADS } from '@/lib/queries';
 import { Pagination } from '@/components/Pagination';
+import { UploadTabs } from '@/components/UploadTabs';
 import styles from './page.module.css';
 
 const PAGE_SIZE = 20;
@@ -92,12 +93,8 @@ export default function MyUploadsPage() {
   return (
     <div className={styles.page}>
       <div className="container">
-        <div className={styles.headerRow}>
-          <h1 className={styles.title}>My Uploads</h1>
-          <Link href="/upload" className="btn btn-primary">
-            Upload Photo
-          </Link>
-        </div>
+        <UploadTabs />
+        <h1 className={styles.title}>My Uploads</h1>
 
         {totalPendingCount > 0 && (
           <div className={styles.queueInfo}>

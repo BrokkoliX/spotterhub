@@ -161,54 +161,6 @@ function NotificationBell() {
   );
 }
 
-// ─── UploadDropdown ───────────────────────────────────────────────────────────
-
-function UploadDropdown() {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
-
-  return (
-    <div className={styles.uploadDropdownWrap} ref={dropdownRef}>
-      <button
-        type="button"
-        className={styles.navLink}
-        onClick={() => setOpen((v) => !v)}
-      >
-        Upload ▾
-      </button>
-      {open && (
-        <div className={styles.uploadDropdown}>
-          <Link
-            href="/upload"
-            className={styles.uploadDropdownItem}
-            onClick={() => setOpen(false)}
-          >
-            📷 Upload Photo
-          </Link>
-          <Link
-            href="/my-uploads"
-            className={styles.uploadDropdownItem}
-            onClick={() => setOpen(false)}
-          >
-            📋 My Uploads
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 export function Header() {
@@ -288,7 +240,11 @@ export function Header() {
               Albums
             </Link>
           )}
-          {showUser && <UploadDropdown />}
+          {showUser && (
+            <Link href="/upload" className={styles.navLink}>
+              Upload
+            </Link>
+          )}
           {showUser && (
             <Link href="/contact" className={styles.navLink}>
               Contact
@@ -441,14 +397,7 @@ export function Header() {
                     className={styles.mobileNavLink}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Upload Photo
-                  </Link>
-                  <Link
-                    href="/my-uploads"
-                    className={styles.mobileNavLink}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    My Uploads
+                    Upload
                   </Link>
                   <Link
                     href="/contact"

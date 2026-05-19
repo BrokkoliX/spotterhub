@@ -19,6 +19,7 @@ import exifr from 'exifr';
 
 import { useAuth } from '@/lib/auth';
 import SearchableSelect from '@/components/SearchableSelect';
+import { UploadTabs } from '@/components/UploadTabs';
 import {
   CREATE_PHOTO,
   CREATE_PENDING_AIRCRAFT,
@@ -551,6 +552,7 @@ export default function UploadPage() {
   return (
     <div className={styles.page}>
       <div className="container">
+        <UploadTabs />
         <h1 className={styles.title}>📷 Upload to My Collection</h1>
         <p className={styles.subtitle}>
           Photos you upload here go into your personal collection.
