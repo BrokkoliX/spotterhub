@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, use, useCallback, useState } from 'react';
+import { type FormEvent, use, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { AirportFollowButton } from '@/components/AirportFollowButton';
@@ -39,8 +39,7 @@ export default function AirportPage({
 }) {
   const { code } = use(params);
   const { user } = useAuth();
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [allPhotos, setAllPhotos] = useState<PhotoData[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Spotting location form state
   const [showSpotForm, setShowSpotForm] = useState(false);
@@ -61,31 +60,23 @@ export default function AirportPage({
 
   const [photosResult] = useQuery({
     query: GET_PHOTOS,
-    variables: { first: PAGE_SIZE, after: cursor, airportCode: code.toUpperCase() },
+    variables: { first: PAGE_SIZE, page: currentPage, airportCode: code.toUpperCase() },
   });
 
   const airport = airportResult.data?.airport;
   const connection = photosResult.data?.photos;
 
   const photos: PhotoData[] =
-    allPhotos.length > 0
-      ? allPhotos
-      : connection?.edges?.map(
-            (e: { node: PhotoData }) => e.node,
-          ) ?? [];
+    connection?.edges?.map(
+          (e: { node: PhotoData }) => e.node,
+        ) ?? [];
 
-  const handleLoadMore = useCallback(() => {
-    if (connection?.pageInfo?.endCursor) {
-      setAllPhotos((prev) => {
-        const existing = prev.length > 0 ? prev : photos;
-        const newPhotos = connection.edges
-          .map((e: { node: PhotoData }) => e.node)
-          .filter((p: PhotoData) => !existing.some((ep: PhotoData) => ep.id === p.id));
-        return [...existing, ...newPhotos];
-      });
-      setCursor(connection.pageInfo.endCursor);
-    }
-  }, [connection, photos]);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const totalCount = connection?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // ─── Spotting Location handlers ──────────────────────────────────────────
 
@@ -336,9 +327,10 @@ export default function AirportPage({
           <h2 className={styles.sectionTitle}>Photos at {displayCode}</h2>
           <PhotoGrid
             photos={photos}
-            hasNextPage={connection?.pageInfo?.hasNextPage ?? false}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
             loading={photosResult.fetching}
-            onLoadMore={handleLoadMore}
             emptyMessage={`No photos at ${displayCode} yet`}
           />
         </div>

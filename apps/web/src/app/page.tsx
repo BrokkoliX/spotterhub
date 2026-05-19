@@ -131,6 +131,7 @@ export default function HomePage() {
   const [debouncedFamily, setDebouncedFamily] = useState('');
   const [debouncedVariant, setDebouncedVariant] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
   const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
@@ -212,6 +213,7 @@ export default function HomePage() {
     query: GET_PHOTOS,
     variables: {
       first: PAGE_SIZE,
+      page: currentPage,
       airportCode: debouncedAirport || undefined,
       airline: debouncedAirline || undefined,
       photographer: debouncedPhotographer || undefined,
@@ -330,7 +332,13 @@ export default function HomePage() {
     setFeedTab(tab);
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   const connection = feedTab === 'recent' ? data?.photos : followingData?.followingFeed;
+  const totalCount = connection?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const displayedPhotos: PhotoData[] =
     connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
   const isLoading = feedTab === 'recent' ? fetching : followingFetching;
@@ -693,9 +701,10 @@ export default function HomePage() {
           <PhotoGrid
             key={gridKey}
             photos={displayedPhotos}
-            hasNextPage={connection?.pageInfo?.hasNextPage ?? false}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
             loading={isLoading}
-            onLoadMore={() => {}}
             viewMode={viewMode}
             adSlotId={feedAdSlot ?? undefined}
             emptyMessage={

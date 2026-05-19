@@ -177,7 +177,8 @@ export const typeDefs = gql`
     """
     Paginated list of users. Supports cursor-based pagination.
     """
-    users(first: Int = 20, after: String): UserConnection!
+    users(first: Int = 20, after: String
+      page: Int): UserConnection!
 
     """
     Fetch a single photo by ID. Returns null if not found.
@@ -191,6 +192,7 @@ export const typeDefs = gql`
     photos(
       first: Int = 20
       after: String
+      page: Int
       userId: ID
       albumId: ID
       airportCode: String
@@ -207,12 +209,14 @@ export const typeDefs = gql`
     Search photos by free text. Matches against caption, aircraft type,
     airline, airport code, and tags. Results ordered by relevance.
     """
-    searchPhotos(query: String!, first: Int = 20, after: String): PhotoConnection!
+    searchPhotos(query: String!, first: Int = 20, after: String
+      page: Int): PhotoConnection!
 
     """
     Search users by username or display name.
     """
-    searchUsers(query: String!, first: Int = 20, after: String): UserConnection!
+    searchUsers(query: String!, first: Int = 20, after: String
+      page: Int): UserConnection!
 
     """
     Distinct airline names matching a search string, for typeahead dropdowns.
@@ -228,7 +232,8 @@ export const typeDefs = gql`
     List albums for a specific user. If no userId is provided, returns the
     authenticated user's albums.
     """
-    albums(userId: ID, first: Int = 20, after: String): AlbumConnection!
+    albums(userId: ID, first: Int = 20, after: String
+      page: Int): AlbumConnection!
 
     """
     List what the authenticated user is following. Optionally filter by target type.
@@ -239,17 +244,20 @@ export const typeDefs = gql`
     Paginated feed of photos from followed users, airports, aircraft types,
     and manufacturers. Requires authentication.
     """
-    followingFeed(first: Int = 20, after: String): PhotoConnection!
+    followingFeed(first: Int = 20, after: String
+      page: Int): PhotoConnection!
 
     """
     List all airports with optional pagination.
     """
-    airports(first: Int = 100, after: String): AirportConnection!
+    airports(first: Int = 100, after: String
+      page: Int): AirportConnection!
 
     """
     List all airports with optional search and pagination. Requires admin or superuser role.
     """
-    adminAirports(search: String, first: Int = 50, after: String): AirportConnection!
+    adminAirports(search: String, first: Int = 50, after: String
+      page: Int): AirportConnection!
 
     """
     Export all airports as a flat list. Requires admin or superuser role.
@@ -269,7 +277,8 @@ export const typeDefs = gql`
     """
     Search aircraft by registration. Used for typeahead on the upload form.
     """
-    aircraftSearch(search: String, first: Int = 20, after: String): AircraftConnection!
+    aircraftSearch(search: String, first: Int = 20, after: String
+      page: Int): AircraftConnection!
 
     """
     Fetch a single aircraft by registration.
@@ -279,7 +288,8 @@ export const typeDefs = gql`
     """
     Paginated list of all aircraft registrations (admin only).
     """
-    adminAircraft(search: String, first: Int = 50, after: String): AircraftConnection!
+    adminAircraft(search: String, first: Int = 50, after: String
+      page: Int): AircraftConnection!
 
     """
     Fetch photos within a geographic bounding box.
@@ -307,7 +317,8 @@ export const typeDefs = gql`
     """
     Paginated comments for a photo. Returns top-level comments with nested replies.
     """
-    comments(photoId: ID!, first: Int = 20, after: String): CommentConnection!
+    comments(photoId: ID!, first: Int = 20, after: String
+      page: Int): CommentConnection!
 
     # ─── Admin Queries ─────────────────────────────────────────────────────
 
@@ -320,14 +331,16 @@ export const typeDefs = gql`
     Paginated list of reports, optionally filtered by status.
     Requires admin or moderator role.
     """
-    adminReports(status: String, first: Int = 20, after: String): ReportConnection!
+    adminReports(status: String, first: Int = 20, after: String
+      page: Int): ReportConnection!
 
     """
     Paginated list of contact messages to admins.
     Optionally filtered by status.
     Requires admin or moderator role.
     """
-    contactMessages(status: ContactMessageStatus, first: Int = 20, after: String): ContactMessageConnection!
+    contactMessages(status: ContactMessageStatus, first: Int = 20, after: String
+      page: Int): ContactMessageConnection!
 
     """
     Paginated list of users for admin management.
@@ -340,6 +353,7 @@ export const typeDefs = gql`
       search: String
       first: Int = 20
       after: String
+      page: Int
     ): UserConnection!
 
     """
@@ -350,6 +364,7 @@ export const typeDefs = gql`
       moderationStatus: String = "pending"
       first: Int = 20
       after: String
+      page: Int
     ): PhotoConnection!
 
     # ─── Community Queries ──────────────────────────────────────────────────
@@ -367,6 +382,7 @@ export const typeDefs = gql`
       category: String
       first: Int = 20
       after: String
+      page: Int
     ): CommunityConnection!
 
     """
@@ -382,6 +398,7 @@ export const typeDefs = gql`
       action: String
       first: Int = 20
       after: String
+      page: Int
     ): CommunityModerationLogConnection!
 
     """
@@ -419,7 +436,8 @@ export const typeDefs = gql`
     """
     Paginated list of threads in a category. Pinned threads appear first.
     """
-    forumThreads(categoryId: ID!, first: Int, after: String): ForumThreadConnection!
+    forumThreads(categoryId: ID!, first: Int, after: String
+      page: Int): ForumThreadConnection!
 
     """
     Fetch a single forum thread by ID.
@@ -429,7 +447,8 @@ export const typeDefs = gql`
     """
     Paginated top-level posts in a thread, oldest first.
     """
-    forumPosts(threadId: ID!, first: Int, after: String): ForumPostConnection!
+    forumPosts(threadId: ID!, first: Int, after: String
+      page: Int): ForumPostConnection!
 
     # ─── Event Queries ───────────────────────────────────────────────────────
 
@@ -440,6 +459,7 @@ export const typeDefs = gql`
       communityId: ID!
       first: Int = 20
       after: String
+      page: Int
       includePast: Boolean
     ): CommunityEventConnection!
 
@@ -453,7 +473,8 @@ export const typeDefs = gql`
     """
     Paginated list of the current user's notifications, newest first.
     """
-    notifications(first: Int, after: String, unreadOnly: Boolean): NotificationConnection!
+    notifications(first: Int, after: String
+      page: Int, unreadOnly: Boolean): NotificationConnection!
 
     """
     Count of unread notifications for the current user. Returns 0 if unauthenticated.
@@ -469,6 +490,7 @@ export const typeDefs = gql`
       search: String
       first: Int = 20
       after: String
+      page: Int
     ): AircraftManufacturerConnection!
 
     """
@@ -479,6 +501,7 @@ export const typeDefs = gql`
       search: String
       first: Int = 20
       after: String
+      page: Int
     ): AircraftFamilyConnection!
 
     """
@@ -489,12 +512,14 @@ export const typeDefs = gql`
       search: String
       first: Int = 20
       after: String
+      page: Int
     ): AircraftVariantConnection!
 
     """
     List all airlines with optional search and pagination.
     """
-    airlines(search: String, first: Int = 20, after: String): AirlineConnection!
+    airlines(search: String, first: Int = 20, after: String
+      page: Int): AirlineConnection!
 
     """
     Fetch a single airline by ICAO code for auto-fill.
@@ -520,6 +545,7 @@ export const typeDefs = gql`
     marketplaceListings(
       first: Int = 20
       after: String
+      page: Int
       sortBy: MarketplaceSort
     ): MarketplaceListingConnection!
 
@@ -527,18 +553,21 @@ export const typeDefs = gql`
     Paginated list of the current user's purchases.
     Requires authentication.
     """
-    myPurchases(first: Int = 20, after: String): OrderConnection!
+    myPurchases(first: Int = 20, after: String
+      page: Int): OrderConnection!
 
     """
     Paginated list of the current user's sales.
     Requires authentication.
     """
-    mySales(first: Int = 20, after: String): OrderConnection!
+    mySales(first: Int = 20, after: String
+      page: Int): OrderConnection!
 
     """
     List of all pending seller applications. Requires admin or superuser role.
     """
-    adminSellerApplications(first: Int = 20, after: String, status: String = "pending"): SellerProfileConnection!
+    adminSellerApplications(first: Int = 20, after: String
+      page: Int, status: String = "pending"): SellerProfileConnection!
 
     # ─── Admin: Pending List Items ───────────────────────────────────────────
 
@@ -550,6 +579,7 @@ export const typeDefs = gql`
       listType: String
       first: Int = 20
       after: String
+      page: Int
     ): PendingListItemConnection!
 
     # ─── Collectibles Marketplace Queries ─────────────────────────────────────────
@@ -567,6 +597,7 @@ export const typeDefs = gql`
       sortBy: MarketplaceSort
       first: Int = 20
       after: String
+      page: Int
     ): MarketplaceItemConnection!
 
     """
@@ -587,12 +618,14 @@ export const typeDefs = gql`
     """
     Paginated feedback for a seller.
     """
-    sellerFeedback(sellerId: ID!, first: Int = 20, after: String): SellerFeedbackConnection!
+    sellerFeedback(sellerId: ID!, first: Int = 20, after: String
+      page: Int): SellerFeedbackConnection!
 
     """
     My marketplace listings (seller).
     """
-    myListings(first: Int = 20, after: String): MarketplaceItemConnection!
+    myListings(first: Int = 20, after: String
+      page: Int): MarketplaceItemConnection!
 
     """
     Admin: all marketplace items, optionally filtered by moderation status.
@@ -601,6 +634,7 @@ export const typeDefs = gql`
       moderationStatus: String
       first: Int = 20
       after: String
+      page: Int
     ): MarketplaceItemConnection!
   }
 
@@ -904,6 +938,12 @@ export const typeDefs = gql`
     """
     adminImportAirports(csvData: String!): ImportResult!
     adminImportAirlines(csvData: String!): ImportResult!
+
+    """
+    Bulk import aircraft hierarchy from CSV data. Requires superuser role.
+    CSV format: manufacturer|family|variant|iataCode|icaoCode (one per line)
+    """
+    adminImportAircraftHierarchy(csvData: String!): ImportResult!
 
     """
     Approve a pending photo, making it visible in the public feed.
@@ -1755,7 +1795,8 @@ export const typeDefs = gql`
     """
     Other photos of the same aircraft (matched by serial number or linked aircraft record).
     """
-    similarAircraftPhotos(first: Int = 12, after: String): PhotoConnection!
+    similarAircraftPhotos(first: Int = 12, after: String
+      page: Int): PhotoConnection!
   }
 
   """
@@ -2235,7 +2276,8 @@ export const typeDefs = gql`
     """
     Photos in this album (junction-table based for community albums).
     """
-    photos(first: Int = 20, after: String): PhotoConnection!
+    photos(first: Int = 20, after: String
+      page: Int): PhotoConnection!
     """
     Current user's membership in the community this album belongs to (null if not a community album).
     """
@@ -2558,17 +2600,20 @@ export const typeDefs = gql`
     """
     Paginated list of community members.
     """
-    members(first: Int = 20, after: String): CommunityMemberConnection!
+    members(first: Int = 20, after: String
+      page: Int): CommunityMemberConnection!
 
     """
     Recent photos from community members.
     """
-    photos(first: Int = 20, after: String): PhotoConnection!
+    photos(first: Int = 20, after: String
+      page: Int): PhotoConnection!
 
     """
     Community albums. Only present for community-scoped albums.
     """
-    albums(first: Int = 20, after: String): AlbumConnection!
+    albums(first: Int = 20, after: String
+      page: Int): AlbumConnection!
   }
 
   """
@@ -2746,6 +2791,7 @@ export const typeDefs = gql`
     Cursor for pagination.
     """
     after: String
+      page: Int
   }
 
   # ─── Forum Types ─────────────────────────────────────────────────────────

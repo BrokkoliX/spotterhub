@@ -4,7 +4,7 @@ import { GraphQLError } from 'graphql';
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { createConnectAccount, createAccountOnboardingLink, createCheckoutSession } from '../services/stripe.js';
-import { decodeCursor } from '../utils/resolverHelpers.js';
+import { decodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

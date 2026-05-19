@@ -3,13 +3,15 @@
 import { PhotoCard, type PhotoData } from './PhotoCard';
 export type { PhotoData };
 import { AdBanner } from './AdBanner';
+import { Pagination } from './Pagination';
 import styles from './PhotoGrid.module.css';
 
 interface PhotoGridProps {
   photos: PhotoData[];
-  hasNextPage: boolean;
-  loading: boolean;
-  onLoadMore: () => void;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  loading?: boolean;
   emptyMessage?: string;
   viewMode?: 'grid' | 'list';
   selectable?: boolean;
@@ -22,13 +24,14 @@ interface PhotoGridProps {
 }
 
 /**
- * Renders a responsive grid (or list) of PhotoCards with a "Load more" button.
+ * Renders a responsive grid (or list) of PhotoCards with numbered pagination.
  */
 export function PhotoGrid({
   photos,
-  hasNextPage,
-  loading,
-  onLoadMore,
+  currentPage,
+  totalPages,
+  onPageChange,
+  loading = false,
   emptyMessage = 'No photos yet',
   viewMode = 'grid',
   selectable = false,
@@ -98,17 +101,13 @@ export function PhotoGrid({
           })}
         </div>
 
-        {hasNextPage && (
-          <div className={styles.loadMore}>
-            <button
-              onClick={onLoadMore}
-              disabled={loading}
-              className="btn btn-secondary btn-lg"
-              type="button"
-            >
-              {loading ? 'Loading…' : 'Load more'}
-            </button>
-          </div>
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            loading={loading}
+          />
         )}
       </>
     );
@@ -133,17 +132,13 @@ export function PhotoGrid({
         }).flat()}
       </div>
 
-      {hasNextPage && (
-        <div className={styles.loadMore}>
-          <button
-            onClick={onLoadMore}
-            disabled={loading}
-            className="btn btn-secondary btn-lg"
-            type="button"
-          >
-            {loading ? 'Loading…' : 'Load more'}
-          </button>
-        </div>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          loading={loading}
+        />
       )}
     </>
   );

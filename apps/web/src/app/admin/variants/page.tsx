@@ -14,6 +14,7 @@ import {
   UPSERT_VARIANT,
 } from '@/lib/queries';
 import { downloadCSV, parseCSV } from '@/lib/csv';
+import { Pagination } from '@/components/Pagination';
 
 import styles from '../page.module.css';
 
@@ -38,6 +39,7 @@ export default function AdminVariantsPage() {
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
 
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', familyId: '' });
@@ -51,7 +53,7 @@ export default function AdminVariantsPage() {
 
   const [result, reexecute] = useQuery({
     query: ADMIN_VARIANTS,
-    variables: { search: search || undefined, first: PAGE_SIZE },
+    variables: { search: search || undefined, first: PAGE_SIZE, page: currentPage },
     pause: !isAdmin,
   });
   const { data, fetching, error } = result;
@@ -80,8 +82,8 @@ export default function AdminVariantsPage() {
   const [, upsertVariant] = useMutation(UPSERT_VARIANT);
 
   const variants = data?.aircraftVariants;
-  const hasNextPage = variants?.pageInfo?.hasNextPage;
-  const endCursor = variants?.pageInfo?.endCursor;
+  const totalCount = variants?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const families = familiesResult.data?.aircraftFamilies?.edges?.map((e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
     ...e.node,
@@ -138,9 +140,9 @@ export default function AdminVariantsPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, first: PAGE_SIZE, page } });
   };
 
   // ─── Export ────────────────────────────────────────────────────────────────
@@ -235,7 +237,7 @@ export default function AdminVariantsPage() {
           type="text"
           placeholder="Search by name…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
         />
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={openCreate}>+ Add</button>
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={handleExport}>Export CSV</button>
@@ -273,10 +275,13 @@ export default function AdminVariantsPage() {
               ))}
             </tbody>
           </table>
-          {hasNextPage && (
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <button className="btn btn-secondary" onClick={loadMore} disabled={fetching}>Load More</button>
-            </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              loading={fetching}
+            />
           )}
         </>
       )}

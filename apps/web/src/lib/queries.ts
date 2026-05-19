@@ -1014,8 +1014,8 @@ export const ADMIN_STATS = gql`
 `;
 
 export const ADMIN_REPORTS = gql`
-  query AdminReports($status: String, $first: Int, $after: String) {
-    adminReports(status: $status, first: $first, after: $after) {
+  query AdminReports($status: String, $first: Int, $after: String, $page: Int) {
+    adminReports(status: $status, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1047,8 +1047,8 @@ export const ADMIN_REPORTS = gql`
 `;
 
 export const ADMIN_USERS = gql`
-  query AdminUsers($role: String, $status: String, $search: String, $first: Int, $after: String) {
-    adminUsers(role: $role, status: $status, search: $search, first: $first, after: $after) {
+  query AdminUsers($role: String, $status: String, $search: String, $first: Int, $after: String, $page: Int) {
+    adminUsers(role: $role, status: $status, search: $search, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {
@@ -1075,8 +1075,8 @@ export const ADMIN_USERS = gql`
 `;
 
 export const ADMIN_PHOTOS = gql`
-  query AdminPhotos($moderationStatus: String, $first: Int, $after: String) {
-    adminPhotos(moderationStatus: $moderationStatus, first: $first, after: $after) {
+  query AdminPhotos($moderationStatus: String, $first: Int, $after: String, $page: Int) {
+    adminPhotos(moderationStatus: $moderationStatus, first: $first, after: $after, page: $page) {
       edges {
         cursor
         node {

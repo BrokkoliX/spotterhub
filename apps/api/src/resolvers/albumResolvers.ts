@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -104,10 +104,14 @@ export const albumQueryResolvers = {
 
   albums: async (
     _parent: unknown,
-    args: { userId?: string; first?: number; after?: string },
+    args: { userId?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const filter = await deletedFilter(ctx);
 
     // Determine whose albums to fetch
@@ -132,13 +136,14 @@ export const albumQueryResolvers = {
       where.isPublic = true;
     }
 
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const [albums, totalCount] = await Promise.all([
       ctx.prisma.album.findMany({
         where,
+        skip,
         take: take + 1,
         orderBy: { createdAt: 'desc' },
         include: {

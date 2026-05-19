@@ -41,8 +41,7 @@ export default function AlbumDetailPage({
   const [editDesc, setEditDesc] = useState('');
   const [editPublic, setEditPublic] = useState(true);
   const [editCoverPhotoId, setEditCoverPhotoId] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [allPhotos, setAllPhotos] = useState<PhotoData[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [albumResult, reexecuteAlbumQuery] = useQuery({
     query: GET_ALBUM,
@@ -51,7 +50,7 @@ export default function AlbumDetailPage({
 
   const [photosResult, reexecutePhotosQuery] = useQuery({
     query: GET_PHOTOS,
-    variables: { first: PAGE_SIZE, after: cursor, albumId: id },
+    variables: { first: PAGE_SIZE, page: currentPage, albumId: id },
   });
 
   const [, updateAlbum] = useMutation(UPDATE_ALBUM);
@@ -62,9 +61,14 @@ export default function AlbumDetailPage({
   const connection = photosResult.data?.photos;
 
   const photos: PhotoData[] =
-    allPhotos.length > 0
-      ? allPhotos
-      : connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const totalCount = connection?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const isOwner = user?.username === album?.user?.username;
   const isCommunityAlbum = !!album?.communityId;
@@ -75,22 +79,6 @@ export default function AlbumDetailPage({
     ? isSuperuser || isCommunityAdmin || !!myCommunityRole // any active member; superuser always can
     : isOwner;
   const canManageAlbum = isCommunityAlbum ? (isSuperuser || isCommunityAdmin) : isOwner;
-
-  const handleLoadMore = useCallback(() => {
-    if (connection?.pageInfo?.endCursor) {
-      setAllPhotos((prev) => {
-        const existing = prev.length > 0 ? prev : photos;
-        const newPhotos = connection.edges
-          .map((e: { node: PhotoData }) => e.node)
-          .filter(
-            (p: PhotoData) =>
-              !existing.some((ep: PhotoData) => ep.id === p.id),
-          );
-        return [...existing, ...newPhotos];
-      });
-      setCursor(connection.pageInfo.endCursor);
-    }
-  }, [connection, photos]);
 
   const openEdit = () => {
     setEditTitle(album?.title ?? '');
@@ -122,8 +110,7 @@ export default function AlbumDetailPage({
   };
 
   const handlePhotosAdded = () => {
-    setAllPhotos([]);
-    setCursor(null);
+    setCurrentPage(1);
     reexecuteAlbumQuery({ requestPolicy: 'network-only' });
     reexecutePhotosQuery({ requestPolicy: 'network-only' });
   };
@@ -135,9 +122,6 @@ export default function AlbumDetailPage({
       photoIds: [...selectedPhotoIds],
     });
     if (!res.error) {
-      setAllPhotos((prev) =>
-        prev.filter((p) => !selectedPhotoIds.has(p.id)),
-      );
       setSelectedPhotoIds(new Set());
       setShowRemovePhotos(false);
       reexecuteAlbumQuery({ requestPolicy: 'network-only' });
@@ -280,9 +264,9 @@ export default function AlbumDetailPage({
           )}
           <PhotoGrid
             photos={photos}
-            hasNextPage={connection?.pageInfo?.hasNextPage ?? false}
-            loading={photosResult.fetching}
-            onLoadMore={handleLoadMore}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
             viewMode={showRemovePhotos ? 'list' : 'grid'}
             selectable={showRemovePhotos}
             selectedIds={selectedPhotoIds}

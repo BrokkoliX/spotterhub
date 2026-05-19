@@ -8,6 +8,7 @@ import {
   ADMIN_UPDATE_USER_ROLE,
   ADMIN_UPDATE_USER_STATUS,
 } from '@/lib/queries';
+import { Pagination } from '@/components/Pagination';
 import { useAdminUsersQuery } from '@/lib/generated/graphql';
 
 import styles from '../page.module.css';
@@ -34,6 +35,7 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [{ data, fetching }, reexecute] = useAdminUsersQuery({
     variables: {
@@ -41,6 +43,7 @@ export default function AdminUsersPage() {
       status: statusFilter || undefined,
       search: search || undefined,
       first: PAGE_SIZE,
+      page: currentPage,
     },
     pause: !isAdmin,
   });
@@ -52,8 +55,8 @@ export default function AdminUsersPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const users = data?.adminUsers;
-  const hasNextPage = users?.pageInfo?.hasNextPage;
-  const endCursor = users?.pageInfo?.endCursor;
+  const totalCount = users?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const handleRoleChange = async (userId: string, role: string) => {
     await updateRole({ userId, role });
@@ -65,9 +68,14 @@ export default function AdminUsersPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { role: roleFilter || undefined, status: statusFilter || undefined, search: search || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { role: roleFilter || undefined, status: statusFilter || undefined, search: search || undefined, first: PAGE_SIZE, page } });
+  };
+
+  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (value: string) => {
+    setter(value);
+    setCurrentPage(1);
   };
 
   return (
@@ -79,7 +87,7 @@ export default function AdminUsersPage() {
         <select
           className={styles.filterSelect}
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
+          onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="">All roles</option>
           <option value="admin">Admin</option>
@@ -89,7 +97,7 @@ export default function AdminUsersPage() {
         <select
           className={styles.filterSelect}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -101,11 +109,11 @@ export default function AdminUsersPage() {
           type="text"
           placeholder="Search username or email…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
         />
         {users && (
           <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-            {users.totalCount} user{users.totalCount !== 1 ? 's' : ''}
+            {totalCount} user{totalCount !== 1 ? 's' : ''}
           </span>
         )}
       </div>
@@ -185,8 +193,13 @@ export default function AdminUsersPage() {
         <div className={styles.loading}>No users found</div>
       )}
 
-      {hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`} onClick={loadMore} disabled={fetching}>Load more</button>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          loading={fetching}
+        />
       )}
       </div>
     </div>

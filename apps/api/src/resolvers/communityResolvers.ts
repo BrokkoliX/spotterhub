@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength, validateSlug } from '../utils/validation.js';
 
 import { createNotification } from './notificationResolvers.js';
@@ -114,10 +114,14 @@ export const communityQueryResolvers = {
 
   communities: async (
     _parent: unknown,
-    args: { search?: string; category?: string; first?: number; after?: string },
+    args: { search?: string; category?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = { visibility: 'public' };
 
     if (args.category) {
@@ -129,14 +133,15 @@ export const communityQueryResolvers = {
         { description: { contains: args.search, mode: 'insensitive' } },
       ];
     }
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.community.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
       }),
       ctx.prisma.community.count({ where }),

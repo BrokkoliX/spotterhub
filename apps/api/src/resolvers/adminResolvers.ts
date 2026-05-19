@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -39,26 +39,30 @@ export const adminQueryResolvers = {
 
   adminReports: async (
     _parent: unknown,
-    args: { status?: string; first?: number; after?: string },
+    args: { status?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'moderator']);
 
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = {};
 
     if (args.status) {
       where.status = args.status;
     }
-
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.report.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { reporter: true, reviewer: true },
       }),
@@ -83,12 +87,16 @@ export const adminQueryResolvers = {
 
   adminUsers: async (
     _parent: unknown,
-    args: { role?: string; status?: string; search?: string; first?: number; after?: string },
+    args: { role?: string; status?: string; search?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'moderator']);
 
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = {};
 
     if (args.role) {
@@ -103,14 +111,15 @@ export const adminQueryResolvers = {
         { email: { contains: args.search, mode: 'insensitive' } },
       ];
     }
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.user.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { profile: true },
       }),
@@ -120,7 +129,6 @@ export const adminQueryResolvers = {
     const hasNextPage = items.length > take;
     const edges = items.slice(0, take).map((user) => ({
       cursor: encodeCursor(user.createdAt),
-      // Serialize dates so GraphQL doesn't get raw Date objects for top-level edges
       node: { ...user, createdAt: user.createdAt.toISOString() },
     }));
 
@@ -136,26 +144,30 @@ export const adminQueryResolvers = {
 
   adminPhotos: async (
     _parent: unknown,
-    args: { moderationStatus?: string; first?: number; after?: string },
+    args: { moderationStatus?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'moderator']);
 
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = {};
 
     if (args.moderationStatus) {
       where.moderationStatus = args.moderationStatus;
     }
-
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.photo.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { user: true, variants: true, tags: true },
       }),
@@ -462,6 +474,83 @@ export const adminMutationResolvers = {
         imported++;
       } catch (e) {
         errors.push(`Failed to import ${cleanIcao}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    return { imported, errors: errors.slice(0, 50) };
+  },
+
+  adminImportAircraftHierarchy: async (
+    _parent: unknown,
+    args: { csvData: string },
+    ctx: Context,
+  ) => {
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can import aircraft', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    // Parse pipe-delimited CSV: manufacturer|family|variant|iataCode|icaoCode
+    const lines = args.csvData.split('\n').filter((l) => l.trim());
+    let imported = 0;
+    const errors: string[] = [];
+
+    for (const line of lines) {
+      const fields = line.split('|').map((p) => p.trim());
+      if (fields.length < 3) {
+        errors.push(`Skipped line (need 3 fields): ${line.slice(0, 50)}`);
+        continue;
+      }
+
+      const [manufacturer, family, variant, iataCode, icaoCode] = fields;
+      if (!manufacturer || !family || !variant) {
+        errors.push(`Skipped line (missing required fields): ${line.slice(0, 50)}`);
+        continue;
+      }
+
+      try {
+        // Upsert manufacturer
+        const mfr = await ctx.prisma.aircraftManufacturer.upsert({
+          where: { name: manufacturer },
+          create: { name: manufacturer, country: null },
+          update: {},
+        });
+
+        // Upsert family
+        const fam = await ctx.prisma.aircraftFamily.upsert({
+          where: { name: family },
+          create: { name: family, manufacturerId: mfr.id },
+          update: { manufacturerId: mfr.id },
+        });
+
+        // Upsert variant with codes
+        const cleanIata = iataCode?.replace(/\W/g, '').toUpperCase() || null;
+        const cleanIcao = icaoCode?.replace(/\W/g, '').toUpperCase() || null;
+
+        await ctx.prisma.aircraftVariant.upsert({
+          where: { name: variant },
+          create: {
+            name: variant,
+            familyId: fam.id,
+            iataCode: cleanIata,
+            icaoCode: cleanIcao,
+          },
+          update: {
+            familyId: fam.id,
+            iataCode: cleanIata,
+            icaoCode: cleanIcao,
+          },
+        });
+
+        imported++;
+      } catch (e) {
+        errors.push(
+          `Failed to import ${manufacturer}/${family}/${variant}: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+        );
       }
     }
 

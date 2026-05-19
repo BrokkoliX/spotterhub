@@ -10,6 +10,7 @@ import { APPROVE_PHOTO, REJECT_PHOTO } from '@/lib/queries';
 import type { AdminPhotosQuery } from '@/lib/generated/graphql';
 import { useAdminPhotosQuery } from '@/lib/generated/graphql';
 
+import { Pagination } from '@/components/Pagination';
 import styles from '../page.module.css';
 
 const PAGE_SIZE = 20;
@@ -31,11 +32,13 @@ export default function AdminPhotosPage() {
   const { user, ready } = useAuth();
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [{ data, fetching }, reexecute] = useAdminPhotosQuery({
     variables: {
       moderationStatus: statusFilter || undefined,
       first: PAGE_SIZE,
+      page: currentPage,
     },
     pause: !isAdmin,
   });
@@ -47,8 +50,8 @@ export default function AdminPhotosPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const photos = data?.adminPhotos;
-  const hasNextPage = photos?.pageInfo?.hasNextPage;
-  const endCursor = photos?.pageInfo?.endCursor;
+  const totalCount = photos?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const handleApprove = async (photoId: string) => {
     await approvePhoto({ photoId });
@@ -60,9 +63,9 @@ export default function AdminPhotosPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { moderationStatus: statusFilter || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { moderationStatus: statusFilter || undefined, first: PAGE_SIZE, page } });
   };
 
   return (
@@ -74,7 +77,7 @@ export default function AdminPhotosPage() {
         <select
           className={styles.filterSelect}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
@@ -153,8 +156,13 @@ export default function AdminPhotosPage() {
         <div className={styles.loading}>No photos found</div>
       )}
 
-      {hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`} onClick={loadMore} disabled={fetching}>Load more</button>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          loading={fetching}
+        />
       )}
       </div>
     </div>

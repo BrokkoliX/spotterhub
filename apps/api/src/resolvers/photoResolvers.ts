@@ -6,7 +6,7 @@ import { getDbUser } from '../utils/resolverHelpers.js';
 import type { Context } from '../context.js';
 import { generateVariants, getSharp } from '../services/imageProcessing.js';
 import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
-import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength, validateArrayLength } from '../utils/validation.js';
 
 // ─── Privacy Helpers ────────────────────────────────────────────────────────
@@ -44,6 +44,7 @@ export type PhotoSortBy =
 export interface PhotosArgs {
   first?: number;
   after?: string;
+  page?: number;
   userId?: string;
   albumId?: string;
   airportCode?: string;
@@ -170,7 +171,11 @@ export const photoQueryResolvers = {
   },
 
   photos: async (_parent: unknown, args: PhotosArgs, ctx: Context) => {
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const deletedFilter_ = await deletedFilter(ctx);
 
     // Build filter conditions
@@ -179,8 +184,8 @@ export const photoQueryResolvers = {
       ...deletedFilter_,
     };
 
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
     if (args.userId) {
       where.userId = args.userId;
@@ -240,6 +245,7 @@ export const photoQueryResolvers = {
       ctx.prisma.photo.findMany({
         where,
         orderBy,
+        skip,
         take: take + 1,
         include: {
           user: true,

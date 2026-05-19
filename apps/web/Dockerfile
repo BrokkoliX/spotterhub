@@ -4,7 +4,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Build arguments for Next.js public env vars
-ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_URL=http://api.spotterspace.com/graphql
 ARG NEXT_PUBLIC_MAPBOX_TOKEN
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL

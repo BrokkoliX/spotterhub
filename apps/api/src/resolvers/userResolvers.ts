@@ -1,6 +1,6 @@
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -52,19 +52,22 @@ export const userQueryResolvers = {
 
   users: async (
     _parent: unknown,
-    args: { first: number; after?: string },
+    args: { first: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     requireAuth(ctx); // Require authentication for user list
-    const take = Math.min(args.first ?? 20, 50);
-    const where = args.after
-      ? { createdAt: { lt: decodeCursor(args.after) } }
-      : {};
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
+    const where = cursorWhere ?? {};
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.user.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { profile: true },
       }),

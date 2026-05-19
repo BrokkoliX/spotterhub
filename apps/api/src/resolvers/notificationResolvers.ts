@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +23,7 @@ export interface NotificationParent {
 export interface NotificationsArgs {
   first?: number;
   after?: string;
+  page?: number;
   unreadOnly?: boolean;
 }
 
@@ -67,17 +68,22 @@ export const notificationQueryResolvers = {
     ctx: Context,
   ) => {
     const userId = await resolveUserId(ctx);
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
 
     const where: Record<string, unknown> = { userId };
     if (args.unreadOnly) where.isRead = false;
-    if (args.after) {
-      where.createdAt = { lt: decodeCursor(args.after) };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const items = await ctx.prisma.notification.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      skip,
       take: take + 1,
     });
 

@@ -20,6 +20,7 @@ import {
   UPSERT_AIRCRAFT,
 } from '@/lib/queries';
 import { downloadCSV, parseCSV } from '@/lib/csv';
+import { Pagination } from '@/components/Pagination';
 
 import styles from '../page.module.css';
 
@@ -67,6 +68,7 @@ export default function AdminAircraftPage() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -89,7 +91,7 @@ export default function AdminAircraftPage() {
 
   const [result, reexecute] = useQuery({
     query: ADMIN_AIRCRAFT,
-    variables: { search: search || undefined, first: PAGE_SIZE },
+    variables: { search: search || undefined, first: PAGE_SIZE, page: currentPage },
     pause: !isAdmin,
   });
   const { data, fetching, error } = result;
@@ -138,8 +140,8 @@ export default function AdminAircraftPage() {
         totalCount: aircrafts?.edges?.filter(({ node }: { node: AircraftNode }) => node.status === statusFilter).length ?? 0,
       }
     : aircrafts;
-  const hasNextPage = filteredAircrafts?.pageInfo?.hasNextPage;
-  const endCursor = filteredAircrafts?.pageInfo?.endCursor;
+  const totalCount = filteredAircrafts?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const allManufacturers = manufacturersResult.data?.aircraftManufacturers?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
   const manufacturerNameToId = new Map(allManufacturers.map((m: { id: string; name: string }) => [m.name.toLowerCase(), m.id]));
@@ -329,9 +331,9 @@ export default function AdminAircraftPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, status: statusFilter || undefined, first: PAGE_SIZE, page } });
   };
 
   if (!ready) return <div className={styles.loading}>Loading…</div>;
@@ -348,12 +350,12 @@ export default function AdminAircraftPage() {
           type="text"
           placeholder="Search by registration, manufacturer, family, variant…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
         />
         <select
           className={styles.filterInput}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           style={{ width: 'auto', minWidth: 150 }}
         >
           <option value="">All Status</option>
@@ -448,10 +450,13 @@ export default function AdminAircraftPage() {
               ))}
             </tbody>
           </table>
-          {hasNextPage && (
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <button className="btn btn-secondary" onClick={loadMore} disabled={fetching}>Load More</button>
-            </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              loading={fetching}
+            />
           )}
         </>
       )}

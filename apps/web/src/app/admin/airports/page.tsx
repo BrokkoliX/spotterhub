@@ -15,6 +15,7 @@ import {
 import MapPicker from '@/components/MapPicker';
 import { parseCSV } from '@/lib/csv';
 
+import { Pagination } from '@/components/Pagination';
 import styles from '../page.module.css';
 
 const PAGE_SIZE = 50;
@@ -47,6 +48,7 @@ export default function AdminAirportsPage() {
   const isAdmin = user && (user.role === 'admin' || user.role === 'superuser');
 
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -63,7 +65,7 @@ export default function AdminAirportsPage() {
 
   const [result, reexecute] = useQuery({
     query: ADMIN_AIRPORTS,
-    variables: { search: search || undefined, first: PAGE_SIZE },
+    variables: { search: search || undefined, first: PAGE_SIZE, page: currentPage },
     pause: !isAdmin,
   });
 
@@ -78,8 +80,8 @@ export default function AdminAirportsPage() {
   const [, deleteAirport] = useMutation(DELETE_AIRPORT);
 
   const airports = result.data?.adminAirports?.edges ?? [];
-  const hasNextPage = result.data?.adminAirports?.pageInfo?.hasNextPage;
-  const endCursor = result.data?.adminAirports?.pageInfo?.endCursor;
+  const totalCount = result.data?.adminAirports?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // ─── Export ────────────────────────────────────────────────────────────────
 
@@ -228,9 +230,9 @@ export default function AdminAirportsPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { search: search || undefined, first: PAGE_SIZE, page } });
   };
 
   if (!ready) return <div className={styles.loading}>Loading…</div>;
@@ -251,7 +253,7 @@ export default function AdminAirportsPage() {
           type="text"
           placeholder="Search by code, name, city…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
         />
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={openCreate}>+ Add</button>
         <button className={`btn btn-secondary ${styles.actionBtn}`} onClick={handleExport}>Export CSV</button>
@@ -301,10 +303,13 @@ export default function AdminAirportsPage() {
             </tbody>
           </table>
 
-          {hasNextPage && (
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <button className="btn btn-secondary" onClick={loadMore} disabled={result.fetching}>Load More</button>
-            </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              loading={result.fetching}
+            />
           )}
         </>
       )}

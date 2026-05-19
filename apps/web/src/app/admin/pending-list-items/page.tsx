@@ -5,6 +5,7 @@ import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
 import { ADMIN_PENDING_LIST_ITEMS, REVIEW_LIST_ITEM } from '@/lib/queries';
+import { Pagination } from '@/components/Pagination';
 
 import styles from '../page.module.css';
 
@@ -28,6 +29,7 @@ export default function AdminPendingListItemsPage() {
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
 
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState<PendingListItemNode | null>(null);
   const [reviewStatus, setReviewStatus] = useState<'approved' | 'rejected'>('approved');
@@ -37,7 +39,7 @@ export default function AdminPendingListItemsPage() {
 
   const [result, reexecute] = useQuery({
     query: ADMIN_PENDING_LIST_ITEMS,
-    variables: { status: statusFilter || undefined, first: PAGE_SIZE },
+    variables: { status: statusFilter || undefined, first: PAGE_SIZE, page: currentPage },
     pause: !isAdmin,
   });
   const { data, fetching, error } = result;
@@ -45,8 +47,8 @@ export default function AdminPendingListItemsPage() {
   const [, reviewListItem] = useMutation(REVIEW_LIST_ITEM);
 
   const items = data?.pendingListItems;
-  const hasNextPage = items?.pageInfo?.hasNextPage;
-  const endCursor = items?.pageInfo?.endCursor;
+  const totalCount = items?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const openReview = (item: PendingListItemNode, status: 'approved' | 'rejected') => {
     setReviewingItem(item);
@@ -76,9 +78,9 @@ export default function AdminPendingListItemsPage() {
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { status: statusFilter || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { status: statusFilter || undefined, first: PAGE_SIZE, page } });
   };
 
   const statusBadgeClass = (status: string) => {
@@ -112,7 +114,7 @@ export default function AdminPendingListItemsPage() {
         <select
           className={styles.filterSelect}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
@@ -172,10 +174,13 @@ export default function AdminPendingListItemsPage() {
             </tbody>
           </table>
 
-          {hasNextPage && (
-            <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <button className="btn btn-secondary" onClick={loadMore} disabled={fetching}>Load More</button>
-            </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              loading={fetching}
+            />
           )}
         </>
       )}

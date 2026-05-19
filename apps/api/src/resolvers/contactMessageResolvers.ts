@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { encodeCursor, decodeCursor } from '../utils/resolverHelpers.js';
+import { encodeCursor, decodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -17,26 +17,30 @@ export interface CreateContactMessageInput {
 export const contactMessageQueryResolvers = {
   contactMessages: async (
     _parent: unknown,
-    args: { status?: string; first?: number; after?: string },
+    args: { status?: string; first?: number; after?: string; page?: number },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'moderator', 'superuser']);
 
-    const take = Math.min(args.first ?? 20, 50);
+    const { skip, take, cursorWhere } = buildPaginationArgs({
+      first: args.first,
+      after: args.after,
+      page: args.page,
+    });
     const where: Record<string, unknown> = {};
 
     if (args.status) {
       where.status = args.status;
     }
-    if (args.after) {
-      const cursor = decodeCursor(args.after);
-      where.createdAt = { lt: cursor };
+    if (cursorWhere) {
+      Object.assign(where, cursorWhere);
     }
 
     const [items, totalCount] = await Promise.all([
       ctx.prisma.contactMessage.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: take + 1,
         include: { user: { select: { id: true, username: true, email: true } } },
       }),

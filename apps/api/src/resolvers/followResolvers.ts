@@ -2,7 +2,7 @@ import type { FollowTargetType } from '@prisma/client';
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, resolveUserId } from '../utils/resolverHelpers.js';
+import { decodeCursor, encodeCursor, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
 
 import { createNotification } from './notificationResolvers.js';
 

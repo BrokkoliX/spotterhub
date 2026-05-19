@@ -27,7 +27,48 @@ export function decodeCursor(cursor: string): Date {
   return date;
 }
 
-// ─── Auth Helpers ────────────────────────────────────────────────────────────
+// ─── Pagination Helpers ───────────────────────────────────────────────────────
+
+export interface PaginationArgs {
+  skip: number;
+  take: number;
+  cursorWhere?: Record<string, unknown>;
+  /** True when using offset pagination (page arg), false when using keyset (after cursor) */
+  isOffset: boolean;
+}
+
+/**
+ * Build Prisma pagination args from page or cursor+first.
+ * When page is provided → offset pagination via Prisma's `skip`.
+ * When after cursor is provided → keyset pagination via where.createdAt < cursor.
+ * Otherwise → simple first/take without cursor or skip.
+ */
+export function buildPaginationArgs({
+  first,
+  after,
+  page,
+}: {
+  first?: number;
+  after?: string;
+  page?: number;
+}): PaginationArgs {
+  const take = Math.min(first ?? 20, 50);
+
+  if (page != null && page > 0) {
+    return { skip: (page - 1) * take, take, cursorWhere: undefined, isOffset: true };
+  }
+
+  if (after) {
+    return {
+      skip: 0,
+      take,
+      cursorWhere: { createdAt: { lt: decodeCursor(after) } },
+      isOffset: false,
+    };
+  }
+
+  return { skip: 0, take, cursorWhere: undefined, isOffset: false };
+}
 
 /**
  * Resolves the authenticated user's DB id from the context.

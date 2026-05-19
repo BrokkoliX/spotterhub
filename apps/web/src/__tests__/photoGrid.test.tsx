@@ -80,7 +80,7 @@ describe('PhotoGrid', () => {
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={photos} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+        <PhotoGrid photos={photos} currentPage={1} totalPages={1} onPageChange={() => {}} />
       </AuthProvider>,
     );
 
@@ -93,9 +93,9 @@ describe('PhotoGrid', () => {
       <AuthProvider>
         <PhotoGrid
           photos={[]}
-          hasNextPage={false}
-          loading={false}
-          onLoadMore={() => {}}
+          currentPage={1}
+          totalPages={1}
+          onPageChange={() => {}}
           emptyMessage="No photos match your filters."
         />
       </AuthProvider>,
@@ -105,46 +105,46 @@ describe('PhotoGrid', () => {
     expect(screen.getByText('Be the first to share an aviation photo!')).toBeTruthy();
   });
 
-  it('shows load more button when hasNextPage is true', () => {
+  it('renders pagination when totalPages > 1', () => {
     const photos = [createMockPhoto({ id: 'p1' })];
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={photos} hasNextPage={true} loading={false} onLoadMore={() => {}} />
+        <PhotoGrid photos={photos} currentPage={1} totalPages={3} onPageChange={() => {}} />
       </AuthProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+    expect(screen.getByText('Page 1 of 3')).toBeTruthy();
   });
 
-  it('does not show load more button when hasNextPage is false', () => {
+  it('does not render pagination when totalPages is 1', () => {
     const photos = [createMockPhoto({ id: 'p1' })];
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={photos} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+        <PhotoGrid photos={photos} currentPage={1} totalPages={1} onPageChange={() => {}} />
       </AuthProvider>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    expect(screen.queryByText('Page 1 of 1')).toBeNull();
   });
 
-  it('shows loading text in load more button when loading', () => {
+  it('shows loading state via loading prop', () => {
     const photos = [createMockPhoto({ id: 'p1' })];
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={photos} hasNextPage={true} loading={true} onLoadMore={() => {}} />
+        <PhotoGrid photos={photos} currentPage={1} totalPages={3} onPageChange={() => {}} loading={true} />
       </AuthProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Loading…' })).toBeTruthy();
+    expect(screen.getByText('Page 1 of 3')).toBeTruthy();
   });
 
   it('renders default empty message when none provided', () => {
     render(
       <AuthProvider>
-        <PhotoGrid photos={[]} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+        <PhotoGrid photos={[]} currentPage={1} totalPages={1} onPageChange={() => {}} />
       </AuthProvider>,
     );
 
@@ -167,7 +167,7 @@ describe('PhotoGrid', () => {
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={[photo]} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+        <PhotoGrid photos={[photo]} currentPage={1} totalPages={1} onPageChange={() => {}} />
       </AuthProvider>,
     );
 
@@ -186,7 +186,7 @@ describe('PhotoGrid', () => {
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={[photo]} hasNextPage={false} loading={false} onLoadMore={() => {}} />
+        <PhotoGrid photos={[photo]} currentPage={1} totalPages={1} onPageChange={() => {}} />
       </AuthProvider>,
     );
 
@@ -206,7 +206,7 @@ describe('PhotoGrid', () => {
 
     render(
       <AuthProvider>
-        <PhotoGrid photos={[photo]} hasNextPage={false} loading={false} onLoadMore={() => {}} viewMode="list" />
+        <PhotoGrid photos={[photo]} currentPage={1} totalPages={1} onPageChange={() => {}} viewMode="list" />
       </AuthProvider>,
     );
 

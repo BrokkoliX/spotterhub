@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { ADMIN_RESOLVE_REPORT } from '@/lib/queries';
 import { useAdminReportsQuery } from '@/lib/generated/graphql';
 
+import { Pagination } from '@/components/Pagination';
 import styles from '../page.module.css';
 
 const PAGE_SIZE = 20;
@@ -21,9 +22,10 @@ export default function AdminReportsPage() {
   const { user, ready } = useAuth();
   const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
   const [statusFilter, setStatusFilter] = useState('open');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [{ data, fetching }, reexecute] = useAdminReportsQuery({
-    variables: { status: statusFilter || undefined, first: PAGE_SIZE },
+    variables: { status: statusFilter || undefined, first: PAGE_SIZE, page: currentPage },
     pause: !isAdmin,
   });
 
@@ -33,17 +35,17 @@ export default function AdminReportsPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const reports = data?.adminReports;
-  const hasNextPage = reports?.pageInfo?.hasNextPage;
-  const endCursor = reports?.pageInfo?.endCursor;
+  const totalCount = reports?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const handleResolve = async (id: string, action: string) => {
     await resolveReport({ id, action });
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
-    reexecute({ requestPolicy: 'network-only', variables: { status: statusFilter || undefined, first: PAGE_SIZE, after: endCursor } });
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    reexecute({ requestPolicy: 'network-only', variables: { status: statusFilter || undefined, first: PAGE_SIZE, page } });
   };
 
   return (
@@ -55,7 +57,7 @@ export default function AdminReportsPage() {
         <select
           className={styles.filterSelect}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
         >
           <option value="">All statuses</option>
           <option value="open">Open</option>
@@ -128,8 +130,13 @@ export default function AdminReportsPage() {
         <div className={styles.loading}>No reports found</div>
       )}
 
-      {hasNextPage && (
-        <button className={`btn btn-secondary ${styles.loadMore}`} onClick={loadMore} disabled={fetching}>Load more</button>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          loading={fetching}
+        />
       )}
       </div>
     </div>

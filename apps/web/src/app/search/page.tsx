@@ -6,6 +6,7 @@ import { Suspense, useCallback, useState } from 'react';
 import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
+import { Pagination } from '@/components/Pagination';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { SEARCH_PHOTOS, SEARCH_USERS } from '@/lib/queries';
 
@@ -45,10 +46,8 @@ function SearchPageInner() {
   const [inputValue, setInputValue] = useState(initialQuery);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState<Tab>('photos');
-  const [photosCursor, setPhotosCursor] = useState<string | null>(null);
-  const [usersCursor, setUsersCursor] = useState<string | null>(null);
-  const [allPhotos, setAllPhotos] = useState<PhotoData[]>([]);
-  const [allUsers, setAllUsers] = useState<UserResult[]>([]);
+  const [photosPage, setPhotosPage] = useState(1);
+  const [usersPage, setUsersPage] = useState(1);
 
   const hasQuery = searchQuery.length > 0;
 
@@ -56,13 +55,13 @@ function SearchPageInner() {
 
   const [photosResult] = useQuery({
     query: SEARCH_PHOTOS,
-    variables: { query: searchQuery, first: PAGE_SIZE, after: photosCursor },
+    variables: { query: searchQuery, first: PAGE_SIZE, page: photosPage },
     pause: !hasQuery || activeTab !== 'photos',
   });
 
   const [usersResult] = useQuery({
     query: SEARCH_USERS,
-    variables: { query: searchQuery, first: PAGE_SIZE, after: usersCursor },
+    variables: { query: searchQuery, first: PAGE_SIZE, page: usersPage },
     pause: !hasQuery || activeTab !== 'users',
   });
 
@@ -70,23 +69,17 @@ function SearchPageInner() {
 
   const photosConnection = photosResult.data?.searchPhotos;
   const photos: PhotoData[] =
-    allPhotos.length > 0
-      ? allPhotos
-      : photosConnection?.edges?.map(
-            (e: { node: PhotoData }) => e.node,
-          ) ?? [];
+    photosConnection?.edges?.map(
+          (e: { node: PhotoData }) => e.node,
+        ) ?? [];
   const photosTotalCount = photosConnection?.totalCount ?? 0;
-  const photosHasMore = photosConnection?.pageInfo?.hasNextPage ?? false;
 
   const usersConnection = usersResult.data?.searchUsers;
   const users: UserResult[] =
-    allUsers.length > 0
-      ? allUsers
-      : usersConnection?.edges?.map(
-            (e: { node: UserResult }) => e.node,
-          ) ?? [];
+    usersConnection?.edges?.map(
+          (e: { node: UserResult }) => e.node,
+        ) ?? [];
   const usersTotalCount = usersConnection?.totalCount ?? 0;
-  const usersHasMore = usersConnection?.pageInfo?.hasNextPage ?? false;
 
   // ─── Handlers ──────────────────────────────────────────────────────────
 
@@ -96,10 +89,8 @@ function SearchPageInner() {
       const q = inputValue.trim();
       if (!q) return;
       setSearchQuery(q);
-      setPhotosCursor(null);
-      setUsersCursor(null);
-      setAllPhotos([]);
-      setAllUsers([]);
+      setPhotosPage(1);
+      setUsersPage(1);
     },
     [inputValue],
   );
@@ -108,44 +99,11 @@ function SearchPageInner() {
     setActiveTab(tab);
   }, []);
 
-  const handleLoadMorePhotos = useCallback(() => {
-    if (photosConnection?.pageInfo?.endCursor) {
-      setAllPhotos((prev) => [...(prev.length > 0 ? prev : photos)]);
-      setPhotosCursor(photosConnection.pageInfo.endCursor);
-    }
-  }, [photosConnection, photos]);
+  const handlePhotosPageChange = (page: number) => setPhotosPage(page);
+  const handleUsersPageChange = (page: number) => setUsersPage(page);
 
-  const handleLoadMoreUsers = useCallback(() => {
-    if (usersConnection?.pageInfo?.endCursor) {
-      setAllUsers((prev) => [...(prev.length > 0 ? prev : users)]);
-      setUsersCursor(usersConnection.pageInfo.endCursor);
-    }
-  }, [usersConnection, users]);
-
-  // Merge new pages
-  const mergedPhotos: PhotoData[] =
-    allPhotos.length > 0 && photosConnection?.edges
-      ? [
-          ...allPhotos,
-          ...photosConnection.edges
-            .map((e: { node: PhotoData }) => e.node)
-            .filter(
-              (p: PhotoData) => !allPhotos.some((ap) => ap.id === p.id),
-            ),
-        ]
-      : photos;
-
-  const mergedUsers: UserResult[] =
-    allUsers.length > 0 && usersConnection?.edges
-      ? [
-          ...allUsers,
-          ...usersConnection.edges
-            .map((e: { node: UserResult }) => e.node)
-            .filter(
-              (u: UserResult) => !allUsers.some((au) => au.id === u.id),
-            ),
-        ]
-      : users;
+  const photosTotalPages = Math.ceil(photosTotalCount / PAGE_SIZE);
+  const usersTotalPages = Math.ceil(usersTotalCount / PAGE_SIZE);
 
   // ─── Render ────────────────────────────────────────────────────────────
 
@@ -200,21 +158,22 @@ function SearchPageInner() {
             {/* Photo Results */}
             {activeTab === 'photos' && (
               <>
-                {photosResult.fetching && mergedPhotos.length === 0 && (
+                {photosResult.fetching && photos.length === 0 && (
                   <p className={styles.loading}>Searching…</p>
                 )}
-                {!photosResult.fetching && mergedPhotos.length === 0 && (
+                {!photosResult.fetching && photos.length === 0 && (
                   <div className={styles.empty}>
                     <h2>No photos found</h2>
                     <p>Try different keywords or check the Users tab.</p>
                   </div>
                 )}
-                {mergedPhotos.length > 0 && (
+                {photos.length > 0 && (
                   <PhotoGrid
-                    photos={mergedPhotos}
-                    hasNextPage={photosHasMore}
+                    photos={photos}
+                    currentPage={photosPage}
+                    totalPages={photosTotalPages}
+                    onPageChange={handlePhotosPageChange}
                     loading={photosResult.fetching}
-                    onLoadMore={handleLoadMorePhotos}
                     emptyMessage="No photos found"
                   />
                 )}
@@ -224,18 +183,18 @@ function SearchPageInner() {
             {/* User Results */}
             {activeTab === 'users' && (
               <>
-                {usersResult.fetching && mergedUsers.length === 0 && (
+                {usersResult.fetching && users.length === 0 && (
                   <p className={styles.loading}>Searching…</p>
                 )}
-                {!usersResult.fetching && mergedUsers.length === 0 && (
+                {!usersResult.fetching && users.length === 0 && (
                   <div className={styles.empty}>
                     <h2>No users found</h2>
                     <p>Try a different name or username.</p>
                   </div>
                 )}
-                {mergedUsers.length > 0 && (
+                {users.length > 0 && (
                   <div className={styles.userList}>
-                    {mergedUsers.map((u) => (
+                    {users.map((u) => (
                       <Link
                         key={u.id}
                         href={`/u/${u.username}/photos`}
@@ -266,19 +225,15 @@ function SearchPageInner() {
                         </div>
                       </Link>
                     ))}
-                    {usersHasMore && (
-                      <div className={styles.loadMore}>
-                        <button
-                          type="button"
-                          className={styles.loadMoreBtn}
-                          onClick={handleLoadMoreUsers}
-                          disabled={usersResult.fetching}
-                        >
-                          {usersResult.fetching ? 'Loading…' : 'Load more'}
-                        </button>
-                      </div>
-                    )}
                   </div>
+                )}
+                {usersTotalPages > 1 && (
+                  <Pagination
+                    currentPage={usersPage}
+                    totalPages={usersTotalPages}
+                    onPageChange={handleUsersPageChange}
+                    loading={usersResult.fetching}
+                  />
                 )}
               </>
             )}

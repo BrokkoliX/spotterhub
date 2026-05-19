@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useCallback, useState } from 'react';
+import { use, useState } from 'react';
 import { useQuery } from 'urql';
 
 import { FollowButton } from '@/components/FollowButton';
@@ -20,8 +20,7 @@ export default function UserPhotosPage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = use(params);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [allPhotos, setAllPhotos] = useState<PhotoData[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [userResult] = useQuery({
     query: GET_USER,
@@ -32,51 +31,27 @@ export default function UserPhotosPage({
 
   const [photosResult] = useQuery({
     query: GET_PHOTOS,
-    variables: { first: PAGE_SIZE, after: cursor, userId },
+    variables: { first: PAGE_SIZE, page: currentPage, userId },
     pause: !userId,
   });
 
   const { data: userData, fetching: userFetching } = userResult;
   const { data: photosData, fetching: photosFetching } = photosResult;
-  const connection = photosData?.photos;
+  const connection = photosResult.data?.photos;
 
   const photos: PhotoData[] =
-    allPhotos.length > 0
-      ? allPhotos
-      : connection?.edges?.map(
-            (e: { node: PhotoData }) => e.node,
-          ) ?? [];
+    connection?.edges?.map(
+          (e: { node: PhotoData }) => e.node,
+        ) ?? [];
 
   const { user: authUser } = useAuth();
 
-  const handleLoadMore = useCallback(() => {
-    if (connection?.pageInfo?.endCursor) {
-      setAllPhotos((prev) => {
-        const current =
-          connection?.edges?.map(
-            (e: { node: PhotoData }) => e.node,
-          ) ?? [];
-        return prev.length > 0 ? prev : current;
-      });
-      setCursor(connection.pageInfo.endCursor);
-    }
-  }, [connection]);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
-  // Append new pages
-  if (
-    photosData &&
-    cursor &&
-    connection?.edges?.length > 0 &&
-    allPhotos.length > 0
-  ) {
-    const newPhotos = connection.edges.map(
-      (e: { node: PhotoData }) => e.node,
-    );
-    const firstNewId = newPhotos[0]?.id;
-    if (!allPhotos.some((p: PhotoData) => p.id === firstNewId)) {
-      setAllPhotos((prev) => [...prev, ...newPhotos]);
-    }
-  }
+  const totalCount = connection?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   if (userFetching) {
     return (
@@ -183,9 +158,10 @@ export default function UserPhotosPage({
 
         <PhotoGrid
           photos={photos}
-          hasNextPage={connection?.pageInfo?.hasNextPage ?? false}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
           loading={photosFetching}
-          onLoadMore={handleLoadMore}
           emptyMessage={`${displayName} hasn't uploaded any photos yet`}
         />
       </div>

@@ -7,6 +7,7 @@ import { useQuery, useMutation } from 'urql';
 import { useAuth } from '@/lib/auth';
 import { GET_CONTACT_MESSAGES, REVIEW_CONTACT_MESSAGE } from '@/lib/queries';
 
+import { Pagination } from '@/components/Pagination';
 import styles from '../page.module.css';
 
 const PAGE_SIZE = 20;
@@ -54,10 +55,11 @@ export default function AdminContactMessagesPage() {
 
   const [statusFilter, setStatusFilter] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: GET_CONTACT_MESSAGES,
-    variables: { status: statusFilter || undefined, first: PAGE_SIZE },
+    variables: { status: statusFilter || undefined, first: PAGE_SIZE, page: currentPage },
     pause: !isAdmin,
   });
 
@@ -67,19 +69,19 @@ export default function AdminContactMessagesPage() {
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
 
   const messages = data?.contactMessages;
-  const hasNextPage = messages?.pageInfo?.hasNextPage;
-  const endCursor = messages?.pageInfo?.endCursor;
+  const totalCount = messages?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const handleReview = async (id: string, status: 'read' | 'resolved') => {
     await reviewMessage({ id, status });
     reexecute({ requestPolicy: 'network-only' });
   };
 
-  const loadMore = () => {
-    if (!endCursor) return;
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
     reexecute({
       requestPolicy: 'network-only',
-      variables: { status: statusFilter || undefined, first: PAGE_SIZE, after: endCursor },
+      variables: { status: statusFilter || undefined, first: PAGE_SIZE, page },
     });
   };
 
@@ -92,7 +94,7 @@ export default function AdminContactMessagesPage() {
           <select
             className={styles.filterSelect}
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           >
             <option value="">All statuses</option>
             <option value="unread">Unread</option>
@@ -233,14 +235,13 @@ export default function AdminContactMessagesPage() {
           <div className={styles.loading}>No messages found</div>
         )}
 
-        {hasNextPage && (
-          <button
-            className={`btn btn-secondary ${styles.loadMore}`}
-            onClick={loadMore}
-            disabled={fetching}
-          >
-            Load more
-          </button>
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            loading={fetching}
+          />
         )}
       </div>
     </div>

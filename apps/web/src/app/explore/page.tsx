@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
 import type { PhotoData } from '@/components/PhotoCard';
 import { PhotoGrid } from '@/components/PhotoGrid';
+import { Pagination } from '@/components/Pagination';
 import {
   GET_AIRLINES,
   GET_AIRCRAFT_MANUFACTURERS,
@@ -89,6 +90,7 @@ function ExplorePageInner() {
 
   const [activeTab, setActiveTab] = useState<TabType>('airlines');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Read selected entity from URL params
   const selectedType = (searchParams.get('type') as TabType) ?? null;
@@ -106,6 +108,7 @@ function ExplorePageInner() {
     query: GET_PHOTOS,
     variables: {
       first: PAGE_SIZE,
+      page: currentPage,
       ...(photoFilter ?? {}),
     },
     pause: !user || !photoFilter,
@@ -458,9 +461,11 @@ function ExplorePageInner() {
                 ) : (
                   <PhotoGrid
                     photos={displayedPhotos}
-                    hasNextPage={false}
-                    loading={false}
-                    onLoadMore={() => {}}
+                    currentPage={currentPage}
+                    totalPages={Math.ceil((photoData?.photos?.totalCount ?? 0) / PAGE_SIZE)}
+                    onPageChange={setCurrentPage}
+                    loading={photoFetching}
+                    emptyMessage={`No photos yet for ${selectedName}`}
                   />
                 )}
               </>
