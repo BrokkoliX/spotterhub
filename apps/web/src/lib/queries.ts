@@ -99,6 +99,8 @@ export const PHOTO_FIELDS = gql`
     operatorType
     msn
     manufacturingDate
+    kind
+    communityCategory
     aircraft {
       id
       registration
@@ -246,6 +248,7 @@ export const GET_PHOTOS = gql`
     $variant: String
     $airline: String
     $photographer: String
+    $kind: PhotoKind
     $sortBy: PhotoSortBy
   ) {
     photos(
@@ -261,6 +264,7 @@ export const GET_PHOTOS = gql`
       variant: $variant
       airline: $airline
       photographer: $photographer
+      kind: $kind
       sortBy: $sortBy
     ) {
       edges {

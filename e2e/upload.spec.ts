@@ -246,4 +246,84 @@ test.describe('Upload page', () => {
     const captionVal = await page.getByPlaceholder('Describe your photo\u2026').inputValue();
     expect(captionVal).toBe('');
   });
+
+  test('community mode: hides aircraft fields and submits with category', async ({ page }) => {
+    await signIn(page, 'test@example.com', 'password123');
+
+    let createPhotoInput: Record<string, unknown> | null = null;
+
+    await page.route('**/graphql', async (route) => {
+      const postData = route.request().postData();
+      if (postData && postData.includes('GetUploadUrl')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              getUploadUrl: {
+                url: 'http://localhost:4566/spotterspace-photos/community-key.jpg',
+                key: 'community-key.jpg',
+              },
+            },
+          }),
+        });
+        return;
+      }
+      if (postData && postData.includes('CreatePhoto')) {
+        const parsed = JSON.parse(postData) as { variables?: { input?: Record<string, unknown> } };
+        createPhotoInput = parsed.variables?.input ?? null;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              createPhoto: {
+                id: 'photo-community-123',
+                caption: 'Sunset at the spotting deck',
+              },
+            },
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
+      await route.fulfill({ status: 200 });
+    });
+
+    await page.goto('/upload');
+
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'community-photo.jpg',
+      mimeType: 'image/jpeg',
+      buffer: createTestJpeg(),
+    });
+
+    // Switch to Community mode
+    await page.getByRole('tab', { name: /Community photo/ }).click();
+
+    // Aircraft-only field should now be hidden
+    await expect(page.getByLabel('Registration *')).toHaveCount(0);
+
+    // Community category dropdown should be visible and required
+    const categorySelect = page.getByLabel('Photo category *');
+    await expect(categorySelect).toBeVisible();
+    await categorySelect.selectOption('SCENERY');
+
+    await page.getByPlaceholder('Describe your photo\u2026').fill('Sunset at the spotting deck');
+
+    await page.getByRole('button', { name: 'Publish Photo' }).click();
+    await expect(page.getByText('Photo uploaded successfully!')).toBeVisible({ timeout: 5000 });
+
+    // Verify the resolver received the right payload
+    expect(createPhotoInput).not.toBeNull();
+    expect(createPhotoInput!.kind).toBe('COMMUNITY');
+    expect(createPhotoInput!.communityCategory).toBe('SCENERY');
+    expect(createPhotoInput!.aircraftId).toBeUndefined();
+    expect(createPhotoInput!.airline).toBeUndefined();
+    expect(createPhotoInput!.msn).toBeUndefined();
+  });
 });

@@ -31,6 +31,8 @@ export interface PhotoData {
   takenAt?: string | null;
   gearBody?: string | null;
   gearLens?: string | null;
+  kind?: 'AIRCRAFT' | 'COMMUNITY' | null;
+  communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER' | null;
   user: {
     id: string;
     username: string;
@@ -87,15 +89,26 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
     photo.user.profile?.displayName ?? photo.user.username;
 
   // JetPhotos-style info
-  const infoRegistration = photo.aircraft?.registration;
-  const infoAirline = photo.airline || photo.operatorIcao;
+  const isCommunity = photo.kind === 'COMMUNITY';
+  const communityCategoryLabel = photo.communityCategory
+    ? photo.communityCategory.charAt(0) + photo.communityCategory.slice(1).toLowerCase()
+    : null;
+  const infoRegistration = isCommunity ? null : photo.aircraft?.registration;
+  const infoAirline = isCommunity ? null : (photo.airline || photo.operatorIcao);
   const infoAirport = photo.airportCode;
   const infoDate = photo.takenAt
     ? new Date(photo.takenAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
     : null;
   const infoCamera = photo.gearBody;
   const infoLens = photo.gearLens;
-  const hasInfo = infoRegistration || infoAirline || infoAirport || infoDate || infoCamera || infoLens;
+  const hasInfo =
+    infoRegistration ||
+    infoAirline ||
+    infoAirport ||
+    infoDate ||
+    infoCamera ||
+    infoLens ||
+    isCommunity;
 
   return (
     <article className={styles.card}>
@@ -117,8 +130,19 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
         {hasInfo && (
           <div className={styles.photoInfo}>
             <div className={styles.photoInfoRow}>
-              {infoRegistration && <span className={styles.photoInfoReg}>{infoRegistration}</span>}
-              {infoAirline && <span className={styles.photoInfoOp}>{infoAirline}</span>}
+              {isCommunity ? (
+                <>
+                  <span className={styles.photoInfoReg}>Community</span>
+                  {communityCategoryLabel && (
+                    <span className={styles.photoInfoOp}>{communityCategoryLabel}</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {infoRegistration && <span className={styles.photoInfoReg}>{infoRegistration}</span>}
+                  {infoAirline && <span className={styles.photoInfoOp}>{infoAirline}</span>}
+                </>
+              )}
               {infoAirport && <span className={styles.photoInfoAirport}>📍 {infoAirport}</span>}
               {infoDate && <span className={styles.photoInfoDate}>{infoDate}</span>}
             </div>

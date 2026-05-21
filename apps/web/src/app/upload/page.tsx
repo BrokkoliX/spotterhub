@@ -44,6 +44,10 @@ import styles from './page.module.css';
 
 type UploadStep = 'select' | 'uploading' | 'form' | 'creating' | 'done';
 
+type UploadMode = 'aircraft' | 'community';
+
+type CommunityCategoryValue = 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
+
 export default function UploadPage() {
   const { user, ready } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,6 +260,8 @@ export default function UploadPage() {
   const [airlineDisplay, setAirlineDisplay] = useState(''); // shown below airline dropdown
   const [license, setLicense] = useState('ALL_RIGHTS_RESERVED');
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [mode, setMode] = useState<UploadMode>('aircraft');
+  const [communityCategory, setCommunityCategory] = useState<CommunityCategoryValue | ''>('');
 
   // Try to get device location on mount to set initial map center
   useEffect(() => {
@@ -469,9 +475,14 @@ export default function UploadPage() {
     e.preventDefault();
     if (!s3Key || !file) return;
 
-    // Validate required fields
-    if (!aircraftId && !registrationSearch.trim()) {
+    // Validate required fields based on mode
+    if (mode === 'aircraft' && !aircraftId && !registrationSearch.trim()) {
       setRegistrationError('Registration is required. Please enter or create an aircraft.');
+      setStep('form');
+      return;
+    }
+    if (mode === 'community' && !communityCategory) {
+      setError('Please select a community photo category.');
       setStep('form');
       return;
     }
@@ -483,9 +494,9 @@ export default function UploadPage() {
       s3Key,
       mimeType: file.type,
       fileSizeBytes: file.size,
+      kind: mode === 'community' ? 'COMMUNITY' : 'AIRCRAFT',
     };
     if (caption) input.caption = caption;
-    if (aircraftId) input.aircraftId = aircraftId;
     if (airportCode) input.airportCode = airportCode;
     if (takenAt) input.takenAt = takenAt;
     if (tags.length > 0) input.tags = tags;
@@ -495,24 +506,31 @@ export default function UploadPage() {
     if (gearBody === '__custom__' ? gearBodyCustom : gearBody) input.gearBody = gearBody === '__custom__' ? gearBodyCustom : gearBody;
     if (gearLens === '__custom__' ? gearLensCustom : gearLens) input.gearLens = gearLens === '__custom__' ? gearLensCustom : gearLens;
     if (photoCategoryId) input.photoCategoryId = photoCategoryId;
-    if (aircraftSpecificCategoryId) input.aircraftSpecificCategoryId = aircraftSpecificCategoryId;
-    if (selectedAirlineId) {
-      // selectedAirlineId may be a UUID (from NewAircraftModal) or an icaoCode (from selectRegistration)
-      const selectedAirline = airlines.find(
-        (a: { id: string; icaoCode: string }) => a.id === selectedAirlineId || a.icaoCode === selectedAirlineId,
-      );
-      if (selectedAirline?.icaoCode) {
-        input.operatorIcao = selectedAirline.icaoCode;
-      }
-      // If airline has no icaoCode (e.g. military operators), skip operatorIcao rather than storing a UUID
-    }
-    if (operatorType) input.operatorType = operatorType.toUpperCase();
-    if (msn) input.msn = msn;
-    if (manufacturingDate) input.manufacturingDate = manufacturingDate;
     if (locationType) input.locationType = locationType;
     if (exifData && Object.keys(exifData).length > 0) input.exifData = exifData;
     input.license = license;
     input.watermarkEnabled = watermarkEnabled;
+
+    if (mode === 'community') {
+      input.communityCategory = communityCategory;
+    } else {
+      // Aircraft-only fields — sent only for aircraft photos.
+      if (aircraftId) input.aircraftId = aircraftId;
+      if (aircraftSpecificCategoryId) input.aircraftSpecificCategoryId = aircraftSpecificCategoryId;
+      if (selectedAirlineId) {
+        // selectedAirlineId may be a UUID (from NewAircraftModal) or an icaoCode (from selectRegistration)
+        const selectedAirline = airlines.find(
+          (a: { id: string; icaoCode: string }) => a.id === selectedAirlineId || a.icaoCode === selectedAirlineId,
+        );
+        if (selectedAirline?.icaoCode) {
+          input.operatorIcao = selectedAirline.icaoCode;
+        }
+        // If airline has no icaoCode (e.g. military operators), skip operatorIcao rather than storing a UUID
+      }
+      if (operatorType) input.operatorType = operatorType.toUpperCase();
+      if (msn) input.msn = msn;
+      if (manufacturingDate) input.manufacturingDate = manufacturingDate;
+    }
 
     const result = await createPhoto({ input });
 
@@ -595,6 +613,8 @@ export default function UploadPage() {
                   setAircraftId('');
                   setExifData(null);
                   setCreatedPhotoId(null);
+                  setMode('aircraft');
+                  setCommunityCategory('');
                   setSelectedManufacturerId('');
                   setSelectedFamilyId('');
                   setSelectedVariantId('');
@@ -690,6 +710,61 @@ export default function UploadPage() {
             <div className={styles.formSection}>
               <h2 className={styles.formTitle}>Photo Details</h2>
 
+              <div
+                role="tablist"
+                aria-label="Photo type"
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  marginBottom: 16,
+                  background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 8,
+                  padding: 4,
+                }}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'aircraft'}
+                  onClick={() => setMode('aircraft')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    background: mode === 'aircraft' ? 'var(--color-bg)' : 'transparent',
+                    color: mode === 'aircraft' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                    boxShadow: mode === 'aircraft' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  ✈ Aircraft photo
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'community'}
+                  onClick={() => setMode('community')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    background: mode === 'community' ? 'var(--color-bg)' : 'transparent',
+                    color: mode === 'community' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                    boxShadow: mode === 'community' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  🌆 Community photo
+                </button>
+              </div>
+
               <form onSubmit={handleSubmit}>
                 <div className="field">
                   <label htmlFor="caption" className="label">
@@ -706,22 +781,24 @@ export default function UploadPage() {
                   />
                 </div>
 
-                <div className="field">
-                  <label htmlFor="registration" className="label">
-                    Registration *
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      id="registration"
-                      type="text"
-                      className={`input ${registrationError ? 'input-error' : ''}`}
-                      value={registrationSearch}
-                      onChange={handleRegistrationSearchChange}
-                      placeholder="e.g. N12345"
-                      disabled={aircraftLocked}
-                      required
-                      style={{ textTransform: 'uppercase', paddingRight: 80 }}
-                    />
+                {mode === 'aircraft' && (
+                  <>
+                    <div className="field">
+                      <label htmlFor="registration" className="label">
+                        Registration *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          id="registration"
+                          type="text"
+                          className={`input ${registrationError ? 'input-error' : ''}`}
+                          value={registrationSearch}
+                          onChange={handleRegistrationSearchChange}
+                          placeholder="e.g. N12345"
+                          disabled={aircraftLocked}
+                          required={mode === 'aircraft'}
+                          style={{ textTransform: 'uppercase', paddingRight: 80 }}
+                        />
                     {aircraftLocked && (
                       <button
                         type="button"
@@ -865,6 +942,33 @@ export default function UploadPage() {
                     Enter a registration above — select an existing aircraft or create a new one
                   </div>
                 )}
+                  </>
+                )}
+
+                {mode === 'community' && (
+                  <div className="field">
+                    <label htmlFor="communityCategory" className="label">
+                      Photo category *
+                    </label>
+                    <select
+                      id="communityCategory"
+                      className="input"
+                      value={communityCategory}
+                      onChange={(e) =>
+                        setCommunityCategory(e.target.value as CommunityCategoryValue | '')
+                      }
+                      required={mode === 'community'}
+                    >
+                      <option value="">— Select category —</option>
+                      <option value="SCENERY">Scenery</option>
+                      <option value="EVENT">Event</option>
+                      <option value="HANGAR">Hangar</option>
+                      <option value="AIRPORT">Airport</option>
+                      <option value="PEOPLE">People</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="field">
                   <label htmlFor="takenAt" className="label">
@@ -952,17 +1056,19 @@ export default function UploadPage() {
                     />
                   </div>
 
-                  <div className="field">
-                    <label htmlFor="aircraftSpecificCategory" className="label">
-                      Aircraft Type
-                    </label>
-                    <SearchableSelect
-                      options={aircraftSpecificCategories.map((c: { id: string; name: string; label: string }) => ({ id: c.id, label: c.label }))}
-                      value={aircraftSpecificCategoryId}
-                      onChange={(id) => setAircraftSpecificCategoryId(id)}
-                      placeholder="Search aircraft type…"
-                    />
-                  </div>
+                  {mode === 'aircraft' && (
+                    <div className="field">
+                      <label htmlFor="aircraftSpecificCategory" className="label">
+                        Aircraft Type
+                      </label>
+                      <SearchableSelect
+                        options={aircraftSpecificCategories.map((c: { id: string; name: string; label: string }) => ({ id: c.id, label: c.label }))}
+                        value={aircraftSpecificCategoryId}
+                        onChange={(id) => setAircraftSpecificCategoryId(id)}
+                        placeholder="Search aircraft type…"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="field">
@@ -1096,7 +1202,8 @@ export default function UploadPage() {
                       step === 'creating' ||
                       step === 'uploading' ||
                       !s3Key ||
-                      !aircraftId
+                      (mode === 'aircraft' && !aircraftId) ||
+                      (mode === 'community' && !communityCategory)
                     }
                     className="btn btn-primary btn-lg"
                   >
