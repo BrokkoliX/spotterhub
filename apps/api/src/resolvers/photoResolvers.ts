@@ -56,6 +56,8 @@ export interface PhotosArgs {
   airline?: string;
   photographer?: string;
   sortBy?: PhotoSortBy;
+  kind?: 'AIRCRAFT' | 'COMMUNITY';
+  communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
 }
 
 export interface CreatePhotoInput {
@@ -84,6 +86,8 @@ export interface CreatePhotoInput {
   airportIcao?: string;
   license?: string;
   watermarkEnabled?: boolean;
+  kind?: 'AIRCRAFT' | 'COMMUNITY';
+  communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
 }
 
 export interface UpdatePhotoInput {
@@ -107,6 +111,8 @@ export interface UpdatePhotoInput {
   manufacturingDate?: string;
   locationType?: string;
   airportIcao?: string;
+  kind?: 'AIRCRAFT' | 'COMMUNITY';
+  communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
 }
 
 export interface PhotoParent {
@@ -125,6 +131,8 @@ export interface PhotoParent {
   operatorType?: string | null;
   msn?: string | null;
   manufacturingDate?: string | null;
+  kind?: 'AIRCRAFT' | 'COMMUNITY';
+  communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER' | null;
   isDeleted?: boolean;
 }
 
@@ -207,6 +215,12 @@ export const photoQueryResolvers = {
     }
     if (args.photographer) {
       where.photographerName = { contains: args.photographer, mode: 'insensitive' };
+    }
+    if (args.kind) {
+      where.kind = args.kind;
+    }
+    if (args.communityCategory) {
+      where.communityCategory = args.communityCategory;
     }
 
     // Aircraft hierarchy filters — all three can be applied simultaneously
@@ -400,6 +414,15 @@ export const photoMutationResolvers = {
     validateStringLength(input.caption, 'Caption', 0, 2000);
     validateArrayLength(input.tags, 'Tags', 30);
 
+    // Discriminate aircraft vs community photo and enforce community category when applicable.
+    const kind: 'AIRCRAFT' | 'COMMUNITY' = input.kind === 'COMMUNITY' ? 'COMMUNITY' : 'AIRCRAFT';
+    if (kind === 'COMMUNITY' && !input.communityCategory) {
+      throw new GraphQLError('communityCategory is required for community photos', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    const isCommunity = kind === 'COMMUNITY';
+
     // Validate image dimensions using admin-configured limits from SiteSettings
     const { getObject } = await import('../services/s3.js');
     const originalBuffer = await getObject(input.s3Key);
@@ -451,7 +474,7 @@ export const photoMutationResolvers = {
       data: {
         userId: user.id,
         caption: input.caption,
-        airline: input.airline,
+        airline: isCommunity ? null : input.airline,
         airportCode: input.airportCode,
         takenAt: input.takenAt ? new Date(input.takenAt) : null,
         originalUrl,
@@ -461,25 +484,39 @@ export const photoMutationResolvers = {
         originalHeight,
         photographerId,
         photographerName,
-        aircraftId: input.aircraftId ?? null,
+        aircraftId: isCommunity ? null : (input.aircraftId ?? null),
         gearBody: input.gearBody ?? null,
         gearLens: input.gearLens ?? null,
         exifData: input.exifData ?? undefined,
         photoCategoryId: input.photoCategoryId ?? null,
-        aircraftSpecificCategoryId: input.aircraftSpecificCategoryId ?? null,
-        operatorIcao: input.operatorIcao ?? null,
-        operatorType: input.operatorType
-          ? (input.operatorType.toLowerCase() as
-              | 'airline'
-              | 'general_aviation'
-              | 'military'
-              | 'government'
-              | 'cargo'
-              | 'charter'
-              | 'private')
+        aircraftSpecificCategoryId: isCommunity
+          ? null
+          : (input.aircraftSpecificCategoryId ?? null),
+        operatorIcao: isCommunity ? null : (input.operatorIcao ?? null),
+        operatorType: isCommunity
+          ? null
+          : input.operatorType
+            ? (input.operatorType.toLowerCase() as
+                | 'airline'
+                | 'general_aviation'
+                | 'military'
+                | 'government'
+                | 'cargo'
+                | 'charter'
+                | 'private')
+            : null,
+        msn: isCommunity ? null : (input.msn ?? null),
+        manufacturingDate: isCommunity ? null : (input.manufacturingDate ?? null),
+        kind,
+        communityCategory: isCommunity
+          ? (input.communityCategory as
+              | 'SCENERY'
+              | 'EVENT'
+              | 'HANGAR'
+              | 'AIRPORT'
+              | 'PEOPLE'
+              | 'OTHER')
           : null,
-        msn: input.msn ?? null,
-        manufacturingDate: input.manufacturingDate ?? null,
         // In dev, auto-approve; in production, start as pending
         moderationStatus: process.env.NODE_ENV === 'production' ? 'pending' : 'approved',
         license: (input.license ?? 'ALL_RIGHTS_RESERVED') as
@@ -637,6 +674,8 @@ export const photoMutationResolvers = {
       manufacturingDate,
       locationType,
       airportIcao,
+      kind,
+      communityCategory,
       ...rest
     } = args.input;
 
@@ -733,6 +772,17 @@ export const photoMutationResolvers = {
         }),
         ...(msn !== undefined && { msn: msn ?? null }),
         ...(manufacturingDate !== undefined && { manufacturingDate: manufacturingDate ?? null }),
+        ...(kind !== undefined && { kind }),
+        ...(communityCategory !== undefined && { communityCategory: communityCategory ?? null }),
+        ...(kind === 'COMMUNITY' && {
+          aircraftId: null,
+          airline: null,
+          operatorIcao: null,
+          operatorType: null,
+          msn: null,
+          manufacturingDate: null,
+          aircraftSpecificCategoryId: null,
+        }),
       },
       include: { user: true, variants: true, tags: true },
     });

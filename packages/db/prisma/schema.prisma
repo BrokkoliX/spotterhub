@@ -188,6 +188,20 @@ enum OperatorType {
   private
 }
 
+enum PhotoKind {
+  AIRCRAFT
+  COMMUNITY
+}
+
+enum CommunityPhotoCategory {
+  SCENERY
+  EVENT
+  HANGAR
+  AIRPORT
+  PEOPLE
+  OTHER
+}
+
 enum AircraftStatus {
   active
   pending_approval
@@ -469,6 +483,8 @@ model Photo {
   operatorType         OperatorType?    @map("operator_type")
   msn                  String?          @map("msn")
   manufacturingDate    String?          @map("manufacturing_date")
+  kind                 PhotoKind        @default(AIRCRAFT)
+  communityCategory    CommunityPhotoCategory? @map("community_category")
   isDeleted            Boolean          @default(false) @map("is_deleted")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
@@ -495,6 +511,7 @@ model Photo {
   @@index([aircraftSpecificCategoryId])
   @@index([aircraftId])
   @@index([aircraftId, createdAt(sort: Desc)])
+  @@index([kind])
   @@map("photos")
 }
 

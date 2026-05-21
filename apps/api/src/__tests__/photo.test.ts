@@ -69,6 +69,12 @@ const CREATE_PHOTO = `
       originalUrl
       moderationStatus
       tags
+      kind
+      communityCategory
+      aircraft { id }
+      msn
+      manufacturingDate
+      operatorIcao
       user { id username }
       variants { id variantType url width height }
       likeCount
@@ -213,6 +219,111 @@ describe('Photo: createPhoto', () => {
     ).singleResult;
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('creates a community photo without aircraft fields and strips aircraft-only inputs', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/community.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+            caption: 'Sunset at the spotting deck',
+            kind: 'COMMUNITY',
+            communityCategory: 'SCENERY',
+            // These aircraft-only fields are sent intentionally to verify the resolver strips them.
+            airline: 'Should Be Stripped',
+            msn: '99999',
+            manufacturingDate: '2010-01-01',
+            operatorIcao: 'AAL',
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
+
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    expect(photo).toBeDefined();
+    expect(photo.kind).toBe('COMMUNITY');
+    expect(photo.communityCategory).toBe('SCENERY');
+    expect(photo.aircraft).toBeNull();
+    expect(photo.airline).toBeNull();
+    expect(photo.msn).toBeNull();
+    expect(photo.manufacturingDate).toBeNull();
+    expect(photo.operatorIcao).toBeNull();
+  });
+
+  it('rejects community photos without a communityCategory', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/community-missing-category.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+            kind: 'COMMUNITY',
+            // communityCategory deliberately omitted
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { errors?: Array<{ message: string; extensions?: { code: string } }> };
+      }
+    ).singleResult;
+
+    expect(data.errors).toBeDefined();
+    expect(data.errors![0].extensions?.code).toBe('BAD_USER_INPUT');
+    expect(data.errors![0].message).toMatch(/communityCategory/i);
+  });
+
+  it('defaults kind to AIRCRAFT when not specified', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/default-kind.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 512000,
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
+
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    expect(photo.kind).toBe('AIRCRAFT');
+    expect(photo.communityCategory).toBeNull();
   });
 });
 

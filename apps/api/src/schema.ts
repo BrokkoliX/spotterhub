@@ -128,6 +128,20 @@ export const typeDefs = gql`
     PRIVATE
   }
 
+  enum PhotoKind {
+    AIRCRAFT
+    COMMUNITY
+  }
+
+  enum CommunityPhotoCategory {
+    SCENERY
+    EVENT
+    HANGAR
+    AIRPORT
+    PEOPLE
+    OTHER
+  }
+
   enum OrderStatus {
     pending
     completed
@@ -230,6 +244,8 @@ export const typeDefs = gql`
       airline: String
       photographer: String
       sortBy: PhotoSortBy
+      kind: PhotoKind
+      communityCategory: CommunityPhotoCategory
     ): PhotoConnection!
 
     """
@@ -1865,6 +1881,14 @@ export const typeDefs = gql`
     Aircraft manufacturing date.
     """
     manufacturingDate: String
+    """
+    Photo kind: AIRCRAFT (default) or COMMUNITY for non-aircraft community photos.
+    """
+    kind: PhotoKind!
+    """
+    Community photo category. Only set when kind = COMMUNITY.
+    """
+    communityCategory: CommunityPhotoCategory
     createdAt: String!
     updatedAt: String!
 
@@ -2043,6 +2067,14 @@ export const typeDefs = gql`
     Whether to generate a watermarked variant.
     """
     watermarkEnabled: Boolean
+    """
+    Photo kind: AIRCRAFT (default) or COMMUNITY for non-aircraft community photos.
+    """
+    kind: PhotoKind
+    """
+    Community photo category. Required when kind = COMMUNITY, ignored otherwise.
+    """
+    communityCategory: CommunityPhotoCategory
   }
 
   input UpdatePhotoInput {
@@ -2066,6 +2098,8 @@ export const typeDefs = gql`
     manufacturingDate: String
     locationType: String
     airportIcao: String
+    kind: PhotoKind
+    communityCategory: CommunityPhotoCategory
   }
 
   # ─── Pagination ──────────────────────────────────────────────────────────
