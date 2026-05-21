@@ -121,6 +121,7 @@ export default function HomePage() {
   const searchParams = useSearchParams();
   const [feedTab, setFeedTab] = useState<FeedTab>('recent');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [kindFilter, setKindFilter] = useState<'all' | 'AIRCRAFT' | 'COMMUNITY'>('all');
   const [airportFilter, setAirportFilter] = useState('');
   const [airlineFilter, setAirlineFilter] = useState('');
   const [photographerFilter, setPhotographerFilter] = useState('');
@@ -201,7 +202,7 @@ export default function HomePage() {
 
   const gridKey = useMemo(
     () =>
-      `${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${debouncedManufacturer}-${debouncedFamily}-${debouncedVariant}-${sortBy}`,
+      `${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${debouncedManufacturer}-${debouncedFamily}-${debouncedVariant}-${sortBy}-${kindFilter}`,
     [
       debouncedAirport,
       debouncedAirline,
@@ -210,6 +211,7 @@ export default function HomePage() {
       debouncedFamily,
       debouncedVariant,
       sortBy,
+      kindFilter,
     ],
   );
 
@@ -224,6 +226,7 @@ export default function HomePage() {
       manufacturer: debouncedManufacturer || undefined,
       family: debouncedFamily || undefined,
       variant: debouncedVariant || undefined,
+      kind: kindFilter !== 'all' ? kindFilter : undefined,
       sortBy: sortBy !== 'recent' ? sortBy : undefined,
     },
     pause: feedTab !== 'recent',
@@ -402,11 +405,13 @@ export default function HomePage() {
     },
   ];
   const activeFilters = filterConfigs.filter((f) => f.value);
-  const clearAllFilters = () =>
+  const clearAllFilters = () => {
     filterConfigs.forEach((f) => {
       f.setValue('');
       f.setDebounced('');
     });
+    setKindFilter('all');
+  };
 
   // Typeahead elements — reused in both desktop row and mobile drawer
   const airportTypeahead = (
@@ -666,6 +671,62 @@ export default function HomePage() {
           }
         >
           <div className={styles.filterDrawerStack}>
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: 'var(--color-text-muted)',
+                  marginBottom: 6,
+                }}
+              >
+                Photo type
+              </label>
+              <div
+                role="tablist"
+                aria-label="Photo type"
+                style={{
+                  display: 'flex',
+                  gap: 4,
+                  background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 8,
+                  padding: 4,
+                }}
+              >
+                {([
+                  { value: 'all', label: 'All' },
+                  { value: 'AIRCRAFT', label: 'Aircraft' },
+                  { value: 'COMMUNITY', label: 'Community' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={kindFilter === opt.value}
+                    onClick={() => setKindFilter(opt.value)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      background: kindFilter === opt.value ? 'var(--color-bg)' : 'transparent',
+                      color:
+                        kindFilter === opt.value
+                          ? 'var(--color-text)'
+                          : 'var(--color-text-muted)',
+                      boxShadow: kindFilter === opt.value ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {airportTypeahead}
             {airlineTypeahead}
             {photographerTypeahead}
