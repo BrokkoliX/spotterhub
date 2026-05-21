@@ -95,6 +95,48 @@ cd packages/db && npm run db:migrate
 
 **Image variants**: After S3 upload, `generateVariants()` creates: thumbnail (160px), thumbnail_16x9 (640px wide), display (1920px), full_res, watermarked.
 
+## Pagination
+
+The API uses **offset-based pagination** via `buildPaginationArgs()` (`apps/api/src/utils/resolverHelpers.ts`). All paginated queries accept both cursor-based (`first`/`after`) and offset-based (`first`/`page`) arguments.
+
+**Resolver pattern** — when adding `page: Int` to schema, the resolver MUST call `buildPaginationArgs`:
+```typescript
+const { skip, take, cursorWhere } = buildPaginationArgs({
+  first: args.first,
+  after: args.after,
+  page: args.page,
+});
+const [items, totalCount] = await ctx.prisma.model.findMany({
+  where: { ...where, ...cursorWhere },
+  orderBy: { createdAt: 'desc' },
+  skip,
+  take: take + 1, // +1 to detect hasNextPage
+});
+```
+
+**GraphQL query must include `$page: Int`** — the web frontend passes `page` as a variable. If `$page: Int` is missing from the query definition in `lib/queries.ts`, page-based pagination silently falls back to page 1.
+
+**URL sync** — all pages with pagination sync the page number to URL query params:
+```typescript
+// Wrap with Suspense when using useSearchParams in client components
+function Page() {
+  return <Suspense fallback={...}><PageInner /></Suspense>;
+}
+function PageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', String(page));
+    router.push(`/?${params.toString()}`, { scroll: false });
+  };
+}
+```
+
 ## Environment Variables
 
 See `.env.example` at root. Key variables:
