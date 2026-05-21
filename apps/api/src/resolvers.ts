@@ -318,7 +318,7 @@ export const resolvers = {
 
   MarketplaceCategory: marketplaceCategoryFieldResolvers,
 
-  ContactMessage: contactMessageFieldResolvers,
+  ContactMessage: contactMessageFieldResolvers.ContactMessage,
 
   UserBadge: badgeFieldResolvers.UserBadge,
 };

@@ -981,6 +981,12 @@ export const typeDefs = gql`
     adminUpdateUserRole(userId: ID!, role: String!): User!
 
     """
+    Clear a user's failed login attempts and lockout state.
+    Requires admin or superuser role.
+    """
+    adminUnlockUser(userId: ID!): User!
+
+    """
     Update a photo's moderation status (approved, rejected, pending, review).
     Requires admin or moderator role.
     """
@@ -3734,9 +3740,8 @@ export const typeDefs = gql`
     badgeDefinition: BadgeDefinition!
     awardedAt: String!
     awardedPhoto: Photo
-    awardedBy: User
-  }
-
+    awarder: User
+    }
   type PhotoAward {
     id: ID!
     photo: Photo!

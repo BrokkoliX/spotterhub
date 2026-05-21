@@ -29,15 +29,19 @@ beforeEach(cleanDatabase);
 const GET_AIRPORTS = `
   query Airports {
     airports {
-      id
-      icaoCode
-      iataCode
-      name
-      city
-      country
-      latitude
-      longitude
-      photoCount
+      edges {
+        node {
+          id
+          icaoCode
+          iataCode
+          name
+          city
+          latitude
+          longitude
+          photoCount
+        }
+      }
+      totalCount
     }
   }
 `;
@@ -104,10 +108,11 @@ describe('airports query', () => {
     );
 
     const data = (res.body as any).singleResult.data;
-    expect(data.airports).toHaveLength(2);
+    expect(data.airports.edges).toHaveLength(2);
+    expect(data.airports.totalCount).toBe(2);
     // Sorted by icaoCode asc
-    expect(data.airports[0].icaoCode).toBe('KLAX');
-    expect(data.airports[1].icaoCode).toBe('KSEA');
+    expect(data.airports.edges[0].node.icaoCode).toBe('KLAX');
+    expect(data.airports.edges[1].node.icaoCode).toBe('KSEA');
   });
 
   it('returns empty array when no airports exist', async () => {
@@ -117,7 +122,8 @@ describe('airports query', () => {
     );
 
     const data = (res.body as any).singleResult.data;
-    expect(data.airports).toHaveLength(0);
+    expect(data.airports.edges).toHaveLength(0);
+    expect(data.airports.totalCount).toBe(0);
   });
 
   it('includes photoCount for each airport', async () => {
@@ -151,7 +157,7 @@ describe('airports query', () => {
     );
 
     const data = (res.body as any).singleResult.data;
-    expect(data.airports[0].photoCount).toBe(1);
+    expect(data.airports.edges[0].node.photoCount).toBe(1);
   });
 });
 

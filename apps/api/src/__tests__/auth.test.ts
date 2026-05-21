@@ -40,6 +40,7 @@ describe('Auth: signUp', () => {
             email: 'test@example.com',
             username: 'testuser',
             password: 'securepass123',
+            acceptTerms: true,
           },
         },
       },
@@ -55,14 +56,18 @@ describe('Auth: signUp', () => {
 
     const signUp = data!.signUp as {
       user: {
-        email: string;
+        id: string;
+        email: string | null;
         username: string;
         role: string;
         status: string;
         profile: { displayName: string };
       };
     };
-    expect(signUp.user.email).toBe('test@example.com');
+    expect(signUp.user.id).toBeTruthy();
+    // email is privacy-protected and only visible to the authenticated owner.
+    // signUp does not authenticate the caller, so email is intentionally null here.
+    expect(signUp.user.email).toBeNull();
     expect(signUp.user.username).toBe('testuser');
     expect(signUp.user.role).toBe('user');
     expect(signUp.user.status).toBe('active');
@@ -73,7 +78,7 @@ describe('Auth: signUp', () => {
     // Create first user
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user1", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user1", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -81,7 +86,7 @@ describe('Auth: signUp', () => {
     // Try duplicate email
     const result = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user2", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "dupe@example.com", username: "user2", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -95,7 +100,7 @@ describe('Auth: signUp', () => {
   it('rejects invalid username (too short)', async () => {
     const result = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "short@example.com", username: "ab", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "short@example.com", username: "ab", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -109,7 +114,7 @@ describe('Auth: signUp', () => {
   it('rejects short password', async () => {
     const result = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "pw@example.com", username: "validuser", password: "short" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "pw@example.com", username: "validuser", password: "short", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -125,7 +130,7 @@ describe('Auth: signIn', () => {
   beforeEach(async () => {
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "login@example.com", username: "loginuser", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "login@example.com", username: "loginuser", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -185,7 +190,7 @@ describe('Auth: me query', () => {
     // Create user first
     const signUpResult = await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "me@example.com", username: "meuser", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "me@example.com", username: "meuser", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -237,7 +242,7 @@ describe('Profile: updateProfile', () => {
     // Create user
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "profile@example.com", username: "profileuser", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "profile@example.com", username: "profileuser", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
@@ -299,7 +304,7 @@ describe('Query: user(username)', () => {
   it('returns a public user by username', async () => {
     await server.executeOperation(
       {
-        query: `mutation { signUp(input: { email: "public@example.com", username: "publicuser", password: "password123" }) { user { id } } }`,
+        query: `mutation { signUp(input: { email: "public@example.com", username: "publicuser", password: "password123", acceptTerms: true }) { user { id } } }`,
       },
       { contextValue: createTestContext() },
     );
