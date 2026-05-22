@@ -10,6 +10,7 @@ export const typeDefs = gql`
     popular_week
     popular_month
     popular_all
+    random
   }
 
   enum UserRole {

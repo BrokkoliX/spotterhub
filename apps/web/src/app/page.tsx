@@ -28,7 +28,7 @@ import styles from './page.module.css';
 const PAGE_SIZE = 24;
 
 type FeedTab = 'recent' | 'following';
-type SortOption = 'recent' | 'popular_day' | 'popular_week' | 'popular_month' | 'popular_all';
+type SortOption = 'recent' | 'popular_day' | 'popular_week' | 'popular_month' | 'popular_all' | 'random';
 
 const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
   { value: 'recent', label: 'Recent', emoji: '🕐' },
@@ -36,6 +36,7 @@ const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
   { value: 'popular_week', label: 'This Week', emoji: '🔥' },
   { value: 'popular_month', label: 'This Month', emoji: '🚀' },
   { value: 'popular_all', label: 'All Time', emoji: '🏆' },
+  { value: 'random', label: 'Random', emoji: '🎲' },
 ];
 
 interface TypeaheadInputProps<T> {

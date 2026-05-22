@@ -127,42 +127,38 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
         {photo.listing?.active && photo.listing?.priceUsd && (
           <span className={styles.priceBadge}>${photo.listing.priceUsd}</span>
         )}
-        {hasInfo && (
-          <div className={styles.photoInfo}>
-            <div className={styles.photoInfoRow}>
-              {isCommunity ? (
-                <>
-                  <span className={styles.photoInfoReg}>Community</span>
-                  {communityCategoryLabel && (
-                    <span className={styles.photoInfoOp}>{communityCategoryLabel}</span>
-                  )}
-                </>
-              ) : (
-                <>
-                  {infoRegistration && <span className={styles.photoInfoReg}>{infoRegistration}</span>}
-                  {infoAirline && <span className={styles.photoInfoOp}>{infoAirline}</span>}
-                </>
-              )}
-              {infoAirport && <span className={styles.photoInfoAirport}>📍 {infoAirport}</span>}
-              {infoDate && <span className={styles.photoInfoDate}>{infoDate}</span>}
-            </div>
-            {(infoCamera || infoLens) && (
-              <div className={styles.photoInfoRow}>
-                {infoCamera && <span className={styles.photoInfoGear}>{infoCamera}</span>}
-                {infoLens && <span className={styles.photoInfoGear}>{infoLens}</span>}
-              </div>
-            )}
-          </div>
-        )}
       </Link>
+
+      {hasInfo && (
+        <div className={styles.photoInfo}>
+          <div className={styles.photoInfoRow}>
+            {isCommunity ? (
+              <>
+                <span className={styles.photoInfoReg}>Community</span>
+                {communityCategoryLabel && (
+                  <span className={styles.photoInfoOp}>{communityCategoryLabel}</span>
+                )}
+              </>
+            ) : (
+              <>
+                {infoRegistration && <span className={styles.photoInfoReg}>{infoRegistration}</span>}
+                {infoAirline && <span className={styles.photoInfoOp}>{infoAirline}</span>}
+              </>
+            )}
+            {infoAirport && <span className={styles.photoInfoAirport}>📍 {infoAirport}</span>}
+            {infoDate && <span className={styles.photoInfoDate}>{infoDate}</span>}
+          </div>
+          {(infoCamera || infoLens) && (
+            <div className={styles.photoInfoRow}>
+              {infoCamera && <span className={styles.photoInfoGear}>{infoCamera}</span>}
+              {infoLens && <span className={styles.photoInfoGear}>{infoLens}</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.body}>
         {photo.caption && <p className={styles.caption}>{photo.caption}</p>}
-        {photo.airportCode && (
-          <div className={styles.meta}>
-            <span className={styles.metaItem}>📍 {photo.airportCode}</span>
-          </div>
-        )}
 
         {photo.tags.length > 0 && (
           <div className={styles.tags}>

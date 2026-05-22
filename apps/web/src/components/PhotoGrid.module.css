@@ -42,12 +42,14 @@
 
 .listItem {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
 }
 
 .listItem:hover {
@@ -64,11 +66,12 @@
   height: 18px;
   flex-shrink: 0;
   cursor: pointer;
+  margin-top: 4px;
 }
 
 .listThumb {
-  width: 80px;
-  height: 54px;
+  width: 160px;
+  height: 108px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
@@ -78,27 +81,70 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.listItem:hover .listThumb img {
+  transform: scale(1.03);
 }
 
 .listMeta {
   flex: 1;
   min-width: 0;
+  padding-top: 2px;
 }
 
 .listCaption {
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+
+.listAircraftRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
 }
 
 .listDetails {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   font-size: 0.75rem;
   color: var(--color-text-muted);
   margin-top: 2px;
+}
+
+.listDetailSep {
+  color: var(--color-border);
+}
+
+.listFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.listAuthor {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.listStats {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 /* ─── Ad Slot ─────────────────────────────────────────────────────────────── */

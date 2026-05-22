@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { PhotoCard, type PhotoData } from './PhotoCard';
 export type { PhotoData };
 import { AdBanner } from './AdBanner';
@@ -66,17 +68,46 @@ export function PhotoGrid({
               );
             const imgUrl = thumb?.url ?? photo.originalUrl;
             const isSelected = selectedIds.has(photo.id);
+
+            const aircraftParts = [
+              photo.aircraft?.manufacturer?.name,
+              photo.aircraft?.family?.name,
+              photo.aircraft?.variant?.name,
+            ].filter(Boolean);
+            const aircraftLabel = aircraftParts.join(' · ');
+
+            const takenDate = photo.takenAt
+              ? new Date(photo.takenAt).toLocaleDateString(undefined, {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : null;
+
+            const displayName =
+              photo.user.profile?.displayName ?? photo.user.username;
+
             return (
-              <div
+              <Link
                 key={photo.id}
+                href={`/photos/${photo.id}`}
                 className={`${styles.listItem} ${isSelected ? styles.listItemSelected : ''}`}
+                onClick={(e) => {
+                  // Allow checkbox interaction without navigating
+                  if ((e.target as HTMLElement).closest('input[type="checkbox"]')) {
+                    e.preventDefault();
+                  }
+                }}
               >
                 {selectable && (
                   <input
                     type="checkbox"
                     className={styles.listCheckbox}
                     checked={isSelected}
-                    onChange={() => onToggleSelect?.(photo.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onToggleSelect?.(photo.id);
+                    }}
                   />
                 )}
                 <div className={styles.listThumb}>
@@ -84,19 +115,37 @@ export function PhotoGrid({
                 </div>
                 <div className={styles.listMeta}>
                   <div className={styles.listCaption}>{photo.caption ?? '—'}</div>
+
+                  {/* Aircraft registration + type */}
+                  {(photo.aircraft?.registration || aircraftLabel) && (
+                    <div className={styles.listAircraftRow}>
+                      {photo.aircraft?.registration && (
+                        <span>{photo.aircraft.registration}</span>
+                      )}
+                      {photo.aircraft?.registration && aircraftLabel && (
+                        <span className={styles.listDetailSep}>·</span>
+                      )}
+                      {aircraftLabel && <span>{aircraftLabel}</span>}
+                    </div>
+                  )}
+
                   <div className={styles.listDetails}>
-                    {photo.aircraft?.registration && (
-                      <span>{photo.aircraft.registration}</span>
-                    )}
-                    {photo.aircraft?.manufacturer?.name && (
-                      <span>{photo.aircraft.manufacturer.name}</span>
-                    )}
-                    {photo.airline && <span>{photo.airline}</span>}
-                    {photo.airportCode && <span>{photo.airportCode}</span>}
-                    <span>{photo.likeCount ?? 0} ❤️</span>
+                    {photo.airline && <span>✈️ {photo.airline}</span>}
+                    {photo.airportCode && <span>📍 {photo.airportCode}</span>}
+                    {takenDate && <span>📅 {takenDate}</span>}
+                    {photo.gearBody && <span>📷 {photo.gearBody}</span>}
+                    {photo.gearLens && <span>🔭 {photo.gearLens}</span>}
+                  </div>
+
+                  <div className={styles.listFooter}>
+                    <span className={styles.listAuthor}>{displayName}</span>
+                    <div className={styles.listStats}>
+                      <span>❤️ {photo.likeCount ?? 0}</span>
+                      <span>💬 {photo.commentCount ?? 0}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

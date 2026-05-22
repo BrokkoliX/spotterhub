@@ -40,7 +40,8 @@ export type PhotoSortBy =
   | 'popular_day'
   | 'popular_week'
   | 'popular_month'
-  | 'popular_all';
+  | 'popular_all'
+  | 'random';
 
 export interface PhotosArgs {
   first?: number;
@@ -239,6 +240,7 @@ export const photoQueryResolvers = {
     }
 
     // Determine sort order
+    const isRandom = args.sortBy === 'random';
     let orderBy: Record<string, unknown> = { createdAt: 'desc' };
     if (args.sortBy === 'popular_all') {
       orderBy = { likeCount: 'desc' };
@@ -276,6 +278,14 @@ export const photoQueryResolvers = {
       }),
       ctx.prisma.photo.count({ where }),
     ]);
+
+    // For random sort, shuffle the fetched page in-memory (Fisher-Yates).
+    if (isRandom) {
+      for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+      }
+    }
 
     const hasNextPage = items.length > take;
     const edges = items.slice(0, take).map((photo) => ({
