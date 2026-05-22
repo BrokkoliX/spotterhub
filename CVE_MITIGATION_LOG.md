@@ -4,6 +4,27 @@ This file tracks security advisories that have been addressed in the SpotterHub 
 
 The convention is to append new entries at the top, keeping the most recent mitigations visible first. Each entry should contain enough detail that a future auditor can reproduce the upgrade decision without re-reading the original advisory.
 
+## 2026-05-22 — Apollo Server 4 → 5 upgrade (GHSA-9q82-xgwf-vj6h)
+
+Bumped `@apollo/server` from `4.13.0` to `5.5.1` to close **GHSA-9q82-xgwf-vj6h** (Apollo Server XS-Search read-only CSRF bypass). This was the only advisory in the previous post-`audit-fix` set rated as a real production-traffic risk; everything else was dev/test-time.
+
+The Apollo Server 5 upgrade is a major version bump that removes the bundled `@apollo/server/express4` middleware. The migration replaces that import with `@as-integrations/express4@^1.1.2`, a thin adapter package maintained by the Apollo team. The adapter is API-compatible with the previous middleware and supports both Apollo Server 4 and 5 as peer dependencies, which let us split the upgrade into two reversible steps (first swap the import, verify, then bump the major version).
+
+Single import change in `apps/api/src/index.ts`:
+
+```ts
+// Before
+import { expressMiddleware } from '@apollo/server/express4';
+// After
+import { expressMiddleware } from '@as-integrations/express4';
+```
+
+A follow-up `npm audit fix` (non-breaking) was run after the Apollo bump, which closed three further transitive advisories surfaced by Apollo Server 5's updated dependency tree (notably `qs` was bumped from `6.14.2` to `6.15.2`, closing **GHSA-q8mj-m7cp-5q26**).
+
+Verification: full API test suite passes 334/334 against Apollo Server 5.5.1. `npm audit` post-upgrade reports `7 moderate` (down from the previous `9 moderate`). The remaining 7 advisories all require breaking-change upgrades to Next.js or to the Vite/Vitest tooling chain and are tracked under "Remaining open advisories" below.
+
+A pre-existing flaky test (`apps/api/src/__tests__/photo.test.ts` "applies approximate privacy jitter to coordinates") was uncovered during the Apollo verification re-runs and fixed in the same commit. The test had asserted `not.toBeCloseTo(raw, 3)` against jitter drawn from the range `[-0.005, +0.005]`, which produced a ~10 % failure rate by construction. The fix asserts that jitter was applied (delta non-zero) and stayed within the documented bound (≤ 0.005), removing the flake without weakening coverage.
+
 ## 2026-05-22 — Sprint 1 dependency hardening
 
 `npm audit` reported 17 findings (1 high, 16 moderate) across the root workspace. `npm audit fix` was run and reduced the count to 9 moderate without any breaking changes; the resulting `package-lock.json` delta was committed to `main` after a full CI pass. The 9 remaining advisories all require `--force`-level breaking-change upgrades and are tracked individually below.

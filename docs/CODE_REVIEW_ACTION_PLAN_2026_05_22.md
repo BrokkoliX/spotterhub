@@ -98,12 +98,12 @@ esbuild <=0.24.2        dev-server SSRF (test-only)
 ```
 
 - [x] ~~Run `npm audit fix` and commit non-breaking upgrades on a feature branch.~~
-- [ ] Accept the breaking `@apollo/server@5.5.1` upgrade and run the full integration test suite against it.
+- [x] ~~Accept the breaking `@apollo/server@5.5.1` upgrade and run the full integration test suite against it.~~
 - [ ] Accept the breaking `next` upgrade and run the full E2E suite.
 - [ ] Verify `npm audit` reports zero high or critical findings post-upgrade.
 - [x] ~~Create `CVE_MITIGATION_LOG.md` in the project root and document the resolved advisories with dates and PR links.~~
 
-**Done:** `npm audit fix` reduced the count from 17 (1 high, 16 moderate) to 9 (all moderate). The remaining 9 advisories require breaking-change upgrades and are tracked in `CVE_MITIGATION_LOG.md` for the Sprint 1 follow-up branch.
+**Done:** `npm audit fix` reduced the count from 17 (1 high, 16 moderate) to 9 (all moderate). The Apollo Server 4 → 5 upgrade landed on `chore/apollo-server-5.5` (closes **GHSA-9q82-xgwf-vj6h** — the only production-traffic CVE in the set), bringing the audit to **7 moderate**. The migration required `@as-integrations/express4@^1.1.2` because Apollo Server 5 dropped the bundled `@apollo/server/express4` middleware. Full API test suite (334 tests) passes against the new version. `CVE_MITIGATION_LOG.md` has the full narrative.
 
 ### S1.4 Lambda variant: enforce `JWT_SECRET` strength check
 

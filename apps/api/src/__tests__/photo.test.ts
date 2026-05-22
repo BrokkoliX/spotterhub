@@ -865,9 +865,18 @@ describe('Photo: createPhoto variants and location', () => {
       where: { photoId: photo.id as string },
     });
     expect(location).not.toBeNull();
-    // rawLatitude/rawLongitude are now optional in schema, but set here since coordinates were provided
-    expect(location!.displayLatitude).not.toBeCloseTo(location!.rawLatitude!, 3);
-    expect(location!.displayLongitude).not.toBeCloseTo(location!.rawLongitude!, 3);
+    // rawLatitude/rawLongitude are now optional in schema, but set here since coordinates were provided.
+    // The 'approximate' privacy mode applies jitter in the range [-0.005, +0.005] degrees
+    // (resolvers/photoResolvers.ts applyPrivacy). Assert that jitter was applied (delta != 0)
+    // and that it stayed within the documented bound. Avoid a fixed minimum-delta threshold —
+    // the inner 10% of the random range produces deltas under any reasonable threshold and
+    // makes the test flaky.
+    const latDelta = Math.abs(location!.displayLatitude - location!.rawLatitude!);
+    const lngDelta = Math.abs(location!.displayLongitude - location!.rawLongitude!);
+    expect(latDelta).toBeGreaterThan(0);
+    expect(latDelta).toBeLessThanOrEqual(0.005);
+    expect(lngDelta).toBeGreaterThan(0);
+    expect(lngDelta).toBeLessThanOrEqual(0.005);
   });
 
   it('sets display coordinates to 0 when privacy is hidden', async () => {
