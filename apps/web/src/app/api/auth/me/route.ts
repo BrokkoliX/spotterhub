@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       // The `me` query is read-only at the GraphQL level but rides over a
       // POST request, which the API's csrfGuard treats as a state-changing
       // request and gates on Origin / Sec-Fetch-Site.
-      Origin: internalOrigin(),
+      Origin: internalOrigin(request),
     },
     body: JSON.stringify({
       query: `

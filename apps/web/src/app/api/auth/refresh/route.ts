@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       Authorization: `Bearer dummy`, // bypasses Apollo's missing auth header check
       Cookie: `refresh_token=${refreshToken}`,
       // See @/lib/internal-api for why we set Origin on BFF→API calls.
-      Origin: internalOrigin(),
+      Origin: internalOrigin(request),
     },
     body: JSON.stringify({
       query: `

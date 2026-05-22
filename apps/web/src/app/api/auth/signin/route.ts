@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       // requests its own end users have already submitted with valid cookies —
       // but the guard cannot distinguish server-to-server traffic without an
       // explicit signal.
-      Origin: internalOrigin(),
+      Origin: internalOrigin(request),
     },
     body: JSON.stringify({
       query: `
