@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { graphqlEndpoint, internalOrigin } from '@/lib/internal-api';
 
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json();
@@ -9,10 +9,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
   }
 
-  const res = await fetch(`${API_URL}/graphql`, {
+  const res = await fetch(graphqlEndpoint(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      // Server-to-server call from the Next.js BFF to the GraphQL API.
+      // The API's csrfGuard rejects state-changing requests that lack both
+      // Origin and Sec-Fetch-Site headers. Set Origin to our own web base URL
+      // (which is on the API's allowed-origins list) so the BFF satisfies the
+      // CSRF guard. There is no real CSRF threat here — the BFF only forwards
+      // requests its own end users have already submitted with valid cookies —
+      // but the guard cannot distinguish server-to-server traffic without an
+      // explicit signal.
+      Origin: internalOrigin(),
     },
     body: JSON.stringify({
       query: `

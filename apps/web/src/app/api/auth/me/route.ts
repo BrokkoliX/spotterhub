@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { graphqlEndpoint, internalOrigin } from '@/lib/internal-api';
 
 // Prevent Next.js from caching this response so the client always gets fresh auth state
 export const dynamic = 'force-dynamic';
@@ -13,11 +13,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ user: null });
   }
 
-  const res = await fetch(`${API_URL}/graphql`, {
+  const res = await fetch(graphqlEndpoint(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
+      // See @/lib/internal-api for why we set Origin on BFF→API calls.
+      // The `me` query is read-only at the GraphQL level but rides over a
+      // POST request, which the API's csrfGuard treats as a state-changing
+      // request and gates on Origin / Sec-Fetch-Site.
+      Origin: internalOrigin(),
     },
     body: JSON.stringify({
       query: `

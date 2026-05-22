@@ -679,6 +679,10 @@ function handler(event) {
                 ? `https://api.${domainName}/graphql`
                 : 'https://api.spotterspace.com/graphql',
             },
+            {
+              name: 'WEB_BASE_URL',
+              value: domainName ? `https://www.${domainName}` : 'https://www.spotterspace.com',
+            },
             { name: 'HOSTNAME', value: '0.0.0.0' },
           ],
           logConfiguration: {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { graphqlEndpoint, internalOrigin } from '@/lib/internal-api';
 
 /**
  * POST /api/auth/refresh
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 });
   }
 
-  const res = await fetch(`${API_URL}/graphql`, {
+  const res = await fetch(graphqlEndpoint(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
       // so the API resolver can read it
       Authorization: `Bearer dummy`, // bypasses Apollo's missing auth header check
       Cookie: `refresh_token=${refreshToken}`,
+      // See @/lib/internal-api for why we set Origin on BFF→API calls.
+      Origin: internalOrigin(),
     },
     body: JSON.stringify({
       query: `
