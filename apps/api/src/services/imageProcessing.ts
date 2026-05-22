@@ -109,14 +109,18 @@ export async function generateVariants(
   originalKey: string,
   options: { watermarkEnabled?: boolean } = {},
 ): Promise<ImageVariantResult[]> {
-  console.log(
-    '[IMG] generateVariants called with key:',
-    originalKey,
-    'watermarkEnabled:',
-    options.watermarkEnabled,
-  );
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(
+      '[IMG] generateVariants called with key:',
+      originalKey,
+      'watermarkEnabled:',
+      options.watermarkEnabled,
+    );
+  }
   const original = await getObject(originalKey);
-  console.log('[IMG] Fetched original from S3, size:', original.length);
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log('[IMG] Fetched original from S3, size:', original.length);
+  }
   const results: ImageVariantResult[] = [];
 
   // Generate thumbnail
@@ -160,10 +164,14 @@ export async function generateVariants(
 
   // Generate watermarked variant if enabled
   if (options.watermarkEnabled) {
-    console.log('[IMG] Generating watermarked variant for key:', originalKey);
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log('[IMG] Generating watermarked variant for key:', originalKey);
+    }
     const watermarked = await generateWatermarked(original);
     const watermarkedKey = deriveVariantKey(originalKey, 'watermarked');
-    console.log('[IMG] Uploading watermarked variant to:', watermarkedKey);
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log('[IMG] Uploading watermarked variant to:', watermarkedKey);
+    }
     await uploadBuffer(watermarkedKey, watermarked.buffer, 'image/jpeg');
     results.push({
       variantType: 'watermarked',
@@ -173,7 +181,9 @@ export async function generateVariants(
       height: watermarked.height,
       fileSizeBytes: watermarked.buffer.length,
     });
-    console.log('[IMG] Watermarked variant complete:', watermarkedKey);
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log('[IMG] Watermarked variant complete:', watermarkedKey);
+    }
   }
 
   return results;
@@ -188,9 +198,13 @@ export async function generateVariants(
 async function generateWatermarked(
   buffer: Buffer,
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
-  console.log('[IMG] generateWatermarked called, buffer size:', buffer.length);
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log('[IMG] generateWatermarked called, buffer size:', buffer.length);
+  }
   const metadata = await (await getSharp())(buffer).metadata();
-  console.log('[IMG] sharp metadata:', metadata.width, 'x', metadata.height);
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log('[IMG] sharp metadata:', metadata.width, 'x', metadata.height);
+  }
   const width = metadata.width ?? 1920;
 
   // Create a single watermark label for the bottom-right corner.

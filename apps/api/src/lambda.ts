@@ -4,6 +4,7 @@ import type { GraphQLRequest } from '@apollo/server';
 import { type Context } from './context.js';
 import { resolvers } from './resolvers.js';
 import { typeDefs } from './schema.js';
+import { validateJwtSecret } from './auth/validateSecret.js';
 
 // Singleton server instance for Lambda cold-start efficiency
 let server: ApolloServer<Context> | null = null;
@@ -16,7 +17,9 @@ async function initSecrets(): Promise<void> {
 
   const { GetSecretValueCommand } = await import('@aws-sdk/client-secrets-manager');
   const { SecretsManagerClient } = await import('@aws-sdk/client-secrets-manager');
-  const client = new SecretsManagerClient({ region: process.env['AWS_REGION_NAME'] || 'us-east-1' });
+  const client = new SecretsManagerClient({
+    region: process.env['AWS_REGION_NAME'] || 'us-east-1',
+  });
 
   const dbSecretId = process.env['DB_SECRET_ARN'] ?? 'spotterspace/DATABASE_URL';
   const jwtSecretId = process.env['JWT_SECRET_ARN'] ?? 'spotterspace/JWT_SECRET';
@@ -74,6 +77,9 @@ export const handler = async (event: {
 
   // Initialize secrets before handling (fetches DATABASE_URL from Secrets Manager on cold start)
   await ensureInitialized();
+
+  // Fail hard if JWT_SECRET is missing or is the dev fallback in production
+  validateJwtSecret();
 
   const apolloServer = getServer();
 

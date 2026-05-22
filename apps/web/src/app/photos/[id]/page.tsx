@@ -38,11 +38,6 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
     ready && (user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser');
   const canDelete = isOwner || isPrivileged;
 
-  // DEBUG
-  if (typeof window !== 'undefined' && canDelete) {
-    console.log('[DEBUG] ready:', ready, 'user:', user?.role, 'canDelete:', canDelete);
-  }
-
   const handleDelete = async () => {
     if (!confirm('Delete this photo? This cannot be undone.')) return;
     const res = await deletePhoto({ photoId: id });
@@ -130,7 +125,9 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
 
         <div className={styles.layout}>
           {/* Image */}
-          <div className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}>
+          <div
+            className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}
+          >
             {imageUrl && !imgError ? (
               <img
                 src={imageUrl}
@@ -245,14 +242,26 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>Details</h3>
               {photo.kind === 'COMMUNITY' ? (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+                <p
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--color-text-secondary)',
+                    marginBottom: 12,
+                  }}
+                >
                   Community photo
                   {photo.communityCategory
                     ? ` · ${photo.communityCategory.charAt(0) + photo.communityCategory.slice(1).toLowerCase()}`
                     : ''}
                 </p>
               ) : !photo.aircraft ? (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+                <p
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--color-text-secondary)',
+                    marginBottom: 12,
+                  }}
+                >
                   This photo was uploaded with aircraft details that are pending admin approval.
                 </p>
               ) : null}
@@ -431,7 +440,9 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Built</span>
                       <span className={styles.metaValue}>
-                        {new Date(photo.aircraft.manufacturingDate ?? photo.manufacturingDate).toLocaleDateString('en-US', {
+                        {new Date(
+                          photo.aircraft.manufacturingDate ?? photo.manufacturingDate,
+                        ).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
                         })}

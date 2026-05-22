@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import { makeExecutableSchema } from '@graphql-tools/schema';
+import helmet from 'helmet';
 import { prisma } from '@spotterspace/db';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -14,6 +15,7 @@ import { createContext, type Context } from './context.js';
 import { resolvers } from './resolvers.js';
 import { typeDefs } from './schema.js';
 import { ensureBucket } from './services/s3.js';
+import { constantTimeCompare, validateJwtSecret } from './auth/validateSecret.js';
 
 const PORT = parseInt(process.env.API_PORT ?? '4000', 10);
 
@@ -67,15 +69,7 @@ async function main() {
   await loadSecrets();
 
   // Fail hard if JWT_SECRET is missing or is the dev fallback in production
-  if (process.env.NODE_ENV === 'production') {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret || jwtSecret === 'dev-secret-do-not-use-in-production') {
-      console.error(
-        'FATAL: JWT_SECRET is not set or is the dev fallback. Refusing to start in production.',
-      );
-      process.exit(1);
-    }
-  }
+  validateJwtSecret();
 
   // Ensure S3 bucket exists (creates it in LocalStack for dev)
   await ensureBucket();
@@ -96,13 +90,16 @@ async function main() {
   // Trust the ALB/reverse proxy so express-rate-limit uses X-Forwarded-For correctly
   app.set('trust proxy', 1);
 
+  // Security headers
+  app.use(helmet({ contentSecurityPolicy: false }));
+
   // Parse cookies for auth context
   app.use(cookieParser());
 
   // ─── Rate Limiting ───────────────────────────────────────────────────────
   const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 5000, // 5000 requests per window (upsert-heavy admin imports)
+    limit: 100, // 100 requests per window per IP (protects against credential stuffing)
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later' },
@@ -156,11 +153,13 @@ async function main() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Seed superuser endpoint (protected by JWT_SECRET header).
+  // Seed superuser endpoint (protected by ADMIN_API_TOKEN header).
   // Accepts { email, username, password } in the request body.
+  // NOTE: ADMIN_API_TOKEN must be provisioned in AWS Secrets Manager and added
+  // to the ECS task definition before this endpoint is protected.
   app.post('/seed', seedRateLimiter, express.json(), async (req, res) => {
-    const authHeader = req.headers['x-jwt-secret'];
-    if (authHeader !== process.env.JWT_SECRET) {
+    const authHeader = req.headers['x-admin-api-token'] as string | undefined;
+    if (!constantTimeCompare(authHeader, process.env.ADMIN_API_TOKEN)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const { email, username, password } = req.body ?? {};
@@ -195,10 +194,11 @@ async function main() {
     message: { error: 'Too many requests, please try again later' },
   });
 
-  // Admin endpoint to manually verify a user's email (protected by JWT_SECRET header).
+  // Admin endpoint to manually verify a user's email (protected by ADMIN_API_TOKEN header).
+  // NOTE: This endpoint should be migrated to a GraphQL mutation gated by requireRole('superuser').
   app.post('/admin/verify-email', adminRateLimiter, express.json(), async (req, res) => {
-    const authHeader = req.headers['x-jwt-secret'];
-    if (authHeader !== process.env.JWT_SECRET) {
+    const authHeader = req.headers['x-admin-api-token'] as string | undefined;
+    if (!constantTimeCompare(authHeader, process.env.ADMIN_API_TOKEN)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const { email } = req.body ?? {};
@@ -216,10 +216,11 @@ async function main() {
   });
 
   // Admin endpoint to fix photos where operator_icao contains an airline UUID
-  // instead of the actual ICAO code (e.g. "AAL"). Protected by JWT_SECRET header.
+  // instead of the actual ICAO code (e.g. "AAL"). Protected by ADMIN_API_TOKEN header.
+  // NOTE: This endpoint should be migrated to a GraphQL mutation gated by requireRole('superuser').
   app.post('/admin/fix-operator-icao', adminRateLimiter, express.json(), async (req, res) => {
-    const authHeader = req.headers['x-jwt-secret'];
-    if (authHeader !== process.env.JWT_SECRET) {
+    const authHeader = req.headers['x-admin-api-token'] as string | undefined;
+    if (!constantTimeCompare(authHeader, process.env.ADMIN_API_TOKEN)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     try {
@@ -264,21 +265,26 @@ async function main() {
   ];
 
   // ─── CSRF Guard ───────────────────────────────────────────────────────────
-  // Verifies Origin header on state-changing requests to prevent cross-site attacks.
-  // Browsers automatically omit Origin on same-site requests; custom header required for mutations.
+  // Verifies Origin header or Sec-Fetch-Site on state-changing requests to prevent cross-site attacks.
+  // Browsers automatically omit Origin on same-site requests; require Sec-Fetch-Site as a fallback signal.
   const csrfGuard = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     // Only protect mutations — GET queries are read-only
     if (req.method !== 'POST' && req.method !== 'PATCH' && req.method !== 'DELETE') {
       return next();
     }
     const origin = req.headers.origin;
-    if (!origin) {
-      // No Origin header — same-site request (browser omits it automatically)
-      return next();
-    }
-    // Validate origin matches one of our allowed domains
-    if (!allowedOrigins.includes(origin)) {
-      res.status(403).json({ error: 'Invalid origin' });
+    const secFetchSite = req.headers['sec-fetch-site'] as string | undefined;
+
+    if (origin) {
+      // Validate origin matches one of our allowed domains
+      if (!allowedOrigins.includes(origin)) {
+        res.status(403).json({ error: 'Invalid origin' });
+        return;
+      }
+    } else if (secFetchSite !== 'same-origin' && secFetchSite !== 'same-site') {
+      // No Origin header — require Sec-Fetch-Site signal for same-site requests.
+      // Reject requests with no identifiable origin signal.
+      res.status(403).json({ error: 'Missing origin security context' });
       return;
     }
     next();
@@ -297,10 +303,9 @@ async function main() {
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
         try {
-          const decoded = jwt.verify(
-            authHeader.slice(7),
-            process.env.JWT_SECRET!,
-          ) as { sub: string };
+          const decoded = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET!) as {
+            sub: string;
+          };
           return `user:${decoded.sub}`;
         } catch {
           // fall through to IP-based
@@ -348,17 +353,30 @@ async function main() {
       return;
     }
 
+    // Idempotency: short-circuit if we've already processed this event
+    try {
+      await prisma.webhookEvent.create({
+        data: { stripeEventId: event.id },
+      });
+    } catch {
+      // Unique constraint violation — event already processed
+      res.json({ received: true });
+      return;
+    }
+
     try {
       if (event.type === 'checkout.session.completed') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const session = event.data.object as any;
+        const session = event.data.object as {
+          metadata?: { orderId?: string };
+          payment_intent?: string | null;
+        };
         const orderId = session.metadata?.orderId;
         if (orderId) {
           await prisma.order.update({
             where: { id: orderId },
             data: {
               status: 'completed',
-              stripePaymentIntentId: session.payment_intent as string | null,
+              stripePaymentIntentId: session.payment_intent ?? null,
             },
           });
           // Mark photo listing as inactive (sold)
@@ -375,8 +393,7 @@ async function main() {
           }
         }
       } else if (event.type === 'checkout.session.expired') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const session = event.data.object as any;
+        const session = event.data.object as { metadata?: { orderId?: string } };
         const orderId = session.metadata?.orderId;
         if (orderId) {
           await prisma.order.update({

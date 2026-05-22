@@ -71,7 +71,15 @@ async function issueSession(
 export const authMutationResolvers = {
   signUp: async (
     _parent: unknown,
-    args: { input: { email: string; username: string; password: string; displayName?: string; acceptTerms: boolean } },
+    args: {
+      input: {
+        email: string;
+        username: string;
+        password: string;
+        displayName?: string;
+        acceptTerms: boolean;
+      };
+    },
     ctx: Context,
   ) => {
     const { email, username, password, acceptTerms } = args.input;
@@ -332,6 +340,10 @@ export const authMutationResolvers = {
       await sendPasswordResetEmail(email, token, baseUrl).catch((err) => {
         console.error('Failed to send password reset email:', err);
       });
+    } else {
+      // Perform a constant-time fake bcrypt hash so the response time matches
+      // the hit path, preventing a timing oracle that reveals whether an email exists.
+      await bcrypt.hash(randomBytes(32).toString('utf8'), BCRYPT_ROUNDS);
     }
 
     return true;

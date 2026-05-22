@@ -1171,3 +1171,13 @@ model PhotoAward {
   @@index([photoId])
   @@map("photo_awards")
 }
+
+// ─── Stripe Webhook Idempotency ───────────────────────────────────────────────
+
+model WebhookEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  stripeEventId String   @unique @map("stripe_event_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("webhook_events")
+}

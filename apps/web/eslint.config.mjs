@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     // Generated types — do not edit manually
     "src/lib/generated/**",
   ]),
+  {
+    rules: {
+      'no-console': ['error', { allow: ['error', 'warn'] }],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -33,35 +33,36 @@ export const likeMutationResolvers = {
       });
     }
 
-    // Upsert-style: create if not already liked (idempotent)
-    const existing = await ctx.prisma.like.findUnique({
-      where: { userId_photoId: { userId, photoId: args.photoId } },
-    });
-    if (!existing) {
-      await ctx.prisma.like.create({
-        data: { userId, photoId: args.photoId },
+    // Upsert-style: create if not already liked (idempotent).
+    // Wrap in a transaction to prevent race-condition double-increment.
+    await ctx.prisma.$transaction(async (tx) => {
+      const existing = await tx.like.findUnique({
+        where: { userId_photoId: { userId, photoId: args.photoId } },
       });
-
-      // Increment denormalized likeCount
-      await ctx.prisma.photo.update({
-        where: { id: args.photoId },
-        data: { likeCount: { increment: 1 } },
-      });
-
-      // Notify the photo owner (skip self-likes)
-      const [photoOwner, liker] = await Promise.all([
-        ctx.prisma.photo.findUnique({ where: { id: args.photoId }, select: { userId: true } }),
-        ctx.prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
-      ]);
-      if (photoOwner && liker && photoOwner.userId !== userId) {
-        createNotification(ctx.prisma, {
-          userId: photoOwner.userId,
-          type: 'like',
-          title: '❤️ New like',
-          body: `@${liker.username} liked your photo`,
-          data: { photoId: args.photoId },
-        }).catch(() => {});
+      if (!existing) {
+        await tx.like.create({
+          data: { userId, photoId: args.photoId },
+        });
+        await tx.photo.update({
+          where: { id: args.photoId },
+          data: { likeCount: { increment: 1 } },
+        });
       }
+    });
+
+    // Notify the photo owner (skip self-likes)
+    const [photoOwner, liker] = await Promise.all([
+      ctx.prisma.photo.findUnique({ where: { id: args.photoId }, select: { userId: true } }),
+      ctx.prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
+    ]);
+    if (photoOwner && liker && photoOwner.userId !== userId) {
+      createNotification(ctx.prisma, {
+        userId: photoOwner.userId,
+        type: 'like',
+        title: '❤️ New like',
+        body: `@${liker.username} liked your photo`,
+        data: { photoId: args.photoId },
+      }).catch(() => {});
     }
 
     // Clear cached like count so subsequent field resolvers see the updated value
@@ -87,16 +88,20 @@ export const likeMutationResolvers = {
       });
     }
 
-    // Delete if exists, no-op if not (idempotent)
-    const deleted = await ctx.prisma.like.deleteMany({
-      where: { userId, photoId: args.photoId },
-    });
-    if (deleted.count > 0) {
-      await ctx.prisma.photo.update({
-        where: { id: args.photoId },
-        data: { likeCount: { decrement: 1 } },
+    // Delete if exists, no-op if not (idempotent).
+    // Wrap in a transaction to prevent race-condition double-decrement.
+    const deleted = await ctx.prisma.$transaction(async (tx) => {
+      const result = await tx.like.deleteMany({
+        where: { userId, photoId: args.photoId },
       });
-    }
+      if (result.count > 0) {
+        await tx.photo.update({
+          where: { id: args.photoId },
+          data: { likeCount: { decrement: 1 } },
+        });
+      }
+      return result;
+    });
 
     // Clear cached like count so subsequent field resolvers see the updated value
     ctx.loaders.photoLikeCount.clear(args.photoId);
