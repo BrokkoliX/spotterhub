@@ -69,12 +69,13 @@ function TypeaheadInput<T>({
   emptyLabel,
 }: TypeaheadInputProps<T>) {
   const meetsMin = value.length >= minChars;
+  const hasValue = value.length > 0;
   return (
-    <div className={styles.filterInputWrap} style={{ position: 'relative', flex: 1 }}>
+    <div className={styles.filterInputWrap}>
       <span className={styles.filterIcon}>{icon}</span>
       <input
         type="text"
-        className={styles.filterInput}
+        className={`${styles.filterInput} ${hasValue ? styles.filterInputHasValue : ''}`}
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
@@ -82,8 +83,26 @@ function TypeaheadInput<T>({
           setShowDropdown(e.target.value.length >= minChars);
         }}
         onFocus={() => meetsMin && setShowDropdown(true)}
+        onBlur={() => {
+          // Delay close so a mousedown on a dropdown item fires first
+          setTimeout(() => setShowDropdown(false), 150);
+        }}
       />
-      {showDropdown && (results.length > 0 || fetching) && (
+      {hasValue && (
+        <button
+          type="button"
+          className={styles.filterClear}
+          onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+          onClick={() => {
+            onChange('');
+            setShowDropdown(false);
+          }}
+          aria-label="Clear"
+        >
+          ✕
+        </button>
+      )}
+      {showDropdown && (results.length > 0 || (fetching && meetsMin)) && (
         <div className={styles.filterDropdown}>
           {fetching && meetsMin ? (
             <div className={styles.filterDropdownItem}>Searching…</div>
@@ -95,6 +114,7 @@ function TypeaheadInput<T>({
                   key={key}
                   type="button"
                   className={styles.filterDropdownItem}
+                  onMouseDown={(e) => e.preventDefault()} // prevent blur before click
                   onClick={() => {
                     onSelect(item);
                     setShowDropdown(false);
@@ -127,6 +147,7 @@ export default function HomePage() {
   const [airlineFilter, setAirlineFilter] = useState('');
   const [photographerFilter, setPhotographerFilter] = useState('');
   const [manufacturerFilter, setManufacturerFilter] = useState('');
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string | undefined>(undefined);
   const [familyFilter, setFamilyFilter] = useState('');
   const [variantFilter, setVariantFilter] = useState('');
   const [debouncedAirport, setDebouncedAirport] = useState('');
@@ -285,12 +306,12 @@ export default function HomePage() {
       (e: { node: { id: string; name: string } }) => e.node,
     ) ?? [];
 
-  // Family typeahead (cascading — filtered by selected manufacturer)
+  // Family typeahead (cascading — filtered by selected manufacturer ID when available)
   const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
   const [{ data: familyData, fetching: familyFetching }] = useQuery({
     query: GET_AIRCRAFT_FAMILIES,
     variables: {
-      manufacturerId: debouncedManufacturer ? undefined : undefined,
+      manufacturerId: selectedManufacturerId,
       search: familyFilter,
       first: 8,
     },
@@ -411,6 +432,7 @@ export default function HomePage() {
       f.setValue('');
       f.setDebounced('');
     });
+    setSelectedManufacturerId(undefined);
     setKindFilter('all');
   };
 
@@ -486,6 +508,8 @@ export default function HomePage() {
       value={manufacturerFilter}
       onChange={(v) => {
         setManufacturerFilter(v);
+        // Clear the stored ID when user edits freely — cascading only applies after a selection
+        setSelectedManufacturerId(undefined);
         // Cascading: clear family + variant when manufacturer changes
         setFamilyFilter('');
         setVariantFilter('');
@@ -498,6 +522,10 @@ export default function HomePage() {
       onSelect={(m) => {
         setManufacturerFilter(m.name);
         setDebouncedManufacturer(m.name);
+        setSelectedManufacturerId(m.id);
+        // Reset downstream cascades
+        setFamilyFilter('');
+        setVariantFilter('');
       }}
       emptyLabel="No manufacturers found"
     />

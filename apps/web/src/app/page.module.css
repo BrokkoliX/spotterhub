@@ -67,13 +67,17 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* Must not clip overflow — typeahead dropdowns are absolutely positioned
+     children that need to escape this container visually. */
+  overflow: visible;
 }
 
 .filterRow {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  overflow-x: auto;
+  /* Do NOT set overflow-x: auto here — it creates a new formatting context
+     that clips absolutely-positioned dropdown children. */
 }
 
 /* Hide inline desktop filter row on small/tablet screens — use drawer instead. */
@@ -230,6 +234,10 @@
   transition: border-color 0.15s;
 }
 
+.filterInputHasValue {
+  padding-right: 30px;
+}
+
 .filterInput:focus {
   outline: none;
   border-color: var(--color-accent);
@@ -239,17 +247,43 @@
   color: var(--color-text-muted);
 }
 
+.filterClear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-text-muted);
+  color: var(--color-bg);
+  font-size: 0.625rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.filterClear:hover {
+  opacity: 1;
+}
+
 .filterDropdown {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: var(--color-bg);
+  background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 200;
-  max-height: 240px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 500;
+  max-height: 260px;
   overflow-y: auto;
 }
 
