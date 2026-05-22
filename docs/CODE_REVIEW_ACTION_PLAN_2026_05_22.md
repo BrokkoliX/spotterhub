@@ -7,54 +7,60 @@ This document tracks the prioritised remediation work surfaced by the review. It
 
 ---
 
-## Sprint 0 — AWS Component End-of-Life (immediate, parallel to Sprint 1)
+## Sprint 0 — AWS Component End-of-Life (active; deadline-passed for security patches)
 
-AWS has notified that one of the SpotterHub stack's components is reaching end-of-life. The exact component is to be confirmed from the AWS notification email and this section will be rewritten with concrete migration steps once known.
+**Confirmed component:** AWS Lambda **Node.js 20.x** runtime end-of-life. Notification received from AWS Health on 2026-05-22.
+
+**Stages:**
+
+| Date               | Effect                                               | Status                            |
+| ------------------ | ---------------------------------------------------- | --------------------------------- |
+| April 30, 2026     | No more security patches; runtime hidden in console  | **Passed (3 weeks ago)**          |
+| August 31, 2026    | Cannot **create** new functions on Node.js 20.x      | ~3 months out                     |
+| September 30, 2026 | Cannot **update** existing functions on Node.js 20.x | ~4 months out — **hard deadline** |
+
+Functions still execute today; the risk is unpatched OS/runtime CVEs and a hard wall in September when we lose the ability to deploy fixes.
 
 ### S0.1 Identify and document the EOL component
 
 - [x] ~~Paste the AWS email text into this file under "EOL details" below so the precise resource ARN and deadline can be captured.~~
-- [x] ~~Confirm the component against the three most likely candidates listed in "EOL candidates" below.~~
+- [x] ~~Confirm the component against the three most likely candidates listed in "EOL candidates" below.~~ Confirmed: **Lambda Node.js 20.x runtime** (the second candidate). RDS PostgreSQL 16 and Fargate platform version are **not** the affected component — a separate Fargate task-retirement notification was received on 2026-05-22 but applies only to standalone tasks (none in our estate).
 - [x] ~~Add a row under a new "AWS Lifecycle" heading in `CVE_MITIGATION_LOG.md` (created in Sprint 1) recording the component, AWS-stated EOL date, and planned remediation date.~~
 
-**Note:** Sprint 0 is blocked on awaiting the AWS notification email. The three EOL candidates are documented in the plan below. The AWS Lifecycle section in `CVE_MITIGATION_LOG.md` was created on 2026-05-22 with a placeholder row reserved for the email contents.
+### S0.2 Schedule and execute the migration
 
-### S0.2 Schedule the migration
-
-- [ ] Pick a remediation date at least four weeks before the AWS deadline.
-- [ ] Run a staging dry-run before any production change. For an RDS major-version upgrade the dry-run command is:
-
-```bash
-aws rds modify-db-instance
-  --db-instance-identifier spotterhub-staging
-  --engine-version 17.2
-  --allow-major-version-upgrade
-  --apply-immediately
-  --no-deletion-protection
-```
-
-This command performs the in-place major-version upgrade against the staging instance only and should be paired with a fresh `pg_dump` snapshot taken immediately before, plus a full E2E run against the upgraded staging endpoint before production is touched.
-
-- [ ] Verify the Prisma client and all raw SQL in the codebase still work post-upgrade. The two `prisma.$queryRawUnsafe` and `$executeRawUnsafe` calls in `apps/api/src/index.ts` L213-243 use only standard SQL and should be unaffected, but the PostGIS extension version pin in the migrations (`CREATE EXTENSION postgis`) needs to align with what the new PG version ships.
-- [ ] Update `docker/docker-compose.yml`, `.github/workflows/ci.yml`, and CDK stack to match the new version.
-- [ ] Run the full E2E suite against staging.
-- [ ] Execute the production migration during a low-traffic window with a rollback snapshot prepared.
-
-### EOL candidates
-
-The first candidate is **RDS PostgreSQL 16**, which AWS has announced will end standard support on 2026-11-30, after which the database will incur extended-support fees and eventually a forced upgrade. The repo's `docker/docker-compose.yml` pins `postgis/postgis:16-3.4` to mirror production, so a major-version upgrade will require coordinated changes in `docker-compose.yml`, the CDK stack, the CI service image in `.github/workflows/ci.yml`, and a Prisma migration shakedown against PG 17.
-
-The second candidate is a **Lambda runtime deprecation** (Node.js 18 or 20). The CDK stack at `infrastructure/lib/spotterspace-stack.ts` does not declare a Lambda runtime explicitly, but `apps/api/src/lambda.ts` exists as a Lambda handler entrypoint and may be deployed via a sibling stack. Application Dockerfiles and CI are already on Node 24, so any Lambda still running an older runtime is a configuration drift to correct.
-
-The third candidate is the **ECS Fargate platform version**. Fargate platform 1.3.0 and earlier are end-of-life; the CDK stack uses `CfnService` without an explicit `platformVersion`, which defaults to `LATEST` and is safe — but a manually-created service in the AWS console may be pinned to an older version.
+- [ ] Run the runbook at `scripts/aws-runbook-2026-05-22.sh` to enumerate affected functions in `us-east-1` and `eu-west-1`. The runbook is read-only by default and prints exact CLI commands for review.
+- [ ] For each affected function, run `aws lambda update-function-configuration --runtime nodejs22.x`. Node 22.x is the current Lambda LTS (support through April 2027) and matches the project's local Node 24 toolchain closely enough that no code changes should be required.
+- [ ] Smoke-test each function after the bump (`aws lambda invoke` against a known-safe payload, or trigger the natural CloudWatch Events schedule for the keep-warm Lambda).
+- [ ] Codify the `spotterhub-keep-warm` Lambda in `infrastructure/lib/spotterspace-stack.ts` so the next runtime deprecation is visible to IaC and not just to the AWS console. Currently this Lambda exists outside CDK, which is itself a finding.
+- [ ] Verify post-migration with `aws lambda list-functions --query "Functions[?Runtime=='nodejs20.x'].FunctionArn"` in every region — expected output: empty.
 
 ### EOL details
 
-_Paste the AWS email text here:_
+```
+[Action Required] AWS Lambda Node.js 20.x end-of-life
+AWS Account: 654654553862
+Region: US-EAST-1 (notification specific to this region; affected functions
+must be enumerated across every region we use)
 
+Key dates:
+  - April 30, 2026: end of security-patch support (PASSED)
+  - August 31, 2026: cannot create new Node.js 20.x functions
+  - September 30, 2026: cannot update existing Node.js 20.x functions
+
+Recommendation from AWS: upgrade to the latest available Node.js runtime
+(currently nodejs22.x, LTS through April 2027) before April 30, 2026.
+Since that date has passed, we are working against the August/September
+deadlines instead.
 ```
-(awaiting email content)
-```
+
+### EOL candidates (historical — for reference only)
+
+The first candidate considered was **RDS PostgreSQL 16**, which AWS has announced will end standard support on 2026-11-30. Not the affected component but still a future EOL — a separate sprint entry should be opened closer to that date.
+
+The second candidate was a **Lambda runtime deprecation** (Node.js 18 or 20). **Confirmed.** See above.
+
+The third candidate was the **ECS Fargate platform version**. Not the affected component. A separate Fargate task-retirement notification was received covering standalone tasks only; SpotterHub runs all tasks under ECS Services, which are auto-rotated.
 
 ---
 

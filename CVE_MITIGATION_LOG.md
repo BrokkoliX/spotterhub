@@ -76,4 +76,26 @@ This will print the `info / low / moderate / high / critical / total` histogram 
 
 This section tracks AWS-managed component end-of-life events that require migration. Entries are created when AWS sends a notification email and closed when the migration ships to production.
 
-The first row is reserved for the AWS notification flagged on 2026-05-22 (component to be confirmed once the email is captured in `docs/CODE_REVIEW_ACTION_PLAN_2026_05_22.md` Sprint 0 EOL details).
+### 2026-05-22 — Lambda Node.js 20.x runtime end-of-life (Sprint 0)
+
+**Component:** AWS Lambda Node.js 20.x runtime in account `654654553862`. Notification originated from `us-east-1`; affected functions must be enumerated across every region we use (`us-east-1` and `eu-west-1`).
+
+**AWS-stated dates:**
+
+| Date               | Effect                                            |
+| ------------------ | ------------------------------------------------- |
+| April 30, 2026     | End of security-patch support (passed)            |
+| August 31, 2026    | Cannot **create** new Node.js 20.x functions      |
+| September 30, 2026 | Cannot **update** existing Node.js 20.x functions |
+
+**Planned remediation:** Bump every affected function to `nodejs22.x` (the current Lambda LTS, supported through April 2027) before **August 31, 2026**. The September date is the hard deadline because it removes our ability to deploy patches; the August date is the practical deadline because it prevents any clean replacement.
+
+**Runbook:** `scripts/aws-runbook-2026-05-22.sh` enumerates affected functions read-only and prints the exact `update-function-configuration` commands. The runbook also flags the `spotterhub-keep-warm` Lambda as outside-IaC; codifying it in CDK is a follow-up task tracked under Sprint 0 in the action plan.
+
+**Status:** Open. Code change required: none in the application monorepo (Lambda runtime is set per-function in AWS, not in source). Code change required outside the monorepo: optional CDK additions to bring `spotterhub-keep-warm` under IaC.
+
+### 2026-05-22 — Fargate standalone-task retirement (reviewed, not applicable)
+
+A separate AWS Health notification was received on 2026-05-22 covering routine retirement of standalone Fargate tasks ahead of platform-revision rotation (deadline: 2026-05-21 01:00 GMT). SpotterHub runs all production tasks under ECS Services (`api` and `web`) which are automatically replaced by the service controller during platform rotations. No standalone tasks are part of the production estate; the two historical `RunTask` invocations from the 2026-05-02 and 2026-05-22 incidents were both deregistered after use.
+
+**Status:** Closed without action.
