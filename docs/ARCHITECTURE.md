@@ -669,6 +669,12 @@ erDiagram
   SellerFeedback ||--o| SellerProfile : "seller"
   SellerFeedback ||--o| User : "buyer"
   SellerFeedback ||--o| MarketplaceItem : "item"
+
+  WebhookEvent {
+    string id PK
+    string stripeEventId UK
+    datetime createdAt
+  }
 ```
 
 ---

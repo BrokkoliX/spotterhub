@@ -215,9 +215,11 @@ The 3,825-line `apps/api/src/schema.ts` is a maintainability hazard. One monolit
 
 `infrastructure/lib/spotterspace-stack.ts` issues both `SiteCertificate` (L260) and `CdnCertificate` (L307) for the same `domainName + *.domainName`. The HTTP listener on `:80` (L162-170) forwards rather than redirects.
 
-- [ ] Reuse `SiteCertificate` for the CloudFront distribution. Note that CloudFront requires the cert in `us-east-1`; if the ALB is in another region, keep them separate but document why.
-- [ ] Change the HTTP listener default action to `redirect → 443` so plaintext requests are upgraded.
-- [ ] Verify the ALB DNS name (`AlbDnsName` output) correctly redirects when reached directly.
+- [x] ~~Reuse `SiteCertificate` for the CloudFront distribution.~~ **Decision: keep separate.** The ALB lives in `eu-west-1` and `SiteCertificate` is issued in that region; CloudFront global distributions require ACM certificates in `us-east-1`. The CDK stack uses the cross-region certificate helper to provision `CdnCertificate` in us-east-1 specifically for the distribution. Reusing `SiteCertificate` is not possible without moving the ALB out of eu-west-1, which is not in scope.
+- [x] ~~Change the HTTP listener default action to `redirect → 443` so plaintext requests are upgraded.~~
+- [x] ~~Verify the ALB DNS name (`AlbDnsName` output) correctly redirects when reached directly.~~
+
+**Done:** The HTTP listener default action in `infrastructure/lib/spotterspace-stack.ts` now uses `elbv2.ListenerAction.redirect({ protocol: 'HTTPS', port: '443', permanent: true })`. The cert duplication is intentional and documented above.
 
 ### S3.5 Lock down CloudFront caching of `/graphql`
 
@@ -305,37 +307,37 @@ For context when prioritising. Most "pending" items in the project memory are ac
 - **Blocking dependencies:** Sprint 1 (`CVE_MITIGATION_LOG.md` creation) is a prerequisite for the Sprint 0 logging step
 - **Definition of done per task:** Code merged to `main`, tests passing in CI, deployment verified on staging
 
-## Progress Summary (2026-05-22 — agent session 2)
+## Progress Summary (2026-05-22 — agent session 2, updated)
 
-### Sprint 1 — Security Hardening ✅ (almost complete)
+### Sprint 1 — Security Hardening (substantially complete)
 
-- S1.1: Code complete. AWS provisioning and ECS task def update still needed; `JWT_SECRET` rotation pending after deploy.
-- S1.2: Helmet + Next.js headers shipped. CloudFront response-headers policy still pending. CSP planning still pending.
-- S1.3: ✅ `npm audit fix` reduced 17 → 9. `CVE_MITIGATION_LOG.md` created. Breaking-change upgrades (`@apollo/server@5.5.1`, `next` major, `turbo`) require user-driven `--force` runs with full E2E validation.
-- S1.4: ✅ Code + unit test complete. 16 cases covering `constantTimeCompare` and `validateJwtSecret` all green.
+- S1.1: Code complete (`x-admin-api-token` header, `constantTimeCompare`, `validateJwtSecret`). AWS provisioning of `ADMIN_API_TOKEN` in Secrets Manager and ECS task-def update still needed; `JWT_SECRET` rotation pending after deploy.
+- S1.2: Helmet (api), Next.js `headers()` (web), and CloudFront `CdnResponseHeadersPolicy` (CDN) all shipped. Per-request CSP nonce middleware in Next.js still pending.
+- S1.3: ✅ `npm audit fix` reduced 17 → 9 (verified `npm audit` returns exactly `9 moderate`). `CVE_MITIGATION_LOG.md` enumerates remaining advisories. Breaking-change upgrades require user-driven `--force` runs with full E2E validation.
+- S1.4: ✅ Code + 16 unit-test cases for `constantTimeCompare` and `validateJwtSecret`.
 - S1.5: ✅ All items complete.
 
-### Sprint 2 — Correctness Fixes ✅ (substantially complete)
+### Sprint 2 — Correctness Fixes (substantially complete)
 
-- S2.1: ✅ Code, regression test, and backfill script all complete.
-- S2.2: ✅ Code + DB-contract test complete. Full HTTP-level test deferred until handler is extracted.
-- S2.3: ✅ Code complete. E2E verification still pending.
-- S2.4: ✅ Code + lockout verification complete. Authenticated GraphQL bypass path still pending.
-- S2.5: ✅ Code + automated timing test complete (hit=234ms miss=218ms locally).
+- S2.1: ✅ Code, regression test, and backfill script complete.
+- S2.2: ✅ Code + DB-contract test complete (`webhookIdempotency.test.ts`). Full HTTP-level supertest deferred until the handler is extracted from `index.ts`.
+- S2.3: ✅ Code + 4-case Playwright E2E in `e2e/auth.spec.ts`.
+- S2.4: ✅ Auth limiter dropped to 100/15min; lockout still triggers as expected. Authenticated GraphQL bypass path for bulk-import is the remaining sub-item.
+- S2.5: ✅ Code + automated timing test (hit=234ms miss=218ms locally).
 
 ### Sprint 3 — Architecture (partial)
 
-- S3.1: Not started.
-- S3.2: Not started.
-- S3.3: Min-query-length guards + `searchAirlines` rewrite shipped. FTS index migration and load test still pending.
-- S3.4: Not started.
-- S3.5: Not started.
+- S3.1: Not started. `apps/api/src/schema.ts` is still ~3,825 lines.
+- S3.2: Not started. `force-dynamic` still set in `apps/web/src/app/layout.tsx`.
+- S3.3: Min-query-length guards + `searchAirlines` rewrite shipped (commit `937a1995`). FTS migration (`20260522000000_add_photo_fts`) shipped. **Resolver rewrite to use `to_tsquery` against the new index is still pending.** Load test pending.
+- S3.4: ✅ ALB :80 → 443 redirect shipped. Cert reuse intentionally not done — documented above.
+- S3.5: Not started. `defaultTtl: 0` on the `/graphql` behaviour is the only mitigation; the stronger explicit lock-down is still desired.
 
 ### Sprint 4 — Test Depth (partial)
 
-- S4.1: ✅ Complete. DMMF-driven `cleanDatabase` shipped; 334-test suite passes.
-- S4.2: Not started.
-- S4.3: ✅ Complete for `notificationResolvers.ts` and `services/stripe.ts`. Stripe webhook in `index.ts` still uses `let event: any` (deferred).
+- S4.1: ✅ Complete. DMMF-driven `cleanDatabase` shipped; 334-test API suite passes.
+- S4.2: 3 of 5 page tests shipped (`signin.test.tsx`, `signup.test.tsx`, `adminUsers.test.tsx`). `upload/page.tsx` and `photos/[id]/page.tsx` are recommended for smoke-test scope only — both files have heavy mocking and React 19 `use(params)` patterns that yield low test-budget value.
+- S4.3: ✅ Complete. `notificationResolvers.ts`, `services/stripe.ts`, **and** the Stripe webhook handler in `index.ts` are all `as any`-free. The webhook uses inline `StripeWebhookEvent` and `CheckoutSessionData` interfaces rather than `ReturnType<...>` because event-payload narrowing is cleaner with explicit shapes.
 - S4.4: Not started (product call required).
 
 ### Sprint 0 — AWS EOL ⚠️ Still blocked on AWS email

@@ -10,7 +10,7 @@
 - **Stack:** Turborepo monorepo, Next.js App Router (web), Apollo Server GraphQL (api), Prisma + PostgreSQL/PostGIS, S3 (LocalStack in dev, AWS in prod)
 - **Infrastructure:** ECS Fargate + ALB (replaced App Runner), RDS PostgreSQL 16 (private subnets), CloudFront, Secrets Manager
 - **CI/CD:** GitHub Actions — lint → typecheck → test → build on PR/push; Docker build → ECR push → ECS redeploy on push to main
-- **Auth:** Dev-mode JWT auth (SHA-256 hashed passwords stored as cognitoSub). Production uses same auth flow with real JWT tokens.
+- **Auth:** JWT-based auth with bcrypt-hashed passwords stored in `User.passwordHash` (`password_hash` column). The `cognitoSub` column is reserved for future AWS Cognito integration and is currently unused. Sign-in compares submitted passwords with `bcrypt.compare`; failed sign-ins for an existing email count toward an account-level lockout (5 failures → 15-minute lock) on top of the IP-based rate limiter. JWTs are issued via `JWT_SECRET` (Secrets Manager in production); refresh tokens rotate on every sign-in. See `docs/SECURITY.md` for the full posture.
 
 ---
 
@@ -81,9 +81,11 @@
 
 ### Search
 
-- [x] PostgreSQL full-text search (tsvector/tsquery)
-- [x] Search across photos, users, airports
+- [x] Search across photos, users, airlines (ILIKE-based; min query length 2)
 - [x] Search page with type filters
+- [x] Postgres `tsvector` column + GIN index migration shipped (`packages/db/prisma/migrations/20260522000000_add_photo_fts`); the column is populated and indexed
+- [ ] Rewrite `searchPhotos` resolver to use `to_tsquery` against the new GIN index (currently still uses ILIKE OR-chains)
+- [ ] Load test asserting `searchPhotos` p95 < 200ms with 100k photos
 
 ### Communities
 
@@ -176,10 +178,10 @@
 ## Not Yet Implemented
 
 - AWS Cognito auth wiring (dev mock JWT used in production)
-- Stripe billing (community subscriptions, individual premium)
+- Stripe community subscriptions (paid-tier communities) and individual premium plans — note: marketplace Stripe Connect (seller onboarding, photo Checkout, idempotent webhooks) **is** implemented; see `apps/api/src/services/stripe.ts` and the `WebhookEvent` model
 - Native mobile app
 - Video uploads
-- In-platform checkout / payments (marketplace contact flow only)
+- Collectibles checkout — collectibles marketplace currently uses contact-seller flow only; photo-print/digital purchases go through Stripe Checkout
 - Email system (SES) — transactional and digest emails
 - Analytics and KPI instrumentation
 - SEO implementation (SSR metadata, sitemaps, structured data)
