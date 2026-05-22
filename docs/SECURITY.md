@@ -1,6 +1,6 @@
 # Security
 
-> **Last updated:** 2026-04-26
+> **Last updated:** 2026-05-22
 
 ---
 
@@ -183,6 +183,10 @@ Photo uploads use S3 presigned URLs:
 - Web/API ECS tasks: allow inbound from ALB only
 - RDS: allow inbound from ECS security group on port 5432
 
+### ECS Circuit Breaker
+
+The ECS circuit breaker is currently **disabled** on both the api and web services. This means a bad deployment that causes containers to crash-loop will not automatically roll back; the service will continue attempting to start the failing task revision indefinitely. The 2026-05-22 incident was prolonged partly because a failed migration row caused every new container to crash without the circuit breaker triggering a rollback. Adding `circuitBreaker: { enable: true, rollback: true }` to the CDK service definitions is a pending improvement.
+
 ### Keep-Warm Cron
 
 A CloudWatch Events rule (`spotterhub-keep-warm-rule`) triggers every 5 minutes, invoking a Lambda (`spotterhub-keep-warm`) that pings:
@@ -201,6 +205,7 @@ This keeps ECS tasks warm and prevents cold starts. Cost: ~$0.50/month.
 3. **No AWS Cognito** — auth is mocked JWT; in production, integrate with Cognito for proper identity management
 4. **No Redis/ElastiCache** — session data not cached; no rate limit state sharing across instances
 5. Moderation audit logs exist for soft/hard deletes and community actions but not for all sensitive admin operations (e.g., role changes, bulk operations)
+6. **ECS circuit breaker disabled** — crash-looping deployments do not auto-rollback. See ECS Circuit Breaker note under Infrastructure.
 
 ---
 

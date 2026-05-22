@@ -1,1 +1,728 @@
-{"version":"tree-0.1","tree":{"id":"App","path":"","constructInfo":{"fqn":"aws-cdk-lib.App","version":"2.248.0"},"children":{"SpotterSpace-dev-Stack":{"id":"SpotterSpace-dev-Stack","path":"SpotterSpace-dev-Stack","constructInfo":{"fqn":"aws-cdk-lib.Stack","version":"2.248.0"},"children":{"ExistingVpc":{"id":"ExistingVpc","path":"SpotterSpace-dev-Stack/ExistingVpc","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"},"children":{"PublicSubnet1":{"id":"PublicSubnet1","path":"SpotterSpace-dev-Stack/ExistingVpc/PublicSubnet1","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"PrivateSubnet1":{"id":"PrivateSubnet1","path":"SpotterSpace-dev-Stack/ExistingVpc/PrivateSubnet1","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"PrivateSubnet2":{"id":"PrivateSubnet2","path":"SpotterSpace-dev-Stack/ExistingVpc/PrivateSubnet2","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}}}},"EcsSecurityGroup":{"id":"EcsSecurityGroup","path":"SpotterSpace-dev-Stack/EcsSecurityGroup","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"},"children":{"from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC":{"id":"from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC","path":"SpotterSpace-dev-Stack/EcsSecurityGroup/from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC","constructInfo":{"fqn":"aws-cdk-lib.aws_ec2.CfnSecurityGroupIngress","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::EC2::SecurityGroupIngress","aws:cdk:cloudformation:props":{"description":"Allow ALB to ECS traffic","groupId":"sg-08e5864c53710a095","ipProtocol":"-1","sourceSecurityGroupId":"sg-08e5864c53710a095"}}}}},"SecretsEndpointSG":{"id":"SecretsEndpointSG","path":"SpotterSpace-dev-Stack/SecretsEndpointSG","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"},"children":{"from SpotterSpacedevStackEcsSecurityGroupCB12187A:443":{"id":"from SpotterSpacedevStackEcsSecurityGroupCB12187A:443","path":"SpotterSpace-dev-Stack/SecretsEndpointSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:443","constructInfo":{"fqn":"aws-cdk-lib.aws_ec2.CfnSecurityGroupIngress","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::EC2::SecurityGroupIngress","aws:cdk:cloudformation:props":{"description":"Allow ECS to reach Secrets Manager","fromPort":443,"groupId":"sg-0ddf2cd67fa1b09f0","ipProtocol":"tcp","sourceSecurityGroupId":"sg-08e5864c53710a095","toPort":443}}}}},"RdsSG":{"id":"RdsSG","path":"SpotterSpace-dev-Stack/RdsSG","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"},"children":{"from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432":{"id":"from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432","path":"SpotterSpace-dev-Stack/RdsSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432","constructInfo":{"fqn":"aws-cdk-lib.aws_ec2.CfnSecurityGroupIngress","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::EC2::SecurityGroupIngress","aws:cdk:cloudformation:props":{"description":"Allow ECS to reach RDS","fromPort":5432,"groupId":"sg-0925439b428efdf13","ipProtocol":"tcp","sourceSecurityGroupId":"sg-08e5864c53710a095","toPort":5432}}}}},"ExistingALB":{"id":"ExistingALB","path":"SpotterSpace-dev-Stack/ExistingALB","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"},"children":{"Vpc":{"id":"Vpc","path":"SpotterSpace-dev-Stack/ExistingALB/Vpc","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"},"children":{"PublicSubnet1":{"id":"PublicSubnet1","path":"SpotterSpace-dev-Stack/ExistingALB/Vpc/PublicSubnet1","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"PrivateSubnet1":{"id":"PrivateSubnet1","path":"SpotterSpace-dev-Stack/ExistingALB/Vpc/PrivateSubnet1","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"PrivateSubnet2":{"id":"PrivateSubnet2","path":"SpotterSpace-dev-Stack/ExistingALB/Vpc/PrivateSubnet2","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}}}},"SecurityGroup-sg-08e5864c53710a095":{"id":"SecurityGroup-sg-08e5864c53710a095","path":"SpotterSpace-dev-Stack/ExistingALB/SecurityGroup-sg-08e5864c53710a095","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}}}},"PhotosBucket":{"id":"PhotosBucket","path":"SpotterSpace-dev-Stack/PhotosBucket","constructInfo":{"fqn":"aws-cdk-lib.aws_s3.BucketBase","version":"2.248.0"}},"DBUrlSecret":{"id":"DBUrlSecret","path":"SpotterSpace-dev-Stack/DBUrlSecret","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"JWTSecret":{"id":"JWTSecret","path":"SpotterSpace-dev-Stack/JWTSecret","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"WebEcrRepo":{"id":"WebEcrRepo","path":"SpotterSpace-dev-Stack/WebEcrRepo","constructInfo":{"fqn":"aws-cdk-lib.aws_ecr.RepositoryBase","version":"2.248.0"}},"ApiEcrRepo":{"id":"ApiEcrRepo","path":"SpotterSpace-dev-Stack/ApiEcrRepo","constructInfo":{"fqn":"aws-cdk-lib.aws_ecr.RepositoryBase","version":"2.248.0"}},"TaskExecutionRole":{"id":"TaskExecutionRole","path":"SpotterSpace-dev-Stack/TaskExecutionRole","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"TaskRole":{"id":"TaskRole","path":"SpotterSpace-dev-Stack/TaskRole","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"ApiLogGroup":{"id":"ApiLogGroup","path":"SpotterSpace-dev-Stack/ApiLogGroup","constructInfo":{"fqn":"aws-cdk-lib.aws_logs.LogGroup","version":"2.248.0"},"children":{"Resource":{"id":"Resource","path":"SpotterSpace-dev-Stack/ApiLogGroup/Resource","constructInfo":{"fqn":"aws-cdk-lib.aws_logs.CfnLogGroup","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::Logs::LogGroup","aws:cdk:cloudformation:props":{"logGroupName":"/ecs/spotterspace-dev/api","retentionInDays":7}}}}},"WebLogGroup":{"id":"WebLogGroup","path":"SpotterSpace-dev-Stack/WebLogGroup","constructInfo":{"fqn":"aws-cdk-lib.aws_logs.LogGroup","version":"2.248.0"},"children":{"Resource":{"id":"Resource","path":"SpotterSpace-dev-Stack/WebLogGroup/Resource","constructInfo":{"fqn":"aws-cdk-lib.aws_logs.CfnLogGroup","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::Logs::LogGroup","aws:cdk:cloudformation:props":{"logGroupName":"/ecs/spotterspace-dev/web","retentionInDays":7}}}}},"ApiTargetGroup":{"id":"ApiTargetGroup","path":"SpotterSpace-dev-Stack/ApiTargetGroup","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnTargetGroup","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::TargetGroup","aws:cdk:cloudformation:props":{"healthCheckIntervalSeconds":10,"healthCheckPath":"/health","healthyThresholdCount":2,"name":"spotterspace-dev-api-tg","port":4000,"protocol":"HTTP","targetType":"ip","unhealthyThresholdCount":3,"vpcId":"vpc-09a6870488b73260e"}}},"WebTargetGroup":{"id":"WebTargetGroup","path":"SpotterSpace-dev-Stack/WebTargetGroup","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnTargetGroup","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::TargetGroup","aws:cdk:cloudformation:props":{"healthCheckIntervalSeconds":10,"healthCheckPath":"/api/health","healthyThresholdCount":2,"name":"spotterspace-dev-web-tg","port":3000,"protocol":"HTTP","targetType":"ip","unhealthyThresholdCount":3,"vpcId":"vpc-09a6870488b73260e"}}},"HttpListener":{"id":"HttpListener","path":"SpotterSpace-dev-Stack/HttpListener","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnListener","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::Listener","aws:cdk:cloudformation:props":{"defaultActions":[{"type":"forward","targetGroupArn":{"Ref":"WebTargetGroup"}}],"loadBalancerArn":"arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121","port":80,"protocol":"HTTP"}}},"ApiListenerRule":{"id":"ApiListenerRule","path":"SpotterSpace-dev-Stack/ApiListenerRule","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnListenerRule","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::ListenerRule","aws:cdk:cloudformation:props":{"actions":[{"type":"forward","targetGroupArn":{"Ref":"ApiTargetGroup"}}],"conditions":[{"field":"host-header","hostHeaderConfig":{"values":["api.spotterspace.com"]}}],"listenerArn":{"Ref":"HttpListener"},"priority":100}}},"WebListenerRule":{"id":"WebListenerRule","path":"SpotterSpace-dev-Stack/WebListenerRule","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnListenerRule","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::ListenerRule","aws:cdk:cloudformation:props":{"actions":[{"type":"forward","targetGroupArn":{"Ref":"WebTargetGroup"}}],"conditions":[{"field":"host-header","hostHeaderConfig":{"values":["www.spotterspace.com"]}}],"listenerArn":{"Ref":"HttpListener"},"priority":200}}},"HttpsHostedZone":{"id":"HttpsHostedZone","path":"SpotterSpace-dev-Stack/HttpsHostedZone","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"SiteCertificate":{"id":"SiteCertificate","path":"SpotterSpace-dev-Stack/SiteCertificate","constructInfo":{"fqn":"aws-cdk-lib.aws_certificatemanager.Certificate","version":"2.248.0"},"children":{"Resource":{"id":"Resource","path":"SpotterSpace-dev-Stack/SiteCertificate/Resource","constructInfo":{"fqn":"aws-cdk-lib.aws_certificatemanager.CfnCertificate","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::CertificateManager::Certificate","aws:cdk:cloudformation:props":{"domainName":"spotterspace.com","domainValidationOptions":[{"domainName":"spotterspace.com","hostedZoneId":"Z00113712EMKXVCPQFWZW"}],"subjectAlternativeNames":["*.spotterspace.com"],"tags":[{"key":"Name","value":"SpotterSpace-dev-Stack/SiteCertificate"}],"validationMethod":"DNS"}}}}},"HttpsListener":{"id":"HttpsListener","path":"SpotterSpace-dev-Stack/HttpsListener","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnListener","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::Listener","aws:cdk:cloudformation:props":{"certificates":[{"certificateArn":{"Ref":"SiteCertificate38C247F6"}}],"defaultActions":[{"type":"forward","targetGroupArn":{"Ref":"WebTargetGroup"}}],"loadBalancerArn":"arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121","port":443,"protocol":"HTTPS"}}},"HttpsApiListenerRule":{"id":"HttpsApiListenerRule","path":"SpotterSpace-dev-Stack/HttpsApiListenerRule","constructInfo":{"fqn":"aws-cdk-lib.aws_elasticloadbalancingv2.CfnListenerRule","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ElasticLoadBalancingV2::ListenerRule","aws:cdk:cloudformation:props":{"actions":[{"type":"forward","targetGroupArn":{"Ref":"ApiTargetGroup"}}],"conditions":[{"field":"host-header","hostHeaderConfig":{"values":["api.spotterspace.com"]}}],"listenerArn":{"Ref":"HttpsListener"},"priority":100}}},"ApiTaskDef":{"id":"ApiTaskDef","path":"SpotterSpace-dev-Stack/ApiTaskDef","constructInfo":{"fqn":"aws-cdk-lib.aws_ecs.CfnTaskDefinition","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ECS::TaskDefinition","aws:cdk:cloudformation:props":{"containerDefinitions":[{"name":"api","image":{"Fn::Join":["",["654654553862.dkr.ecr.us-east-1.",{"Ref":"AWS::URLSuffix"},"/spotterspace-dev-api:v5"]]},"portMappings":[{"containerPort":4000,"protocol":"tcp"}],"secrets":[{"name":"DATABASE_URL","valueFrom":"arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/DATABASE_URL-fFpNor:DATABASE_URL::"},{"name":"JWT_SECRET","valueFrom":"arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/JWT_SECRET-V8C46k:JWT_SECRET::"}],"environment":[{"name":"NODE_ENV","value":"production"},{"name":"STAGE","value":"dev"},{"name":"AWS_REGION","value":"us-east-1"},{"name":"API_PORT","value":"4000"},{"name":"PHOTOS_BUCKET_NAME","value":"spotterspace-photos"}],"logConfiguration":{"logDriver":"awslogs","options":{"awslogs-group":{"Ref":"ApiLogGroup1DEDFC07"},"awslogs-stream-prefix":"api","awslogs-region":"us-east-1"}},"healthCheck":{"command":["CMD","wget","-qO-","http://localhost:4000/health"],"interval":10,"timeout":5,"retries":3,"startPeriod":30}}],"cpu":"1024","executionRoleArn":"arn:aws:iam::654654553862:role/ecsTaskExecutionRole","family":"spotterspace-dev-api","memory":"2048","networkMode":"awsvpc","requiresCompatibilities":["FARGATE"],"taskRoleArn":"arn:aws:iam::654654553862:role/ecsSpotterSpaceTaskRole"}}},"WebTaskDef":{"id":"WebTaskDef","path":"SpotterSpace-dev-Stack/WebTaskDef","constructInfo":{"fqn":"aws-cdk-lib.aws_ecs.CfnTaskDefinition","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ECS::TaskDefinition","aws:cdk:cloudformation:props":{"containerDefinitions":[{"name":"web","image":{"Fn::Join":["",["654654553862.dkr.ecr.us-east-1.",{"Ref":"AWS::URLSuffix"},"/spotterspace-dev-web:v6"]]},"portMappings":[{"containerPort":3000,"protocol":"tcp"}],"environment":[{"name":"NODE_ENV","value":"production"},{"name":"NEXT_PUBLIC_API_URL","value":"https://api.spotterspace.com/graphql"},{"name":"HOSTNAME","value":"0.0.0.0"}],"logConfiguration":{"logDriver":"awslogs","options":{"awslogs-group":{"Ref":"WebLogGroup68B8CF3C"},"awslogs-stream-prefix":"web","awslogs-region":"us-east-1"}},"healthCheck":{"command":["CMD","wget","-qO-","http://localhost:3000/api/health"],"interval":10,"timeout":5,"retries":3,"startPeriod":30}}],"cpu":"1024","executionRoleArn":"arn:aws:iam::654654553862:role/ecsTaskExecutionRole","family":"spotterspace-dev-web","memory":"2048","networkMode":"awsvpc","requiresCompatibilities":["FARGATE"]}}},"EcsCluster":{"id":"EcsCluster","path":"SpotterSpace-dev-Stack/EcsCluster","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"ApiService":{"id":"ApiService","path":"SpotterSpace-dev-Stack/ApiService","constructInfo":{"fqn":"aws-cdk-lib.aws_ecs.CfnService","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ECS::Service","aws:cdk:cloudformation:props":{"cluster":"spotterspace-cluster","desiredCount":1,"launchType":"FARGATE","loadBalancers":[{"containerName":"api","containerPort":4000,"targetGroupArn":{"Ref":"ApiTargetGroup"}}],"networkConfiguration":{"awsvpcConfiguration":{"subnets":["subnet-082c94f0897298f6e","subnet-096b774ed307c85ed"],"securityGroups":["sg-08e5864c53710a095"],"assignPublicIp":"DISABLED"}},"serviceName":"spotterspace-dev-api","taskDefinition":{"Ref":"ApiTaskDef"}}}},"WebService":{"id":"WebService","path":"SpotterSpace-dev-Stack/WebService","constructInfo":{"fqn":"aws-cdk-lib.aws_ecs.CfnService","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::ECS::Service","aws:cdk:cloudformation:props":{"cluster":"spotterspace-cluster","desiredCount":1,"launchType":"FARGATE","loadBalancers":[{"containerName":"web","containerPort":3000,"targetGroupArn":{"Ref":"WebTargetGroup"}}],"networkConfiguration":{"awsvpcConfiguration":{"subnets":["subnet-082c94f0897298f6e","subnet-096b774ed307c85ed"],"securityGroups":["sg-08e5864c53710a095"],"assignPublicIp":"DISABLED"}},"serviceName":"spotterspace-dev-web","taskDefinition":{"Ref":"WebTaskDef"}}}},"DnsHostedZone":{"id":"DnsHostedZone","path":"SpotterSpace-dev-Stack/DnsHostedZone","constructInfo":{"fqn":"aws-cdk-lib.Resource","version":"2.248.0"}},"WwwCnameRecord":{"id":"WwwCnameRecord","path":"SpotterSpace-dev-Stack/WwwCnameRecord","constructInfo":{"fqn":"aws-cdk-lib.aws_route53.CnameRecord","version":"2.248.0"},"children":{"Resource":{"id":"Resource","path":"SpotterSpace-dev-Stack/WwwCnameRecord/Resource","constructInfo":{"fqn":"aws-cdk-lib.aws_route53.CfnRecordSet","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::Route53::RecordSet","aws:cdk:cloudformation:props":{"hostedZoneId":"Z00113712EMKXVCPQFWZW","name":"www.spotterspace.com.","resourceRecords":["spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"],"ttl":"1800","type":"CNAME"}}}}},"ApiCnameRecord":{"id":"ApiCnameRecord","path":"SpotterSpace-dev-Stack/ApiCnameRecord","constructInfo":{"fqn":"aws-cdk-lib.aws_route53.CnameRecord","version":"2.248.0"},"children":{"Resource":{"id":"Resource","path":"SpotterSpace-dev-Stack/ApiCnameRecord/Resource","constructInfo":{"fqn":"aws-cdk-lib.aws_route53.CfnRecordSet","version":"2.248.0"},"attributes":{"aws:cdk:cloudformation:type":"AWS::Route53::RecordSet","aws:cdk:cloudformation:props":{"hostedZoneId":"Z00113712EMKXVCPQFWZW","name":"api.spotterspace.com.","resourceRecords":["spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"],"ttl":"1800","type":"CNAME"}}}}},"ClusterName":{"id":"ClusterName","path":"SpotterSpace-dev-Stack/ClusterName","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"ApiServiceArn":{"id":"ApiServiceArn","path":"SpotterSpace-dev-Stack/ApiServiceArn","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"WebServiceArn":{"id":"WebServiceArn","path":"SpotterSpace-dev-Stack/WebServiceArn","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"ApiTaskDefinitionArn":{"id":"ApiTaskDefinitionArn","path":"SpotterSpace-dev-Stack/ApiTaskDefinitionArn","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"WebTaskDefinitionArn":{"id":"WebTaskDefinitionArn","path":"SpotterSpace-dev-Stack/WebTaskDefinitionArn","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"AlbDnsName":{"id":"AlbDnsName","path":"SpotterSpace-dev-Stack/AlbDnsName","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"AlbArn":{"id":"AlbArn","path":"SpotterSpace-dev-Stack/AlbArn","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"Stage":{"id":"Stage","path":"SpotterSpace-dev-Stack/Stage","constructInfo":{"fqn":"aws-cdk-lib.CfnOutput","version":"2.248.0"}},"CDKMetadata":{"id":"CDKMetadata","path":"SpotterSpace-dev-Stack/CDKMetadata","constructInfo":{"fqn":"constructs.Construct","version":"10.6.0"},"children":{"Default":{"id":"Default","path":"SpotterSpace-dev-Stack/CDKMetadata/Default","constructInfo":{"fqn":"aws-cdk-lib.CfnResource","version":"2.248.0"}}}},"BootstrapVersion":{"id":"BootstrapVersion","path":"SpotterSpace-dev-Stack/BootstrapVersion","constructInfo":{"fqn":"aws-cdk-lib.CfnParameter","version":"2.248.0"}},"CheckBootstrapVersion":{"id":"CheckBootstrapVersion","path":"SpotterSpace-dev-Stack/CheckBootstrapVersion","constructInfo":{"fqn":"aws-cdk-lib.CfnRule","version":"2.248.0"}}}},"Tree":{"id":"Tree","path":"Tree","constructInfo":{"fqn":"constructs.Construct","version":"10.6.0"}}}}}
+{
+  "version": "tree-0.1",
+  "tree": {
+    "id": "App",
+    "path": "",
+    "constructInfo": { "fqn": "aws-cdk-lib.App", "version": "2.248.0" },
+    "children": {
+      "SpotterSpace-dev-Stack": {
+        "id": "SpotterSpace-dev-Stack",
+        "path": "SpotterSpace-dev-Stack",
+        "constructInfo": { "fqn": "aws-cdk-lib.Stack", "version": "2.248.0" },
+        "children": {
+          "ExistingVpc": {
+            "id": "ExistingVpc",
+            "path": "SpotterSpace-dev-Stack/ExistingVpc",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" },
+            "children": {
+              "PublicSubnet1": {
+                "id": "PublicSubnet1",
+                "path": "SpotterSpace-dev-Stack/ExistingVpc/PublicSubnet1",
+                "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+              },
+              "PrivateSubnet1": {
+                "id": "PrivateSubnet1",
+                "path": "SpotterSpace-dev-Stack/ExistingVpc/PrivateSubnet1",
+                "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+              },
+              "PrivateSubnet2": {
+                "id": "PrivateSubnet2",
+                "path": "SpotterSpace-dev-Stack/ExistingVpc/PrivateSubnet2",
+                "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+              }
+            }
+          },
+          "EcsSecurityGroup": {
+            "id": "EcsSecurityGroup",
+            "path": "SpotterSpace-dev-Stack/EcsSecurityGroup",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" },
+            "children": {
+              "from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC": {
+                "id": "from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC",
+                "path": "SpotterSpace-dev-Stack/EcsSecurityGroup/from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_ec2.CfnSecurityGroupIngress",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::EC2::SecurityGroupIngress",
+                  "aws:cdk:cloudformation:props": {
+                    "description": "Allow ALB to ECS traffic",
+                    "groupId": "sg-08e5864c53710a095",
+                    "ipProtocol": "-1",
+                    "sourceSecurityGroupId": "sg-08e5864c53710a095"
+                  }
+                }
+              }
+            }
+          },
+          "SecretsEndpointSG": {
+            "id": "SecretsEndpointSG",
+            "path": "SpotterSpace-dev-Stack/SecretsEndpointSG",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" },
+            "children": {
+              "from SpotterSpacedevStackEcsSecurityGroupCB12187A:443": {
+                "id": "from SpotterSpacedevStackEcsSecurityGroupCB12187A:443",
+                "path": "SpotterSpace-dev-Stack/SecretsEndpointSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:443",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_ec2.CfnSecurityGroupIngress",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::EC2::SecurityGroupIngress",
+                  "aws:cdk:cloudformation:props": {
+                    "description": "Allow ECS to reach Secrets Manager",
+                    "fromPort": 443,
+                    "groupId": "sg-0ddf2cd67fa1b09f0",
+                    "ipProtocol": "tcp",
+                    "sourceSecurityGroupId": "sg-08e5864c53710a095",
+                    "toPort": 443
+                  }
+                }
+              }
+            }
+          },
+          "RdsSG": {
+            "id": "RdsSG",
+            "path": "SpotterSpace-dev-Stack/RdsSG",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" },
+            "children": {
+              "from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432": {
+                "id": "from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432",
+                "path": "SpotterSpace-dev-Stack/RdsSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_ec2.CfnSecurityGroupIngress",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::EC2::SecurityGroupIngress",
+                  "aws:cdk:cloudformation:props": {
+                    "description": "Allow ECS to reach RDS",
+                    "fromPort": 5432,
+                    "groupId": "sg-0925439b428efdf13",
+                    "ipProtocol": "tcp",
+                    "sourceSecurityGroupId": "sg-08e5864c53710a095",
+                    "toPort": 5432
+                  }
+                }
+              }
+            }
+          },
+          "ExistingALB": {
+            "id": "ExistingALB",
+            "path": "SpotterSpace-dev-Stack/ExistingALB",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" },
+            "children": {
+              "Vpc": {
+                "id": "Vpc",
+                "path": "SpotterSpace-dev-Stack/ExistingALB/Vpc",
+                "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" },
+                "children": {
+                  "PublicSubnet1": {
+                    "id": "PublicSubnet1",
+                    "path": "SpotterSpace-dev-Stack/ExistingALB/Vpc/PublicSubnet1",
+                    "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+                  },
+                  "PrivateSubnet1": {
+                    "id": "PrivateSubnet1",
+                    "path": "SpotterSpace-dev-Stack/ExistingALB/Vpc/PrivateSubnet1",
+                    "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+                  },
+                  "PrivateSubnet2": {
+                    "id": "PrivateSubnet2",
+                    "path": "SpotterSpace-dev-Stack/ExistingALB/Vpc/PrivateSubnet2",
+                    "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+                  }
+                }
+              },
+              "SecurityGroup-sg-08e5864c53710a095": {
+                "id": "SecurityGroup-sg-08e5864c53710a095",
+                "path": "SpotterSpace-dev-Stack/ExistingALB/SecurityGroup-sg-08e5864c53710a095",
+                "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+              }
+            }
+          },
+          "PhotosBucket": {
+            "id": "PhotosBucket",
+            "path": "SpotterSpace-dev-Stack/PhotosBucket",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_s3.BucketBase", "version": "2.248.0" }
+          },
+          "DBUrlSecret": {
+            "id": "DBUrlSecret",
+            "path": "SpotterSpace-dev-Stack/DBUrlSecret",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "JWTSecret": {
+            "id": "JWTSecret",
+            "path": "SpotterSpace-dev-Stack/JWTSecret",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "ResendSecret": {
+            "id": "ResendSecret",
+            "path": "SpotterSpace-dev-Stack/ResendSecret",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "WebEcrRepo": {
+            "id": "WebEcrRepo",
+            "path": "SpotterSpace-dev-Stack/WebEcrRepo",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_ecr.RepositoryBase", "version": "2.248.0" }
+          },
+          "ApiEcrRepo": {
+            "id": "ApiEcrRepo",
+            "path": "SpotterSpace-dev-Stack/ApiEcrRepo",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_ecr.RepositoryBase", "version": "2.248.0" }
+          },
+          "TaskExecutionRole": {
+            "id": "TaskExecutionRole",
+            "path": "SpotterSpace-dev-Stack/TaskExecutionRole",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "TaskRole": {
+            "id": "TaskRole",
+            "path": "SpotterSpace-dev-Stack/TaskRole",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "ApiLogGroup": {
+            "id": "ApiLogGroup",
+            "path": "SpotterSpace-dev-Stack/ApiLogGroup",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_logs.LogGroup", "version": "2.248.0" },
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SpotterSpace-dev-Stack/ApiLogGroup/Resource",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_logs.CfnLogGroup",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Logs::LogGroup",
+                  "aws:cdk:cloudformation:props": {
+                    "logGroupName": "/ecs/spotterspace-dev/api",
+                    "retentionInDays": 7
+                  }
+                }
+              }
+            }
+          },
+          "WebLogGroup": {
+            "id": "WebLogGroup",
+            "path": "SpotterSpace-dev-Stack/WebLogGroup",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_logs.LogGroup", "version": "2.248.0" },
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SpotterSpace-dev-Stack/WebLogGroup/Resource",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_logs.CfnLogGroup",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Logs::LogGroup",
+                  "aws:cdk:cloudformation:props": {
+                    "logGroupName": "/ecs/spotterspace-dev/web",
+                    "retentionInDays": 7
+                  }
+                }
+              }
+            }
+          },
+          "ApiTargetGroup": {
+            "id": "ApiTargetGroup",
+            "path": "SpotterSpace-dev-Stack/ApiTargetGroup",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnTargetGroup",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+              "aws:cdk:cloudformation:props": {
+                "healthCheckIntervalSeconds": 30,
+                "healthCheckPath": "/health",
+                "healthyThresholdCount": 2,
+                "name": "spotterspace-dev-api-tg",
+                "port": 4000,
+                "protocol": "HTTP",
+                "targetType": "ip",
+                "unhealthyThresholdCount": 3,
+                "vpcId": "vpc-09a6870488b73260e"
+              }
+            }
+          },
+          "WebTargetGroup": {
+            "id": "WebTargetGroup",
+            "path": "SpotterSpace-dev-Stack/WebTargetGroup",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnTargetGroup",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+              "aws:cdk:cloudformation:props": {
+                "healthCheckIntervalSeconds": 30,
+                "healthCheckPath": "/api/health",
+                "healthyThresholdCount": 2,
+                "name": "spotterspace-dev-web-tg",
+                "port": 3000,
+                "protocol": "HTTP",
+                "targetType": "ip",
+                "unhealthyThresholdCount": 3,
+                "vpcId": "vpc-09a6870488b73260e"
+              }
+            }
+          },
+          "HttpListener": {
+            "id": "HttpListener",
+            "path": "SpotterSpace-dev-Stack/HttpListener",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnListener",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::Listener",
+              "aws:cdk:cloudformation:props": {
+                "defaultActions": [
+                  { "type": "forward", "targetGroupArn": { "Ref": "WebTargetGroup" } }
+                ],
+                "loadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121",
+                "port": 80,
+                "protocol": "HTTP"
+              }
+            }
+          },
+          "ApiListenerRule": {
+            "id": "ApiListenerRule",
+            "path": "SpotterSpace-dev-Stack/ApiListenerRule",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnListenerRule",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+              "aws:cdk:cloudformation:props": {
+                "actions": [{ "type": "forward", "targetGroupArn": { "Ref": "ApiTargetGroup" } }],
+                "conditions": [
+                  {
+                    "field": "host-header",
+                    "hostHeaderConfig": { "values": ["api.spotterspace.com"] }
+                  }
+                ],
+                "listenerArn": { "Ref": "HttpListener" },
+                "priority": 100
+              }
+            }
+          },
+          "WebListenerRule": {
+            "id": "WebListenerRule",
+            "path": "SpotterSpace-dev-Stack/WebListenerRule",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnListenerRule",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+              "aws:cdk:cloudformation:props": {
+                "actions": [{ "type": "forward", "targetGroupArn": { "Ref": "WebTargetGroup" } }],
+                "conditions": [
+                  {
+                    "field": "host-header",
+                    "hostHeaderConfig": { "values": ["www.spotterspace.com"] }
+                  }
+                ],
+                "listenerArn": { "Ref": "HttpListener" },
+                "priority": 200
+              }
+            }
+          },
+          "HttpsHostedZone": {
+            "id": "HttpsHostedZone",
+            "path": "SpotterSpace-dev-Stack/HttpsHostedZone",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "SiteCertificate": {
+            "id": "SiteCertificate",
+            "path": "SpotterSpace-dev-Stack/SiteCertificate",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_certificatemanager.Certificate",
+              "version": "2.248.0"
+            },
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SpotterSpace-dev-Stack/SiteCertificate/Resource",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_certificatemanager.CfnCertificate",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CertificateManager::Certificate",
+                  "aws:cdk:cloudformation:props": {
+                    "domainName": "spotterspace.com",
+                    "domainValidationOptions": [
+                      { "domainName": "spotterspace.com", "hostedZoneId": "Z00113712EMKXVCPQFWZW" }
+                    ],
+                    "subjectAlternativeNames": ["*.spotterspace.com"],
+                    "tags": [{ "key": "Name", "value": "SpotterSpace-dev-Stack/SiteCertificate" }],
+                    "validationMethod": "DNS"
+                  }
+                }
+              }
+            }
+          },
+          "HttpsListener": {
+            "id": "HttpsListener",
+            "path": "SpotterSpace-dev-Stack/HttpsListener",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnListener",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::Listener",
+              "aws:cdk:cloudformation:props": {
+                "certificates": [{ "certificateArn": { "Ref": "SiteCertificate38C247F6" } }],
+                "defaultActions": [
+                  { "type": "forward", "targetGroupArn": { "Ref": "WebTargetGroup" } }
+                ],
+                "loadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121",
+                "port": 443,
+                "protocol": "HTTPS"
+              }
+            }
+          },
+          "HttpsApiListenerRule": {
+            "id": "HttpsApiListenerRule",
+            "path": "SpotterSpace-dev-Stack/HttpsApiListenerRule",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_elasticloadbalancingv2.CfnListenerRule",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+              "aws:cdk:cloudformation:props": {
+                "actions": [{ "type": "forward", "targetGroupArn": { "Ref": "ApiTargetGroup" } }],
+                "conditions": [
+                  {
+                    "field": "host-header",
+                    "hostHeaderConfig": { "values": ["api.spotterspace.com"] }
+                  }
+                ],
+                "listenerArn": { "Ref": "HttpsListener" },
+                "priority": 100
+              }
+            }
+          },
+          "WwwCnameRecord": {
+            "id": "WwwCnameRecord",
+            "path": "SpotterSpace-dev-Stack/WwwCnameRecord",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_route53.CnameRecord", "version": "2.248.0" },
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SpotterSpace-dev-Stack/WwwCnameRecord/Resource",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_route53.CfnRecordSet",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Route53::RecordSet",
+                  "aws:cdk:cloudformation:props": {
+                    "hostedZoneId": "Z00113712EMKXVCPQFWZW",
+                    "name": "www.spotterspace.com.",
+                    "resourceRecords": ["spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"],
+                    "ttl": "1800",
+                    "type": "CNAME"
+                  }
+                }
+              }
+            }
+          },
+          "ApiCnameRecord": {
+            "id": "ApiCnameRecord",
+            "path": "SpotterSpace-dev-Stack/ApiCnameRecord",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_route53.CnameRecord", "version": "2.248.0" },
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SpotterSpace-dev-Stack/ApiCnameRecord/Resource",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_route53.CfnRecordSet",
+                  "version": "2.248.0"
+                },
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Route53::RecordSet",
+                  "aws:cdk:cloudformation:props": {
+                    "hostedZoneId": "Z00113712EMKXVCPQFWZW",
+                    "name": "api.spotterspace.com.",
+                    "resourceRecords": ["spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"],
+                    "ttl": "1800",
+                    "type": "CNAME"
+                  }
+                }
+              }
+            }
+          },
+          "ApiTaskDef": {
+            "id": "ApiTaskDef",
+            "path": "SpotterSpace-dev-Stack/ApiTaskDef",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_ecs.CfnTaskDefinition",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ECS::TaskDefinition",
+              "aws:cdk:cloudformation:props": {
+                "containerDefinitions": [
+                  {
+                    "name": "api",
+                    "image": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "654654553862.dkr.ecr.us-east-1.",
+                          { "Ref": "AWS::URLSuffix" },
+                          "/spotterspace-dev-api:1a9aac906f9521edf3035c0727a58cc35c3b104b"
+                        ]
+                      ]
+                    },
+                    "portMappings": [{ "containerPort": 4000, "protocol": "tcp" }],
+                    "secrets": [
+                      {
+                        "name": "DATABASE_URL",
+                        "valueFrom": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/DATABASE_URL-fFpNor:DATABASE_URL::"
+                      },
+                      {
+                        "name": "JWT_SECRET",
+                        "valueFrom": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/JWT_SECRET-V8C46k:JWT_SECRET::"
+                      }
+                    ],
+                    "environment": [
+                      { "name": "NODE_ENV", "value": "production" },
+                      { "name": "STAGE", "value": "dev" },
+                      { "name": "AWS_REGION", "value": "us-east-1" },
+                      { "name": "API_PORT", "value": "4000" },
+                      { "name": "S3_BUCKET", "value": "spotterhub-photos" },
+                      { "name": "WEB_BASE_URL", "value": "https://www.spotterspace.com" },
+                      {
+                        "name": "FROM_EMAIL",
+                        "value": "SpotterSpace <noreply@noreply.spotterspace.com>"
+                      }
+                    ],
+                    "logConfiguration": {
+                      "logDriver": "awslogs",
+                      "options": {
+                        "awslogs-group": { "Ref": "ApiLogGroup1DEDFC07" },
+                        "awslogs-stream-prefix": "api",
+                        "awslogs-region": "us-east-1"
+                      }
+                    },
+                    "healthCheck": {
+                      "command": ["CMD", "wget", "-qO-", "http://localhost:4000/health"],
+                      "interval": 30,
+                      "timeout": 5,
+                      "retries": 3,
+                      "startPeriod": 30
+                    }
+                  }
+                ],
+                "cpu": "512",
+                "executionRoleArn": "arn:aws:iam::654654553862:role/ecsTaskExecutionRole",
+                "family": "spotterspace-dev-api",
+                "memory": "1024",
+                "networkMode": "awsvpc",
+                "requiresCompatibilities": ["FARGATE"],
+                "taskRoleArn": "arn:aws:iam::654654553862:role/ecsSpotterSpaceTaskRole"
+              }
+            }
+          },
+          "WebTaskDef": {
+            "id": "WebTaskDef",
+            "path": "SpotterSpace-dev-Stack/WebTaskDef",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_ecs.CfnTaskDefinition",
+              "version": "2.248.0"
+            },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ECS::TaskDefinition",
+              "aws:cdk:cloudformation:props": {
+                "containerDefinitions": [
+                  {
+                    "name": "web",
+                    "image": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "654654553862.dkr.ecr.us-east-1.",
+                          { "Ref": "AWS::URLSuffix" },
+                          "/spotterspace-dev-web:1a9aac906f9521edf3035c0727a58cc35c3b104b"
+                        ]
+                      ]
+                    },
+                    "portMappings": [{ "containerPort": 3000, "protocol": "tcp" }],
+                    "environment": [
+                      { "name": "NODE_ENV", "value": "production" },
+                      {
+                        "name": "NEXT_PUBLIC_API_URL",
+                        "value": "https://api.spotterspace.com/graphql"
+                      },
+                      { "name": "HOSTNAME", "value": "0.0.0.0" }
+                    ],
+                    "logConfiguration": {
+                      "logDriver": "awslogs",
+                      "options": {
+                        "awslogs-group": { "Ref": "WebLogGroup68B8CF3C" },
+                        "awslogs-stream-prefix": "web",
+                        "awslogs-region": "us-east-1"
+                      }
+                    },
+                    "healthCheck": {
+                      "command": ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"],
+                      "interval": 30,
+                      "timeout": 5,
+                      "retries": 3,
+                      "startPeriod": 30
+                    }
+                  }
+                ],
+                "cpu": "256",
+                "executionRoleArn": "arn:aws:iam::654654553862:role/ecsTaskExecutionRole",
+                "family": "spotterspace-dev-web",
+                "memory": "512",
+                "networkMode": "awsvpc",
+                "requiresCompatibilities": ["FARGATE"]
+              }
+            }
+          },
+          "EcsCluster": {
+            "id": "EcsCluster",
+            "path": "SpotterSpace-dev-Stack/EcsCluster",
+            "constructInfo": { "fqn": "aws-cdk-lib.Resource", "version": "2.248.0" }
+          },
+          "ApiService": {
+            "id": "ApiService",
+            "path": "SpotterSpace-dev-Stack/ApiService",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_ecs.CfnService", "version": "2.248.0" },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ECS::Service",
+              "aws:cdk:cloudformation:props": {
+                "cluster": "spotterspace-cluster",
+                "desiredCount": 1,
+                "launchType": "FARGATE",
+                "loadBalancers": [
+                  {
+                    "containerName": "api",
+                    "containerPort": 4000,
+                    "targetGroupArn": { "Ref": "ApiTargetGroup" }
+                  }
+                ],
+                "networkConfiguration": {
+                  "awsvpcConfiguration": {
+                    "subnets": ["subnet-082c94f0897298f6e", "subnet-096b774ed307c85ed"],
+                    "securityGroups": ["sg-08e5864c53710a095"],
+                    "assignPublicIp": "DISABLED"
+                  }
+                },
+                "serviceName": "spotterspace-dev-api",
+                "taskDefinition": { "Ref": "ApiTaskDef" }
+              }
+            }
+          },
+          "WebService": {
+            "id": "WebService",
+            "path": "SpotterSpace-dev-Stack/WebService",
+            "constructInfo": { "fqn": "aws-cdk-lib.aws_ecs.CfnService", "version": "2.248.0" },
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::ECS::Service",
+              "aws:cdk:cloudformation:props": {
+                "cluster": "spotterspace-cluster",
+                "desiredCount": 1,
+                "launchType": "FARGATE",
+                "loadBalancers": [
+                  {
+                    "containerName": "web",
+                    "containerPort": 3000,
+                    "targetGroupArn": { "Ref": "WebTargetGroup" }
+                  }
+                ],
+                "networkConfiguration": {
+                  "awsvpcConfiguration": {
+                    "subnets": ["subnet-082c94f0897298f6e", "subnet-096b774ed307c85ed"],
+                    "securityGroups": ["sg-08e5864c53710a095"],
+                    "assignPublicIp": "DISABLED"
+                  }
+                },
+                "serviceName": "spotterspace-dev-web",
+                "taskDefinition": { "Ref": "WebTaskDef" }
+              }
+            }
+          },
+          "ClusterName": {
+            "id": "ClusterName",
+            "path": "SpotterSpace-dev-Stack/ClusterName",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "ApiServiceArn": {
+            "id": "ApiServiceArn",
+            "path": "SpotterSpace-dev-Stack/ApiServiceArn",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "WebServiceArn": {
+            "id": "WebServiceArn",
+            "path": "SpotterSpace-dev-Stack/WebServiceArn",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "ApiTaskDefinitionArn": {
+            "id": "ApiTaskDefinitionArn",
+            "path": "SpotterSpace-dev-Stack/ApiTaskDefinitionArn",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "WebTaskDefinitionArn": {
+            "id": "WebTaskDefinitionArn",
+            "path": "SpotterSpace-dev-Stack/WebTaskDefinitionArn",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "AlbDnsName": {
+            "id": "AlbDnsName",
+            "path": "SpotterSpace-dev-Stack/AlbDnsName",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "AlbArn": {
+            "id": "AlbArn",
+            "path": "SpotterSpace-dev-Stack/AlbArn",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "Stage": {
+            "id": "Stage",
+            "path": "SpotterSpace-dev-Stack/Stage",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnOutput", "version": "2.248.0" }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "SpotterSpace-dev-Stack/CDKMetadata",
+            "constructInfo": { "fqn": "constructs.Construct", "version": "10.6.0" },
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "SpotterSpace-dev-Stack/CDKMetadata/Default",
+                "constructInfo": { "fqn": "aws-cdk-lib.CfnResource", "version": "2.248.0" }
+              }
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "SpotterSpace-dev-Stack/BootstrapVersion",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnParameter", "version": "2.248.0" }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "SpotterSpace-dev-Stack/CheckBootstrapVersion",
+            "constructInfo": { "fqn": "aws-cdk-lib.CfnRule", "version": "2.248.0" }
+          }
+        }
+      },
+      "Tree": {
+        "id": "Tree",
+        "path": "Tree",
+        "constructInfo": { "fqn": "constructs.Construct", "version": "10.6.0" }
+      }
+    }
+  }
+}

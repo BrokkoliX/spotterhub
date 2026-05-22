@@ -36,19 +36,19 @@ services:
             NetworkMode: awsvpc
             RequiresCompatibilities:
               - FARGATE
-            Cpu: "1024"
-            Memory: "2048"
+            Cpu: "256"
+            Memory: "512"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: "1"
-          memory: "2G"
+          cpus: "0.25"
+          memory: "512M"
 
   web:
     build:
@@ -72,19 +72,19 @@ services:
             NetworkMode: awsvpc
             RequiresCompatibilities:
               - FARGATE
-            Cpu: "1024"
-            Memory: "2048"
+            Cpu: "256"
+            Memory: "512"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: "1"
-          memory: "2G"
+          cpus: "0.25"
+          memory: "512M"
 
 secrets:
   DATABASE_URL:

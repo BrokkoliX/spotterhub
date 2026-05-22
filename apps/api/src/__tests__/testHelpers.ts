@@ -1,5 +1,5 @@
 import { ApolloServer } from '@apollo/server';
-import { prisma } from '@spotterspace/db';
+import { Prisma, prisma } from '@spotterspace/db';
 
 import type { Context } from '../context.js';
 import { createLoaders } from '../loaders.js';
@@ -65,37 +65,39 @@ export async function createTestUser(
 // ─── Database cleanup ─────────────────────────────────────────────────────────
 
 /**
- * Deletes all data from all tables in the correct dependency order.
- * Uses a single function so FK ordering is maintained in one place.
+ * Cached list of fully-qualified table names (schema.tableName) derived from
+ * the Prisma DMMF datamodel. Computed once on first call and reused.
+ */
+let cachedTableList: string | null = null;
+
+/**
+ * Build a comma-separated list of quoted table identifiers from the Prisma
+ * DMMF. Falls back to the model name when no `@@map` is set, which mirrors
+ * Prisma's own table-naming convention.
+ */
+function getTableList(): string {
+  if (cachedTableList) return cachedTableList;
+  const tables = Prisma.dmmf.datamodel.models
+    .map((model) => model.dbName ?? model.name)
+    .map((name) => `"public"."${name}"`);
+  cachedTableList = tables.join(', ');
+  return cachedTableList;
+}
+
+/**
+ * Truncates every table managed by Prisma in a single statement. Uses
+ * `TRUNCATE ... RESTART IDENTITY CASCADE` so FK ordering is handled by
+ * Postgres rather than hand-maintained, and sequence values reset between
+ * tests for deterministic IDs where applicable.
+ *
+ * Replaces the previous hand-maintained delete-list which was fragile to
+ * schema drift — any new model in `schema.prisma` would silently leak rows
+ * across test cases until somebody remembered to add a `deleteMany` call.
  */
 export async function cleanDatabase(): Promise<void> {
-  await prisma.eventAttendee.deleteMany();
-  await prisma.communityEvent.deleteMany();
-  await prisma.forumPost.deleteMany();
-  await prisma.forumThread.deleteMany();
-  await prisma.forumCategory.deleteMany();
-  await prisma.communityMember.deleteMany();
-  await prisma.communitySubscription.deleteMany();
-  await prisma.community.deleteMany();
-  await prisma.like.deleteMany();
-  await prisma.comment.deleteMany();
-  await prisma.photoTag.deleteMany();
-  await prisma.photoLocation.deleteMany();
-  await prisma.photoVariant.deleteMany();
-  await prisma.photo.deleteMany();
-  await prisma.follow.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.report.deleteMany();
-  await prisma.album.deleteMany();
-  await prisma.spottingLocation.deleteMany();
-  await prisma.aircraft.deleteMany();
-  await prisma.aircraftVariant.deleteMany();
-  await prisma.aircraftFamily.deleteMany();
-  await prisma.aircraftManufacturer.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.airport.deleteMany();
-  await prisma.refreshToken.deleteMany();
-  await prisma.user.deleteMany();
+  const tables = getTableList();
+  if (!tables) return;
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE;`);
 }
 
 export { prisma };

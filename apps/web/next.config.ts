@@ -44,12 +44,16 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '4566',
-        pathname: '/spotterhub-photos/**',
-      },
+      ...(process.env.NODE_ENV !== 'production'
+        ? [
+            {
+              protocol: 'http' as const,
+              hostname: 'localhost',
+              port: '4566',
+              pathname: '/spotterhub-photos/**',
+            },
+          ]
+        : []),
       {
         protocol: 'https',
         hostname: 'd2ur47prd8ljwz.cloudfront.net',

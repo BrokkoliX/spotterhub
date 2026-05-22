@@ -1,6 +1,6 @@
 # SpotterHub — Deployment & Operations Guide
 
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-22
 > **Domain:** spotterspace.com (registered 2026-04-11 via Amazon Registrar)
 > **AWS Region:** us-east-1
 > **AWS Account:** 654654553862
@@ -58,7 +58,7 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
        ▼
 ┌──────────────┐     ┌──────────────┐
 │ RDS Postgres │     │ S3 Bucket    │
-│ spotterhub-db│     │ spotterspace-│
+│ spotterhub-db│     │ spotterhub-  │
 │ Port 5432    │     │ photos       │
 └──────────────┘     └──────────────┘
 ```
@@ -81,10 +81,10 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 | Web ECS Service     | `spotterspace-dev-web`                                              |
 | API ECR Repo        | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api` |
 | Web ECR Repo        | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web` |
-| API Task Definition | `spotterspace-dev-api` (rev N, image: `:latest`)                    |
-| Web Task Definition | `spotterspace-dev-web` (rev N, image: `:latest`)                    |
+| API Task Definition | `spotterspace-dev-api` (current: :234, 512 CPU / 1024 MB)           |
+| Web Task Definition | `spotterspace-dev-web` (current: :181, 256 CPU / 512 MB)            |
 | RDS                 | `spotterhub-db` (PostgreSQL 16.3, db.t3.medium, private subnets)    |
-| S3                  | `spotterspace-photos`                                               |
+| S3                  | `spotterhub-photos`                                                 |
 | ALB                 | `spotterspace-alb`                                                  |
 | Secrets Manager     | `spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET`                  |
 | Route 53 Zone       | `Z00113712EMKXVCPQFWZW`                                             |
@@ -96,15 +96,9 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 
 ### Standard Flow (push to main)
 
-1. **Push code to `main`** → GitHub Actions automatically:
-   - Runs CI checks (lint → typecheck → test → build)
-   - Builds Docker images for API and Web
-   - Pushes to ECR with both `:latest` and `:{sha}` tags
-   - Triggers ECS redeployment for both services (~5-7 min total)
+Pushing to `main` triggers GitHub Actions, which runs CI checks (lint → typecheck → test → build), builds Docker images for API and Web, pushes to ECR with both `:latest` and `:{sha}` tags, and triggers ECS redeployment for both services (~5-7 min total).
 
-2. **Wait 2-3 minutes** for ECS to roll out the new tasks
-
-3. **Verify:**
+Verify after rollout:
 
 ```bash
 # Check API health
@@ -117,13 +111,22 @@ aws ecs describe-services --cluster spotterspace-cluster \
   --query 'services[*].{Name:serviceName,Running:runningCount,Desired:desiredCount,Status:deployments[0].rolloutState}'
 ```
 
+### CDK Deploy (infrastructure changes)
+
+Use this when deploying CDK infrastructure changes or when you need to pick up a specific image tag. Always pass an explicit git SHA for `API_IMAGE_TAG` and `WEB_IMAGE_TAG`.
+
+```bash
+cd infrastructure
+DOMAIN_NAME=spotterspace.com HOSTED_ZONE_ID=Z00113712EMKXVCPQFWZW STAGE=dev \
+  API_IMAGE_TAG=<git-sha> WEB_IMAGE_TAG=<git-sha> \
+  npx cdk deploy --require-approval never
+```
+
 ### Manual Deploy (workflow_dispatch)
 
 Go to **GitHub Actions → Deploy to AWS → Run workflow** and choose `dev` or `prod`.
 
 ### Deploy Only API or Only Web
-
-Only run the `update-service` command for the service you want to update:
 
 ```bash
 # API only
@@ -140,7 +143,6 @@ aws ecs update-service --cluster spotterspace-cluster \
 ### Verify Deployment
 
 ```bash
-# Check Web
 curl -s -o /dev/null -w "%{http_code}" https://www.spotterspace.com
 ```
 
@@ -462,8 +464,8 @@ CMD ["node", "apps/web/apps/web/server.js"]
 
 | Service | Target Group                                       | Health Check      | Interval |
 | ------- | -------------------------------------------------- | ----------------- | -------- |
-| API     | `spotterspace-dev-api-tg` (`.../105538bfd82988b2`) | `GET /health`     | 10s      |
-| Web     | `spotterspace-dev-web-tg` (`.../53bffb7b973906cb`) | `GET /api/health` | 10s      |
+| API     | `spotterspace-dev-api-tg` (`.../105538bfd82988b2`) | `GET /health`     | 30s      |
+| Web     | `spotterspace-dev-web-tg` (`.../53bffb7b973906cb`) | `GET /api/health` | 30s      |
 
 ### CloudWatch Logs
 
@@ -529,6 +531,22 @@ sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
 ```bash
 aws secretsmanager list-secrets --query "SecretList[].Name" --output table
 ```
+
+### Failed Migration Row in \_prisma_migrations (P3009)
+
+**Symptoms:** API containers crash on startup with `P3009: migrate found failed migrations in the target database`. ALB returns 503 because no healthy targets exist, but a long-lived orphan task from a previous revision may still be serving traffic, masking the crash loop.
+
+**Cause:** A row exists in `_prisma_migrations` with `finished_at = NULL` and `logs` containing an error. This happens when a migration file is deleted from the codebase after it partially ran or failed in production.
+
+**Fix:** Run `prisma migrate resolve --rolled-back <migration_name>` inside the VPC via a one-off ECS task (see Emergency Schema Repair below). This marks the row as rolled back and allows subsequent `prisma migrate deploy` calls to proceed.
+
+```bash
+# One-off command to pass as the container override:
+npx prisma migrate resolve --rolled-back 20260406123505_init \
+  --schema packages/db/prisma/schema.prisma && echo DONE
+```
+
+After the one-off task exits successfully, force a new deployment of the api service. The regular `docker-entrypoint.sh` path will succeed on the next start.
 
 ### Missing Database Tables (Migration Drift)
 

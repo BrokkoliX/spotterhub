@@ -1,16 +1,16 @@
 {
   "version": "53.0.0",
   "files": {
-    "1a5d0b1774dea91b11bd67e5e1bd25806921a9ca84ea386b4af92050716f6bcd": {
+    "c2061a579aba622b4213c3c375ffe0d6cc36a4a13ddcac772a47bf7baf6f6d84": {
       "displayName": "SpotterSpace-dev-Stack Template",
       "source": {
         "path": "SpotterSpace-dev-Stack.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "654654553862-us-east-1-3ade63a0": {
+        "654654553862-us-east-1-38d8d02e": {
           "bucketName": "cdk-hnb659fds-assets-654654553862-us-east-1",
-          "objectKey": "1a5d0b1774dea91b11bd67e5e1bd25806921a9ca84ea386b4af92050716f6bcd.json",
+          "objectKey": "c2061a579aba622b4213c3c375ffe0d6cc36a4a13ddcac772a47bf7baf6f6d84.json",
           "region": "us-east-1",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-file-publishing-role-654654553862-us-east-1"
         }

@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-05-02
+> **Last updated:** 2026-05-22
 > **Purpose:** Living document tracking implemented features and operational notes. See `PRODUCT.md` for current product overview.
 
 ---
@@ -224,6 +224,8 @@ npx turbo run generate --filter=@spotterspace/db
 - **Migrations:** Run automatically on API container startup via `docker-entrypoint.sh`. The entrypoint simply runs `prisma migrate deploy` and starts the server (no recovery or cleanup logic).
 - **Photo URLs:** Seed data photos have `original_url` pointing to LocalStack bucket paths that must be seeded separately via `seed-images.ts`.
 - **ECS Fargate migration:** Previously used App Runner. Migrated to ECS Fargate + ALB to fix ALB health check timeout issues (ECS services need `loadBalancers` config to register with ALB target groups).
+- **Task sizing (dev):** api 512 CPU / 1024 MB; web 256 CPU / 512 MB (right-sized 2026-05-22 to reduce Fargate costs from ~$202/month to ~$50/month).
+- **Image tag strategy:** The CDK now reads `API_IMAGE_TAG` and `WEB_IMAGE_TAG` env vars (defaulting to `latest`). Always pass an explicit git SHA when deploying.
 - **Explore page:** The `/explore` page replaced the separate `/discover` and `/following` pages. It shows "Your Following" sections at the top of each tab and "Browse All" below.
 - **Follow system:** Supports airline, registration, manufacturer, family, variant, aircraft_type target types. `isFollowedByMe` is exposed on all topic types.
 - **Sharp image processing (production fix):** ESM dynamic `import('sharp')` was returning a module object instead of the Sharp function. Fixed with `mod.default ?? mod` to unwrap correctly. Docker image explicitly installs `@img/sharp-linuxmusl-arm64` and `@img/sharp-linuxmusl-x64` after `npm prune` to ensure native binaries survive the prune step.
@@ -255,6 +257,43 @@ npx turbo run generate --filter=@spotterspace/db
 - Never include DROP TABLE statements in automated startup scripts.
 - `prisma migrate deploy` is safe and idempotent, but it cannot recover from missing tables when `_prisma_migrations` says they were already created.
 - For schema drift emergencies, `prisma db push` can recreate tables, followed by `prisma migrate resolve --applied` to re-baseline migration history.
+
+### 2026-05-22 — Failed Migration Row + Fargate Cost Reduction (P2)
+
+**Impact:** Hidden crash loop: the api service was silently running 2 tasks (desiredCount=1, but an orphan task from revision :230 had never been restarted) and Fargate was billing ~$202/month due to oversized task definitions.
+
+**Root cause:** A failed row for migration `20260406123505_init` existed in `_prisma_migrations`. The migration file no longer exists in the codebase (deleted during April 2026 restructuring). On every fresh container start, `prisma migrate deploy` found the failed row and exited with error P3009, crashing the container. The only reason the api appeared healthy was an orphan Fargate task (revision :230) that had been running continuously since before the row became corrupted and had never been restarted.
+
+Additionally, the CDK was hardcoding stale ECR image tags (`:v5` api, `:v6` web), referencing a non-existent S3 bucket (`spotterspace-photos` instead of `spotterhub-photos`), passing an incorrect env var name (`PHOTOS_BUCKET_NAME` instead of `S3_BUCKET`), and omitting `WEB_BASE_URL` and `FROM_EMAIL` from the task environment.
+
+**Resolution:**
+
+1. Ran `prisma migrate resolve --rolled-back 20260406123505_init` via a one-off ECS task (entrypoint override to bypass `docker-entrypoint.sh`). The failed migration row is permanently cleared.
+2. Fixed CDK to read image tags from `API_IMAGE_TAG` / `WEB_IMAGE_TAG` env vars, defaulting to `latest`.
+3. Fixed CDK S3 bucket default to `spotterhub-photos` and corrected the env var to `S3_BUCKET`.
+4. Added `WEB_BASE_URL` and `FROM_EMAIL` to CDK task environment to match the working task definition.
+5. Right-sized Fargate tasks for dev: api 1024/3072 → 512/1024; web 1024/2048 → 256/512.
+6. Increased healthcheck intervals from 10s to 30s on both services.
+7. Added separate CDK constants for api and web task sizing (`apiTaskCpu`, `apiTaskMemory`, `webTaskCpu`, `webTaskMemory`).
+8. CloudFormation stack `SpotterSpace-dev-Stack` reached UPDATE_COMPLETE. Both services running 1 task each, no crash loops.
+
+**Expected cost impact:** Fargate billing reduced from ~$202/month to ~$50/month (~$150/month saving).
+
+**Lessons learned:**
+
+- `prisma migrate resolve --rolled-back` cleanly removes a failed migration row without touching data. It is the correct tool when a migration file is deleted after it failed.
+- A single long-lived "orphan" ECS task can mask an otherwise complete crash loop. Always check that runningCount matches desiredCount across all task revisions, not just the latest.
+- CDK image tags should never be hardcoded. Always drive them from env vars at deploy time and pass an explicit git SHA.
+
+**Known remaining issues (not fixed in this session):**
+
+- `express-rate-limit` IPv6 keyGenerator warning in api logs (non-fatal, pre-existing).
+- S3 CORS configuration warning on api startup (non-fatal, pre-existing).
+- ECS circuit breaker disabled on both services. Should add `circuitBreaker: { enable: true, rollback: true }` to CDK to prevent future incident escalation.
+- Duplicate Secrets Manager VPC endpoints (`vpce-05caf...` and `vpce-00a5...`) — ~$7/month waste.
+- Orphaned `t3.small` EC2 instance not managed by CDK — ~$10/month.
+- AppRunner legacy CloudWatch log groups still present.
+- `keep-warm` Lambda — verify still needed now that ECS tasks are stable.
 
 ---
 

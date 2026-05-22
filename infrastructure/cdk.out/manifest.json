@@ -18,21 +18,17 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-deploy-role-654654553862-us-east-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-cfn-exec-role-654654553862-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-654654553862-us-east-1/1a5d0b1774dea91b11bd67e5e1bd25806921a9ca84ea386b4af92050716f6bcd.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-654654553862-us-east-1/c2061a579aba622b4213c3c375ffe0d6cc36a4a13ddcac772a47bf7baf6f6d84.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
-        "additionalDependencies": [
-          "SpotterSpace-dev-Stack.assets"
-        ],
+        "additionalDependencies": ["SpotterSpace-dev-Stack.assets"],
         "lookupRole": {
           "arn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-lookup-role-654654553862-us-east-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }
       },
-      "dependencies": [
-        "SpotterSpace-dev-Stack.assets"
-      ],
+      "dependencies": ["SpotterSpace-dev-Stack.assets"],
       "additionalMetadataFile": "SpotterSpace-dev-Stack.metadata.json",
       "displayName": "SpotterSpace-dev-Stack"
     },
@@ -106,10 +102,7 @@
             "explanation": "Enable this flag to make it impossible to accidentally use SecretValues in unsafe locations"
           },
           "@aws-cdk/core:target-partitions": {
-            "recommendedValue": [
-              "aws",
-              "aws-cn"
-            ],
+            "recommendedValue": ["aws", "aws-cn"],
             "explanation": "What regions to include in lookup tables of environment agnostic stacks"
           },
           "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": {

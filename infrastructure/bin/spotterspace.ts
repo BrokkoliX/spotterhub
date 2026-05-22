@@ -12,6 +12,10 @@ new SpotterSpaceStack(app, `SpotterSpace-${stage}-Stack`, {
   domainName: process.env['DOMAIN_NAME'],
   hostedZoneId: process.env['HOSTED_ZONE_ID'],
   vpcId: process.env['VPC_ID'] ?? 'vpc-09a6870488b73260e',
+  enableCloudFront: process.env['ENABLE_CLOUDFRONT'] === 'true',
+  enableVpcEndpoints: process.env['ENABLE_VPC_ENDPOINTS'] === 'true',
+  apiImageTag: process.env['API_IMAGE_TAG'],
+  webImageTag: process.env['WEB_IMAGE_TAG'],
   env: {
     account: process.env['CDK_DEFAULT_ACCOUNT'],
     region: process.env['CDK_DEFAULT_REGION'] ?? 'us-east-1',

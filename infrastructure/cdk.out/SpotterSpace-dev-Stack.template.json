@@ -1,626 +1,578 @@
 {
- "Resources": {
-  "EcsSecurityGroupfromSpotterSpacedevStackEcsSecurityGroupCB12187AALLTRAFFICEB6B9DF2": {
-   "Type": "AWS::EC2::SecurityGroupIngress",
-   "Properties": {
-    "Description": "Allow ALB to ECS traffic",
-    "GroupId": "sg-08e5864c53710a095",
-    "IpProtocol": "-1",
-    "SourceSecurityGroupId": "sg-08e5864c53710a095"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/EcsSecurityGroup/from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC"
-   }
-  },
-  "SecretsEndpointSGfromSpotterSpacedevStackEcsSecurityGroupCB12187A443FC3D5E2A": {
-   "Type": "AWS::EC2::SecurityGroupIngress",
-   "Properties": {
-    "Description": "Allow ECS to reach Secrets Manager",
-    "FromPort": 443,
-    "GroupId": "sg-0ddf2cd67fa1b09f0",
-    "IpProtocol": "tcp",
-    "SourceSecurityGroupId": "sg-08e5864c53710a095",
-    "ToPort": 443
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/SecretsEndpointSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:443"
-   }
-  },
-  "RdsSGfromSpotterSpacedevStackEcsSecurityGroupCB12187A543281660620": {
-   "Type": "AWS::EC2::SecurityGroupIngress",
-   "Properties": {
-    "Description": "Allow ECS to reach RDS",
-    "FromPort": 5432,
-    "GroupId": "sg-0925439b428efdf13",
-    "IpProtocol": "tcp",
-    "SourceSecurityGroupId": "sg-08e5864c53710a095",
-    "ToPort": 5432
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/RdsSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432"
-   }
-  },
-  "ApiLogGroup1DEDFC07": {
-   "Type": "AWS::Logs::LogGroup",
-   "Properties": {
-    "LogGroupName": "/ecs/spotterspace-dev/api",
-    "RetentionInDays": 7
-   },
-   "UpdateReplacePolicy": "Retain",
-   "DeletionPolicy": "Retain",
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiLogGroup/Resource"
-   }
-  },
-  "WebLogGroup68B8CF3C": {
-   "Type": "AWS::Logs::LogGroup",
-   "Properties": {
-    "LogGroupName": "/ecs/spotterspace-dev/web",
-    "RetentionInDays": 7
-   },
-   "UpdateReplacePolicy": "Retain",
-   "DeletionPolicy": "Retain",
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/WebLogGroup/Resource"
-   }
-  },
-  "ApiTargetGroup": {
-   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
-   "Properties": {
-    "HealthCheckIntervalSeconds": 10,
-    "HealthCheckPath": "/health",
-    "HealthyThresholdCount": 2,
-    "Name": "spotterspace-dev-api-tg",
-    "Port": 4000,
-    "Protocol": "HTTP",
-    "TargetType": "ip",
-    "UnhealthyThresholdCount": 3,
-    "VpcId": "vpc-09a6870488b73260e"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiTargetGroup"
-   }
-  },
-  "WebTargetGroup": {
-   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
-   "Properties": {
-    "HealthCheckIntervalSeconds": 10,
-    "HealthCheckPath": "/api/health",
-    "HealthyThresholdCount": 2,
-    "Name": "spotterspace-dev-web-tg",
-    "Port": 3000,
-    "Protocol": "HTTP",
-    "TargetType": "ip",
-    "UnhealthyThresholdCount": 3,
-    "VpcId": "vpc-09a6870488b73260e"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/WebTargetGroup"
-   }
-  },
-  "HttpListener": {
-   "Type": "AWS::ElasticLoadBalancingV2::Listener",
-   "Properties": {
-    "DefaultActions": [
-     {
-      "TargetGroupArn": {
-       "Ref": "WebTargetGroup"
+  "Resources": {
+    "EcsSecurityGroupfromSpotterSpacedevStackEcsSecurityGroupCB12187AALLTRAFFICEB6B9DF2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Allow ALB to ECS traffic",
+        "GroupId": "sg-08e5864c53710a095",
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": "sg-08e5864c53710a095"
       },
-      "Type": "forward"
-     }
-    ],
-    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121",
-    "Port": 80,
-    "Protocol": "HTTP"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/HttpListener"
-   }
-  },
-  "ApiListenerRule": {
-   "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
-   "Properties": {
-    "Actions": [
-     {
-      "TargetGroupArn": {
-       "Ref": "ApiTargetGroup"
-      },
-      "Type": "forward"
-     }
-    ],
-    "Conditions": [
-     {
-      "Field": "host-header",
-      "HostHeaderConfig": {
-       "Values": [
-        "api.spotterspace.com"
-       ]
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/EcsSecurityGroup/from SpotterSpacedevStackEcsSecurityGroupCB12187A:ALL TRAFFIC"
       }
-     }
-    ],
-    "ListenerArn": {
-     "Ref": "HttpListener"
     },
-    "Priority": 100
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiListenerRule"
-   }
-  },
-  "WebListenerRule": {
-   "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
-   "Properties": {
-    "Actions": [
-     {
-      "TargetGroupArn": {
-       "Ref": "WebTargetGroup"
+    "SecretsEndpointSGfromSpotterSpacedevStackEcsSecurityGroupCB12187A443FC3D5E2A": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Allow ECS to reach Secrets Manager",
+        "FromPort": 443,
+        "GroupId": "sg-0ddf2cd67fa1b09f0",
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": "sg-08e5864c53710a095",
+        "ToPort": 443
       },
-      "Type": "forward"
-     }
-    ],
-    "Conditions": [
-     {
-      "Field": "host-header",
-      "HostHeaderConfig": {
-       "Values": [
-        "www.spotterspace.com"
-       ]
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/SecretsEndpointSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:443"
       }
-     }
-    ],
-    "ListenerArn": {
-     "Ref": "HttpListener"
     },
-    "Priority": 200
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/WebListenerRule"
-   }
-  },
-  "SiteCertificate38C247F6": {
-   "Type": "AWS::CertificateManager::Certificate",
-   "Properties": {
-    "DomainName": "spotterspace.com",
-    "DomainValidationOptions": [
-     {
-      "DomainName": "spotterspace.com",
-      "HostedZoneId": "Z00113712EMKXVCPQFWZW"
-     }
-    ],
-    "SubjectAlternativeNames": [
-     "*.spotterspace.com"
-    ],
-    "Tags": [
-     {
-      "Key": "Name",
-      "Value": "SpotterSpace-dev-Stack/SiteCertificate"
-     }
-    ],
-    "ValidationMethod": "DNS"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/SiteCertificate/Resource"
-   }
-  },
-  "HttpsListener": {
-   "Type": "AWS::ElasticLoadBalancingV2::Listener",
-   "Properties": {
-    "Certificates": [
-     {
-      "CertificateArn": {
-       "Ref": "SiteCertificate38C247F6"
-      }
-     }
-    ],
-    "DefaultActions": [
-     {
-      "TargetGroupArn": {
-       "Ref": "WebTargetGroup"
+    "RdsSGfromSpotterSpacedevStackEcsSecurityGroupCB12187A543281660620": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Allow ECS to reach RDS",
+        "FromPort": 5432,
+        "GroupId": "sg-0925439b428efdf13",
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": "sg-08e5864c53710a095",
+        "ToPort": 5432
       },
-      "Type": "forward"
-     }
-    ],
-    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121",
-    "Port": 443,
-    "Protocol": "HTTPS"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/HttpsListener"
-   }
-  },
-  "HttpsApiListenerRule": {
-   "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
-   "Properties": {
-    "Actions": [
-     {
-      "TargetGroupArn": {
-       "Ref": "ApiTargetGroup"
-      },
-      "Type": "forward"
-     }
-    ],
-    "Conditions": [
-     {
-      "Field": "host-header",
-      "HostHeaderConfig": {
-       "Values": [
-        "api.spotterspace.com"
-       ]
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/RdsSG/from SpotterSpacedevStackEcsSecurityGroupCB12187A:5432"
       }
-     }
-    ],
-    "ListenerArn": {
-     "Ref": "HttpsListener"
     },
-    "Priority": 100
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/HttpsApiListenerRule"
-   }
-  },
-  "ApiTaskDef": {
-   "Type": "AWS::ECS::TaskDefinition",
-   "Properties": {
-    "ContainerDefinitions": [
-     {
-      "Environment": [
-       {
-        "Name": "NODE_ENV",
-        "Value": "production"
-       },
-       {
-        "Name": "STAGE",
-        "Value": "dev"
-       },
-       {
-        "Name": "AWS_REGION",
-        "Value": "us-east-1"
-       },
-       {
-        "Name": "API_PORT",
-        "Value": "4000"
-       },
-       {
-        "Name": "PHOTOS_BUCKET_NAME",
-        "Value": "spotterspace-photos"
-       }
-      ],
-      "HealthCheck": {
-       "Command": [
-        "CMD",
-        "wget",
-        "-qO-",
-        "http://localhost:4000/health"
-       ],
-       "Interval": 10,
-       "Retries": 3,
-       "StartPeriod": 30,
-       "Timeout": 5
+    "ApiLogGroup1DEDFC07": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/ecs/spotterspace-dev/api",
+        "RetentionInDays": 7
       },
-      "Image": {
-       "Fn::Join": [
-        "",
-        [
-         "654654553862.dkr.ecr.us-east-1.",
-         {
-          "Ref": "AWS::URLSuffix"
-         },
-         "/spotterspace-dev-api:v5"
-        ]
-       ]
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiLogGroup/Resource"
+      }
+    },
+    "WebLogGroup68B8CF3C": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/ecs/spotterspace-dev/web",
+        "RetentionInDays": 7
       },
-      "LogConfiguration": {
-       "LogDriver": "awslogs",
-       "Options": {
-        "awslogs-group": {
-         "Ref": "ApiLogGroup1DEDFC07"
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebLogGroup/Resource"
+      }
+    },
+    "ApiTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckPath": "/health",
+        "HealthyThresholdCount": 2,
+        "Name": "spotterspace-dev-api-tg",
+        "Port": 4000,
+        "Protocol": "HTTP",
+        "TargetType": "ip",
+        "UnhealthyThresholdCount": 3,
+        "VpcId": "vpc-09a6870488b73260e"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiTargetGroup"
+      }
+    },
+    "WebTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckPath": "/api/health",
+        "HealthyThresholdCount": 2,
+        "Name": "spotterspace-dev-web-tg",
+        "Port": 3000,
+        "Protocol": "HTTP",
+        "TargetType": "ip",
+        "UnhealthyThresholdCount": 3,
+        "VpcId": "vpc-09a6870488b73260e"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebTargetGroup"
+      }
+    },
+    "HttpListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "WebTargetGroup"
+            },
+            "Type": "forward"
+          }
+        ],
+        "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121",
+        "Port": 80,
+        "Protocol": "HTTP"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/HttpListener"
+      }
+    },
+    "ApiListenerRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Actions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "ApiTargetGroup"
+            },
+            "Type": "forward"
+          }
+        ],
+        "Conditions": [
+          {
+            "Field": "host-header",
+            "HostHeaderConfig": {
+              "Values": ["api.spotterspace.com"]
+            }
+          }
+        ],
+        "ListenerArn": {
+          "Ref": "HttpListener"
         },
-        "awslogs-stream-prefix": "api",
-        "awslogs-region": "us-east-1"
-       }
+        "Priority": 100
       },
-      "Name": "api",
-      "PortMappings": [
-       {
-        "ContainerPort": 4000,
-        "Protocol": "tcp"
-       }
-      ],
-      "Secrets": [
-       {
-        "Name": "DATABASE_URL",
-        "ValueFrom": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/DATABASE_URL-fFpNor:DATABASE_URL::"
-       },
-       {
-        "Name": "JWT_SECRET",
-        "ValueFrom": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/JWT_SECRET-V8C46k:JWT_SECRET::"
-       }
-      ]
-     }
-    ],
-    "Cpu": "1024",
-    "ExecutionRoleArn": "arn:aws:iam::654654553862:role/ecsTaskExecutionRole",
-    "Family": "spotterspace-dev-api",
-    "Memory": "2048",
-    "NetworkMode": "awsvpc",
-    "RequiresCompatibilities": [
-     "FARGATE"
-    ],
-    "TaskRoleArn": "arn:aws:iam::654654553862:role/ecsSpotterSpaceTaskRole"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiTaskDef"
-   }
-  },
-  "WebTaskDef": {
-   "Type": "AWS::ECS::TaskDefinition",
-   "Properties": {
-    "ContainerDefinitions": [
-     {
-      "Environment": [
-       {
-        "Name": "NODE_ENV",
-        "Value": "production"
-       },
-       {
-        "Name": "NEXT_PUBLIC_API_URL",
-        "Value": "https://api.spotterspace.com/graphql"
-       },
-       {
-        "Name": "HOSTNAME",
-        "Value": "0.0.0.0"
-       }
-      ],
-      "HealthCheck": {
-       "Command": [
-        "CMD",
-        "wget",
-        "-qO-",
-        "http://localhost:3000/api/health"
-       ],
-       "Interval": 10,
-       "Retries": 3,
-       "StartPeriod": 30,
-       "Timeout": 5
-      },
-      "Image": {
-       "Fn::Join": [
-        "",
-        [
-         "654654553862.dkr.ecr.us-east-1.",
-         {
-          "Ref": "AWS::URLSuffix"
-         },
-         "/spotterspace-dev-web:v6"
-        ]
-       ]
-      },
-      "LogConfiguration": {
-       "LogDriver": "awslogs",
-       "Options": {
-        "awslogs-group": {
-         "Ref": "WebLogGroup68B8CF3C"
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiListenerRule"
+      }
+    },
+    "WebListenerRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Actions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "WebTargetGroup"
+            },
+            "Type": "forward"
+          }
+        ],
+        "Conditions": [
+          {
+            "Field": "host-header",
+            "HostHeaderConfig": {
+              "Values": ["www.spotterspace.com"]
+            }
+          }
+        ],
+        "ListenerArn": {
+          "Ref": "HttpListener"
         },
-        "awslogs-stream-prefix": "web",
-        "awslogs-region": "us-east-1"
-       }
+        "Priority": 200
       },
-      "Name": "web",
-      "PortMappings": [
-       {
-        "ContainerPort": 3000,
-        "Protocol": "tcp"
-       }
-      ]
-     }
-    ],
-    "Cpu": "1024",
-    "ExecutionRoleArn": "arn:aws:iam::654654553862:role/ecsTaskExecutionRole",
-    "Family": "spotterspace-dev-web",
-    "Memory": "2048",
-    "NetworkMode": "awsvpc",
-    "RequiresCompatibilities": [
-     "FARGATE"
-    ]
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/WebTaskDef"
-   }
-  },
-  "ApiService": {
-   "Type": "AWS::ECS::Service",
-   "Properties": {
-    "Cluster": "spotterspace-cluster",
-    "DesiredCount": 1,
-    "LaunchType": "FARGATE",
-    "LoadBalancers": [
-     {
-      "ContainerName": "api",
-      "ContainerPort": 4000,
-      "TargetGroupArn": {
-       "Ref": "ApiTargetGroup"
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebListenerRule"
       }
-     }
-    ],
-    "NetworkConfiguration": {
-     "AwsvpcConfiguration": {
-      "AssignPublicIp": "DISABLED",
-      "SecurityGroups": [
-       "sg-08e5864c53710a095"
-      ],
-      "Subnets": [
-       "subnet-082c94f0897298f6e",
-       "subnet-096b774ed307c85ed"
-      ]
-     }
     },
-    "ServiceName": "spotterspace-dev-api",
-    "TaskDefinition": {
-     "Ref": "ApiTaskDef"
-    }
-   },
-   "DependsOn": [
-    "ApiTargetGroup",
-    "HttpListener",
-    "HttpsListener"
-   ],
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiService"
-   }
-  },
-  "WebService": {
-   "Type": "AWS::ECS::Service",
-   "Properties": {
-    "Cluster": "spotterspace-cluster",
-    "DesiredCount": 1,
-    "LaunchType": "FARGATE",
-    "LoadBalancers": [
-     {
-      "ContainerName": "web",
-      "ContainerPort": 3000,
-      "TargetGroupArn": {
-       "Ref": "WebTargetGroup"
+    "SiteCertificate38C247F6": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": "spotterspace.com",
+        "DomainValidationOptions": [
+          {
+            "DomainName": "spotterspace.com",
+            "HostedZoneId": "Z00113712EMKXVCPQFWZW"
+          }
+        ],
+        "SubjectAlternativeNames": ["*.spotterspace.com"],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "SpotterSpace-dev-Stack/SiteCertificate"
+          }
+        ],
+        "ValidationMethod": "DNS"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/SiteCertificate/Resource"
       }
-     }
-    ],
-    "NetworkConfiguration": {
-     "AwsvpcConfiguration": {
-      "AssignPublicIp": "DISABLED",
-      "SecurityGroups": [
-       "sg-08e5864c53710a095"
-      ],
-      "Subnets": [
-       "subnet-082c94f0897298f6e",
-       "subnet-096b774ed307c85ed"
-      ]
-     }
     },
-    "ServiceName": "spotterspace-dev-web",
-    "TaskDefinition": {
-     "Ref": "WebTaskDef"
+    "HttpsListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "SiteCertificate38C247F6"
+            }
+          }
+        ],
+        "DefaultActions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "WebTargetGroup"
+            },
+            "Type": "forward"
+          }
+        ],
+        "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121",
+        "Port": 443,
+        "Protocol": "HTTPS"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/HttpsListener"
+      }
+    },
+    "HttpsApiListenerRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "Actions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "ApiTargetGroup"
+            },
+            "Type": "forward"
+          }
+        ],
+        "Conditions": [
+          {
+            "Field": "host-header",
+            "HostHeaderConfig": {
+              "Values": ["api.spotterspace.com"]
+            }
+          }
+        ],
+        "ListenerArn": {
+          "Ref": "HttpsListener"
+        },
+        "Priority": 100
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/HttpsApiListenerRule"
+      }
+    },
+    "WwwCnameRecord9DA1A906": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": "Z00113712EMKXVCPQFWZW",
+        "Name": "www.spotterspace.com.",
+        "ResourceRecords": ["spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"],
+        "TTL": "1800",
+        "Type": "CNAME"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WwwCnameRecord/Resource"
+      }
+    },
+    "ApiCnameRecord2222559D": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": "Z00113712EMKXVCPQFWZW",
+        "Name": "api.spotterspace.com.",
+        "ResourceRecords": ["spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"],
+        "TTL": "1800",
+        "Type": "CNAME"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiCnameRecord/Resource"
+      }
+    },
+    "ApiTaskDef": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "NODE_ENV",
+                "Value": "production"
+              },
+              {
+                "Name": "STAGE",
+                "Value": "dev"
+              },
+              {
+                "Name": "AWS_REGION",
+                "Value": "us-east-1"
+              },
+              {
+                "Name": "API_PORT",
+                "Value": "4000"
+              },
+              {
+                "Name": "S3_BUCKET",
+                "Value": "spotterhub-photos"
+              },
+              {
+                "Name": "WEB_BASE_URL",
+                "Value": "https://www.spotterspace.com"
+              },
+              {
+                "Name": "FROM_EMAIL",
+                "Value": "SpotterSpace <noreply@noreply.spotterspace.com>"
+              }
+            ],
+            "HealthCheck": {
+              "Command": ["CMD", "wget", "-qO-", "http://localhost:4000/health"],
+              "Interval": 30,
+              "Retries": 3,
+              "StartPeriod": 30,
+              "Timeout": 5
+            },
+            "Image": {
+              "Fn::Join": [
+                "",
+                [
+                  "654654553862.dkr.ecr.us-east-1.",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/spotterspace-dev-api:1a9aac906f9521edf3035c0727a58cc35c3b104b"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "ApiLogGroup1DEDFC07"
+                },
+                "awslogs-stream-prefix": "api",
+                "awslogs-region": "us-east-1"
+              }
+            },
+            "Name": "api",
+            "PortMappings": [
+              {
+                "ContainerPort": 4000,
+                "Protocol": "tcp"
+              }
+            ],
+            "Secrets": [
+              {
+                "Name": "DATABASE_URL",
+                "ValueFrom": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/DATABASE_URL-fFpNor:DATABASE_URL::"
+              },
+              {
+                "Name": "JWT_SECRET",
+                "ValueFrom": "arn:aws:secretsmanager:us-east-1:654654553862:secret:spotterhub/JWT_SECRET-V8C46k:JWT_SECRET::"
+              }
+            ]
+          }
+        ],
+        "Cpu": "512",
+        "ExecutionRoleArn": "arn:aws:iam::654654553862:role/ecsTaskExecutionRole",
+        "Family": "spotterspace-dev-api",
+        "Memory": "1024",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": ["FARGATE"],
+        "TaskRoleArn": "arn:aws:iam::654654553862:role/ecsSpotterSpaceTaskRole"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiTaskDef"
+      }
+    },
+    "WebTaskDef": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "NODE_ENV",
+                "Value": "production"
+              },
+              {
+                "Name": "NEXT_PUBLIC_API_URL",
+                "Value": "https://api.spotterspace.com/graphql"
+              },
+              {
+                "Name": "HOSTNAME",
+                "Value": "0.0.0.0"
+              }
+            ],
+            "HealthCheck": {
+              "Command": ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"],
+              "Interval": 30,
+              "Retries": 3,
+              "StartPeriod": 30,
+              "Timeout": 5
+            },
+            "Image": {
+              "Fn::Join": [
+                "",
+                [
+                  "654654553862.dkr.ecr.us-east-1.",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/spotterspace-dev-web:1a9aac906f9521edf3035c0727a58cc35c3b104b"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "WebLogGroup68B8CF3C"
+                },
+                "awslogs-stream-prefix": "web",
+                "awslogs-region": "us-east-1"
+              }
+            },
+            "Name": "web",
+            "PortMappings": [
+              {
+                "ContainerPort": 3000,
+                "Protocol": "tcp"
+              }
+            ]
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": "arn:aws:iam::654654553862:role/ecsTaskExecutionRole",
+        "Family": "spotterspace-dev-web",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": ["FARGATE"]
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebTaskDef"
+      }
+    },
+    "ApiService": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": "spotterspace-cluster",
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "LoadBalancers": [
+          {
+            "ContainerName": "api",
+            "ContainerPort": 4000,
+            "TargetGroupArn": {
+              "Ref": "ApiTargetGroup"
+            }
+          }
+        ],
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "DISABLED",
+            "SecurityGroups": ["sg-08e5864c53710a095"],
+            "Subnets": ["subnet-082c94f0897298f6e", "subnet-096b774ed307c85ed"]
+          }
+        },
+        "ServiceName": "spotterspace-dev-api",
+        "TaskDefinition": {
+          "Ref": "ApiTaskDef"
+        }
+      },
+      "DependsOn": ["ApiTargetGroup", "HttpListener", "HttpsListener"],
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiService"
+      }
+    },
+    "WebService": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": "spotterspace-cluster",
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "LoadBalancers": [
+          {
+            "ContainerName": "web",
+            "ContainerPort": 3000,
+            "TargetGroupArn": {
+              "Ref": "WebTargetGroup"
+            }
+          }
+        ],
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "DISABLED",
+            "SecurityGroups": ["sg-08e5864c53710a095"],
+            "Subnets": ["subnet-082c94f0897298f6e", "subnet-096b774ed307c85ed"]
+          }
+        },
+        "ServiceName": "spotterspace-dev-web",
+        "TaskDefinition": {
+          "Ref": "WebTaskDef"
+        }
+      },
+      "DependsOn": ["HttpListener", "HttpsListener", "WebTargetGroup"],
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebService"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/02Q0UoDQQxFv8X3aaxbFX3tCiIIwtZ3SbPZJd3tTEkyLWWZf5e2SvuUcy85EFJB9fgC8zs82IzaYTbKGqaVIw2hYUtZiQMe7GdiqqDu4oopq/jxXVPefcRe2SzYApaZBvYlGgcmhYZ3ycSTHs/VmHqD6TP1Zy3UXfznEnhEc6ExYbvGESNJ7PcVTHUXv1F79qsj5hxZb7nJI5dArC6dEDpvMWLPClN97U7CTSxBU3Z+WsBUR9xyw5S0PS1daMVeApP93WDDG3cSxSXFcH6B7oW4lFP4yr7LXkJMLcPG7vfVHB5e4fluYyIzzdFly9Bc5i9OwJ/dbQEAAA=="
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/CDKMetadata/Default"
+      }
     }
-   },
-   "DependsOn": [
-    "HttpListener",
-    "HttpsListener",
-    "WebTargetGroup"
-   ],
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/WebService"
-   }
   },
-  "WwwCnameRecord9DA1A906": {
-   "Type": "AWS::Route53::RecordSet",
-   "Properties": {
-    "HostedZoneId": "Z00113712EMKXVCPQFWZW",
-    "Name": "www.spotterspace.com.",
-    "ResourceRecords": [
-     "spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"
-    ],
-    "TTL": "1800",
-    "Type": "CNAME"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/WwwCnameRecord/Resource"
-   }
+  "Outputs": {
+    "ClusterName": {
+      "Value": "spotterspace-cluster"
+    },
+    "ApiServiceArn": {
+      "Value": {
+        "Fn::GetAtt": ["ApiService", "ServiceArn"]
+      }
+    },
+    "WebServiceArn": {
+      "Value": {
+        "Fn::GetAtt": ["WebService", "ServiceArn"]
+      }
+    },
+    "ApiTaskDefinitionArn": {
+      "Value": {
+        "Ref": "ApiTaskDef"
+      }
+    },
+    "WebTaskDefinitionArn": {
+      "Value": {
+        "Ref": "WebTaskDef"
+      }
+    },
+    "AlbDnsName": {
+      "Value": "spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"
+    },
+    "AlbArn": {
+      "Value": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121"
+    },
+    "Stage": {
+      "Value": "dev"
+    }
   },
-  "ApiCnameRecord2222559D": {
-   "Type": "AWS::Route53::RecordSet",
-   "Properties": {
-    "HostedZoneId": "Z00113712EMKXVCPQFWZW",
-    "Name": "api.spotterspace.com.",
-    "ResourceRecords": [
-     "spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"
-    ],
-    "TTL": "1800",
-    "Type": "CNAME"
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/ApiCnameRecord/Resource"
-   }
+  "Parameters": {
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
   },
-  "CDKMetadata": {
-   "Type": "AWS::CDK::Metadata",
-   "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02P0UoDQQxFv8X3aaxbFX3tCiIIwtZ3SbPZJd3tTEkyLWWZf5e2SvuUcy85hFRQPb7A/A4PNqN2mI2yhmnlSENo2FJW4oAH+5mYKqi7uGLKKn5815R3H7FXNgu2gGWmgX2JxoFJoeFdMvGkx3M1pt5g+kz9WQt1F/+5BB7RXGhM2K5xxEgS+30FU93Fb9Se/eqIOUfWW27yyCUQq0snhM5bjNizwlRfu5NwE0tgsr8DNrxxJ1FcUgzn/3QvxCVoys5PC5jqiFtumJK2p4ULrdhLOcWv7LvsJcTUMmzsfl/N4eEVnu82JjLTHF22DM1l/gKPvLocbQEAAA=="
-   },
-   "Metadata": {
-    "aws:cdk:path": "SpotterSpace-dev-Stack/CDKMetadata/Default"
-   }
-  }
- },
- "Outputs": {
-  "ClusterName": {
-   "Value": "spotterspace-cluster"
-  },
-  "ApiServiceArn": {
-   "Value": {
-    "Fn::GetAtt": [
-     "ApiService",
-     "ServiceArn"
-    ]
-   }
-  },
-  "WebServiceArn": {
-   "Value": {
-    "Fn::GetAtt": [
-     "WebService",
-     "ServiceArn"
-    ]
-   }
-  },
-  "ApiTaskDefinitionArn": {
-   "Value": {
-    "Ref": "ApiTaskDef"
-   }
-  },
-  "WebTaskDefinitionArn": {
-   "Value": {
-    "Ref": "WebTaskDef"
-   }
-  },
-  "AlbDnsName": {
-   "Value": "spotterspace-alb-1192051505.us-east-1.elb.amazonaws.com"
-  },
-  "AlbArn": {
-   "Value": "arn:aws:elasticloadbalancing:us-east-1:654654553862:loadbalancer/app/spotterspace-alb/c1d7545a9ffd1121"
-  },
-  "Stage": {
-   "Value": "dev"
-  }
- },
- "Parameters": {
-  "BootstrapVersion": {
-   "Type": "AWS::SSM::Parameter::Value<String>",
-   "Default": "/cdk-bootstrap/hnb659fds/version",
-   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
-  }
- },
- "Rules": {
-  "CheckBootstrapVersion": {
-   "Assertions": [
-    {
-     "Assert": {
-      "Fn::Not": [
-       {
-        "Fn::Contains": [
-         [
-          "1",
-          "2",
-          "3",
-          "4",
-          "5"
-         ],
-         {
-          "Ref": "BootstrapVersion"
-         }
-        ]
-       }
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  ["1", "2", "3", "4", "5"],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
       ]
-     },
-     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
     }
-   ]
   }
- }
 }

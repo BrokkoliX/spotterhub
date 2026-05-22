@@ -342,11 +342,25 @@ async function main() {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let event: any;
+    // Locally-derived types for the subset of Stripe webhook event payloads
+    // we consume. Avoids the Stripe SDK's merged-namespace type-import quirks
+    // (see services/stripe.ts) while staying type-safe at the consumption
+    // points below. Extending this type as we handle more event types is
+    // strictly additive.
+    interface CheckoutSessionData {
+      metadata?: { orderId?: string };
+      payment_intent?: string | null;
+    }
+    interface StripeWebhookEvent {
+      id: string;
+      type: string;
+      data: { object: CheckoutSessionData };
+    }
+
+    let event: StripeWebhookEvent;
     try {
       const { constructWebhookEvent } = await import('./services/stripe.js');
-      event = constructWebhookEvent(req.body, signature, webhookSecret);
+      event = constructWebhookEvent(req.body, signature, webhookSecret) as StripeWebhookEvent;
     } catch (err) {
       console.error('Stripe webhook signature verification failed:', err);
       res.status(400).json({ error: 'Invalid signature' });
@@ -366,10 +380,7 @@ async function main() {
 
     try {
       if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as {
-          metadata?: { orderId?: string };
-          payment_intent?: string | null;
-        };
+        const session = event.data.object;
         const orderId = session.metadata?.orderId;
         if (orderId) {
           await prisma.order.update({
@@ -393,7 +404,7 @@ async function main() {
           }
         }
       } else if (event.type === 'checkout.session.expired') {
-        const session = event.data.object as { metadata?: { orderId?: string } };
+        const session = event.data.object;
         const orderId = session.metadata?.orderId;
         if (orderId) {
           await prisma.order.update({

@@ -10,6 +10,21 @@ export interface SearchArgs {
   page?: number;
 }
 
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+/**
+ * Minimum length for free-text search queries. Below this, return an empty
+ * result set without hitting the database. Prevents single-character ILIKE
+ * scans that can table-scan large relations.
+ */
+const MIN_QUERY_LENGTH = 2;
+
+const EMPTY_CONNECTION = {
+  edges: [],
+  pageInfo: { hasNextPage: false, endCursor: null },
+  totalCount: 0,
+} as const;
+
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
 export const searchQueryResolvers = {
@@ -21,8 +36,8 @@ export const searchQueryResolvers = {
     });
     const q = args.query.trim();
 
-    if (!q) {
-      return { edges: [], pageInfo: { hasNextPage: false, endCursor: null }, totalCount: 0 };
+    if (q.length < MIN_QUERY_LENGTH) {
+      return EMPTY_CONNECTION;
     }
 
     const where: Record<string, unknown> = {
@@ -75,8 +90,8 @@ export const searchQueryResolvers = {
     });
     const q = args.query.trim();
 
-    if (!q) {
-      return { edges: [], pageInfo: { hasNextPage: false, endCursor: null }, totalCount: 0 };
+    if (q.length < MIN_QUERY_LENGTH) {
+      return EMPTY_CONNECTION;
     }
 
     const where: Record<string, unknown> = {
@@ -122,19 +137,26 @@ export const searchQueryResolvers = {
     const take = Math.min(args.first ?? 10, 20);
     const q = args.query.trim();
 
-    if (!q) return [];
+    if (q.length < MIN_QUERY_LENGTH) return [];
 
-    const airlines = await ctx.prisma.photo.findMany({
+    // Query the Airlines table directly rather than using `distinct` on the
+    // photos.airline string column. This is correct (returns all known
+    // airlines, not only those that appear in photos), faster (smaller
+    // table, indexed on icao_code/iata_code), and removes the need to
+    // post-filter nullable strings.
+    const airlines = await ctx.prisma.airline.findMany({
       where: {
-        airline: { contains: q, mode: 'insensitive' },
-        moderationStatus: 'approved',
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { icaoCode: { contains: q, mode: 'insensitive' } },
+          { iataCode: { contains: q, mode: 'insensitive' } },
+        ],
       },
-      select: { airline: true },
-      distinct: ['airline'],
-      orderBy: { airline: 'asc' },
+      select: { name: true },
+      orderBy: { name: 'asc' },
       take,
     });
 
-    return airlines.map((a) => a.airline).filter((s): s is string => !!s);
+    return airlines.map((a) => a.name);
   },
 };

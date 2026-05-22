@@ -54,6 +54,7 @@ cd packages/db && npm run db:migrate
 ## Architecture Overview
 
 ### API (`apps/api/src/`)
+
 - **Apollo Server** on Express with GraphQL
 - GraphQL schema defined in `schema.ts`, resolvers in `resolvers/`
 - **JWT auth** via cookies + refresh tokens in DB
@@ -68,6 +69,7 @@ cd packages/db && npm run db:migrate
 **Roles**: user → moderator → admin → superuser (superuser bypasses all role checks)
 
 ### Web Frontend (`apps/web/src/`)
+
 - **Next.js 16** App Router with React 19
 - **urql** for GraphQL client with custom auth exchange
 - **Leaflet/React-Leaflet** for maps, **Mapbox GL** also available
@@ -75,6 +77,7 @@ cd packages/db && npm run db:migrate
 - Route structure: app router pages under `app/` (auth, settings, photos, communities, admin, etc.)
 
 ### Database (`packages/db/prisma/`)
+
 - **PostgreSQL 16 + PostGIS** with `pg_trgm` extension
 - Prisma schema defines all entities (User, Photo, Aircraft, Community, Forum, Marketplace, etc.)
 - Soft-delete pattern: entities have `isDeleted` boolean; `deletedFilter()` helper shows/hides based on role
@@ -82,6 +85,7 @@ cd packages/db && npm run db:migrate
 - Photo location privacy: exact / approximate (~0.5km jitter) / hidden
 
 ### Shared Types (`packages/shared/`)
+
 - Re-exports Prisma client types
 - Contains enums: UserRole, PhotoLicense, ModerationStatus, etc.
 
@@ -100,6 +104,7 @@ cd packages/db && npm run db:migrate
 The API uses **offset-based pagination** via `buildPaginationArgs()` (`apps/api/src/utils/resolverHelpers.ts`). All paginated queries accept both cursor-based (`first`/`after`) and offset-based (`first`/`page`) arguments.
 
 **Resolver pattern** — when adding `page: Int` to schema, the resolver MUST call `buildPaginationArgs`:
+
 ```typescript
 const { skip, take, cursorWhere } = buildPaginationArgs({
   first: args.first,
@@ -117,6 +122,7 @@ const [items, totalCount] = await ctx.prisma.model.findMany({
 **GraphQL query must include `$page: Int`** — the web frontend passes `page` as a variable. If `$page: Int` is missing from the query definition in `lib/queries.ts`, page-based pagination silently falls back to page 1.
 
 **URL sync** — all pages with pagination sync the page number to URL query params:
+
 ```typescript
 // Wrap with Suspense when using useSearchParams in client components
 function Page() {
@@ -140,8 +146,24 @@ function PageInner() {
 ## Environment Variables
 
 See `.env.example` at root. Key variables:
+
 - `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — Token signing secret (fails startup in production if dev fallback)
 - `API_PORT` / `WEB_PORT` — Port overrides
-- `WEB_BASE_URL` — Frontend URL for CORS
+- `WEB_BASE_URL` — Frontend URL for CORS (required in production; injected by CDK)
+- `S3_BUCKET` — S3 bucket name (production: `spotterhub-photos`; injected by CDK)
+- `FROM_EMAIL` — Sender address for transactional email (injected by CDK)
 - `RESEND_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` — Third-party services
+
+## Infrastructure (CDK)
+
+The CDK stack is in `infrastructure/`. Deploy with explicit image tags derived from git SHAs:
+
+```bash
+cd infrastructure
+DOMAIN_NAME=spotterspace.com HOSTED_ZONE_ID=Z00113712EMKXVCPQFWZW STAGE=dev \
+  API_IMAGE_TAG=<git-sha> WEB_IMAGE_TAG=<git-sha> \
+  npx cdk deploy --require-approval never
+```
+
+Dev task sizing (as of 2026-05-22): api 512 CPU / 1024 MB, web 256 CPU / 512 MB. The CDK uses separate constants (`apiTaskCpu`, `apiTaskMemory`, `webTaskCpu`, `webTaskMemory`) so they can be tuned independently.

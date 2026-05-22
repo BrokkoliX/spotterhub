@@ -3,19 +3,14 @@ import jwt from 'jsonwebtoken';
 import type { AuthUser } from '../context.js';
 
 // ─── Static validation at module load time ──────────────────────────────────────
+// Production-strength validation (NODE_ENV check, length, dev fallback) lives in
+// apps/api/src/auth/validateSecret.ts and is invoked from each entrypoint AFTER
+// secrets are loaded from Secrets Manager. The check here only enforces presence
+// so signToken/verifyToken cannot run with an undefined key.
 
 const rawSecret = process.env.JWT_SECRET;
 if (!rawSecret) {
   console.error('FATAL: JWT_SECRET environment variable is not set');
-  process.exit(1);
-}
-if (
-  process.env.NODE_ENV === 'production' &&
-  (rawSecret === 'dev-secret-do-not-use-in-production' || rawSecret.length < 32)
-) {
-  console.error(
-    'FATAL: JWT_SECRET is not set or is the dev fallback. Refusing to start in production.',
-  );
   process.exit(1);
 }
 

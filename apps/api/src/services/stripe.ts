@@ -2,6 +2,19 @@ import Stripe from 'stripe';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
+/**
+ * Locally-derived type for `stripe.checkout.sessions.create` params.
+ *
+ * The `stripe` package merges a `namespace Stripe` with the default-exported
+ * `class Stripe`, but TypeScript's ESM resolution does not surface the
+ * namespace through the default import (or via `import type *`). Pulling the
+ * type from the runtime method signature is robust, matches the actual SDK
+ * contract, and stays in sync as the SDK evolves.
+ */
+type CheckoutSessionCreateParams = Parameters<
+  InstanceType<typeof Stripe>['checkout']['sessions']['create']
+>[0];
+
 export const stripe: InstanceType<typeof Stripe> | null = STRIPE_SECRET_KEY
   ? new Stripe(STRIPE_SECRET_KEY)
   : null;
@@ -89,8 +102,7 @@ export async function createCheckoutSession({
 }): Promise<{ sessionId: string; checkoutUrl: string }> {
   const unitAmount = Math.round(listing.priceUsd * 100); // Convert to cents
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sessionParams: Record<string, any> = {
+  const sessionParams: CheckoutSessionCreateParams = {
     mode: 'payment',
     customer_email: buyerEmail,
     line_items: [

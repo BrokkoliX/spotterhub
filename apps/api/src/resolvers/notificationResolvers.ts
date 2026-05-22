@@ -1,7 +1,13 @@
+import { Prisma } from '@spotterspace/db';
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  resolveUserId,
+  buildPaginationArgs,
+} from '../utils/resolverHelpers.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,8 +56,7 @@ export async function createNotification(
         type: input.type,
         title: input.title,
         body: input.body,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: (input.data ?? {}) as any,
+        data: (input.data ?? {}) as Prisma.InputJsonValue,
       },
     });
   } catch (err) {
@@ -62,11 +67,7 @@ export async function createNotification(
 // ─── Query Resolvers ──────────────────────────────────────────────────────────
 
 export const notificationQueryResolvers = {
-  notifications: async (
-    _parent: unknown,
-    args: NotificationsArgs,
-    ctx: Context,
-  ) => {
+  notifications: async (_parent: unknown, args: NotificationsArgs, ctx: Context) => {
     const userId = await resolveUserId(ctx);
     const { skip, take, cursorWhere } = buildPaginationArgs({
       first: args.first,
@@ -102,11 +103,7 @@ export const notificationQueryResolvers = {
     };
   },
 
-  unreadNotificationCount: async (
-    _parent: unknown,
-    _args: unknown,
-    ctx: Context,
-  ) => {
+  unreadNotificationCount: async (_parent: unknown, _args: unknown, ctx: Context) => {
     if (!ctx.user) return 0;
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: ctx.user.sub },
@@ -122,11 +119,7 @@ export const notificationQueryResolvers = {
 // ─── Mutation Resolvers ───────────────────────────────────────────────────────
 
 export const notificationMutationResolvers = {
-  markNotificationRead: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  markNotificationRead: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
 
     const notification = await ctx.prisma.notification.findUnique({
@@ -149,11 +142,7 @@ export const notificationMutationResolvers = {
     });
   },
 
-  markAllNotificationsRead: async (
-    _parent: unknown,
-    _args: unknown,
-    ctx: Context,
-  ) => {
+  markAllNotificationsRead: async (_parent: unknown, _args: unknown, ctx: Context) => {
     const userId = await resolveUserId(ctx);
     await ctx.prisma.notification.updateMany({
       where: { userId, isRead: false },
@@ -162,11 +151,7 @@ export const notificationMutationResolvers = {
     return true;
   },
 
-  deleteNotification: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteNotification: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const userId = await resolveUserId(ctx);
 
     const notification = await ctx.prisma.notification.findUnique({
