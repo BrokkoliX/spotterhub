@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { graphqlEndpoint, internalOrigin } from '@/lib/internal-api';
 
+// Fallbacks if the API ever omits the new cookie-lifetime fields. Match the
+// values that were hardcoded prior to making session timeouts configurable.
+const FALLBACK_ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour
+const FALLBACK_REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
+
 /**
  * POST /api/auth/refresh
  * Exchanges the current refresh_token cookie for a new short-lived access token.
@@ -31,6 +36,8 @@ export async function POST(request: NextRequest) {
           refreshToken {
             token
             refreshToken
+            accessTokenMaxAge
+            refreshTokenMaxAge
             user {
               id
               email
@@ -49,14 +56,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Refresh failed' }, { status: 401 });
   }
 
-  const { token, refreshToken: newRefreshToken, user } = data.data.refreshToken;
+  const {
+    token,
+    refreshToken: newRefreshToken,
+    user,
+    accessTokenMaxAge,
+    refreshTokenMaxAge,
+  }: {
+    token: string;
+    refreshToken?: string;
+    user: unknown;
+    accessTokenMaxAge?: number | null;
+    refreshTokenMaxAge?: number | null;
+  } = data.data.refreshToken;
 
   const response = NextResponse.json({ user });
   response.cookies.set('access_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60,
+    // Cookie lifetime tracks the API's SiteSettings.accessTokenSeconds.
+    maxAge: accessTokenMaxAge ?? FALLBACK_ACCESS_TOKEN_MAX_AGE,
     path: '/',
   });
   if (newRefreshToken) {
@@ -64,7 +84,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: refreshTokenMaxAge ?? FALLBACK_REFRESH_TOKEN_MAX_AGE,
       path: '/',
     });
   }

@@ -23,6 +23,9 @@ export default function AdminSettingsPage() {
   const [minEdge, setMinEdge] = useState('800');
   const [maxEdge, setMaxEdge] = useState('4096');
   const [timeoutSeconds, setTimeoutSeconds] = useState('300');
+  // Session-token lifetimes — defaults match the API's SiteSettings defaults.
+  const [accessTokenSeconds, setAccessTokenSeconds] = useState('3600');
+  const [refreshTokenSeconds, setRefreshTokenSeconds] = useState('604800');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -32,6 +35,8 @@ export default function AdminSettingsPage() {
       setMinEdge(String(data.siteSettings.minPhotoLongEdge));
       setMaxEdge(String(data.siteSettings.maxPhotoLongEdge));
       setTimeoutSeconds(String(data.siteSettings.photoUploadTimeoutSeconds));
+      setAccessTokenSeconds(String(data.siteSettings.accessTokenSeconds));
+      setRefreshTokenSeconds(String(data.siteSettings.refreshTokenSeconds));
     }
   }, [data]);
 
@@ -45,6 +50,8 @@ export default function AdminSettingsPage() {
     const min = parseInt(minEdge, 10);
     const max = parseInt(maxEdge, 10);
     const timeout = parseInt(timeoutSeconds, 10);
+    const access = parseInt(accessTokenSeconds, 10);
+    const refresh = parseInt(refreshTokenSeconds, 10);
 
     if (isNaN(min) || isNaN(max)) {
       setMessage({ type: 'error', text: 'Please enter valid numbers.' });
@@ -66,11 +73,40 @@ export default function AdminSettingsPage() {
       setMessage({ type: 'error', text: 'Upload timeout must be between 30 and 3600 seconds.' });
       return;
     }
+    // Mirror the API's validation so the user sees the error inline rather
+    // than after a server round-trip.
+    if (isNaN(access) || access < 60 || access > 86400) {
+      setMessage({
+        type: 'error',
+        text: 'Access token lifetime must be between 60 (1 minute) and 86,400 (24 hours) seconds.',
+      });
+      return;
+    }
+    if (isNaN(refresh) || refresh < 3600 || refresh > 2592000) {
+      setMessage({
+        type: 'error',
+        text: 'Refresh token lifetime must be between 3,600 (1 hour) and 2,592,000 (30 days) seconds.',
+      });
+      return;
+    }
+    if (access >= refresh) {
+      setMessage({
+        type: 'error',
+        text: 'Access token lifetime must be shorter than the refresh token lifetime.',
+      });
+      return;
+    }
 
     setSaving(true);
     try {
       const result = await updateSettings({
-        input: { minPhotoLongEdge: min, maxPhotoLongEdge: max, photoUploadTimeoutSeconds: timeout },
+        input: {
+          minPhotoLongEdge: min,
+          maxPhotoLongEdge: max,
+          photoUploadTimeoutSeconds: timeout,
+          accessTokenSeconds: access,
+          refreshTokenSeconds: refresh,
+        },
       });
       if (result.error) {
         setMessage({ type: 'error', text: result.error.message });
@@ -95,8 +131,8 @@ export default function AdminSettingsPage() {
         <form onSubmit={handleSave} className={styles.section}>
           <h2 className={styles.sectionTitle}>📷 Photo Dimensions</h2>
           <p className={styles.sectionDesc}>
-            Configure the minimum and maximum allowed photo resolution (long edge in pixels).
-            Photos outside this range will be rejected during upload.
+            Configure the minimum and maximum allowed photo resolution (long edge in pixels). Photos
+            outside this range will be rejected during upload.
           </p>
 
           <div className={styles.fieldGroup}>
@@ -137,7 +173,8 @@ export default function AdminSettingsPage() {
 
           <h2 className={styles.sectionTitle}>⏱ Photo Upload Timeout</h2>
           <p className={styles.sectionDesc}>
-            Maximum time allowed for a photo upload before it is cancelled. Must be between 30 and 3600 seconds.
+            Maximum time allowed for a photo upload before it is cancelled. Must be between 30 and
+            3600 seconds.
           </p>
 
           <div className={styles.fieldGroup}>
@@ -153,26 +190,63 @@ export default function AdminSettingsPage() {
               min={30}
               max={3600}
             />
+            <span className={styles.hint}>Default: 300 seconds (5 minutes).</span>
+          </div>
+
+          <h2 className={styles.sectionTitle}>🔐 Session Timeouts</h2>
+          <p className={styles.sectionDesc}>
+            Control how long a signed-in user&apos;s browser session remains valid. The access token
+            is the short-lived JWT used on every API call; once it expires the browser silently
+            exchanges the refresh token for a new one. The refresh token defines the absolute upper
+            bound on a session — once it expires the user must sign in again. Changes apply to new
+            sign-ins and refreshes within ~1 minute; existing sessions keep their current lifetime.
+          </p>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label} htmlFor="accessTokenSeconds">
+              Access token lifetime (seconds)
+            </label>
+            <input
+              id="accessTokenSeconds"
+              type="number"
+              className={styles.input}
+              value={accessTokenSeconds}
+              onChange={(e) => setAccessTokenSeconds(e.target.value)}
+              min={60}
+              max={86400}
+            />
             <span className={styles.hint}>
-              Default: 300 seconds (5 minutes).
+              60 seconds (1 minute) to 86,400 seconds (24 hours). Default: 3,600 (1 hour). Shorter
+              values reduce the blast radius of a stolen token but cause more silent refreshes.
+            </span>
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label} htmlFor="refreshTokenSeconds">
+              Refresh token lifetime (seconds)
+            </label>
+            <input
+              id="refreshTokenSeconds"
+              type="number"
+              className={styles.input}
+              value={refreshTokenSeconds}
+              onChange={(e) => setRefreshTokenSeconds(e.target.value)}
+              min={3600}
+              max={2592000}
+            />
+            <span className={styles.hint}>
+              3,600 seconds (1 hour) to 2,592,000 seconds (30 days). Default: 604,800 (7 days). This
+              is how long users stay logged in across browser restarts.
             </span>
           </div>
 
           {message && (
-            <div
-              className={
-                message.type === 'success' ? styles.msgSuccess : styles.msgError
-              }
-            >
+            <div className={message.type === 'success' ? styles.msgSuccess : styles.msgError}>
               {message.text}
             </div>
           )}
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving}
-          >
+          <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? 'Saving…' : 'Save Settings'}
           </button>
         </form>

@@ -14,8 +14,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'SpotterSpace — Aviation Photography Community',
-  description:
-    'The premier platform for aviation photographers to share, discover, and connect.',
+  description: 'The premier platform for aviation photographers to share, discover, and connect.',
   icons: {
     icon: '/logo.png',
   },
@@ -31,7 +30,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Server-side auth hydration: fetch user data before render to avoid hydration flash
+  // Server-side auth hydration: fetch user data before render to avoid hydration flash.
+  //
+  // IMPORTANT: this runs on every page render (the layout is `force-dynamic`).
+  // We MUST cap how long it can block, otherwise an upstream API stall (cold
+  // start, DB burst throttle, deploy-in-progress) will hang the entire page
+  // for minutes. On timeout/error we fall back to `user: null` and the client
+  // re-hydrates via the `/api/auth/me` BFF route once it mounts.
+  const SERVER_AUTH_TIMEOUT_MS = 3000;
   let serverAuth: ServerAuthState = { user: null };
   try {
     const cookieStore = await cookies();
@@ -56,6 +62,7 @@ export default async function RootLayout({
             }
           `,
         }),
+        signal: AbortSignal.timeout(SERVER_AUTH_TIMEOUT_MS),
       });
       const data = await res.json();
       if (data.data?.me) {
@@ -63,7 +70,9 @@ export default async function RootLayout({
       }
     }
   } catch {
-    // Auth fetch failed — client will revalidate via /api/auth/me
+    // Auth fetch failed or timed out — client will revalidate via /api/auth/me.
+    // Intentionally swallowed: server-side hydration is a UX nicety, not a
+    // correctness boundary. Auth is enforced by the API on every GraphQL call.
   }
 
   return (

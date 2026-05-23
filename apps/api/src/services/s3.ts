@@ -9,6 +9,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -16,11 +17,29 @@ const S3_BUCKET = process.env.S3_BUCKET ?? 'spotterhub-photos';
 const S3_REGION = process.env.S3_REGION ?? 'us-east-1';
 const S3_ENDPOINT = process.env.S3_ENDPOINT; // e.g. http://localhost:4566 for LocalStack
 
+/**
+ * Timeouts for S3 SDK calls.
+ *
+ * AWS SDK v3's default request handler has NO socket timeout, so a hung
+ * connection (LocalStack restart, transient S3 throttling, network blip)
+ * will pin the resolver thread for as long as the kernel keeps the socket
+ * open — typically minutes. We cap connection setup at 3s and the full
+ * read/write at 30s. 30s is generous enough to upload a 20 MB variant on
+ * a slow link but prevents the indefinite hang that compounds upstream
+ * stalls into multi-minute outages.
+ */
+const S3_CONNECTION_TIMEOUT_MS = 3_000;
+const S3_SOCKET_TIMEOUT_MS = 30_000;
+
 const s3 = new S3Client({
   region: S3_REGION,
   // Disable default CRC32 checksums — LocalStack 3.x does not support them
   requestChecksumCalculation: 'WHEN_REQUIRED',
   responseChecksumValidation: 'WHEN_REQUIRED',
+  requestHandler: new NodeHttpHandler({
+    connectionTimeout: S3_CONNECTION_TIMEOUT_MS,
+    socketTimeout: S3_SOCKET_TIMEOUT_MS,
+  }),
   ...(S3_ENDPOINT && {
     endpoint: S3_ENDPOINT,
     forcePathStyle: true, // Required for LocalStack
@@ -56,9 +75,10 @@ export async function ensureBucket(): Promise<void> {
   // Configure CORS so the browser can load images and upload files directly
   // In production, restrict to the configured web domain only
   try {
-    const allowedOrigins = process.env.NODE_ENV === 'production'
-      ? [process.env.WEB_BASE_URL ?? 'https://www.spotterspace.com']
-      : ['*'];
+    const allowedOrigins =
+      process.env.NODE_ENV === 'production'
+        ? [process.env.WEB_BASE_URL ?? 'https://www.spotterspace.com']
+        : ['*'];
     await s3.send(
       new PutBucketCorsCommand({
         Bucket: S3_BUCKET,
@@ -112,10 +132,7 @@ export async function getPresignedUploadUrl(
  * @param expiresIn - Seconds until the URL expires (default 1 hour).
  * @returns The presigned GET URL.
  */
-export async function getPresignedReadUrl(
-  key: string,
-  expiresIn = 3600,
-): Promise<string> {
+export async function getPresignedReadUrl(key: string, expiresIn = 3600): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET,
     Key: key,
@@ -132,11 +149,7 @@ export async function getPresignedReadUrl(
  * @param buffer - The image data.
  * @param mimeType - The MIME type of the processed image.
  */
-export async function uploadBuffer(
-  key: string,
-  buffer: Buffer,
-  mimeType: string,
-): Promise<void> {
+export async function uploadBuffer(key: string, buffer: Buffer, mimeType: string): Promise<void> {
   await s3.send(
     new PutObjectCommand({
       Bucket: S3_BUCKET,
@@ -154,9 +167,7 @@ export async function uploadBuffer(
  * @returns The object data as a Buffer.
  */
 export async function getObject(key: string): Promise<Buffer> {
-  const response = await s3.send(
-    new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }),
-  );
+  const response = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }));
   const stream = response.Body;
   if (!stream) throw new Error(`Empty response for key: ${key}`);
 

@@ -23,7 +23,8 @@ import {
   type CommunityModerationLogsQuery,
 } from '@/lib/generated/graphql';
 
-type ModerationLogNode = CommunityModerationLogsQuery['communityModerationLogs']['edges'][number]['node'];
+type ModerationLogNode =
+  CommunityModerationLogsQuery['communityModerationLogs']['edges'][number]['node'];
 
 import styles from './page.module.css';
 
@@ -49,7 +50,7 @@ function roleWeight(role: string): number {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -99,7 +100,8 @@ export default function CommunityAdminPage() {
     requestPolicy: 'network-only',
   });
 
-  const members = memberResult.data?.communityMembers?.edges?.map((e: { node: CommunityMember }) => e.node) ?? [];
+  const members =
+    memberResult.data?.communityMembers?.edges?.map((e: { node: CommunityMember }) => e.node) ?? [];
   const membersHasNext = memberResult.data?.communityMembers?.pageInfo?.hasNextPage;
   const membersTotal = memberResult.data?.communityMembers?.totalCount ?? 0;
 
@@ -109,7 +111,8 @@ export default function CommunityAdminPage() {
     pause: !community?.id,
     requestPolicy: 'network-only',
   });
-  const modLogs = modData?.communityModerationLogs?.edges?.map((e: { node: ModerationLogNode }) => e.node) ?? [];
+  const modLogs =
+    modData?.communityModerationLogs?.edges?.map((e: { node: ModerationLogNode }) => e.node) ?? [];
 
   // Mutations
   const [, banMember] = useMutation(BAN_COMMUNITY_MEMBER);
@@ -129,7 +132,11 @@ export default function CommunityAdminPage() {
       <div className={styles.page}>
         <div className={styles.emptyState}>
           <p>You do not have permission to access community admin.</p>
-          <Link href={`/communities/${slug}`} className="btn btn-secondary" style={{ marginTop: 12 }}>
+          <Link
+            href={`/communities/${slug}`}
+            className="btn btn-secondary"
+            style={{ marginTop: 12 }}
+          >
             Back to community
           </Link>
         </div>
@@ -187,10 +194,16 @@ export default function CommunityAdminPage() {
   };
 
   const actionVerb: Record<string, string> = {
-    ban: 'banned', unban: 'unbanned', kick: 'removed',
-    pin_thread: 'pinned', unpin_thread: 'unpinned',
-    lock_thread: 'locked', unlock_thread: 'unlocked',
-    delete_post: 'deleted post', delete_photo: 'deleted photo', delete_comment: 'deleted comment',
+    ban: 'banned',
+    unban: 'unbanned',
+    kick: 'removed',
+    pin_thread: 'pinned',
+    unpin_thread: 'unpinned',
+    lock_thread: 'locked',
+    unlock_thread: 'unlocked',
+    delete_post: 'deleted post',
+    delete_photo: 'deleted photo',
+    delete_comment: 'deleted comment',
   };
 
   return (
@@ -241,7 +254,9 @@ export default function CommunityAdminPage() {
           <div className={styles.quickActions}>
             <div className={styles.quickActionCard}>
               <div className={styles.quickActionTitle}>Transfer Ownership</div>
-              <div className={styles.quickActionDesc}>Promote a member to owner. You become admin.</div>
+              <div className={styles.quickActionDesc}>
+                Promote a member to owner. You become admin.
+              </div>
               <button className="btn btn-secondary" onClick={() => setTransferTarget('prompt')}>
                 Transfer Ownership
               </button>
@@ -277,7 +292,10 @@ export default function CommunityAdminPage() {
               <button
                 key={s}
                 className={`${styles.subTab} ${memberStatusFilter === s ? styles.subTabActive : ''}`}
-                onClick={() => { setMemberStatusFilter(s); setMemberCursor(undefined); }}
+                onClick={() => {
+                  setMemberStatusFilter(s);
+                  setMemberCursor(undefined);
+                }}
               >
                 {s.charAt(0).toUpperCase() + s.slice(1)}
                 <span style={{ marginLeft: 6, opacity: 0.7, fontSize: '0.75rem' }}>
@@ -294,12 +312,18 @@ export default function CommunityAdminPage() {
               className={styles.searchInput}
               placeholder="Search by name or username…"
               value={memberSearch}
-              onChange={(e) => { setMemberSearch(e.target.value); setMemberCursor(undefined); }}
+              onChange={(e) => {
+                setMemberSearch(e.target.value);
+                setMemberCursor(undefined);
+              }}
             />
             <select
               className={styles.filterSelect}
               value={memberRoleFilter}
-              onChange={(e) => { setMemberRoleFilter(e.target.value as MemberRole | ''); setMemberCursor(undefined); }}
+              onChange={(e) => {
+                setMemberRoleFilter(e.target.value as MemberRole | '');
+                setMemberCursor(undefined);
+              }}
             >
               <option value="">All roles</option>
               <option value="owner">Owner</option>
@@ -314,9 +338,7 @@ export default function CommunityAdminPage() {
           )}
 
           {!memberResult.fetching && members.length === 0 && (
-            <div className={styles.emptyState}>
-              No {memberStatusFilter} members found.
-            </div>
+            <div className={styles.emptyState}>No {memberStatusFilter} members found.</div>
           )}
 
           <div>
@@ -405,9 +427,7 @@ export default function CommunityAdminPage() {
           )}
           {modLogs.map((log: ModerationLogNode) => (
             <div key={log.id} className={styles.modLogEntry}>
-              <div className={styles.modLogAction}>
-                {actionVerb[log.action] || log.action}
-              </div>
+              <div className={styles.modLogAction}>{actionVerb[log.action] || log.action}</div>
               <div className={styles.modLogDetails}>
                 by{' '}
                 <Link href={`/u/${log.moderator.username}/photos`}>
@@ -417,7 +437,9 @@ export default function CommunityAdminPage() {
                 <Link href={`/u/${log.targetUser.username}/photos`}>
                   {log.targetUser.profile?.displayName || log.targetUser.username}
                 </Link>
-                {log.reason && <span style={{ color: 'var(--color-text-muted)' }}> — {log.reason}</span>}
+                {log.reason && (
+                  <span style={{ color: 'var(--color-text-muted)' }}> — {log.reason}</span>
+                )}
               </div>
               <div className={styles.modLogTime}>{formatDate(log.createdAt)}</div>
             </div>
@@ -431,8 +453,8 @@ export default function CommunityAdminPage() {
           <div className={styles.transferCard}>
             <div className={styles.transferTitle}>Transfer Ownership</div>
             <div className={styles.transferDesc}>
-              Select a member to become the new owner. You will become an admin and can be demoted further.
-              This cannot be undone easily.
+              Select a member to become the new owner. You will become an admin and can be demoted
+              further. This cannot be undone easily.
             </div>
             <select
               className={styles.filterSelect}
@@ -440,7 +462,9 @@ export default function CommunityAdminPage() {
               onChange={(e) => setTransferTarget(e.target.value || null)}
               defaultValue=""
             >
-              <option value="" disabled>Select a member…</option>
+              <option value="" disabled>
+                Select a member…
+              </option>
               {members
                 .filter((m: CommunityMember) => m.user.id !== user?.id && m.status === 'active')
                 .map((m: CommunityMember) => (
@@ -450,10 +474,7 @@ export default function CommunityAdminPage() {
                 ))}
             </select>
             <div className={styles.transferActions}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setTransferTarget(null)}
-              >
+              <button className="btn btn-secondary" onClick={() => setTransferTarget(null)}>
                 Cancel
               </button>
               <button
@@ -501,7 +522,10 @@ function MemberRow({
 
   return (
     <div className={styles.memberRow}>
-      <Link href={`/u/${member.user.username}/photos`} style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}>
+      <Link
+        href={`/u/${member.user.username}/photos`}
+        style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div className={styles.memberAvatar}>
             {member.user.profile?.avatarUrl ? (

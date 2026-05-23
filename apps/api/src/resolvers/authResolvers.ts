@@ -15,8 +15,58 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BCRYPT_ROUNDS = 12;
-const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour in seconds
-const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
+
+// ─── Session-lifetime fallbacks ─────────────────────────────────────────────
+// Used when the SiteSettings row is missing or unreachable. Match the values
+// that were hardcoded prior to making session timeouts configurable, so
+// behaviour is preserved during a DB blip and during early bootstrap.
+const FALLBACK_ACCESS_TOKEN_SECONDS = 60 * 60; // 1 hour
+const FALLBACK_REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+/**
+ * Cached resolved session timeouts. Refreshed lazily every
+ * `SESSION_TIMEOUTS_TTL_MS` so a superuser's settings change is picked up
+ * within a minute without forcing every signIn/refresh to do a DB round-trip.
+ */
+const SESSION_TIMEOUTS_TTL_MS = 60_000;
+let sessionTimeoutsCache: {
+  accessTokenSeconds: number;
+  refreshTokenSeconds: number;
+  fetchedAt: number;
+} | null = null;
+
+async function getSessionTimeouts(prisma: Context['prisma']): Promise<{
+  accessTokenSeconds: number;
+  refreshTokenSeconds: number;
+}> {
+  const now = Date.now();
+  if (sessionTimeoutsCache && now - sessionTimeoutsCache.fetchedAt < SESSION_TIMEOUTS_TTL_MS) {
+    return {
+      accessTokenSeconds: sessionTimeoutsCache.accessTokenSeconds,
+      refreshTokenSeconds: sessionTimeoutsCache.refreshTokenSeconds,
+    };
+  }
+  try {
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'site_settings' },
+      select: { accessTokenSeconds: true, refreshTokenSeconds: true },
+    });
+    const resolved = {
+      accessTokenSeconds: settings?.accessTokenSeconds ?? FALLBACK_ACCESS_TOKEN_SECONDS,
+      refreshTokenSeconds: settings?.refreshTokenSeconds ?? FALLBACK_REFRESH_TOKEN_SECONDS,
+    };
+    sessionTimeoutsCache = { ...resolved, fetchedAt: now };
+    return resolved;
+  } catch {
+    // DB unreachable — fall back to historical defaults so users can still
+    // sign in. Don't poison the cache (so a recovered DB is picked up
+    // immediately on the next request).
+    return {
+      accessTokenSeconds: FALLBACK_ACCESS_TOKEN_SECONDS,
+      refreshTokenSeconds: FALLBACK_REFRESH_TOKEN_SECONDS,
+    };
+  }
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -30,10 +80,16 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 
 /**
  * Creates a refresh token record in the DB and returns the raw token string.
+ * The token's `expiresAt` is anchored to the supplied `refreshTokenSeconds`
+ * so the DB-side lifetime stays in lockstep with the cookie's Max-Age.
  */
-async function createRefreshToken(prisma: Context['prisma'], userId: string): Promise<string> {
+async function createRefreshToken(
+  prisma: Context['prisma'],
+  userId: string,
+  refreshTokenSeconds: number,
+): Promise<string> {
   const token = randomBytes(48).toString('base64url');
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE * 1000);
+  const expiresAt = new Date(Date.now() + refreshTokenSeconds * 1000);
   await prisma.refreshToken.create({
     data: { token, userId, expiresAt },
   });
@@ -43,27 +99,44 @@ async function createRefreshToken(prisma: Context['prisma'], userId: string): Pr
 /**
  * Issues a new short-lived access token + rotates the refresh token cookie.
  * Called on sign-in, token refresh, and session extension.
+ *
+ * The lifetime of both tokens is read from SiteSettings (cached briefly), so
+ * a superuser changing the value in admin/settings takes effect on the next
+ * sign-in or refresh without redeploying.
  */
 async function issueSession(
   ctx: Context,
   user: { id: string; cognitoSub: string; email: string; username: string },
-): Promise<{ accessToken: string; refreshToken: string }> {
-  const accessToken = signToken({
-    sub: user.cognitoSub,
-    email: user.email,
-    username: user.username,
-  });
-  const refreshToken = await createRefreshToken(ctx.prisma, user.id);
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  accessTokenMaxAge: number;
+  refreshTokenMaxAge: number;
+}> {
+  const { accessTokenSeconds, refreshTokenSeconds } = await getSessionTimeouts(ctx.prisma);
 
-  // Access token: short-lived HttpOnly cookie (1 hour)
-  // Refresh token: long-lived HttpOnly cookie (7 days), used to obtain new access tokens
-  // Both cookies set in a single setHeader call to avoid overwriting each other
+  const accessToken = signToken(
+    {
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    },
+    accessTokenSeconds,
+  );
+  const refreshToken = await createRefreshToken(ctx.prisma, user.id, refreshTokenSeconds);
+
+  // Both cookies set in a single setHeader call to avoid overwriting each other.
   ctx.res?.setHeader('Set-Cookie', [
-    `access_token=${accessToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}`,
-    `refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}`,
+    `access_token=${accessToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${accessTokenSeconds}`,
+    `refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${refreshTokenSeconds}`,
   ]);
 
-  return { accessToken, refreshToken };
+  return {
+    accessToken,
+    refreshToken,
+    accessTokenMaxAge: accessTokenSeconds,
+    refreshTokenMaxAge: refreshTokenSeconds,
+  };
 }
 
 // ─── Mutation Resolvers ─────────────────────────────────────────────────────
@@ -219,14 +292,17 @@ export const authMutationResolvers = {
       where: { userId: user.id },
     });
 
-    const { accessToken, refreshToken } = await issueSession(ctx, {
-      id: user.id,
-      cognitoSub: user.cognitoSub,
-      email: user.email,
-      username: user.username,
-    });
+    const { accessToken, refreshToken, accessTokenMaxAge, refreshTokenMaxAge } = await issueSession(
+      ctx,
+      {
+        id: user.id,
+        cognitoSub: user.cognitoSub,
+        email: user.email,
+        username: user.username,
+      },
+    );
 
-    return { token: accessToken, refreshToken, user };
+    return { token: accessToken, refreshToken, user, accessTokenMaxAge, refreshTokenMaxAge };
   },
 
   /**
@@ -265,14 +341,25 @@ export const authMutationResolvers = {
     // Rotate: delete old refresh token, issue new session
     await ctx.prisma.refreshToken.delete({ where: { id: record.id } });
 
-    const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      accessTokenMaxAge,
+      refreshTokenMaxAge,
+    } = await issueSession(ctx, {
       id: user.id,
       cognitoSub: user.cognitoSub,
       email: user.email,
       username: user.username,
     });
 
-    return { token: accessToken, refreshToken: newRefreshToken, user };
+    return {
+      token: accessToken,
+      refreshToken: newRefreshToken,
+      user,
+      accessTokenMaxAge,
+      refreshTokenMaxAge,
+    };
   },
 
   signOut: async (_parent: unknown, _args: unknown, ctx: Context) => {
@@ -404,14 +491,25 @@ export const authMutationResolvers = {
       where: { userId: resetToken.userId },
     });
 
-    const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      accessTokenMaxAge,
+      refreshTokenMaxAge,
+    } = await issueSession(ctx, {
       id: updatedUser.id,
       cognitoSub: newSub,
       email: updatedUser.email,
       username: updatedUser.username,
     });
 
-    return { token: accessToken, refreshToken: newRefreshToken, user: updatedUser };
+    return {
+      token: accessToken,
+      refreshToken: newRefreshToken,
+      user: updatedUser,
+      accessTokenMaxAge,
+      refreshTokenMaxAge,
+    };
   },
 
   verifyEmail: async (_parent: unknown, args: { token: string }, ctx: Context) => {
@@ -440,13 +538,24 @@ export const authMutationResolvers = {
       include: { profile: true },
     });
 
-    const { accessToken, refreshToken: newRefreshToken } = await issueSession(ctx, {
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      accessTokenMaxAge,
+      refreshTokenMaxAge,
+    } = await issueSession(ctx, {
       id: updatedUser.id,
       cognitoSub: user.cognitoSub,
       email: updatedUser.email,
       username: updatedUser.username,
     });
 
-    return { token: accessToken, refreshToken: newRefreshToken, user: updatedUser };
+    return {
+      token: accessToken,
+      refreshToken: newRefreshToken,
+      user: updatedUser,
+      accessTokenMaxAge,
+      refreshTokenMaxAge,
+    };
   },
 };

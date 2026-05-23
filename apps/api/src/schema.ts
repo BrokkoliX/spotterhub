@@ -1610,6 +1610,16 @@ export const typeDefs = gql`
     The authenticated user.
     """
     user: User!
+    """
+    Lifetime in seconds of the access-token cookie just issued by the API.
+    The web BFF mirrors this when setting the browser cookie so both stay in
+    lockstep with the value configured in admin settings.
+    """
+    accessTokenMaxAge: Int
+    """
+    Lifetime in seconds of the refresh-token cookie just issued by the API.
+    """
+    refreshTokenMaxAge: Int
   }
 
   """
@@ -2879,6 +2889,16 @@ export const typeDefs = gql`
     minPhotoLongEdge: Int!
     maxPhotoLongEdge: Int!
     photoUploadTimeoutSeconds: Int!
+    """
+    Lifetime of issued JWT access tokens, in seconds. Default 3600 (1 hour).
+    Configurable from the admin settings page (superuser-only).
+    """
+    accessTokenSeconds: Int!
+    """
+    Lifetime of issued refresh tokens, in seconds. Default 604800 (7 days).
+    Configurable from the admin settings page (superuser-only).
+    """
+    refreshTokenSeconds: Int!
     updatedAt: String!
   }
 
@@ -2888,6 +2908,8 @@ export const typeDefs = gql`
     minPhotoLongEdge: Int
     maxPhotoLongEdge: Int
     photoUploadTimeoutSeconds: Int
+    accessTokenSeconds: Int
+    refreshTokenSeconds: Int
   }
 
   # ─── Ad Settings ───────────────────────────────────────────────────────────────

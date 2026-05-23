@@ -29,8 +29,11 @@ env:
   API_SERVICE: spotterspace-dev-api
   WEB_SERVICE: spotterspace-dev-web
 
-# Migrations run inside the API container entrypoint (docker-entrypoint.sh)
-# before the server starts, since the ECS tasks have VPC access to RDS.
+# Migrations run as a one-off ECS task in the deploy-api job (see the
+# "Apply database migrations" step) BEFORE the rolling deploy of the API
+# service. The container entrypoint only runs migrations when
+# RUN_MIGRATIONS=true, so normal task replacements start fast and a bad
+# migration cannot crash-loop production tasks.
 
 jobs:
   # ─── Build and Deploy API to ECS Fargate ───────────────────────────────────
@@ -67,6 +70,95 @@ jobs:
           cache-to: type=gha,mode=max,scope=api-builder
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+
+      - name: Apply database migrations (one-off task)
+        env:
+          FULL_IMAGE: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.API_ECR_REPO }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Migrations now run as a one-off ECS task BEFORE the rolling deploy
+          # of the API service. The container entrypoint only runs migrations
+          # when RUN_MIGRATIONS=true, so normal task replacements start fast.
+          # See apps/api/docker-entrypoint.sh.
+
+          # 1. Build a fresh task definition revision pinned to the new image
+          #    with RUN_MIGRATIONS=true and a no-op command (so the entrypoint
+          #    runs migrations then exec's `true` and exits 0).
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition spotterspace-dev-api \
+            --region ${{ env.AWS_REGION }})
+
+          CONTAINER_NAME=$(echo "$TASK_DEF" | jq -r '.taskDefinition.containerDefinitions[0].name')
+
+          MIGRATION_TASK_DEF=$(echo "$TASK_DEF" | jq \
+            --arg IMG "$FULL_IMAGE" \
+            --arg CNAME "$CONTAINER_NAME" \
+            '.taskDefinition
+             | .containerDefinitions[0].name = $CNAME
+             | .containerDefinitions[0].image = $IMG
+             | .family = "spotterspace-dev-api-migrate"
+             | { family, containerDefinitions, cpu, memory, networkMode,
+                 requiresCompatibilities, executionRoleArn, taskRoleArn,
+                 volumes, placementConstraints }')
+
+          MIGRATION_ARN=$(echo "$MIGRATION_TASK_DEF" \
+            | aws ecs register-task-definition \
+                --cli-input-json "$(cat)" \
+                --region ${{ env.AWS_REGION }} \
+            | jq -r '.taskDefinition.taskDefinitionArn')
+
+          # 2. Discover the network config the live API service uses so the
+          #    one-off task lands in the same subnets / security groups
+          #    (necessary for RDS reachability). Avoids hard-coding IDs here.
+          SVC_NETWORK=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.API_SERVICE }} \
+            --region ${{ env.AWS_REGION }} \
+            | jq -c '.services[0].networkConfiguration')
+
+          # 3. Run the task with RUN_MIGRATIONS=true and a no-op command. The
+          #    entrypoint runs `prisma migrate deploy`, then exec's `true` so
+          #    the container exits 0.
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition "$MIGRATION_ARN" \
+            --launch-type FARGATE \
+            --network-configuration "$SVC_NETWORK" \
+            --overrides "$(jq -n --arg CNAME "$CONTAINER_NAME" '{
+              containerOverrides: [{
+                name: $CNAME,
+                command: ["true"],
+                environment: [{ name: "RUN_MIGRATIONS", value: "true" }]
+              }]
+            }')" \
+            --region ${{ env.AWS_REGION }} \
+            | jq -r '.tasks[0].taskArn')
+
+          echo "Migration task started: $TASK_ARN"
+
+          # 4. Wait for the task to stop, then check its exit code.
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN" \
+            --region ${{ env.AWS_REGION }}
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN" \
+            --region ${{ env.AWS_REGION }} \
+            | jq -r '.tasks[0].containers[0].exitCode // empty')
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            REASON=$(aws ecs describe-tasks \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --tasks "$TASK_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              | jq -r '.tasks[0].stoppedReason // .tasks[0].containers[0].reason // "unknown"')
+            echo "::error::Migration task failed (exit=$EXIT_CODE): $REASON"
+            exit 1
+          fi
+          echo "✅ Migrations applied successfully"
 
       - name: Update API task definition and deploy
         env:

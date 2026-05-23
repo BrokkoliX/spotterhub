@@ -937,6 +937,13 @@ model SiteSettings {
   minPhotoLongEdge         Int      @default(800) @map("min_photo_long_edge")
   maxPhotoLongEdge         Int      @default(4096) @map("max_photo_long_edge")
   photoUploadTimeoutSeconds Int     @default(300) @map("photo_upload_timeout_seconds")
+  /// Lifetime of issued JWT access tokens, in seconds. Default 3600 (1 hour).
+  /// Used by the auth resolver when minting tokens and by the web BFF when
+  /// setting cookie Max-Age. Validated 60–86400 in the resolver.
+  accessTokenSeconds       Int      @default(3600) @map("access_token_seconds")
+  /// Lifetime of issued refresh tokens, in seconds. Default 604800 (7 days).
+  /// Validated 3600–2592000 (1h–30d) in the resolver.
+  refreshTokenSeconds      Int      @default(604800) @map("refresh_token_seconds")
   updatedAt                DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")

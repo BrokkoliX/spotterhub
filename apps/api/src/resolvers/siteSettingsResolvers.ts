@@ -12,6 +12,8 @@ export interface SiteSettingsParent {
   minPhotoLongEdge: number;
   maxPhotoLongEdge: number;
   photoUploadTimeoutSeconds: number;
+  accessTokenSeconds: number;
+  refreshTokenSeconds: number;
 }
 
 export interface AdSettingsParent {
@@ -63,6 +65,8 @@ export const siteSettingsMutationResolvers = {
         minPhotoLongEdge?: number | null;
         maxPhotoLongEdge?: number | null;
         photoUploadTimeoutSeconds?: number | null;
+        accessTokenSeconds?: number | null;
+        refreshTokenSeconds?: number | null;
       };
     },
     ctx: Context,
@@ -101,6 +105,46 @@ export const siteSettingsMutationResolvers = {
       });
     }
 
+    // ── Session-token lifetime validation ──
+    // Access tokens may live 1 minute to 24 hours. Anything shorter creates
+    // user-visible refresh churn; anything longer extends the blast radius
+    // of a stolen JWT (which we cannot revoke server-side).
+    const accessTokenSeconds = args.input.accessTokenSeconds;
+    if (accessTokenSeconds != null && (accessTokenSeconds < 60 || accessTokenSeconds > 86400)) {
+      throw new GraphQLError(
+        'accessTokenSeconds must be between 60 (1 minute) and 86400 (24 hours)',
+        { extensions: { code: 'BAD_USER_INPUT' } },
+      );
+    }
+    // Refresh tokens may live 1 hour to 30 days. The lower bound matches the
+    // floor at which the refresh model is even useful; the upper bound is a
+    // pragmatic ceiling for opaque tokens stored in the DB.
+    const refreshTokenSeconds = args.input.refreshTokenSeconds;
+    if (
+      refreshTokenSeconds != null &&
+      (refreshTokenSeconds < 3600 || refreshTokenSeconds > 2592000)
+    ) {
+      throw new GraphQLError(
+        'refreshTokenSeconds must be between 3600 (1 hour) and 2592000 (30 days)',
+        { extensions: { code: 'BAD_USER_INPUT' } },
+      );
+    }
+    // Cross-field check: resolved access TTL must be < resolved refresh TTL.
+    // If only one of the two is being updated, compare against the current
+    // persisted value of the other so partial updates don't false-positive.
+    if (accessTokenSeconds != null || refreshTokenSeconds != null) {
+      const current = await ctx.prisma.siteSettings.findUnique({
+        where: { id: 'site_settings' },
+      });
+      const resolvedAccess = accessTokenSeconds ?? current?.accessTokenSeconds ?? 3600;
+      const resolvedRefresh = refreshTokenSeconds ?? current?.refreshTokenSeconds ?? 604800;
+      if (resolvedAccess >= resolvedRefresh) {
+        throw new GraphQLError('accessTokenSeconds must be less than refreshTokenSeconds', {
+          extensions: { code: 'BAD_USER_INPUT' },
+        });
+      }
+    }
+
     const data: Record<string, unknown> = {
       bannerUrl: args.input.bannerUrl ?? null,
       tagline: args.input.tagline ?? null,
@@ -108,6 +152,8 @@ export const siteSettingsMutationResolvers = {
     if (minEdge != null) data.minPhotoLongEdge = minEdge;
     if (maxEdge != null) data.maxPhotoLongEdge = maxEdge;
     if (timeout != null) data.photoUploadTimeoutSeconds = timeout;
+    if (accessTokenSeconds != null) data.accessTokenSeconds = accessTokenSeconds;
+    if (refreshTokenSeconds != null) data.refreshTokenSeconds = refreshTokenSeconds;
 
     return ctx.prisma.siteSettings.upsert({
       where: { id: 'site_settings' },

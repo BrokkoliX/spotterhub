@@ -96,7 +96,9 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   const displayVariant = photo.variants.find((v: PhotoVariant) => v.variantType === 'display');
   const imageUrl = watermarkedVariant?.url ?? displayVariant?.url ?? photo.originalUrl;
   const displayName = photo.user.profile?.displayName ?? photo.user.username;
-  const uploadDate = new Date(photo.createdAt).toLocaleDateString('en-US', {
+  // Use the user's browser locale (pass `undefined`) so EU users see
+  // dd/mm/yyyy and US users see mm/dd/yyyy without us having to pick a side.
+  const uploadDate = new Date(photo.createdAt).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -330,7 +332,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Built</span>
                     <span className={styles.metaValue}>
-                      {new Date(photo.manufacturingDate).toLocaleDateString('en-US', {
+                      {new Date(photo.manufacturingDate).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'long',
                       })}
@@ -472,7 +474,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                       <span className={styles.metaValue}>
                         {new Date(
                           photo.aircraft.manufacturingDate ?? photo.manufacturingDate,
-                        ).toLocaleDateString('en-US', {
+                        ).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'long',
                         })}

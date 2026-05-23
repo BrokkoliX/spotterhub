@@ -2917,6 +2917,9 @@ export const GET_SITE_SETTINGS = gql`
       tagline
       minPhotoLongEdge
       maxPhotoLongEdge
+      photoUploadTimeoutSeconds
+      accessTokenSeconds
+      refreshTokenSeconds
       updatedAt
     }
   }
@@ -2930,6 +2933,9 @@ export const UPDATE_SITE_SETTINGS = gql`
       tagline
       minPhotoLongEdge
       maxPhotoLongEdge
+      photoUploadTimeoutSeconds
+      accessTokenSeconds
+      refreshTokenSeconds
       updatedAt
     }
   }

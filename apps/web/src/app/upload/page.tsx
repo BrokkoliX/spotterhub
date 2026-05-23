@@ -34,7 +34,11 @@ import {
   GET_AIRCRAFT_VARIANTS,
   GET_AIRLINES,
 } from '@/lib/queries';
-import type { CreatePendingAircraftMutation, CreatePendingAircraftMutationVariables, CreateAircraftInput } from '@/lib/generated/graphql';
+import type {
+  CreatePendingAircraftMutation,
+  CreatePendingAircraftMutationVariables,
+  CreateAircraftInput,
+} from '@/lib/generated/graphql';
 import dynamic from 'next/dynamic';
 import AirportPicker, { type Airport } from '@/components/AirportPicker';
 
@@ -65,18 +69,32 @@ export default function UploadPage() {
   const [categoriesResult] = useQuery({ query: GET_PHOTO_CATEGORIES });
   const photoCategories = categoriesResult.data?.photoCategories ?? [];
   const [specificCategoriesResult] = useQuery({ query: GET_AIRCRAFT_SPECIFIC_CATEGORIES });
-  const aircraftSpecificCategories = specificCategoriesResult.data?.aircraftSpecificCategories ?? [];
+  const aircraftSpecificCategories =
+    specificCategoriesResult.data?.aircraftSpecificCategories ?? [];
 
   // Aircraft hierarchy dropdowns
-  const [manufacturersResult] = useQuery({ query: GET_AIRCRAFT_MANUFACTURERS, variables: { first: 10000 } });
-  const manufacturers = manufacturersResult.data?.aircraftManufacturers?.edges?.map(
-    (e: { node: { id: string; name: string; country: string | null } }) => e.node,
-  ) ?? [];
+  const [manufacturersResult] = useQuery({
+    query: GET_AIRCRAFT_MANUFACTURERS,
+    variables: { first: 10000 },
+  });
+  const manufacturers =
+    manufacturersResult.data?.aircraftManufacturers?.edges?.map(
+      (e: { node: { id: string; name: string; country: string | null } }) => e.node,
+    ) ?? [];
 
   const [airlinesResult] = useQuery({ query: GET_AIRLINES, variables: { first: 10000 } });
-  const airlines = airlinesResult.data?.airlines?.edges?.map(
-    (e: { node: { id: string; name: string; icaoCode: string; iataCode: string | null; country: string | null } }) => e.node,
-  ) ?? [];
+  const airlines =
+    airlinesResult.data?.airlines?.edges?.map(
+      (e: {
+        node: {
+          id: string;
+          name: string;
+          icaoCode: string;
+          iataCode: string | null;
+          country: string | null;
+        };
+      }) => e.node,
+    ) ?? [];
 
   // Cascaded dropdown state
   const [selectedManufacturerId, setSelectedManufacturerId] = useState('');
@@ -90,17 +108,24 @@ export default function UploadPage() {
 
   // Registration typeahead (for auto-fill)
   const [registrationSearch, setRegistrationSearch] = useState('');
-  const [registrationResults, setRegistrationResults] = useState<Array<{
-    id: string;
-    registration: string;
-    manufacturer: { id: string; name: string } | null;
-    family: { id: string; name: string } | null;
-    variant: { id: string; name: string; iataCode: string | null; icaoCode: string | null } | null;
-    airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null;
-    msn: string | null;
-    manufacturingDate: string | null;
-    operatorType: string | null;
-  }>>([]);
+  const [registrationResults, setRegistrationResults] = useState<
+    Array<{
+      id: string;
+      registration: string;
+      manufacturer: { id: string; name: string } | null;
+      family: { id: string; name: string } | null;
+      variant: {
+        id: string;
+        name: string;
+        iataCode: string | null;
+        icaoCode: string | null;
+      } | null;
+      airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null;
+      msn: string | null;
+      manufacturingDate: string | null;
+      operatorType: string | null;
+    }>
+  >([]);
   const [showRegistrationDropdown, setShowRegistrationDropdown] = useState(false);
   const [showNewAircraftModal, setShowNewAircraftModal] = useState(false);
   const [hasSearchResults, setHasSearchResults] = useState(false);
@@ -118,7 +143,19 @@ export default function UploadPage() {
       const edges = registrationSearchResult.data.aircraftSearch.edges;
       setRegistrationResults(
         edges.map(
-          (e: { node: { id: string; registration: string; manufacturer: { name: string } | null; family: { name: string } | null; variant: { name: string; iataCode: string | null; icaoCode: string | null } | null; airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null; msn: string | null; manufacturingDate: string | null; operatorType: string | null } }) => e.node,
+          (e: {
+            node: {
+              id: string;
+              registration: string;
+              manufacturer: { name: string } | null;
+              family: { name: string } | null;
+              variant: { name: string; iataCode: string | null; icaoCode: string | null } | null;
+              airlineRef: { name: string; icaoCode: string; iataCode: string | null } | null;
+              msn: string | null;
+              manufacturingDate: string | null;
+              operatorType: string | null;
+            };
+          }) => e.node,
         ),
       );
       setHasSearchResults(edges.length > 0);
@@ -157,7 +194,7 @@ export default function UploadPage() {
     }
   };
 
-  const selectRegistration = (aircraft: typeof registrationResults[0]) => {
+  const selectRegistration = (aircraft: (typeof registrationResults)[0]) => {
     setRegistrationSearch(aircraft.registration);
     setShowRegistrationDropdown(false);
     // Set aircraftId (links to the Aircraft registration record)
@@ -179,7 +216,9 @@ export default function UploadPage() {
     // Auto-fill airline from airlineRef
     if (aircraft.airlineRef) {
       setSelectedAirlineId(aircraft.airlineRef.icaoCode);
-      setAirlineDisplay(`${aircraft.airlineRef.name} (${[aircraft.airlineRef.iataCode, aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`);
+      setAirlineDisplay(
+        `${aircraft.airlineRef.name} (${[aircraft.airlineRef.iataCode, aircraft.airlineRef.icaoCode].filter(Boolean).join('/')})`,
+      );
     }
     setAircraftLocked(true);
   };
@@ -221,7 +260,6 @@ export default function UploadPage() {
     setAircraftLocked(true);
     setShowNewAircraftModal(false);
   };
-
 
   // State
   const [step, setStep] = useState<UploadStep>('select');
@@ -313,7 +351,9 @@ export default function UploadPage() {
           const MIN_LONG_EDGE = 800;
           if (longEdge < MIN_LONG_EDGE) {
             URL.revokeObjectURL(url);
-            setError(`Image is too small. Minimum ${MIN_LONG_EDGE}px on the long edge required (yours is ${longEdge}px).`);
+            setError(
+              `Image is too small. Minimum ${MIN_LONG_EDGE}px on the long edge required (yours is ${longEdge}px).`,
+            );
             setFile(null);
             setPreview(null);
             reject(new Error('Image too small'));
@@ -325,26 +365,84 @@ export default function UploadPage() {
         img.src = url;
       });
 
-      // Extract EXIF data
+      // Extract EXIF data and auto-fill empty form fields where possible.
+      // We never overwrite a value the user has already entered, so changing
+      // the selected file mid-flight won't clobber edits.
       try {
         const exif = await exifr.parse(selectedFile, {
-          tiff: true, exif: true, gps: true,
-          pick: ['Make', 'Model', 'FocalLength', 'FocalLengthIn35mmFormat', 'FNumber', 'ExposureTime', 'ISO', 'DateTimeOriginal'],
+          tiff: true,
+          exif: true,
+          gps: true,
+          // `latitude` / `longitude` are exifr's flattened helpers for the
+          // raw GPS tags — they only appear in the result when explicitly
+          // picked (or when `pick` is omitted entirely).
+          pick: [
+            'Make',
+            'Model',
+            'FocalLength',
+            'FocalLengthIn35mmFormat',
+            'FNumber',
+            'ExposureTime',
+            'ISO',
+            'DateTimeOriginal',
+            'latitude',
+            'longitude',
+          ],
         });
         if (exif) {
           setExifData({
             make: exif.Make ?? null,
             model: exif.Model ?? null,
             focalLength: exif.FocalLength ? String(exif.FocalLength) : null,
-            focalLength35mm: exif.FocalLengthIn35mmFormat ? String(exif.FocalLengthIn35mmFormat) : null,
+            focalLength35mm: exif.FocalLengthIn35mmFormat
+              ? String(exif.FocalLengthIn35mmFormat)
+              : null,
             aperture: exif.FNumber ? String(exif.FNumber) : null,
             shutterSpeed: exif.ExposureTime ? String(exif.ExposureTime) : null,
             iso: exif.ISO ? String(exif.ISO) : null,
-            takenAt: exif.DateTimeOriginal ? exif.DateTimeOriginal.toISOString().split('T')[0] : null,
+            takenAt: exif.DateTimeOriginal
+              ? exif.DateTimeOriginal.toISOString().split('T')[0]
+              : null,
           });
+
+          // ── Auto-fill: Date Taken ──
+          // <input type="date"> wants `yyyy-mm-dd`; the browser still
+          // *displays* it in the user's locale (so EU users see dd/mm/yyyy).
+          if (exif.DateTimeOriginal && !takenAt) {
+            const iso =
+              exif.DateTimeOriginal instanceof Date
+                ? exif.DateTimeOriginal.toISOString().split('T')[0]
+                : null;
+            if (iso) setTakenAt(iso);
+          }
+
+          // ── Auto-fill: GPS coordinates ──
+          // exifr returns `latitude` / `longitude` as numbers when GPS tags
+          // are present and well-formed. Mirror what handleMapSelect does
+          // so the picker centres correctly.
+          if (
+            typeof exif.latitude === 'number' &&
+            typeof exif.longitude === 'number' &&
+            !latitude &&
+            !longitude
+          ) {
+            setLatitude(String(exif.latitude));
+            setLongitude(String(exif.longitude));
+            setMapPosition({ lat: exif.latitude, lng: exif.longitude });
+          }
+
+          // ── Auto-fill: Camera body ──
+          // Many users will just want to confirm "Make Model" rather than
+          // type it out, so we drop the value into the custom-body slot
+          // (gearBody = '__custom__' is the existing convention) and let
+          // them switch to a saved profile preset if they prefer.
+          if (exif.Make && exif.Model && !gearBody) {
+            setGearBody('__custom__');
+            setGearBodyCustom(`${String(exif.Make).trim()} ${String(exif.Model).trim()}`.trim());
+          }
         }
       } catch {
-        // EXIF extraction is best-effort
+        // EXIF extraction is best-effort — silently fall back to manual entry.
       }
 
       // Upload to S3
@@ -359,9 +457,7 @@ export default function UploadPage() {
       });
 
       if (result.error) {
-        setError(
-          result.error.graphQLErrors[0]?.message ?? 'Failed to get upload URL',
-        );
+        setError(result.error.graphQLErrors[0]?.message ?? 'Failed to get upload URL');
         setStep('select');
         return;
       }
@@ -385,9 +481,7 @@ export default function UploadPage() {
         setUploadProgress(100);
         setStep('form');
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Upload failed',
-        );
+        setError(err instanceof Error ? err.message : 'Upload failed');
         setStep('select');
       }
     },
@@ -503,8 +597,10 @@ export default function UploadPage() {
     if (latitude) input.latitude = parseFloat(latitude);
     if (longitude) input.longitude = parseFloat(longitude);
     if (locationPrivacy !== 'exact') input.locationPrivacy = locationPrivacy;
-    if (gearBody === '__custom__' ? gearBodyCustom : gearBody) input.gearBody = gearBody === '__custom__' ? gearBodyCustom : gearBody;
-    if (gearLens === '__custom__' ? gearLensCustom : gearLens) input.gearLens = gearLens === '__custom__' ? gearLensCustom : gearLens;
+    if (gearBody === '__custom__' ? gearBodyCustom : gearBody)
+      input.gearBody = gearBody === '__custom__' ? gearBodyCustom : gearBody;
+    if (gearLens === '__custom__' ? gearLensCustom : gearLens)
+      input.gearLens = gearLens === '__custom__' ? gearLensCustom : gearLens;
     if (photoCategoryId) input.photoCategoryId = photoCategoryId;
     if (locationType) input.locationType = locationType;
     if (exifData && Object.keys(exifData).length > 0) input.exifData = exifData;
@@ -520,7 +616,8 @@ export default function UploadPage() {
       if (selectedAirlineId) {
         // selectedAirlineId may be a UUID (from NewAircraftModal) or an icaoCode (from selectRegistration)
         const selectedAirline = airlines.find(
-          (a: { id: string; icaoCode: string }) => a.id === selectedAirlineId || a.icaoCode === selectedAirlineId,
+          (a: { id: string; icaoCode: string }) =>
+            a.id === selectedAirlineId || a.icaoCode === selectedAirlineId,
         );
         if (selectedAirline?.icaoCode) {
           input.operatorIcao = selectedAirline.icaoCode;
@@ -535,9 +632,7 @@ export default function UploadPage() {
     const result = await createPhoto({ input });
 
     if (result.error) {
-      setError(
-        result.error.graphQLErrors[0]?.message ?? 'Failed to create photo',
-      );
+      setError(result.error.graphQLErrors[0]?.message ?? 'Failed to create photo');
       setStep('form');
       return;
     }
@@ -553,9 +648,7 @@ export default function UploadPage() {
       <div className={styles.page}>
         <div className="container-narrow">
           <div className={styles.formSection} style={{ textAlign: 'center' }}>
-            <p style={{ marginBottom: 16 }}>
-              You need to sign in to upload photos.
-            </p>
+            <p style={{ marginBottom: 16 }}>You need to sign in to upload photos.</p>
             <Link href="/signin" className="btn btn-primary btn-lg">
               Sign in
             </Link>
@@ -573,8 +666,8 @@ export default function UploadPage() {
         <UploadTabs />
         <h1 className={styles.title}>📷 Upload to My Collection</h1>
         <p className={styles.subtitle}>
-          Photos you upload here go into your personal collection.
-          To add photos to a community album, open the album and use &ldquo;Add Photos&rdquo; to pick from your existing photos.
+          Photos you upload here go into your personal collection. To add photos to a community
+          album, open the album and use &ldquo;Add Photos&rdquo; to pick from your existing photos.
         </p>
 
         {step === 'done' && createdPhotoId ? (
@@ -582,10 +675,7 @@ export default function UploadPage() {
             <div className={styles.successIcon}>✅</div>
             <p className={styles.successText}>Photo uploaded successfully!</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <Link
-                href={`/photos/${createdPhotoId}`}
-                className="btn btn-primary btn-lg"
-              >
+              <Link href={`/photos/${createdPhotoId}`} className="btn btn-primary btn-lg">
                 View photo
               </Link>
               <button
@@ -654,9 +744,7 @@ export default function UploadPage() {
                   }}
                 >
                   <div className={styles.dropzoneIcon}>📸</div>
-                  <p className={styles.dropzoneText}>
-                    Drop your photo here or click to browse
-                  </p>
+                  <p className={styles.dropzoneText}>Drop your photo here or click to browse</p>
                   <p className={styles.dropzoneSub}>
                     JPEG, PNG, WebP, HEIC — min 800px long edge, max 25 MB
                   </p>
@@ -672,11 +760,7 @@ export default function UploadPage() {
               ) : (
                 <div className={styles.preview}>
                   {preview && (
-                    <img
-                      src={preview}
-                      alt="Upload preview"
-                      className={styles.previewImage}
-                    />
+                    <img src={preview} alt="Upload preview" className={styles.previewImage} />
                   )}
                   {step !== 'creating' && (
                     <button
@@ -694,14 +778,9 @@ export default function UploadPage() {
               {step === 'uploading' && (
                 <div className={styles.progress}>
                   <div className={styles.progressBar}>
-                    <div
-                      className={styles.progressFill}
-                      style={{ width: `${uploadProgress}%` }}
-                    />
+                    <div className={styles.progressFill} style={{ width: `${uploadProgress}%` }} />
                   </div>
-                  <p className={styles.progressText}>
-                    Uploading… {uploadProgress}%
-                  </p>
+                  <p className={styles.progressText}>Uploading… {uploadProgress}%</p>
                 </div>
               )}
             </div>
@@ -799,149 +878,224 @@ export default function UploadPage() {
                           required={mode === 'aircraft'}
                           style={{ textTransform: 'uppercase', paddingRight: 80 }}
                         />
-                    {aircraftLocked && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRegistrationSearch('');
-                          setAircraftId('');
-                          setSelectedManufacturerId('');
-                          setSelectedFamilyId('');
-                          setSelectedVariantId('');
-                          setSelectedFamilyName('');
-                          setSelectedVariantName('');
-                          setSelectedAirlineId('');
-                          setOperatorType('');
-                          setMsn('');
-                          setManufacturingDate('');
-                          setAirlineDisplay('');
-                          setAircraftLocked(false);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          right: 8,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          color: 'var(--color-text-link)',
-                          padding: '4px 8px',
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                    {showRegistrationDropdown && registrationResults.length > 0 && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'var(--color-bg)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 8,
-                        zIndex: 100,
-                        maxHeight: 240,
-                        overflowY: 'auto',
-                      }}>
-                        {registrationResults.map((a) => (
+                        {aircraftLocked && (
                           <button
-                            key={a.id}
                             type="button"
-                            onClick={() => selectRegistration(a)}
+                            onClick={() => {
+                              setRegistrationSearch('');
+                              setAircraftId('');
+                              setSelectedManufacturerId('');
+                              setSelectedFamilyId('');
+                              setSelectedVariantId('');
+                              setSelectedFamilyName('');
+                              setSelectedVariantName('');
+                              setSelectedAirlineId('');
+                              setOperatorType('');
+                              setMsn('');
+                              setManufacturingDate('');
+                              setAirlineDisplay('');
+                              setAircraftLocked(false);
+                            }}
                             style={{
-                              display: 'block',
-                              width: '100%',
-                              textAlign: 'left',
-                              padding: '8px 12px',
+                              position: 'absolute',
+                              right: 8,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
                               background: 'none',
                               border: 'none',
                               cursor: 'pointer',
-                              borderBottom: '1px solid var(--color-border)',
+                              fontSize: '0.75rem',
+                              color: 'var(--color-text-link)',
+                              padding: '4px 8px',
                             }}
                           >
-                            <span style={{ fontWeight: 600 }}>{a.registration}</span>
-                            <span style={{ marginLeft: 8, color: 'var(--color-text-secondary)' }}>
-                              {[a.manufacturer?.name, a.family?.name, a.variant?.name].filter(Boolean).join(' ')}
-                              {a.variant?.iataCode || a.variant?.icaoCode
-                                ? ` (${[a.variant.iataCode, a.variant.icaoCode].filter(Boolean).join('/')})`
-                                : null}
-                            </span>
+                            Clear
                           </button>
-                        ))}
+                        )}
+                        {showRegistrationDropdown && registrationResults.length > 0 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              right: 0,
+                              background: 'var(--color-bg)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 8,
+                              zIndex: 100,
+                              maxHeight: 240,
+                              overflowY: 'auto',
+                            }}
+                          >
+                            {registrationResults.map((a) => (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => selectRegistration(a)}
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  padding: '8px 12px',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid var(--color-border)',
+                                }}
+                              >
+                                <span style={{ fontWeight: 600 }}>{a.registration}</span>
+                                <span
+                                  style={{ marginLeft: 8, color: 'var(--color-text-secondary)' }}
+                                >
+                                  {[a.manufacturer?.name, a.family?.name, a.variant?.name]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                                  {a.variant?.iataCode || a.variant?.icaoCode
+                                    ? ` (${[a.variant.iataCode, a.variant.icaoCode].filter(Boolean).join('/')})`
+                                    : null}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!aircraftLocked && (
+                          <button
+                            type="button"
+                            onClick={handleOpenNewAircraftModal}
+                            disabled={registrationSearch.length === 0}
+                            style={{
+                              position: 'absolute',
+                              right: 8,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: 'var(--color-accent)',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: registrationSearch.length === 0 ? 'not-allowed' : 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              color: '#fff',
+                              padding: '4px 8px',
+                              opacity: registrationSearch.length === 0 ? 0.5 : 1,
+                            }}
+                          >
+                            New
+                          </button>
+                        )}
                       </div>
-                    )}
-                    {!aircraftLocked && (
-                      <button
-                        type="button"
-                        onClick={handleOpenNewAircraftModal}
-                        disabled={registrationSearch.length === 0}
+                      {registrationError && (
+                        <p className="error-text" style={{ marginTop: 6 }}>
+                          {registrationError}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Aircraft Info — read-only once selected */}
+                    {aircraftLocked && (
+                      <div
                         style={{
-                          position: 'absolute',
-                          right: 8,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'var(--color-accent)',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: registrationSearch.length === 0 ? 'not-allowed' : 'pointer',
-                          fontSize: '0.75rem',
-                          fontWeight: 500,
-                          color: '#fff',
-                          padding: '4px 8px',
-                          opacity: registrationSearch.length === 0 ? 0.5 : 1,
+                          background: 'var(--color-bg-secondary)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 8,
+                          padding: '12px 16px',
                         }}
                       >
-                        New
-                      </button>
+                        <div
+                          style={{
+                            fontSize: '0.8125rem',
+                            fontWeight: 500,
+                            marginBottom: 8,
+                            color: 'var(--color-text-secondary)',
+                          }}
+                        >
+                          ✈ Aircraft (pending approval)
+                        </div>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                            gap: 8,
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          {selectedManufacturerId &&
+                            (() => {
+                              const m = manufacturers.find(
+                                (m: { id: string }) => m.id === selectedManufacturerId,
+                              );
+                              return m ? (
+                                <div>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>
+                                    Manufacturer
+                                  </span>
+                                  <br />
+                                  {m.name}
+                                </div>
+                              ) : null;
+                            })()}
+                          {selectedFamilyName && (
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)' }}>Family</span>
+                              <br />
+                              {selectedFamilyName}
+                            </div>
+                          )}
+                          {selectedVariantName && (
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)' }}>Variant</span>
+                              <br />
+                              {selectedVariantName}
+                            </div>
+                          )}
+                          {operatorType && (
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)' }}>
+                                Operator Type
+                              </span>
+                              <br />
+                              {operatorType.replace(/_/g, ' ')}
+                            </div>
+                          )}
+                          {msn && (
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)' }}>MSN</span>
+                              <br />
+                              {msn}
+                            </div>
+                          )}
+                          {manufacturingDate && (
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)' }}>Built</span>
+                              <br />
+                              {manufacturingDate}
+                            </div>
+                          )}
+                          {airlineDisplay && (
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)' }}>Airline</span>
+                              <br />
+                              {airlineDisplay}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </div>
-                  {registrationError && (
-                    <p className="error-text" style={{ marginTop: 6 }}>{registrationError}</p>
-                  )}
-                </div>
 
-                {/* Aircraft Info — read-only once selected */}
-                {aircraftLocked && (
-                  <div style={{
-                    background: 'var(--color-bg-secondary)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 8,
-                    padding: '12px 16px',
-                  }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, marginBottom: 8, color: 'var(--color-text-secondary)' }}>
-                      ✈ Aircraft (pending approval)
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, fontSize: '0.875rem' }}>
-                      {selectedManufacturerId && (() => {
-                        const m = manufacturers.find((m: { id: string }) => m.id === selectedManufacturerId);
-                        return m ? <div><span style={{ color: 'var(--color-text-muted)' }}>Manufacturer</span><br/>{m.name}</div> : null;
-                      })()}
-                      {selectedFamilyName && <div><span style={{ color: 'var(--color-text-muted)' }}>Family</span><br/>{selectedFamilyName}</div>}
-                      {selectedVariantName && <div><span style={{ color: 'var(--color-text-muted)' }}>Variant</span><br/>{selectedVariantName}</div>}
-                      {operatorType && <div><span style={{ color: 'var(--color-text-muted)' }}>Operator Type</span><br/>{operatorType.replace(/_/g, ' ')}</div>}
-                      {msn && <div><span style={{ color: 'var(--color-text-muted)' }}>MSN</span><br/>{msn}</div>}
-                      {manufacturingDate && <div><span style={{ color: 'var(--color-text-muted)' }}>Built</span><br/>{manufacturingDate}</div>}
-                      {airlineDisplay && <div><span style={{ color: 'var(--color-text-muted)' }}>Airline</span><br/>{airlineDisplay}</div>}
-                    </div>
-                  </div>
-                )}
-
-                {!aircraftLocked && (
-                  <div style={{
-                    background: 'var(--color-bg-secondary)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 8,
-                    padding: '12px 16px',
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.875rem',
-                    textAlign: 'center',
-                  }}>
-                    Enter a registration above — select an existing aircraft or create a new one
-                  </div>
-                )}
+                    {!aircraftLocked && (
+                      <div
+                        style={{
+                          background: 'var(--color-bg-secondary)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 8,
+                          padding: '12px 16px',
+                          color: 'var(--color-text-muted)',
+                          fontSize: '0.875rem',
+                          textAlign: 'center',
+                        }}
+                      >
+                        Enter a registration above — select an existing aircraft or create a new one
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -996,7 +1150,9 @@ export default function UploadPage() {
                     >
                       <option value="">Select body…</option>
                       {cameraBodies.map((b) => (
-                        <option key={b} value={b}>{b}</option>
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
                       ))}
                       <option value="__custom__">Other (enter below)…</option>
                     </select>
@@ -1025,7 +1181,9 @@ export default function UploadPage() {
                     >
                       <option value="">Select lens…</option>
                       {lenses.map((l) => (
-                        <option key={l} value={l}>{l}</option>
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
                       ))}
                       <option value="__custom__">Other (enter below)…</option>
                     </select>
@@ -1049,7 +1207,12 @@ export default function UploadPage() {
                       Photo Category
                     </label>
                     <SearchableSelect
-                      options={photoCategories.map((c: { id: string; name: string; label: string }) => ({ id: c.id, label: c.label }))}
+                      options={photoCategories.map(
+                        (c: { id: string; name: string; label: string }) => ({
+                          id: c.id,
+                          label: c.label,
+                        }),
+                      )}
                       value={photoCategoryId}
                       onChange={(id) => setPhotoCategoryId(id)}
                       placeholder="Search category…"
@@ -1062,7 +1225,12 @@ export default function UploadPage() {
                         Aircraft Type
                       </label>
                       <SearchableSelect
-                        options={aircraftSpecificCategories.map((c: { id: string; name: string; label: string }) => ({ id: c.id, label: c.label }))}
+                        options={aircraftSpecificCategories.map(
+                          (c: { id: string; name: string; label: string }) => ({
+                            id: c.id,
+                            label: c.label,
+                          }),
+                        )}
                         value={aircraftSpecificCategoryId}
                         onChange={(id) => setAircraftSpecificCategoryId(id)}
                         placeholder="Search aircraft type…"
@@ -1080,12 +1248,25 @@ export default function UploadPage() {
                   <label className="label">📍 Or pick a location on the map</label>
                   <MapPicker position={mapPosition} onSelect={handleMapSelect} />
                   {mapPosition && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
-                      {mapPosition.lat.toFixed(4)}°, {mapPosition.lng.toFixed(4)}° — drag marker to adjust
+                    <p
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)',
+                        marginTop: 6,
+                      }}
+                    >
+                      {mapPosition.lat.toFixed(4)}°, {mapPosition.lng.toFixed(4)}° — drag marker to
+                      adjust
                     </p>
                   )}
                   {!mapPosition && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                    <p
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)',
+                        marginTop: 6,
+                      }}
+                    >
                       Click the map to set a location
                     </p>
                   )}
@@ -1189,7 +1370,9 @@ export default function UploadPage() {
                       checked={watermarkEnabled}
                       onChange={(e) => setWatermarkEnabled(e.target.checked)}
                     />
-                    <span style={{ marginLeft: 8 }}>Add © SpotterSpace watermark to this photo</span>
+                    <span style={{ marginLeft: 8 }}>
+                      Add © SpotterSpace watermark to this photo
+                    </span>
                   </label>
                 </div>
 
@@ -1207,9 +1390,7 @@ export default function UploadPage() {
                     }
                     className="btn btn-primary btn-lg"
                   >
-                    {step === 'creating'
-                      ? 'Publishing…'
-                      : 'Publish Photo'}
+                    {step === 'creating' ? 'Publishing…' : 'Publish Photo'}
                   </button>
                 </div>
               </form>
@@ -1282,14 +1463,17 @@ function NewAircraftModal({
     pause: !selectedManufacturerId,
     requestPolicy: 'cache-and-network',
   });
-  const families = (selectedManufacturerId
-    ? familiesResult.data?.aircraftFamilies?.edges?.map(
-        (e: { node: { id: string; name: string; manufacturer: { id: string; name: string } } }) => ({
-          ...e.node,
-          label: `${e.node.name} (${e.node.manufacturer.name})`,
-        }),
-      )
-    : []) ?? [];
+  const families =
+    (selectedManufacturerId
+      ? familiesResult.data?.aircraftFamilies?.edges?.map(
+          (e: {
+            node: { id: string; name: string; manufacturer: { id: string; name: string } };
+          }) => ({
+            ...e.node,
+            label: `${e.node.name} (${e.node.manufacturer.name})`,
+          }),
+        )
+      : []) ?? [];
 
   // Server-side filtered variants — only fetch when a family is selected
   const [variantsResult] = useQuery({
@@ -1298,14 +1482,23 @@ function NewAircraftModal({
     pause: !selectedFamilyId,
     requestPolicy: 'cache-and-network',
   });
-  const variants = (selectedFamilyId
-    ? variantsResult.data?.aircraftVariants?.edges?.map(
-        (e: { node: { id: string; name: string; iataCode: string | null; icaoCode: string | null; family: { id: string; name: string } } }) => ({
-          ...e.node,
-          label: `${e.node.name} (${e.node.family.name})`,
-        }),
-      )
-    : []) ?? [];
+  const variants =
+    (selectedFamilyId
+      ? variantsResult.data?.aircraftVariants?.edges?.map(
+          (e: {
+            node: {
+              id: string;
+              name: string;
+              iataCode: string | null;
+              icaoCode: string | null;
+              family: { id: string; name: string };
+            };
+          }) => ({
+            ...e.node,
+            label: `${e.node.name} (${e.node.family.name})`,
+          }),
+        )
+      : []) ?? [];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -1318,7 +1511,9 @@ function NewAircraftModal({
     if (selectedFamilyId) input.familyId = selectedFamilyId;
     if (selectedVariantId) input.variantId = selectedVariantId;
     if (selectedAirlineId) input.airlineId = selectedAirlineId;
-    if (operatorType) input.operatorType = operatorType as CreatePendingAircraftMutationVariables['input']['operatorType'];
+    if (operatorType)
+      input.operatorType =
+        operatorType as CreatePendingAircraftMutationVariables['input']['operatorType'];
     if (msn) input.msn = msn;
     if (manufacturingDate) input.manufacturingDate = manufacturingDate;
 
@@ -1368,7 +1563,9 @@ function NewAircraftModal({
         zIndex: 200,
         padding: 16,
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         style={{
@@ -1382,12 +1579,25 @@ function NewAircraftModal({
           overflow: 'auto',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}
+        >
           <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Add New Aircraft</h2>
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--color-text-muted)' }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              color: 'var(--color-text-muted)',
+            }}
           >
             ✕
           </button>
@@ -1395,7 +1605,9 @@ function NewAircraftModal({
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Registration *</label>
+            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+              Registration *
+            </label>
             <input
               type="text"
               className="input"
@@ -1408,33 +1620,59 @@ function NewAircraftModal({
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}
+          >
             <div>
-              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturer</label>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+                Manufacturer
+              </label>
               <SearchableSelect
-                options={manufacturers.map((m: { id: string; name: string }) => ({ id: m.id, label: m.name }))}
+                options={manufacturers.map((m: { id: string; name: string }) => ({
+                  id: m.id,
+                  label: m.name,
+                }))}
                 value={selectedManufacturerId}
-                onChange={(id) => { setSelectedManufacturerId(id); setSelectedFamilyId(''); setSelectedVariantId(''); }}
+                onChange={(id) => {
+                  setSelectedManufacturerId(id);
+                  setSelectedFamilyId('');
+                  setSelectedVariantId('');
+                }}
                 placeholder="Search…"
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Family</label>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+                Family
+              </label>
               <SearchableSelect
-                options={families.map((f: { id: string; label: string }) => ({ id: f.id, label: f.label }))}
+                options={families.map((f: { id: string; label: string }) => ({
+                  id: f.id,
+                  label: f.label,
+                }))}
                 value={selectedFamilyId}
-                onChange={(id) => { setSelectedFamilyId(id); setSelectedVariantId(''); }}
+                onChange={(id) => {
+                  setSelectedFamilyId(id);
+                  setSelectedVariantId('');
+                }}
                 placeholder={selectedManufacturerId ? 'Search…' : 'Select manufacturer first'}
                 isLoading={familiesResult.fetching}
               />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}
+          >
             <div>
-              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Variant</label>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+                Variant
+              </label>
               <SearchableSelect
-                options={variants.map((v: { id: string; label: string }) => ({ id: v.id, label: v.label }))}
+                options={variants.map((v: { id: string; label: string }) => ({
+                  id: v.id,
+                  label: v.label,
+                }))}
                 value={selectedVariantId}
                 onChange={(id) => setSelectedVariantId(id)}
                 placeholder={selectedFamilyId ? 'Search…' : 'Select family first'}
@@ -1442,7 +1680,9 @@ function NewAircraftModal({
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Operator Type</label>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+                Operator Type
+              </label>
               <select
                 className="input"
                 value={operatorType}
@@ -1461,9 +1701,13 @@ function NewAircraftModal({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}
+          >
             <div>
-              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>MSN / Serial Number</label>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+                MSN / Serial Number
+              </label>
               <input
                 type="text"
                 className="input"
@@ -1474,7 +1718,9 @@ function NewAircraftModal({
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Manufacturing Date</label>
+              <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+                Manufacturing Date
+              </label>
               <input
                 type="date"
                 className="input"
@@ -1486,17 +1732,24 @@ function NewAircraftModal({
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>Airline</label>
+            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
+              Airline
+            </label>
             <SearchableSelect
-              options={airlines.map((a: { id: string; icaoCode: string; name: string; iataCode: string | null }) => ({
-                id: a.id,
-                label: `${a.name} (${a.icaoCode}${a.iataCode ? `/${a.iataCode}` : ''})`,
-              }))}
+              options={airlines.map(
+                (a: { id: string; icaoCode: string; name: string; iataCode: string | null }) => ({
+                  id: a.id,
+                  label: `${a.name} (${a.icaoCode}${a.iataCode ? `/${a.iataCode}` : ''})`,
+                }),
+              )}
               value={selectedAirlineId}
               onChange={(id) => {
                 setSelectedAirlineId(id);
                 const airline = airlines.find((a: { id: string }) => a.id === id);
-                if (airline) setAirlineDisplay(`${airline.name} (${[airline.iataCode, airline.icaoCode].filter(Boolean).join('/')})`);
+                if (airline)
+                  setAirlineDisplay(
+                    `${airline.name} (${[airline.iataCode, airline.icaoCode].filter(Boolean).join('/')})`,
+                  );
               }}
               placeholder="Search airline…"
             />

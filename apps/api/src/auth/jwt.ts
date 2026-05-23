@@ -15,18 +15,28 @@ if (!rawSecret) {
 }
 
 const JWT_SECRET = rawSecret;
-const JWT_ACCESS_EXPIRES_IN = '1h';
+/** Compile-time fallback used only when no expiresIn is supplied by the caller. */
+const JWT_ACCESS_EXPIRES_IN_DEFAULT = '1h';
 
 /**
  * Signs a short-lived JWT access token for the given user payload.
- * Access tokens expire in 1 hour. Browser clients receive a separate
- * HttpOnly refresh cookie that persists for 7 days.
+ *
+ * Access-token lifetime is configurable at runtime via SiteSettings
+ * (`accessTokenSeconds`); the auth resolver passes that value in here as
+ * `expiresIn`. When unspecified — for example from older callers, tests, or
+ * any future entrypoint that has not yet been wired up to the DB — we fall
+ * back to the historical 1-hour default so behaviour is preserved.
  *
  * @param payload - The user identity to encode (sub, email, username).
+ * @param expiresIn - Lifetime in seconds (number) or jsonwebtoken duration
+ *   string (e.g. `'1h'`). Defaults to `'1h'`.
  * @returns A signed JWT string.
  */
-export function signToken(payload: AuthUser): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_ACCESS_EXPIRES_IN });
+export function signToken(
+  payload: AuthUser,
+  expiresIn: number | string = JWT_ACCESS_EXPIRES_IN_DEFAULT,
+): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn } as jwt.SignOptions);
 }
 
 /**

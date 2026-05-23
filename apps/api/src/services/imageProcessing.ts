@@ -96,16 +96,64 @@ export async function extractExif(buffer: Buffer): Promise<ExifData> {
 // ─── Variant Generation ─────────────────────────────────────────────────────
 
 /**
+ * Hard upper bound on how long a single `generateVariants` call may take.
+ *
+ * Sharp variant generation runs on the libuv thread pool and uploads to S3.
+ * On a 0.5-vCPU Fargate task a normal call completes in 2-8 seconds. We cap
+ * at 30 seconds so that an upstream stall (S3 hung, oversized image, runaway
+ * encode) cannot pin the request thread indefinitely and amplify into a
+ * multi-minute portal outage. Override with `IMAGE_VARIANT_TIMEOUT_MS`.
+ */
+const IMAGE_VARIANT_TIMEOUT_MS = Number.parseInt(
+  process.env.IMAGE_VARIANT_TIMEOUT_MS ?? '30000',
+  10,
+);
+
+/**
+ * Race a promise against a timeout. Resolves with the promise's value or
+ * rejects with a descriptive Error after `timeoutMs`.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`${label} exceeded ${timeoutMs}ms`));
+    }, timeoutMs);
+    // Don't keep the event loop alive solely for this timer.
+    timer.unref?.();
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
+/**
  * Generates thumbnail and display variants from an uploaded original image.
  * Fetches the original from S3, processes with Sharp, and uploads variants back.
  * Optionally generates a watermarked variant.
+ *
+ * Wrapped in a timeout (`IMAGE_VARIANT_TIMEOUT_MS`, default 30s) so that a
+ * stalled S3 call or a runaway encode cannot hold the GraphQL request open
+ * for minutes. Callers already wrap this in try/catch and surface a clean
+ * error to the user.
  *
  * @param originalKey - The S3 key of the original uploaded image.
  * @param options - Optional generation options.
  * @param options.watermarkEnabled - Whether to generate a watermarked variant.
  * @returns Array of generated variant metadata.
  */
-export async function generateVariants(
+export function generateVariants(
+  originalKey: string,
+  options: { watermarkEnabled?: boolean } = {},
+): Promise<ImageVariantResult[]> {
+  return withTimeout(
+    generateVariantsImpl(originalKey, options),
+    IMAGE_VARIANT_TIMEOUT_MS,
+    `generateVariants(${originalKey})`,
+  );
+}
+
+async function generateVariantsImpl(
   originalKey: string,
   options: { watermarkEnabled?: boolean } = {},
 ): Promise<ImageVariantResult[]> {

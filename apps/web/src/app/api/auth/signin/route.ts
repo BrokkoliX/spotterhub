@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { graphqlEndpoint, internalOrigin } from '@/lib/internal-api';
 
+// Fallbacks if the API ever omits the new cookie-lifetime fields (e.g. during
+// a deploy where the API is one version behind). These match what the API
+// hardcoded prior to making session timeouts configurable.
+const FALLBACK_ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1 hour
+const FALLBACK_REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
+
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json();
 
@@ -28,6 +34,9 @@ export async function POST(request: NextRequest) {
         mutation SignIn($input: SignInInput!) {
           signIn(input: $input) {
             token
+            refreshToken
+            accessTokenMaxAge
+            refreshTokenMaxAge
             user {
               id
               email
@@ -52,14 +61,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 401 });
   }
 
-  const { token, refreshToken, user } = data.data.signIn;
+  const {
+    token,
+    refreshToken,
+    user,
+    accessTokenMaxAge,
+    refreshTokenMaxAge,
+  }: {
+    token: string;
+    refreshToken?: string;
+    user: unknown;
+    accessTokenMaxAge?: number | null;
+    refreshTokenMaxAge?: number | null;
+  } = data.data.signIn;
 
   const response = NextResponse.json({ user });
   response.cookies.set('access_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60, // 1 hour (short-lived access token)
+    // Cookie lifetime is sourced from the API (SiteSettings.accessTokenSeconds)
+    // so the cookie expires in lockstep with the JWT it carries.
+    maxAge: accessTokenMaxAge ?? FALLBACK_ACCESS_TOKEN_MAX_AGE,
     path: '/',
   });
   if (refreshToken) {
@@ -67,7 +90,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: refreshTokenMaxAge ?? FALLBACK_REFRESH_TOKEN_MAX_AGE,
       path: '/',
     });
   }
