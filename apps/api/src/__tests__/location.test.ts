@@ -194,6 +194,99 @@ describe('photosInBounds', () => {
     const data = (res.body as any).singleResult.data;
     expect(data.photosInBounds).toHaveLength(2);
   });
+
+  it('returns photos linked to an airport via airportCode (no PhotoLocation row)', async () => {
+    const user = await createUser();
+    const airport = await createAirport(); // KSEA at 47.4502, -122.3088
+
+    // Photo with airportCode set but NO PhotoLocation row (legacy / imported)
+    await prisma.photo.create({
+      data: {
+        userId: user.id,
+        originalUrl: 'http://localhost:4566/airport-only.jpg',
+        mimeType: 'image/jpeg',
+        moderationStatus: 'approved',
+        airportCode: airport.icaoCode,
+        caption: 'Airport-linked, no PhotoLocation',
+      },
+    });
+
+    // Sanity: also create one out-of-bounds (London) airport-linked photo
+    const london = await prisma.airport.create({
+      data: {
+        icaoCode: 'EGLL',
+        iataCode: 'LHR',
+        name: 'Heathrow',
+        city: 'London',
+        country: 'GB',
+        latitude: 51.4775,
+        longitude: -0.4614,
+      },
+    });
+    await prisma.photo.create({
+      data: {
+        userId: user.id,
+        originalUrl: 'http://localhost:4566/london.jpg',
+        mimeType: 'image/jpeg',
+        moderationStatus: 'approved',
+        airportCode: london.icaoCode,
+        caption: 'Out of bounds',
+      },
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: PHOTOS_IN_BOUNDS,
+        variables: { swLat: 47.0, swLng: -123.0, neLat: 48.0, neLng: -122.0 },
+      },
+      ctx(),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.photosInBounds).toHaveLength(1);
+    expect(data.photosInBounds[0].caption).toBe('Airport-linked, no PhotoLocation');
+    // Coordinates fall back to the airport itself
+    expect(data.photosInBounds[0].latitude).toBeCloseTo(airport.latitude, 4);
+    expect(data.photosInBounds[0].longitude).toBeCloseTo(airport.longitude, 4);
+  });
+
+  it('does not duplicate photos that have both airportCode and PhotoLocation', async () => {
+    const user = await createUser();
+    const airport = await createAirport();
+
+    // Photo with both airport_code AND a PhotoLocation row (normal upload path)
+    const photo = await prisma.photo.create({
+      data: {
+        userId: user.id,
+        originalUrl: 'http://localhost:4566/dual.jpg',
+        mimeType: 'image/jpeg',
+        moderationStatus: 'approved',
+        airportCode: airport.icaoCode,
+        caption: 'Has both location and airport',
+      },
+    });
+    await prisma.photoLocation.create({
+      data: {
+        photoId: photo.id,
+        rawLatitude: airport.latitude,
+        rawLongitude: airport.longitude,
+        displayLatitude: airport.latitude,
+        displayLongitude: airport.longitude,
+        airportId: airport.id,
+      },
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: PHOTOS_IN_BOUNDS,
+        variables: { swLat: 47.0, swLng: -123.0, neLat: 48.0, neLng: -122.0 },
+      },
+      ctx(),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.photosInBounds).toHaveLength(1);
+  });
 });
 
 describe('photosNearby', () => {

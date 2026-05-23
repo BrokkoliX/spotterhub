@@ -324,6 +324,18 @@ export const typeDefs = gql`
     searchAirports(query: String!, first: Int = 8): [AirportSearchResult!]!
 
     """
+    Fetch airports within a geographic bounding box. Lightweight payload
+    intended for map markers. Capped at 2000 per call.
+    """
+    airportsInBounds(
+      swLat: Float!
+      swLng: Float!
+      neLat: Float!
+      neLng: Float!
+      first: Int = 2000
+    ): [AirportMapMarker!]!
+
+    """
     Search aircraft by registration. Used for typeahead on the upload form.
     """
     aircraftSearch(search: String, first: Int = 20, after: String, page: Int): AircraftConnection!
@@ -2686,6 +2698,22 @@ export const typeDefs = gql`
     longitude: Float!
     thumbnailUrl: String
     caption: String
+  }
+
+  """
+  Lightweight airport data for map markers. Omits expensive relations
+  (photoCount, spottingLocations) so a viewport-bounded query can return
+  thousands of rows cheaply.
+  """
+  type AirportMapMarker {
+    id: ID!
+    icaoCode: String!
+    iataCode: String
+    name: String!
+    city: String
+    country: String
+    latitude: Float!
+    longitude: Float!
   }
 
   input CreateSpottingLocationInput {

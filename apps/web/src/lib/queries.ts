@@ -742,6 +742,27 @@ export const PHOTOS_IN_BOUNDS = gql`
   }
 `;
 
+export const AIRPORTS_IN_BOUNDS = gql`
+  query AirportsInBounds(
+    $swLat: Float!
+    $swLng: Float!
+    $neLat: Float!
+    $neLng: Float!
+    $first: Int
+  ) {
+    airportsInBounds(swLat: $swLat, swLng: $swLng, neLat: $neLat, neLng: $neLng, first: $first) {
+      id
+      icaoCode
+      iataCode
+      name
+      city
+      country
+      latitude
+      longitude
+    }
+  }
+`;
+
 export const PHOTOS_NEARBY = gql`
   query PhotosNearby($latitude: Float!, $longitude: Float!, $radiusMeters: Float, $first: Int) {
     photosNearby(

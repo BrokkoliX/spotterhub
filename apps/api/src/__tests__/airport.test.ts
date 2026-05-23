@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-
 import {
   cleanDatabase,
   createTestContext,
@@ -12,7 +11,6 @@ import {
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
 let server: Awaited<ReturnType<typeof setupTestServer>>;
-
 
 beforeAll(async () => {
   server = await setupTestServer();
@@ -70,15 +68,17 @@ const GET_AIRPORT = `
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-async function createTestAirport(overrides: Partial<{
-  icaoCode: string;
-  iataCode: string;
-  name: string;
-  city: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-}> = {}) {
+async function createTestAirport(
+  overrides: Partial<{
+    icaoCode: string;
+    iataCode: string;
+    name: string;
+    city: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  }> = {},
+) {
   return prisma.airport.create({
     data: {
       icaoCode: overrides.icaoCode ?? 'KSEA',
@@ -98,8 +98,12 @@ describe('airports query', () => {
   it('returns all airports', async () => {
     await createTestAirport();
     await createTestAirport({
-      icaoCode: 'KLAX', iataCode: 'LAX', name: 'Los Angeles International',
-      city: 'Los Angeles', latitude: 33.9425, longitude: -118.4081,
+      icaoCode: 'KLAX',
+      iataCode: 'LAX',
+      name: 'Los Angeles International',
+      city: 'Los Angeles',
+      latitude: 33.9425,
+      longitude: -118.4081,
     });
 
     const res = await server.executeOperation(
@@ -236,7 +240,143 @@ describe('airport query', () => {
     const data = (res.body as any).singleResult.data;
     expect(data.airport.spottingLocations).toHaveLength(1);
     expect(data.airport.spottingLocations[0].name).toBe('South Viewpoint');
-    expect(data.airport.spottingLocations[0].description).toBe('Great views of Runway 16R arrivals');
+    expect(data.airport.spottingLocations[0].description).toBe(
+      'Great views of Runway 16R arrivals',
+    );
     expect(data.airport.spottingLocations[0].accessNotes).toBe('Free parking available');
+  });
+});
+
+describe('airportsInBounds query', () => {
+  const AIRPORTS_IN_BOUNDS = `
+    query AirportsInBounds($swLat: Float!, $swLng: Float!, $neLat: Float!, $neLng: Float!, $first: Int) {
+      airportsInBounds(swLat: $swLat, swLng: $swLng, neLat: $neLat, neLng: $neLng, first: $first) {
+        id
+        icaoCode
+        iataCode
+        name
+        city
+        country
+        latitude
+        longitude
+      }
+    }
+  `;
+
+  it('returns only airports within the bounding box', async () => {
+    // Inside a Seattle-area bbox
+    await createTestAirport({
+      icaoCode: 'KSEA',
+      iataCode: 'SEA',
+      name: 'Seattle-Tacoma',
+      latitude: 47.4502,
+      longitude: -122.3088,
+    });
+    // Outside (London)
+    await createTestAirport({
+      icaoCode: 'EGLL',
+      iataCode: 'LHR',
+      name: 'Heathrow',
+      latitude: 51.4775,
+      longitude: -0.4614,
+    });
+    // Outside (Sydney)
+    await createTestAirport({
+      icaoCode: 'YSSY',
+      iataCode: 'SYD',
+      name: 'Sydney Kingsford Smith',
+      latitude: -33.9399,
+      longitude: 151.1753,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: AIRPORTS_IN_BOUNDS,
+        variables: { swLat: 47.0, swLng: -123.0, neLat: 48.0, neLng: -122.0 },
+      },
+      { contextValue: createTestContext() },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.airportsInBounds).toHaveLength(1);
+    expect(data.airportsInBounds[0].icaoCode).toBe('KSEA');
+  });
+
+  it('respects the first limit', async () => {
+    await createTestAirport({
+      icaoCode: 'KSEA',
+      iataCode: 'SEA',
+      name: 'Sea-Tac',
+      latitude: 47.45,
+      longitude: -122.31,
+    });
+    await createTestAirport({
+      icaoCode: 'KBFI',
+      iataCode: 'BFI',
+      name: 'Boeing Field',
+      latitude: 47.53,
+      longitude: -122.3,
+    });
+    await createTestAirport({
+      icaoCode: 'KPAE',
+      iataCode: 'PAE',
+      name: 'Paine Field',
+      latitude: 47.91,
+      longitude: -122.28,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: AIRPORTS_IN_BOUNDS,
+        variables: { swLat: 47.0, swLng: -123.0, neLat: 48.0, neLng: -122.0, first: 2 },
+      },
+      { contextValue: createTestContext() },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.airportsInBounds).toHaveLength(2);
+  });
+
+  it('handles antimeridian-crossing viewports (swLng > neLng)', async () => {
+    // Anchorage (just east of antimeridian, lng ≈ -150)
+    await createTestAirport({
+      icaoCode: 'PANC',
+      iataCode: 'ANC',
+      name: 'Anchorage',
+      latitude: 61.1742,
+      longitude: -149.9961,
+    });
+    // Tokyo Haneda (just west of antimeridian, lng ≈ +140)
+    await createTestAirport({
+      icaoCode: 'RJTT',
+      iataCode: 'HND',
+      name: 'Tokyo Haneda',
+      latitude: 35.5523,
+      longitude: 139.7798,
+    });
+    // London — outside any Pacific bbox, must NOT appear
+    await createTestAirport({
+      icaoCode: 'EGLL',
+      iataCode: 'LHR',
+      name: 'Heathrow',
+      latitude: 51.4775,
+      longitude: -0.4614,
+    });
+
+    // Pacific viewport: sw=(20, 130), ne=(70, -130). swLng > neLng signals
+    // the antimeridian crossing.
+    const res = await server.executeOperation(
+      {
+        query: AIRPORTS_IN_BOUNDS,
+        variables: { swLat: 20, swLng: 130, neLat: 70, neLng: -130 },
+      },
+      { contextValue: createTestContext() },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    const codes = (data.airportsInBounds as Array<{ icaoCode: string }>)
+      .map((a) => a.icaoCode)
+      .sort();
+    expect(codes).toEqual(['PANC', 'RJTT']);
   });
 });

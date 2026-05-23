@@ -183,6 +183,52 @@ export const airportQueryResolvers = {
       take,
     });
   },
+
+  airportsInBounds: async (
+    _parent: unknown,
+    args: {
+      swLat: number;
+      swLng: number;
+      neLat: number;
+      neLng: number;
+      first?: number;
+    },
+    ctx: Context,
+  ) => {
+    const take = Math.min(args.first ?? 2000, 2000);
+
+    // When the viewport crosses the antimeridian (e.g. Pacific-centred map
+    // pan), Mapbox returns sw.lng > ne.lng. In that case we OR two halves:
+    // [sw.lng, 180] ∪ [-180, ne.lng]. Otherwise, plain BETWEEN is correct.
+    const crossesAntimeridian = args.swLng > args.neLng;
+    const lngWhere = crossesAntimeridian
+      ? {
+          OR: [
+            { longitude: { gte: args.swLng, lte: 180 } },
+            { longitude: { gte: -180, lte: args.neLng } },
+          ],
+        }
+      : { longitude: { gte: args.swLng, lte: args.neLng } };
+
+    return ctx.prisma.airport.findMany({
+      where: {
+        latitude: { gte: args.swLat, lte: args.neLat },
+        ...lngWhere,
+      },
+      select: {
+        id: true,
+        icaoCode: true,
+        iataCode: true,
+        name: true,
+        city: true,
+        country: true,
+        latitude: true,
+        longitude: true,
+      },
+      orderBy: { icaoCode: 'asc' },
+      take,
+    });
+  },
 };
 
 // ─── Field Resolvers ────────────────────────────────────────────────────────
