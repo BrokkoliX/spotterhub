@@ -30,3 +30,6 @@ packages/db/prisma/import-airports.ts
 scripts/run-fix.json
 scripts/run-fix-new.json
 scripts/run-task.json
+
+# CDK transient asset-cache read locks (the rest of cdk.out is checked in)
+infrastructure/cdk.out/read.*.lock
