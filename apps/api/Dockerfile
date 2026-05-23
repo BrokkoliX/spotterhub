@@ -16,6 +16,21 @@ RUN DATABASE_URL="postgresql://placeholder" npx prisma generate --schema package
 # Compile TypeScript (turbo discovers all workspaces and builds in dependency order)
 RUN npx turbo run build --filter=@spotterspace/api
 
+# Compile the standalone airport seeder into the api dist tree so it ships with
+# the runtime image. Used by one-off ECS tasks (`node dist/seed-airports.js`)
+# to reseed the production airports table from OurAirports CSVs while
+# preserving FK references via ICAO snapshot/restore. devDependencies (tsc)
+# are still available here; they're pruned in the next step.
+RUN npx tsc scripts/seed-airports.ts \
+      --outDir apps/api/dist \
+      --module Node16 \
+      --moduleResolution Node16 \
+      --target ES2022 \
+      --esModuleInterop \
+      --skipLibCheck \
+      --resolveJsonModule \
+      --types node
+
 # Prune devDependencies from production image
 RUN npm prune --production --workspace=@spotterspace/api
 
