@@ -9,6 +9,7 @@ import { getObjectUrl, getPresignedUploadUrl } from '../services/s3.js';
 import { decodeCursor, encodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
 import { validateStringLength, validateArrayLength } from '../utils/validation.js';
 import { checkAndAwardBadges } from './badgeResolvers.js';
+import { createNotification } from './notificationResolvers.js';
 
 // ─── Privacy Helpers ────────────────────────────────────────────────────────
 
@@ -346,15 +347,14 @@ export const photoQueryResolvers = {
       ),
     ]);
 
-    const positionMap = new Map(
-      pendingPositions.map((r) => [r.id, Number(r.position)]),
-    );
+    const positionMap = new Map(pendingPositions.map((r) => [r.id, Number(r.position)]));
 
     const hasNextPage = items.length > take;
     const edges = items.slice(0, take).map((photo) => ({
       cursor: encodeCursor(photo.createdAt),
       node: photo,
-      queuePosition: photo.moderationStatus === 'pending' ? (positionMap.get(photo.id) ?? null) : null,
+      queuePosition:
+        photo.moderationStatus === 'pending' ? (positionMap.get(photo.id) ?? null) : null,
     }));
 
     return {
@@ -499,9 +499,7 @@ export const photoMutationResolvers = {
         gearLens: input.gearLens ?? null,
         exifData: input.exifData ?? undefined,
         photoCategoryId: input.photoCategoryId ?? null,
-        aircraftSpecificCategoryId: isCommunity
-          ? null
-          : (input.aircraftSpecificCategoryId ?? null),
+        aircraftSpecificCategoryId: isCommunity ? null : (input.aircraftSpecificCategoryId ?? null),
         operatorIcao: isCommunity ? null : (input.operatorIcao ?? null),
         operatorType: isCommunity
           ? null
@@ -652,12 +650,20 @@ export const photoMutationResolvers = {
     }
 
     // Validate latitude/longitude ranges if provided
-    if (args.input.latitude !== undefined && args.input.latitude !== null && (args.input.latitude < -90 || args.input.latitude > 90)) {
+    if (
+      args.input.latitude !== undefined &&
+      args.input.latitude !== null &&
+      (args.input.latitude < -90 || args.input.latitude > 90)
+    ) {
       throw new GraphQLError('Latitude must be between -90 and 90', {
         extensions: { code: 'BAD_USER_INPUT' },
       });
     }
-    if (args.input.longitude !== undefined && args.input.longitude !== null && (args.input.longitude < -180 || args.input.longitude > 180)) {
+    if (
+      args.input.longitude !== undefined &&
+      args.input.longitude !== null &&
+      (args.input.longitude < -180 || args.input.longitude > 180)
+    ) {
       throw new GraphQLError('Longitude must be between -180 and 180', {
         extensions: { code: 'BAD_USER_INPUT' },
       });
@@ -825,7 +831,7 @@ export const photoMutationResolvers = {
       throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
     }
 
-    return ctx.prisma.photo.update({
+    const updated = await ctx.prisma.photo.update({
       where: { id: args.photoId },
       data: {
         moderationStatus: 'rejected',
@@ -833,6 +839,21 @@ export const photoMutationResolvers = {
       },
       include: { user: true, variants: true, tags: true },
     });
+
+    // Notify the photo owner that their photo was rejected.
+    // Awaited so the moderation message is guaranteed to be persisted before the mutation
+    // returns; createNotification swallows internal errors.
+    await createNotification(ctx.prisma, {
+      userId: photo.userId,
+      type: 'moderation',
+      title: '🚫 Photo rejected',
+      body: args.reason
+        ? `Your photo was rejected: ${args.reason}`
+        : 'Your photo was rejected by a moderator.',
+      data: { photoId: photo.id, reason: args.reason ?? null },
+    });
+
+    return updated;
   },
 
   deletePhoto: async (_parent: unknown, args: { id: string }, ctx: Context) => {

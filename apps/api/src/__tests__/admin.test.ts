@@ -433,6 +433,14 @@ describe('adminUpdatePhotoModeration', () => {
 
     const data = (res.body as any).singleResult.data;
     expect(data.adminUpdatePhotoModeration.moderationStatus).toBe('rejected');
+
+    // The photo owner should receive an in-app notification of type 'moderation'
+    const notifications = await prisma.notification.findMany({
+      where: { userId: regular.id, type: 'moderation' },
+    });
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].title).toContain('rejected');
+    expect((notifications[0].data as any)?.photoId).toBe(photo.id);
   });
 
   it('rejects invalid status', async () => {

@@ -48,7 +48,13 @@ export interface PhotoData {
     isFollowedByMe?: boolean;
     manufacturer?: { id?: string; name: string; isFollowedByMe?: boolean } | null;
     family?: { id?: string; name: string; isFollowedByMe?: boolean } | null;
-    variant?: { id?: string; name: string; iataCode?: string | null; icaoCode?: string | null; isFollowedByMe?: boolean } | null;
+    variant?: {
+      id?: string;
+      name: string;
+      iataCode?: string | null;
+      icaoCode?: string | null;
+      isFollowedByMe?: boolean;
+    } | null;
     operatorType?: string | null;
   } | null;
   watermarkEnabled?: boolean | null;
@@ -69,24 +75,14 @@ export interface PhotoData {
 export function PhotoCard({ photo }: { photo: PhotoData }) {
   const [imgError, setImgError] = useState(false);
 
-  const thumbnail16x9Variant = photo.variants.find(
-    (v) => v.variantType === 'thumbnail_16x9',
-  );
-  const displayVariant = photo.variants.find(
-    (v) => v.variantType === 'display',
-  );
-  const thumbnailVariant = photo.variants.find(
-    (v) => v.variantType === 'thumbnail',
-  );
+  const thumbnail16x9Variant = photo.variants.find((v) => v.variantType === 'thumbnail_16x9');
+  const displayVariant = photo.variants.find((v) => v.variantType === 'display');
+  const thumbnailVariant = photo.variants.find((v) => v.variantType === 'thumbnail');
   // Always prefer the 16:9 cropped thumbnail for feed cards so every card
   // renders at a uniform landscape aspect ratio regardless of orientation.
   const imageUrl =
-    thumbnail16x9Variant?.url ??
-    displayVariant?.url ??
-    thumbnailVariant?.url ??
-    photo.originalUrl;
-  const displayName =
-    photo.user.profile?.displayName ?? photo.user.username;
+    thumbnail16x9Variant?.url ?? displayVariant?.url ?? thumbnailVariant?.url ?? photo.originalUrl;
+  const displayName = photo.user.profile?.displayName ?? photo.user.username;
 
   // JetPhotos-style info
   const isCommunity = photo.kind === 'COMMUNITY';
@@ -94,13 +90,29 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
     ? photo.communityCategory.charAt(0) + photo.communityCategory.slice(1).toLowerCase()
     : null;
   const infoRegistration = isCommunity ? null : photo.aircraft?.registration;
-  const infoAirline = isCommunity ? null : (photo.airline || photo.operatorIcao);
+  const infoAirline = isCommunity ? null : photo.airline || photo.operatorIcao;
   const infoAirport = photo.airportCode;
   const infoDate = photo.takenAt
-    ? new Date(photo.takenAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+    ? new Date(photo.takenAt).toLocaleDateString(undefined, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
     : null;
   const infoCamera = photo.gearBody;
   const infoLens = photo.gearLens;
+
+  // Build a human-readable aircraft type string, e.g. "Boeing 737 800"
+  const infoAircraftType = isCommunity
+    ? null
+    : [
+        photo.aircraft?.manufacturer?.name,
+        photo.aircraft?.family?.name,
+        photo.aircraft?.variant?.name,
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join(' ') || null;
+
   const hasInfo =
     infoRegistration ||
     infoAirline ||
@@ -108,6 +120,7 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
     infoDate ||
     infoCamera ||
     infoLens ||
+    infoAircraftType ||
     isCommunity;
 
   return (
@@ -141,13 +154,20 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
               </>
             ) : (
               <>
-                {infoRegistration && <span className={styles.photoInfoReg}>{infoRegistration}</span>}
+                {infoRegistration && (
+                  <span className={styles.photoInfoReg}>{infoRegistration}</span>
+                )}
                 {infoAirline && <span className={styles.photoInfoOp}>{infoAirline}</span>}
               </>
             )}
             {infoAirport && <span className={styles.photoInfoAirport}>📍 {infoAirport}</span>}
             {infoDate && <span className={styles.photoInfoDate}>{infoDate}</span>}
           </div>
+          {infoAircraftType && (
+            <div className={styles.photoInfoRow}>
+              <span className={styles.photoInfoOp}>{infoAircraftType}</span>
+            </div>
+          )}
           {(infoCamera || infoLens) && (
             <div className={styles.photoInfoRow}>
               {infoCamera && <span className={styles.photoInfoGear}>{infoCamera}</span>}
@@ -173,10 +193,7 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
 
       <div className={styles.footer}>
         <div className={styles.userArea}>
-          <Link
-            href={`/u/${photo.user.username}/photos`}
-            className={styles.user}
-          >
+          <Link href={`/u/${photo.user.username}/photos`} className={styles.user}>
             {displayName}
           </Link>
         </div>

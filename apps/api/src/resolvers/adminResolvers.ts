@@ -2,7 +2,13 @@ import { GraphQLError } from 'graphql';
 
 import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  getDbUser,
+  buildPaginationArgs,
+} from '../utils/resolverHelpers.js';
+import { createNotification } from './notificationResolvers.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -17,15 +23,21 @@ export const adminQueryResolvers = {
   adminStats: async (_parent: unknown, _args: unknown, ctx: Context) => {
     await requireRole(ctx, ['admin', 'moderator']);
 
-    const [totalUsers, totalPhotos, pendingPhotos, openReports, totalAirports, totalSpottingLocations] =
-      await Promise.all([
-        ctx.prisma.user.count(),
-        ctx.prisma.photo.count(),
-        ctx.prisma.photo.count({ where: { moderationStatus: 'pending' } }),
-        ctx.prisma.report.count({ where: { status: 'open' } }),
-        ctx.prisma.airport.count(),
-        ctx.prisma.spottingLocation.count(),
-      ]);
+    const [
+      totalUsers,
+      totalPhotos,
+      pendingPhotos,
+      openReports,
+      totalAirports,
+      totalSpottingLocations,
+    ] = await Promise.all([
+      ctx.prisma.user.count(),
+      ctx.prisma.photo.count(),
+      ctx.prisma.photo.count({ where: { moderationStatus: 'pending' } }),
+      ctx.prisma.report.count({ where: { status: 'open' } }),
+      ctx.prisma.airport.count(),
+      ctx.prisma.spottingLocation.count(),
+    ]);
 
     return {
       totalUsers,
@@ -87,7 +99,14 @@ export const adminQueryResolvers = {
 
   adminUsers: async (
     _parent: unknown,
-    args: { role?: string; status?: string; search?: string; first?: number; after?: string; page?: number },
+    args: {
+      role?: string;
+      status?: string;
+      search?: string;
+      first?: number;
+      after?: string;
+      page?: number;
+    },
     ctx: Context,
   ) => {
     await requireRole(ctx, ['admin', 'moderator']);
@@ -202,10 +221,9 @@ export const adminMutationResolvers = {
     const authUser = await requireRole(ctx, ['admin', 'moderator']);
 
     if (!VALID_REPORT_ACTIONS.includes(args.action)) {
-      throw new GraphQLError(
-        `Invalid action. Must be one of: ${VALID_REPORT_ACTIONS.join(', ')}`,
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError(`Invalid action. Must be one of: ${VALID_REPORT_ACTIONS.join(', ')}`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     const report = await ctx.prisma.report.findUnique({
@@ -254,10 +272,9 @@ export const adminMutationResolvers = {
     }
 
     if (!VALID_USER_STATUSES.includes(args.status)) {
-      throw new GraphQLError(
-        `Invalid status. Must be one of: ${VALID_USER_STATUSES.join(', ')}`,
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError(`Invalid status. Must be one of: ${VALID_USER_STATUSES.join(', ')}`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     return ctx.prisma.user.update({
@@ -295,10 +312,9 @@ export const adminMutationResolvers = {
     }
 
     if (!VALID_USER_ROLES.includes(args.role)) {
-      throw new GraphQLError(
-        `Invalid role. Must be one of: ${VALID_USER_ROLES.join(', ')}`,
-        { extensions: { code: 'BAD_USER_INPUT' } },
-      );
+      throw new GraphQLError(`Invalid role. Must be one of: ${VALID_USER_ROLES.join(', ')}`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     }
 
     return ctx.prisma.user.update({
@@ -308,11 +324,7 @@ export const adminMutationResolvers = {
     });
   },
 
-  adminUnlockUser: async (
-    _parent: unknown,
-    args: { userId: string },
-    ctx: Context,
-  ) => {
+  adminUnlockUser: async (_parent: unknown, args: { userId: string }, ctx: Context) => {
     await requireRole(ctx, ['admin', 'superuser']);
 
     return ctx.prisma.user.update({
@@ -344,13 +356,28 @@ export const adminMutationResolvers = {
       });
     }
 
-    return ctx.prisma.photo.update({
+    const updated = await ctx.prisma.photo.update({
       where: { id: args.photoId },
       data: {
         moderationStatus: args.status as 'pending' | 'approved' | 'rejected' | 'review',
       },
       include: { user: true, variants: true, tags: true },
     });
+
+    // Notify the photo owner only on rejection — silent for other transitions.
+    // Awaited (unlike like/comment notifications) so moderation messages are guaranteed
+    // to be persisted before the mutation returns. createNotification swallows errors internally.
+    if (args.status === 'rejected') {
+      await createNotification(ctx.prisma, {
+        userId: photo.userId,
+        type: 'moderation',
+        title: '🚫 Photo rejected',
+        body: 'Your photo was rejected by a moderator.',
+        data: { photoId: photo.id },
+      });
+    }
+
+    return updated;
   },
 
   adminImportAirports: async (_parent: unknown, args: { csvData: string }, ctx: Context) => {

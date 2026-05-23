@@ -27,8 +27,14 @@ import styles from './page.module.css';
 
 const PAGE_SIZE = 24;
 
-type FeedTab = 'recent' | 'following';
-type SortOption = 'recent' | 'popular_day' | 'popular_week' | 'popular_month' | 'popular_all' | 'random';
+type FeedTab = 'recent' | 'following' | 'mine';
+type SortOption =
+  | 'recent'
+  | 'popular_day'
+  | 'popular_week'
+  | 'popular_month'
+  | 'popular_all'
+  | 'random';
 
 const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
   { value: 'recent', label: 'Recent', emoji: '🕐' },
@@ -147,7 +153,9 @@ export default function HomePage() {
   const [airlineFilter, setAirlineFilter] = useState('');
   const [photographerFilter, setPhotographerFilter] = useState('');
   const [manufacturerFilter, setManufacturerFilter] = useState('');
-  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string | undefined>(undefined);
+  const [selectedManufacturerId, setSelectedManufacturerId] = useState<string | undefined>(
+    undefined,
+  );
   const [familyFilter, setFamilyFilter] = useState('');
   const [variantFilter, setVariantFilter] = useState('');
   const [debouncedAirport, setDebouncedAirport] = useState('');
@@ -357,6 +365,16 @@ export default function HomePage() {
     pause: feedTab !== 'following' || !user,
   });
 
+  const [{ data: mineData, fetching: mineFetching }] = useQuery({
+    query: GET_PHOTOS,
+    variables: {
+      first: PAGE_SIZE,
+      page: currentPage,
+      userId: user?.id,
+    },
+    pause: feedTab !== 'mine' || !user,
+  });
+
   const handleTabChange = (tab: FeedTab) => {
     setFeedTab(tab);
   };
@@ -368,12 +386,18 @@ export default function HomePage() {
     router.push(`/?${params.toString()}`, { scroll: false });
   };
 
-  const connection = feedTab === 'recent' ? data?.photos : followingData?.followingFeed;
+  const connection =
+    feedTab === 'recent'
+      ? data?.photos
+      : feedTab === 'following'
+        ? followingData?.followingFeed
+        : mineData?.photos;
   const totalCount = connection?.totalCount ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const displayedPhotos: PhotoData[] =
     connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-  const isLoading = feedTab === 'recent' ? fetching : followingFetching;
+  const isLoading =
+    feedTab === 'recent' ? fetching : feedTab === 'following' ? followingFetching : mineFetching;
 
   // Single config driving both the active-filter chips and clear-all behavior.
   const filterConfigs: Array<{
@@ -724,11 +748,13 @@ export default function HomePage() {
                   padding: 4,
                 }}
               >
-                {([
-                  { value: 'all', label: 'All' },
-                  { value: 'AIRCRAFT', label: 'Aircraft' },
-                  { value: 'COMMUNITY', label: 'Community' },
-                ] as const).map((opt) => (
+                {(
+                  [
+                    { value: 'all', label: 'All' },
+                    { value: 'AIRCRAFT', label: 'Aircraft' },
+                    { value: 'COMMUNITY', label: 'Community' },
+                  ] as const
+                ).map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -745,9 +771,7 @@ export default function HomePage() {
                       fontWeight: 500,
                       background: kindFilter === opt.value ? 'var(--color-bg)' : 'transparent',
                       color:
-                        kindFilter === opt.value
-                          ? 'var(--color-text)'
-                          : 'var(--color-text-muted)',
+                        kindFilter === opt.value ? 'var(--color-text)' : 'var(--color-text-muted)',
                       boxShadow: kindFilter === opt.value ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                     }}
                   >
@@ -781,6 +805,15 @@ export default function HomePage() {
           >
             Following
           </button>
+          {user && (
+            <button
+              type="button"
+              className={`${styles.tab} ${feedTab === 'mine' ? styles.tabActive : ''}`}
+              onClick={() => handleTabChange('mine')}
+            >
+              My Photos
+            </button>
+          )}
         </div>
 
         {/* Sign-in prompt */}
@@ -807,9 +840,11 @@ export default function HomePage() {
             emptyMessage={
               feedTab === 'following'
                 ? 'No photos yet. Follow users, airports, or topics to build your feed!'
-                : fetching
-                  ? undefined
-                  : 'No photos match your filters.'
+                : feedTab === 'mine'
+                  ? "You haven't published any photos yet. Head to Upload to share your first shot!"
+                  : fetching
+                    ? undefined
+                    : 'No photos match your filters.'
             }
           />
         )}
