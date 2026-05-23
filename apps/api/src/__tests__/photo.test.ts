@@ -992,3 +992,268 @@ describe('Photo: getUploadUrl validation', () => {
     expect((data.data?.getUploadUrl as Record<string, string>).key).toMatch(/^uploads\//);
   });
 });
+
+// ─── rejectPhoto + Photo.rejectionReason ────────────────────────────────────
+
+const REJECT_PHOTO = `
+  mutation RejectPhoto($photoId: ID!, $reason: String) {
+    rejectPhoto(photoId: $photoId, reason: $reason) {
+      id
+      moderationStatus
+    }
+  }
+`;
+
+const GET_PHOTO_REJECTION_REASON = `
+  query Photo($id: ID!) {
+    photo(id: $id) {
+      id
+      moderationStatus
+      rejectionReason
+    }
+  }
+`;
+
+interface SingleGraphQLResponse {
+  kind: 'single';
+  singleResult: {
+    data?: Record<string, unknown> | null;
+    errors?: Array<{ extensions?: { code: string }; message?: string }>;
+  };
+}
+
+describe('Photo: rejectPhoto', () => {
+  it('persists the reason and notifies the photo owner', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' },
+    });
+    await prisma.user.create({
+      data: { email: 'mod@test.com', username: 'mod', cognitoSub: 'sub-mod', role: 'moderator' },
+    });
+    const photo = await prisma.photo.create({
+      data: {
+        userId: owner.id,
+        originalUrl: 'https://example.com/photo.jpg',
+        moderationStatus: 'pending',
+      },
+    });
+
+    const modCtx = createTestContext({
+      sub: 'sub-mod',
+      email: 'mod@test.com',
+      username: 'mod',
+    });
+
+    const reason = 'Image is heavily blurred and out of focus.';
+    const res = await server.executeOperation(
+      { query: REJECT_PHOTO, variables: { photoId: photo.id, reason } },
+      { contextValue: modCtx },
+    );
+
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult;
+    expect(data.errors).toBeUndefined();
+    expect((data.data?.rejectPhoto as { moderationStatus: string }).moderationStatus).toBe(
+      'rejected',
+    );
+
+    // Reason persisted on moderationLabels.
+    const stored = await prisma.photo.findUnique({ where: { id: photo.id } });
+    const labels = stored?.moderationLabels as Record<string, unknown> | null;
+    expect(labels?.reason).toBe(reason);
+
+    // Notification created for the owner with the reason in the body.
+    const notifs = await prisma.notification.findMany({
+      where: { userId: owner.id, type: 'moderation' },
+    });
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].body).toContain(reason);
+    expect((notifs[0].data as Record<string, unknown> | null)?.photoId).toBe(photo.id);
+    expect((notifs[0].data as Record<string, unknown> | null)?.reason).toBe(reason);
+  });
+
+  it('uses a generic body when no reason is supplied', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' },
+    });
+    await prisma.user.create({
+      data: { email: 'mod@test.com', username: 'mod', cognitoSub: 'sub-mod', role: 'moderator' },
+    });
+    const photo = await prisma.photo.create({
+      data: {
+        userId: owner.id,
+        originalUrl: 'https://example.com/photo.jpg',
+        moderationStatus: 'pending',
+      },
+    });
+
+    const modCtx = createTestContext({
+      sub: 'sub-mod',
+      email: 'mod@test.com',
+      username: 'mod',
+    });
+
+    const res = await server.executeOperation(
+      { query: REJECT_PHOTO, variables: { photoId: photo.id } },
+      { contextValue: modCtx },
+    );
+
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult;
+    expect(data.errors).toBeUndefined();
+
+    const notifs = await prisma.notification.findMany({
+      where: { userId: owner.id, type: 'moderation' },
+    });
+    expect(notifs).toHaveLength(1);
+    // Generic fallback body — no specific reason embedded.
+    expect(notifs[0].body).toMatch(/rejected by a moderator/i);
+    // moderationLabels.reason should not be set when no reason was passed.
+    const stored = await prisma.photo.findUnique({ where: { id: photo.id } });
+    const labels = stored?.moderationLabels as Record<string, unknown> | null;
+    expect(labels?.reason).toBeUndefined();
+  });
+
+  it('rejects non-privileged callers', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' },
+    });
+    await prisma.user.create({
+      data: {
+        email: 'someone@test.com',
+        username: 'someone',
+        cognitoSub: 'sub-someone',
+        role: 'user',
+      },
+    });
+    const photo = await prisma.photo.create({
+      data: {
+        userId: owner.id,
+        originalUrl: 'https://example.com/photo.jpg',
+        moderationStatus: 'pending',
+      },
+    });
+
+    const ctx = createTestContext({
+      sub: 'sub-someone',
+      email: 'someone@test.com',
+      username: 'someone',
+    });
+
+    const res = await server.executeOperation(
+      { query: REJECT_PHOTO, variables: { photoId: photo.id, reason: 'not your call' } },
+      { contextValue: ctx },
+    );
+
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult;
+    expect(data.errors).toBeDefined();
+    expect(data.errors![0].extensions?.code).toBe('FORBIDDEN');
+  });
+});
+
+describe('Photo: rejectionReason field', () => {
+  async function setupRejectedPhoto(reason = 'Blurred / duplicate.') {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' },
+    });
+    const otherUser = await prisma.user.create({
+      data: { email: 'other@test.com', username: 'other', cognitoSub: 'sub-other' },
+    });
+    const moderator = await prisma.user.create({
+      data: { email: 'mod@test.com', username: 'mod', cognitoSub: 'sub-mod', role: 'moderator' },
+    });
+    const photo = await prisma.photo.create({
+      data: {
+        userId: owner.id,
+        originalUrl: 'https://example.com/photo.jpg',
+        moderationStatus: 'rejected',
+        moderationLabels: { reason },
+      },
+    });
+    return { owner, otherUser, moderator, photo, reason };
+  }
+
+  it('returns the reason to the photo owner', async () => {
+    const { photo, reason } = await setupRejectedPhoto();
+    const ctx = createTestContext({
+      sub: 'sub-owner',
+      email: 'owner@test.com',
+      username: 'owner',
+    });
+
+    const res = await server.executeOperation(
+      { query: GET_PHOTO_REJECTION_REASON, variables: { id: photo.id } },
+      { contextValue: ctx },
+    );
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult.data;
+    expect((data?.photo as Record<string, unknown>).rejectionReason).toBe(reason);
+  });
+
+  it('returns the reason to moderators', async () => {
+    const { photo, reason } = await setupRejectedPhoto();
+    const ctx = createTestContext({
+      sub: 'sub-mod',
+      email: 'mod@test.com',
+      username: 'mod',
+    });
+
+    const res = await server.executeOperation(
+      { query: GET_PHOTO_REJECTION_REASON, variables: { id: photo.id } },
+      { contextValue: ctx },
+    );
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult.data;
+    expect((data?.photo as Record<string, unknown>).rejectionReason).toBe(reason);
+  });
+
+  it('returns null to an unrelated authenticated user', async () => {
+    const { photo } = await setupRejectedPhoto();
+    const ctx = createTestContext({
+      sub: 'sub-other',
+      email: 'other@test.com',
+      username: 'other',
+    });
+
+    const res = await server.executeOperation(
+      { query: GET_PHOTO_REJECTION_REASON, variables: { id: photo.id } },
+      { contextValue: ctx },
+    );
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult.data;
+    expect((data?.photo as Record<string, unknown>).rejectionReason).toBeNull();
+  });
+
+  it('returns null to an unauthenticated viewer', async () => {
+    const { photo } = await setupRejectedPhoto();
+    const ctx = createTestContext(null);
+
+    const res = await server.executeOperation(
+      { query: GET_PHOTO_REJECTION_REASON, variables: { id: photo.id } },
+      { contextValue: ctx },
+    );
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult.data;
+    expect((data?.photo as Record<string, unknown>).rejectionReason).toBeNull();
+  });
+
+  it('returns null when the photo is not rejected, even with a stored reason', async () => {
+    const owner = await prisma.user.create({
+      data: { email: 'owner@test.com', username: 'owner', cognitoSub: 'sub-owner' },
+    });
+    const photo = await prisma.photo.create({
+      data: {
+        userId: owner.id,
+        originalUrl: 'https://example.com/photo.jpg',
+        moderationStatus: 'approved',
+        moderationLabels: { reason: 'stale value from a prior rejection' },
+      },
+    });
+    const ctx = createTestContext({
+      sub: 'sub-owner',
+      email: 'owner@test.com',
+      username: 'owner',
+    });
+
+    const res = await server.executeOperation(
+      { query: GET_PHOTO_REJECTION_REASON, variables: { id: photo.id } },
+      { contextValue: ctx },
+    );
+    const data = (res as { body: SingleGraphQLResponse }).body.singleResult.data;
+    expect((data?.photo as Record<string, unknown>).rejectionReason).toBeNull();
+  });
+});

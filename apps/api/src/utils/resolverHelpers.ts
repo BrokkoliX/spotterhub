@@ -42,17 +42,23 @@ export interface PaginationArgs {
  * When page is provided → offset pagination via Prisma's `skip`.
  * When after cursor is provided → keyset pagination via where.createdAt < cursor.
  * Otherwise → simple first/take without cursor or skip.
+ *
+ * `maxTake` caps how many rows a single page may request (default 50). Resolvers
+ * that legitimately need to load larger result sets (e.g. admin reference-data
+ * dropdowns that must show every row) can pass a higher cap.
  */
 export function buildPaginationArgs({
   first,
   after,
   page,
+  maxTake = 50,
 }: {
   first?: number;
   after?: string;
   page?: number;
+  maxTake?: number;
 }): PaginationArgs {
-  const take = Math.min(first ?? 20, 50);
+  const take = Math.min(first ?? 20, maxTake);
 
   if (page != null && page > 0) {
     return { skip: (page - 1) * take, take, cursorWhere: undefined, isOffset: true };

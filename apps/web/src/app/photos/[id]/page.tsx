@@ -124,6 +124,36 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
         </Link>
 
         <div className={styles.layout}>
+          {/* Moderation banner — visible to the owner and to moderators/admins.
+              The backend's rejectionReason resolver already enforces this
+              authorization, so we conservatively gate the banner here too. */}
+          {(isOwner || isPrivileged) && photo.moderationStatus === 'pending' && (
+            <div
+              className={`${styles.moderationBanner} ${styles.moderationBannerPending}`}
+              role="status"
+            >
+              <span className={styles.moderationBannerTitle}>⏳ Awaiting moderation</span>
+              <span className={styles.moderationBannerBody}>
+                This photo is pending review by a moderator. It is not yet visible in the public
+                feed.
+              </span>
+            </div>
+          )}
+
+          {(isOwner || isPrivileged) && photo.moderationStatus === 'rejected' && (
+            <div
+              className={`${styles.moderationBanner} ${styles.moderationBannerRejected}`}
+              role="status"
+            >
+              <span className={styles.moderationBannerTitle}>🚫 Photo rejected</span>
+              <span className={styles.moderationBannerBody}>
+                {photo.rejectionReason
+                  ? `Reason: ${photo.rejectionReason}`
+                  : 'A moderator rejected this photo. No reason was provided.'}
+              </span>
+            </div>
+          )}
+
           {/* Image */}
           <div
             className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}

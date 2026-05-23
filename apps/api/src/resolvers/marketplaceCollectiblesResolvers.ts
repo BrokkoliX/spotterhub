@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { generateVariants } from '../services/imageProcessing.js';
 import { decodeCursor, encodeCursor } from '../utils/resolverHelpers.js';
+import { createNotification } from './notificationResolvers.js';
 
 function parseDecimal(value: unknown): string {
   if (!value) return '0';
@@ -108,11 +109,7 @@ export const marketplaceCollectiblesQueryResolvers = {
     };
   },
 
-  marketplaceItem: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  marketplaceItem: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     return ctx.prisma.marketplaceItem.findUnique({
       where: { id: args.id },
       include: {
@@ -129,11 +126,7 @@ export const marketplaceCollectiblesQueryResolvers = {
     });
   },
 
-  sellerProfile: async (
-    _parent: unknown,
-    args: { userId: string },
-    ctx: Context,
-  ) => {
+  sellerProfile: async (_parent: unknown, args: { userId: string }, ctx: Context) => {
     return ctx.prisma.sellerProfile.findUnique({
       where: { userId: args.userId },
       include: { user: { include: { profile: true } } },
@@ -180,11 +173,7 @@ export const marketplaceCollectiblesQueryResolvers = {
     };
   },
 
-  myListings: async (
-    _parent: unknown,
-    args: { first?: number; after?: string },
-    ctx: Context,
-  ) => {
+  myListings: async (_parent: unknown, args: { first?: number; after?: string }, ctx: Context) => {
     const authUser = requireAuth(ctx);
     const take = Math.min(args.first ?? 20, 50);
 
@@ -304,17 +293,19 @@ export const marketplaceCollectiblesMutationResolvers = {
 
   createMarketplaceItem: async (
     _parent: unknown,
-    args: { input: {
-      categoryId: string;
-      title: string;
-      description?: string | null;
-      priceUsd: unknown;
-      condition: string;
-      location?: string | null;
-      contactEmail?: string | null;
-      contactPhone?: string | null;
-      imageS3Keys: string[];
-    } },
+    args: {
+      input: {
+        categoryId: string;
+        title: string;
+        description?: string | null;
+        priceUsd: unknown;
+        condition: string;
+        location?: string | null;
+        contactEmail?: string | null;
+        contactPhone?: string | null;
+        imageS3Keys: string[];
+      };
+    },
     ctx: Context,
   ) => {
     const authUser = requireAuth(ctx);
@@ -392,18 +383,21 @@ export const marketplaceCollectiblesMutationResolvers = {
 
   updateMarketplaceItem: async (
     _parent: unknown,
-    args: { id: string; input: {
-      categoryId?: string;
-      title?: string;
-      description?: string | null;
-      priceUsd?: unknown;
-      condition?: string;
-      location?: string | null;
-      contactEmail?: string | null;
-      contactPhone?: string | null;
-      imageS3Keys?: string[];
-      active?: boolean;
-    } },
+    args: {
+      id: string;
+      input: {
+        categoryId?: string;
+        title?: string;
+        description?: string | null;
+        priceUsd?: unknown;
+        condition?: string;
+        location?: string | null;
+        contactEmail?: string | null;
+        contactPhone?: string | null;
+        imageS3Keys?: string[];
+        active?: boolean;
+      };
+    },
     ctx: Context,
   ) => {
     const authUser = requireAuth(ctx);
@@ -443,7 +437,9 @@ export const marketplaceCollectiblesMutationResolvers = {
 
     // If new image keys provided, append new variants
     if (args.input.imageS3Keys && args.input.imageS3Keys.length > 0) {
-      const existingCount = await ctx.prisma.marketplaceItemImage.count({ where: { itemId: args.id } });
+      const existingCount = await ctx.prisma.marketplaceItemImage.count({
+        where: { itemId: args.id },
+      });
 
       for (let i = 0; i < args.input.imageS3Keys.length; i++) {
         const s3Key = args.input.imageS3Keys[i];
@@ -471,11 +467,7 @@ export const marketplaceCollectiblesMutationResolvers = {
     return updated;
   },
 
-  deleteMarketplaceItem: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteMarketplaceItem: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const authUser = requireAuth(ctx);
 
     const user = await ctx.prisma.user.findUnique({ where: { cognitoSub: authUser.sub } });
@@ -516,7 +508,7 @@ export const marketplaceCollectiblesMutationResolvers = {
       updateData.active = true;
     }
 
-    return ctx.prisma.marketplaceItem.update({
+    const updated = await ctx.prisma.marketplaceItem.update({
       where: { id: args.id },
       data: updateData,
       include: {
@@ -525,11 +517,30 @@ export const marketplaceCollectiblesMutationResolvers = {
         images: { orderBy: { sortOrder: 'asc' } },
       },
     });
+
+    // Notify the seller on rejection. Mirrors rejectPhoto in photoResolvers.ts:
+    // awaited so the moderation message is guaranteed to be persisted before
+    // the mutation returns; createNotification swallows internal errors.
+    if (args.status === 'rejected') {
+      await createNotification(ctx.prisma, {
+        userId: item.userId,
+        type: 'moderation',
+        title: '🚫 Listing rejected',
+        body: args.reason
+          ? `Your listing "${item.title}" was rejected: ${args.reason}`
+          : `Your listing "${item.title}" was rejected by a moderator.`,
+        data: { marketplaceItemId: item.id, reason: args.reason ?? null },
+      });
+    }
+
+    return updated;
   },
 
   submitSellerFeedback: async (
     _parent: unknown,
-    args: { input: { sellerId: string; rating: number; comment?: string | null; itemId?: string | null } },
+    args: {
+      input: { sellerId: string; rating: number; comment?: string | null; itemId?: string | null };
+    },
     ctx: Context,
   ) => {
     const authUser = requireAuth(ctx);
@@ -621,11 +632,7 @@ export const marketplaceCollectiblesMutationResolvers = {
     });
   },
 
-  deleteMarketplaceCategory: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteMarketplaceCategory: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     requireRole(ctx, ['admin', 'superuser']);
 
     const itemCount = await ctx.prisma.marketplaceItem.count({

@@ -13,6 +13,7 @@ import {
   MARK_ALL_NOTIFICATIONS_READ,
   MARK_NOTIFICATION_READ,
 } from '@/lib/queries';
+import { notificationHref, relativeTime } from '@/lib/notifications';
 
 import { SearchModal } from '@/components/SearchModal';
 import { Portal } from '@/components/Portal';
@@ -28,26 +29,6 @@ interface NotificationNode {
   data: Record<string, unknown> | null;
   isRead: boolean;
   createdAt: string;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function relativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function notificationHref(data: Record<string, unknown> | null): string {
-  if (!data) return '/';
-  if (data.photoId) return `/photos/${data.photoId}`;
-  if (data.communityId) return `/communities`;
-  return '/';
 }
 
 // ─── NotificationBell ─────────────────────────────────────────────────────────
@@ -155,6 +136,14 @@ function NotificationBell() {
               <span className={styles.notifItemTime}>{relativeTime(n.createdAt)}</span>
             </button>
           ))}
+
+          <Link
+            href="/notifications"
+            className={styles.notifViewAll}
+            onClick={() => setOpen(false)}
+          >
+            View all notifications
+          </Link>
         </div>
       )}
     </div>

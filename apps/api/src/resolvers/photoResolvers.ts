@@ -136,6 +136,8 @@ export interface PhotoParent {
   kind?: 'AIRCRAFT' | 'COMMUNITY';
   communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER' | null;
   isDeleted?: boolean;
+  moderationStatus?: 'pending' | 'approved' | 'rejected' | 'review';
+  moderationLabels?: unknown | null;
 }
 
 // ─── Privacy Helpers ────────────────────────────────────────────────────────
@@ -1036,6 +1038,35 @@ export const photoFieldResolvers = {
       select: { tag: true },
     });
     return tags.map((t) => t.tag);
+  },
+
+  // Rejection reason — only the photo owner and moderators/admins may see it.
+  // For everyone else (anonymous viewers, other users) we return null so the
+  // moderator's explanation does not leak publicly. Returns null if the photo
+  // is not rejected or no reason was recorded.
+  rejectionReason: async (parent: PhotoParent, _args: unknown, ctx: Context) => {
+    if (parent.moderationStatus !== 'rejected') return null;
+
+    const labels = parent.moderationLabels;
+    const reason =
+      labels && typeof labels === 'object' && !Array.isArray(labels)
+        ? (labels as Record<string, unknown>).reason
+        : null;
+    if (typeof reason !== 'string' || reason.trim() === '') return null;
+
+    if (!ctx.user) return null;
+
+    const viewer = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: ctx.user.sub },
+      select: { id: true, role: true },
+    });
+    if (!viewer) return null;
+
+    const isOwner = viewer.id === parent.userId;
+    const isPrivileged = ['admin', 'moderator', 'superuser'].includes(viewer.role);
+    if (!isOwner && !isPrivileged) return null;
+
+    return reason;
   },
 
   likeCount: (parent: PhotoParent, _args: unknown, ctx: Context) => {

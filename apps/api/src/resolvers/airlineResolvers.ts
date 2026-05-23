@@ -16,6 +16,8 @@ export const airlineQueryResolvers = {
       first: args.first,
       after: args.after,
       page: args.page,
+      // Admin dropdowns (e.g. aircraft form) need the full list.
+      maxTake: 10000,
     });
 
     const where: Record<string, unknown> = {};

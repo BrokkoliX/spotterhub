@@ -16,6 +16,8 @@ export const aircraftHierarchyQueryResolvers = {
       first: args.first,
       after: args.after,
       page: args.page,
+      // Admin dropdowns (e.g. families/variants forms) need the full list.
+      maxTake: 10000,
     });
 
     const where: Record<string, unknown> = {};
@@ -64,13 +66,21 @@ export const aircraftHierarchyQueryResolvers = {
 
   aircraftFamilies: async (
     _parent: unknown,
-    args: { manufacturerId?: string; search?: string; first?: number; after?: string; page?: number },
+    args: {
+      manufacturerId?: string;
+      search?: string;
+      first?: number;
+      after?: string;
+      page?: number;
+    },
     ctx: Context,
   ) => {
     const { skip, take } = buildPaginationArgs({
       first: args.first,
       after: args.after,
       page: args.page,
+      // Admin dropdowns (e.g. variants/aircraft forms) need the full list.
+      maxTake: 10000,
     });
 
     const where: Record<string, unknown> = {};
@@ -127,6 +137,8 @@ export const aircraftHierarchyQueryResolvers = {
       first: args.first,
       after: args.after,
       page: args.page,
+      // Admin dropdowns (e.g. aircraft form) need the full list.
+      maxTake: 10000,
     });
 
     const where: Record<string, unknown> = {};

@@ -78,6 +78,7 @@ export const PHOTO_FIELDS = gql`
     fileSizeBytes
     mimeType
     moderationStatus
+    rejectionReason
     tags
     likeCount
     commentCount
@@ -1070,8 +1071,22 @@ export const ADMIN_REPORTS = gql`
 `;
 
 export const ADMIN_USERS = gql`
-  query AdminUsers($role: String, $status: String, $search: String, $first: Int, $after: String, $page: Int) {
-    adminUsers(role: $role, status: $status, search: $search, first: $first, after: $after, page: $page) {
+  query AdminUsers(
+    $role: String
+    $status: String
+    $search: String
+    $first: Int
+    $after: String
+    $page: Int
+  ) {
+    adminUsers(
+      role: $role
+      status: $status
+      search: $search
+      first: $first
+      after: $after
+      page: $page
+    ) {
       edges {
         cursor
         node {
@@ -1536,12 +1551,18 @@ export const DELETE_COMMUNITY_POST = gql`
 `;
 
 export const GET_COMMUNITY_MODERATION_LOGS = gql`
-  query CommunityModerationLogs($communityId: ID!, $action: String, $first: Int, $after: String, $page: Int) {
+  query CommunityModerationLogs(
+    $communityId: ID!
+    $action: String
+    $first: Int
+    $after: String
+    $page: Int
+  ) {
     communityModerationLogs(
       communityId: $communityId
       action: $action
       first: $first
-      after: $after,
+      after: $after
       page: $page
     ) {
       edges {
@@ -1868,11 +1889,17 @@ export const DELETE_FORUM_POST = gql`
 // ─── Events ──────────────────────────────────────────────────────────────────
 
 export const GET_COMMUNITY_EVENTS = gql`
-  query GetCommunityEvents($communityId: ID!, $first: Int, $after: String, $page: Int, $includePast: Boolean) {
+  query GetCommunityEvents(
+    $communityId: ID!
+    $first: Int
+    $after: String
+    $page: Int
+    $includePast: Boolean
+  ) {
     communityEvents(
       communityId: $communityId
       first: $first
-      after: $after,
+      after: $after
       page: $page
       includePast: $includePast
     ) {
@@ -2924,7 +2951,7 @@ export const GET_MARKETPLACE_ITEMS = gql`
     $search: String
     $sortBy: MarketplaceSort
     $first: Int
-    $after: String,
+    $after: String
     $page: Int
   ) {
     marketplaceItems(
@@ -2935,7 +2962,7 @@ export const GET_MARKETPLACE_ITEMS = gql`
       search: $search
       sortBy: $sortBy
       first: $first
-      after: $after,
+      after: $after
       page: $page
     ) {
       edges {
@@ -3151,8 +3178,18 @@ export const GET_MY_LISTINGS = gql`
 `;
 
 export const GET_ADMIN_MARKETPLACE_ITEMS = gql`
-  query GetAdminMarketplaceItems($moderationStatus: String, $first: Int, $after: String, $page: Int) {
-    adminMarketplaceItems(moderationStatus: $moderationStatus, first: $first, after: $after, page: $page) {
+  query GetAdminMarketplaceItems(
+    $moderationStatus: String
+    $first: Int
+    $after: String
+    $page: Int
+  ) {
+    adminMarketplaceItems(
+      moderationStatus: $moderationStatus
+      first: $first
+      after: $after
+      page: $page
+    ) {
       edges {
         cursor
         node {

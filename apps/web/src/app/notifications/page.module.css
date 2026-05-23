@@ -1,0 +1,251 @@
+.page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.loading,
+.denied,
+.empty {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.filterBtn {
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  border: none;
+  cursor: pointer;
+}
+
+.filterBtn + .filterBtn {
+  border-left: 1px solid var(--color-border);
+}
+
+.filterBtn:hover {
+  background: var(--color-bg-hover);
+}
+
+.filterBtnActive {
+  background: var(--color-accent);
+  color: #000;
+}
+
+.filterBtnActive:hover {
+  background: var(--color-accent);
+}
+
+.markAllBtn {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.markAllBtn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.markAllBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── List ────────────────────────────────────────────────────────────────── */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+}
+
+.item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.itemUnread {
+  border-left: 3px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+.itemMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.typeBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+}
+
+.itemTime {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.itemLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.itemLink:hover .itemTitle {
+  color: var(--color-accent);
+}
+
+.itemTitle {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.itemBody {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.itemActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.actionBtn,
+.actionBtnDanger {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.actionBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.actionBtnDanger {
+  color: #f87171;
+  border-color: #f87171;
+}
+
+.actionBtnDanger:hover {
+  background: #f87171;
+  color: #fff;
+}
+
+/* ─── Pager ───────────────────────────────────────────────────────────────── */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.pagerBtn {
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.pagerBtn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.pagerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagerLabel {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 480px) {
+  .item {
+    flex-direction: column;
+  }
+
+  .itemActions {
+    flex-direction: row;
+  }
+}
