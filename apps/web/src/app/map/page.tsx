@@ -78,15 +78,28 @@ export default function MapPage() {
     pause: !bounds,
   });
 
+  const moveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const updateBounds = (map: mapboxgl.Map) => {
     const b = map.getBounds();
     if (!b) return;
-    setBounds({
+    const newBounds = {
       swLat: b.getSouthWest().lat,
       swLng: b.getSouthWest().lng,
       neLat: b.getNorthEast().lat,
       neLng: b.getNorthEast().lng,
-    });
+    };
+
+    // Debounce: cancel any pending update, then defer setting bounds by 300ms.
+    // This prevents firing a fetch on every intermediate pan position — the
+    // query only fires once the user has stopped moving for 300ms.
+    if (moveDebounceRef.current !== null) {
+      clearTimeout(moveDebounceRef.current);
+    }
+    moveDebounceRef.current = setTimeout(() => {
+      setBounds(newBounds);
+      moveDebounceRef.current = null;
+    }, 300);
   };
 
   // ─── Initialize Map ─────────────────────────────────────────────────────
@@ -118,6 +131,9 @@ export default function MapPage() {
     mapRef.current = map;
 
     return () => {
+      if (moveDebounceRef.current !== null) {
+        clearTimeout(moveDebounceRef.current);
+      }
       map.remove();
       mapRef.current = null;
     };
