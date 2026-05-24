@@ -25,6 +25,25 @@ else
   echo "Skipping migrations (set RUN_MIGRATIONS=true to enable)."
 fi
 
+# ─── Optional one-off: backfill display variants ─────────────────────────────
+#
+# Regenerates `display` (and other) image variants for every existing photo
+# at the size defined by `IMAGE_VARIANT_SIZES.display` in @spotterspace/shared.
+# Used after bumping the display long-edge so existing uploads catch up to the
+# new size instead of permanently displaying at the old smaller size.
+#
+# Only runs when RUN_BACKFILL_DISPLAY_VARIANTS=true. The script self-exits
+# when complete, so the ECS task lifecycle is bounded by the script's own
+# duration. Any args passed to the entrypoint are forwarded as CLI flags
+# (e.g. --dry-run, --limit 10).
+#
+# Example one-off ECS task command override:
+#   ["sh", "-c", "RUN_BACKFILL_DISPLAY_VARIANTS=true /docker-entrypoint.sh --dry-run"]
+if [ "$RUN_BACKFILL_DISPLAY_VARIANTS" = "true" ]; then
+  echo "Running display-variant backfill..."
+  exec node dist/scripts/backfillDisplayVariants.js "$@"
+fi
+
 # If arguments were passed (e.g. via ECS command override), run them
 # instead of the default API server. This enables one-off tasks.
 if [ $# -gt 0 ]; then

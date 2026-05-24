@@ -151,7 +151,13 @@ export const ACCEPTED_IMAGE_TYPES = [
 export const IMAGE_VARIANT_SIZES = {
   thumbnail: 150,
   thumbnail16x9: 640,
-  display: 640,
+  /**
+   * The `display` variant is what the photo detail page serves to viewers
+   * (when no watermarked variant is preferred). 2048px on the long edge is
+   * visually indistinguishable from the original on typical monitors while
+   * keeping payload ~1/10th the size of a modern camera's full-res JPEG.
+   */
+  display: 2048,
   fullRes2048: 2048,
   fullRes4096: 4096,
 } as const;
