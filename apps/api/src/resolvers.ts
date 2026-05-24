@@ -118,6 +118,7 @@ import {
   siteSettingsQueryResolvers,
 } from './resolvers/siteSettingsResolvers.js';
 import { spottingLocationMutationResolvers } from './resolvers/spottingLocationResolvers.js';
+import { tierMutationResolvers, tierQueryResolvers } from './resolvers/tierResolvers.js';
 import { userFieldResolvers, userQueryResolvers } from './resolvers/userResolvers.js';
 
 // ─── JSON Scalar ────────────────────────────────────────────────────────────
@@ -206,6 +207,7 @@ export const resolvers = {
     ...eventQueryResolvers,
     ...notificationQueryResolvers,
     ...siteSettingsQueryResolvers,
+    ...tierQueryResolvers,
     ...aircraftQueryResolvers,
     ...aircraftHierarchyQueryResolvers,
     ...airlineQueryResolvers,
@@ -234,6 +236,7 @@ export const resolvers = {
     ...eventMutationResolvers,
     ...notificationMutationResolvers,
     ...siteSettingsMutationResolvers,
+    ...tierMutationResolvers,
     ...aircraftMutationResolvers,
     ...airportMutationResolvers,
     ...aircraftHierarchyMutationResolvers,

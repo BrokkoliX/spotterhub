@@ -334,7 +334,12 @@ model User {
   // Last successful sign-in timestamp (updated on each login)
   lastLoginAt       DateTime? @map("last_login_at")
 
+  // Subscription tier. Nullable so the column can be added before the seed
+  // runs; resolvers fall back to the tier with slug 'free' when null.
+  tierId            String?   @map("tier_id") @db.Uuid
+
   profile            Profile?
+  tier               UserTier?         @relation(fields: [tierId], references: [id], onDelete: SetNull)
   photos             Photo[]
   albums             Album[]
   comments           Comment[]
@@ -967,6 +972,47 @@ model AdSettings {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("ad_settings")
+}
+
+// ─── User Tiers ───────────────────────────────────────────────────────────────
+
+/// A subscription tier that can be assigned to users. The set of tiers is
+/// managed from the superuser-only /admin/tiers page. Each tier defines a
+/// price (in minor units, e.g. cents) and the platform capabilities granted
+/// to members of that tier (upload caps, ability to create communities, …).
+///
+/// The slug is the stable identifier used by backend code (e.g. photoResolvers
+/// looks up the user's tier and reads `uploadsPerDay`). UUID `id` is the
+/// foreign-key target on User.
+model UserTier {
+  id                  String   @id @default(uuid()) @db.Uuid
+  /// Stable lowercase identifier (e.g. 'free', 'premium'). Used by code.
+  slug                String   @unique
+  /// Display name shown to admins and (eventually) users.
+  name                String
+  /// Price in minor units of the configured currency. 0 = free.
+  priceCents          Int      @default(0) @map("price_cents")
+  /// ISO-4217 currency code. Default USD.
+  currency            String   @default("USD")
+  /// Maximum photos a user on this tier can upload in any rolling 24-hour
+  /// window. `null` means unlimited.
+  uploadsPerDay       Int?     @map("uploads_per_day")
+  /// Maximum photos a user on this tier can upload in any rolling 7-day
+  /// window. `null` means unlimited.
+  uploadsPerWeek      Int?     @map("uploads_per_week")
+  /// Whether members of this tier are allowed to create new communities.
+  canCreateCommunity  Boolean  @default(false) @map("can_create_community")
+  /// Sort order for the admin UI and any future user-facing pricing page.
+  displayOrder        Int      @default(0) @map("display_order")
+  /// Soft-disable a tier without deleting it. Inactive tiers are hidden
+  /// from new assignments but existing users keep their assignment.
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("user_tiers")
 }
 
 // ─── Marketplace ─────────────────────────────────────────────────────────────

@@ -406,7 +406,7 @@ export const typeDefs = gql`
     """
     Paginated list of users for admin management.
     Optionally filter by role or status, and search by username/email.
-    Requires admin or moderator role.
+    Requires superuser role.
     """
     adminUsers(
       role: String
@@ -416,6 +416,13 @@ export const typeDefs = gql`
       after: String
       page: Int
     ): UserConnection!
+
+    """
+    Fetch a single user by id with full administrative detail (email,
+    cognitoSub, lockout state, tier, etc.) for the admin user-detail
+    drawer. Requires superuser role.
+    """
+    adminUserById(id: ID!): User
 
     """
     Paginated list of photos filtered by moderation status.
@@ -491,6 +498,18 @@ export const typeDefs = gql`
     Fetch ad configuration (enabled, AdSense client ID, slot IDs).
     """
     adSettings: AdSettings
+
+    """
+    List active user tiers in display order. Public so that pricing
+    pages and tier badges can render without authentication.
+    """
+    tiers: [Tier!]!
+
+    """
+    List all user tiers (including inactive) for the superuser tier
+    management page. Requires superuser role.
+    """
+    adminTiers: [Tier!]!
 
     # ─── Forum Queries ───────────────────────────────────────────────────────
 
@@ -999,21 +1018,28 @@ export const typeDefs = gql`
 
     """
     Update a user's account status (active, suspended, banned).
-    Requires admin or superuser role.
+    Requires superuser role.
     """
     adminUpdateUserStatus(userId: ID!, status: String!): User!
 
     """
-    Update a user's role (user, moderator, admin).
-    Requires admin or superuser role.
+    Update a user's role (user, moderator, admin, superuser).
+    Requires superuser role.
     """
     adminUpdateUserRole(userId: ID!, role: String!): User!
 
     """
     Clear a user's failed login attempts and lockout state.
-    Requires admin or superuser role.
+    Requires superuser role.
     """
     adminUnlockUser(userId: ID!): User!
+
+    """
+    Assign a subscription tier to a user. Pass 'tierId' to set, or null
+    to clear (the user will fall back to the 'free' tier at runtime).
+    Requires superuser role.
+    """
+    adminAssignUserTier(userId: ID!, tierId: ID): User!
 
     """
     Update a photo's moderation status (approved, rejected, pending, review).
@@ -1093,6 +1119,24 @@ export const typeDefs = gql`
     Update ad configuration (enabled, AdSense client ID, slot IDs). Requires superuser role.
     """
     updateAdSettings(input: UpdateAdSettingsInput!): AdSettings!
+
+    """
+    Create a new user tier. Requires superuser role. The slug must be
+    unique across all tiers.
+    """
+    createTier(input: CreateTierInput!): Tier!
+
+    """
+    Update an existing user tier. Requires superuser role. The slug
+    cannot be changed once created.
+    """
+    updateTier(id: ID!, input: UpdateTierInput!): Tier!
+
+    """
+    Delete a user tier. Fails if any user is still assigned to the
+    tier; reassign or clear those users first. Requires superuser role.
+    """
+    deleteTier(id: ID!): Boolean!
 
     """
     Join a public community, or join an invite-only community with a valid invite code.
@@ -1641,7 +1685,8 @@ export const typeDefs = gql`
   type User {
     id: ID!
     """
-    Email address. Only visible to the account owner.
+    Email address. Visible to the account owner and to staff
+    (moderator, admin, superuser). Returns null otherwise.
     """
     email: String
     """
@@ -1649,7 +1694,7 @@ export const typeDefs = gql`
     """
     username: String!
     """
-    Platform role: user, moderator, or admin.
+    Platform role: user, moderator, admin, or superuser.
     """
     role: UserRole!
     """
@@ -1692,6 +1737,25 @@ export const typeDefs = gql`
     Badges earned by this user, ordered by display order.
     """
     badges: [UserBadge!]!
+    """
+    Subscription tier currently assigned to this user. Falls back to the
+    tier with slug 'free' when the user has not been explicitly assigned.
+    Visible to the owner and to staff (moderator, admin, superuser).
+    """
+    tier: Tier
+    """
+    Cognito subject identifier. Only visible to staff (moderator, admin,
+    superuser) when querying via admin endpoints; null otherwise.
+    """
+    cognitoSub: String
+    """
+    Number of consecutive failed login attempts. Staff-only.
+    """
+    failedAttempts: Int
+    """
+    Timestamp until which the account is locked out from sign-in. Staff-only.
+    """
+    lockoutUntil: String
     """
     Last sign-in timestamp, if ever signed in.
     """
@@ -2939,6 +3003,85 @@ export const typeDefs = gql`
     slotFeed: String
     slotPhotoDetail: String
     slotSidebar: String
+  }
+
+  # ─── User Tiers ────────────────────────────────────────────────────────────────
+
+  """
+  A user subscription tier. The set of tiers is managed from the
+  superuser-only /admin/tiers page; each tier defines a price and the
+  platform capabilities granted to its members (upload caps, ability
+  to create communities, …).
+  """
+  type Tier {
+    id: ID!
+    """
+    Stable lowercase identifier (e.g. 'free', 'premium'). Used by
+    backend code to look up limits.
+    """
+    slug: String!
+    """
+    Display name shown in admin UIs and (eventually) on a pricing page.
+    """
+    name: String!
+    """
+    Price in minor units of the configured currency. 0 = free.
+    """
+    priceCents: Int!
+    """
+    ISO-4217 currency code (e.g. 'USD').
+    """
+    currency: String!
+    """
+    Maximum photos a user on this tier can upload in any rolling
+    24-hour window. null = unlimited.
+    """
+    uploadsPerDay: Int
+    """
+    Maximum photos a user on this tier can upload in any rolling
+    7-day window. null = unlimited.
+    """
+    uploadsPerWeek: Int
+    """
+    Whether members of this tier can create new communities.
+    """
+    canCreateCommunity: Boolean!
+    """
+    Sort order (ascending) for the admin UI and any future
+    user-facing pricing page.
+    """
+    displayOrder: Int!
+    """
+    Whether this tier is currently selectable for new assignments.
+    Inactive tiers are hidden from pickers but existing users keep
+    their assignment.
+    """
+    isActive: Boolean!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateTierInput {
+    slug: String!
+    name: String!
+    priceCents: Int
+    currency: String
+    uploadsPerDay: Int
+    uploadsPerWeek: Int
+    canCreateCommunity: Boolean
+    displayOrder: Int
+    isActive: Boolean
+  }
+
+  input UpdateTierInput {
+    name: String
+    priceCents: Int
+    currency: String
+    uploadsPerDay: Int
+    uploadsPerWeek: Int
+    canCreateCommunity: Boolean
+    displayOrder: Int
+    isActive: Boolean
   }
 
   input CreateCommunityInput {

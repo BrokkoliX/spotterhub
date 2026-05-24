@@ -18,6 +18,11 @@ let server: Awaited<ReturnType<typeof setupTestServer>>;
 const ADMIN_USER = { sub: 'sub-admin', email: 'admin@test.com', username: 'admin' };
 const MOD_USER = { sub: 'sub-mod', email: 'mod@test.com', username: 'moderator' };
 const REGULAR_USER = { sub: 'sub-regular', email: 'user@test.com', username: 'regular' };
+const SUPERUSER_USER = {
+  sub: 'sub-superuser',
+  email: 'superuser@test.com',
+  username: 'superuser',
+};
 
 function ctx(user: Context['user'] = null): { contextValue: Context } {
   return { contextValue: createTestContext(user) };
@@ -146,7 +151,15 @@ async function createUsers() {
   const regular = await prisma.user.create({
     data: { email: 'user@test.com', username: 'regular', cognitoSub: 'sub-regular', role: 'user' },
   });
-  return { admin, mod, regular };
+  const superuser = await prisma.user.create({
+    data: {
+      email: 'superuser@test.com',
+      username: 'superuser',
+      cognitoSub: 'sub-superuser',
+      role: 'superuser',
+    },
+  });
+  return { admin, mod, regular, superuser };
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -166,7 +179,7 @@ describe('adminStats', () => {
     const res = await server.executeOperation({ query: ADMIN_STATS }, ctx(ADMIN_USER));
 
     const data = (res.body as any).singleResult.data;
-    expect(data.adminStats.totalUsers).toBe(3);
+    expect(data.adminStats.totalUsers).toBe(4);
     expect(data.adminStats.totalPhotos).toBe(1);
     expect(data.adminStats.pendingPhotos).toBe(1);
   });
@@ -177,7 +190,7 @@ describe('adminStats', () => {
     const res = await server.executeOperation({ query: ADMIN_STATS }, ctx(MOD_USER));
 
     const data = (res.body as any).singleResult.data;
-    expect(data.adminStats.totalUsers).toBe(3);
+    expect(data.adminStats.totalUsers).toBe(4);
   });
 
   it('rejects regular user', async () => {
@@ -343,7 +356,19 @@ describe('adminResolveReport', () => {
 });
 
 describe('adminUpdateUserStatus', () => {
-  it('suspends a user', async () => {
+  it('suspends a user when called by a superuser', async () => {
+    const { regular } = await createUsers();
+
+    const res = await server.executeOperation(
+      { query: UPDATE_USER_STATUS, variables: { userId: regular.id, status: 'suspended' } },
+      ctx(SUPERUSER_USER),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.adminUpdateUserStatus.status).toBe('suspended');
+  });
+
+  it('rejects admin role', async () => {
     const { regular } = await createUsers();
 
     const res = await server.executeOperation(
@@ -351,11 +376,11 @@ describe('adminUpdateUserStatus', () => {
       ctx(ADMIN_USER),
     );
 
-    const data = (res.body as any).singleResult.data;
-    expect(data.adminUpdateUserStatus.status).toBe('suspended');
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
   });
 
-  it('requires admin role (not moderator)', async () => {
+  it('rejects moderator role', async () => {
     const { regular } = await createUsers();
 
     const res = await server.executeOperation(
@@ -369,19 +394,31 @@ describe('adminUpdateUserStatus', () => {
 });
 
 describe('adminUpdateUserRole', () => {
-  it('promotes a user to moderator', async () => {
+  it('promotes a user to moderator when called by a superuser', async () => {
     const { regular } = await createUsers();
 
     const res = await server.executeOperation(
       { query: UPDATE_USER_ROLE, variables: { userId: regular.id, role: 'moderator' } },
-      ctx(ADMIN_USER),
+      ctx(SUPERUSER_USER),
     );
 
     const data = (res.body as any).singleResult.data;
     expect(data.adminUpdateUserRole.role).toBe('moderator');
   });
 
-  it('requires admin role', async () => {
+  it('rejects admin role', async () => {
+    const { regular } = await createUsers();
+
+    const res = await server.executeOperation(
+      { query: UPDATE_USER_ROLE, variables: { userId: regular.id, role: 'admin' } },
+      ctx(ADMIN_USER),
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+
+  it('rejects moderator role', async () => {
     const { regular } = await createUsers();
 
     const res = await server.executeOperation(
@@ -464,12 +501,12 @@ describe('adminUpdatePhotoModeration', () => {
 });
 
 describe('adminUsers', () => {
-  it('lists users with filters', async () => {
+  it('lists users with role filter when called by a superuser', async () => {
     await createUsers();
 
     const res = await server.executeOperation(
       { query: ADMIN_USERS, variables: { role: 'admin' } },
-      ctx(ADMIN_USER),
+      ctx(SUPERUSER_USER),
     );
 
     const data = (res.body as any).singleResult.data;
@@ -477,17 +514,186 @@ describe('adminUsers', () => {
     expect(data.adminUsers.edges[0].node.username).toBe('admin');
   });
 
-  it('searches by username', async () => {
+  it('searches by username when called by a superuser', async () => {
     await createUsers();
 
     const res = await server.executeOperation(
       { query: ADMIN_USERS, variables: { search: 'mod' } },
-      ctx(ADMIN_USER),
+      ctx(SUPERUSER_USER),
     );
 
     const data = (res.body as any).singleResult.data;
     expect(data.adminUsers.totalCount).toBe(1);
     expect(data.adminUsers.edges[0].node.username).toBe('moderator');
+  });
+
+  it('exposes email in admin queries (staff visibility)', async () => {
+    await createUsers();
+
+    const res = await server.executeOperation(
+      { query: ADMIN_USERS, variables: { search: 'regular' } },
+      ctx(SUPERUSER_USER),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.adminUsers.edges[0].node.email).toBe('user@test.com');
+  });
+
+  it('rejects admin role', async () => {
+    await createUsers();
+
+    const res = await server.executeOperation(
+      { query: ADMIN_USERS, variables: {} },
+      ctx(ADMIN_USER),
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+
+  it('rejects moderator role', async () => {
+    await createUsers();
+
+    const res = await server.executeOperation({ query: ADMIN_USERS, variables: {} }, ctx(MOD_USER));
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+});
+
+const ADMIN_USER_BY_ID = `
+  query AdminUserById($id: ID!) {
+    adminUserById(id: $id) {
+      id
+      username
+      email
+      role
+      status
+      cognitoSub
+      failedAttempts
+      lastLoginAt
+      tier { id slug name }
+    }
+  }
+`;
+
+describe('adminUserById', () => {
+  it('returns full user detail for a superuser caller', async () => {
+    const { regular } = await createUsers();
+    // The migration seeds a 'free' tier in dev/prod, but cleanDatabase
+    // truncates it before each test, so re-seed here. The User.tier
+    // resolver falls back to the tier with slug 'free' when User.tierId
+    // is null, which is exactly what we exercise below.
+    await prisma.userTier.create({ data: { slug: 'free', name: 'Free' } });
+
+    const res = await server.executeOperation(
+      { query: ADMIN_USER_BY_ID, variables: { id: regular.id } },
+      ctx(SUPERUSER_USER),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.adminUserById.username).toBe('regular');
+    expect(data.adminUserById.email).toBe('user@test.com');
+    expect(data.adminUserById.cognitoSub).toBe('sub-regular');
+    expect(data.adminUserById.failedAttempts).toBe(0);
+    // Every user should fall back to the seeded 'free' tier when no
+    // explicit assignment exists.
+    expect(data.adminUserById.tier.slug).toBe('free');
+  });
+
+  it('rejects admin role', async () => {
+    const { regular } = await createUsers();
+
+    const res = await server.executeOperation(
+      { query: ADMIN_USER_BY_ID, variables: { id: regular.id } },
+      ctx(ADMIN_USER),
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+
+  it('returns NOT_FOUND for unknown user id', async () => {
+    await createUsers();
+
+    const res = await server.executeOperation(
+      { query: ADMIN_USER_BY_ID, variables: { id: '00000000-0000-0000-0000-000000000000' } },
+      ctx(SUPERUSER_USER),
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('NOT_FOUND');
+  });
+});
+
+const ASSIGN_USER_TIER = `
+  mutation AdminAssignUserTier($userId: ID!, $tierId: ID) {
+    adminAssignUserTier(userId: $userId, tierId: $tierId) {
+      id
+      tier { id slug }
+    }
+  }
+`;
+
+describe('adminAssignUserTier', () => {
+  it('assigns a tier to a user', async () => {
+    const { regular } = await createUsers();
+    const tier = await prisma.userTier.create({
+      data: { slug: 'pro', name: 'Pro', priceCents: 1999 },
+    });
+
+    const res = await server.executeOperation(
+      { query: ASSIGN_USER_TIER, variables: { userId: regular.id, tierId: tier.id } },
+      ctx(SUPERUSER_USER),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.adminAssignUserTier.tier.slug).toBe('pro');
+  });
+
+  it('clears the tier when tierId is null (falls back to free)', async () => {
+    const { regular } = await createUsers();
+    const free = await prisma.userTier.create({
+      data: { slug: 'free', name: 'Free' },
+    });
+    await prisma.user.update({ where: { id: regular.id }, data: { tierId: free.id } });
+
+    const res = await server.executeOperation(
+      { query: ASSIGN_USER_TIER, variables: { userId: regular.id, tierId: null } },
+      ctx(SUPERUSER_USER),
+    );
+
+    const data = (res.body as any).singleResult.data;
+    // tierId on the row is now null, but the User.tier resolver falls back
+    // to the 'free' tier so the GraphQL response still reports it.
+    expect(data.adminAssignUserTier.tier.slug).toBe('free');
+  });
+
+  it('rejects admin role', async () => {
+    const { regular } = await createUsers();
+
+    const res = await server.executeOperation(
+      { query: ASSIGN_USER_TIER, variables: { userId: regular.id, tierId: null } },
+      ctx(ADMIN_USER),
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('FORBIDDEN');
+  });
+
+  it('returns NOT_FOUND for unknown tier id', async () => {
+    const { regular } = await createUsers();
+
+    const res = await server.executeOperation(
+      {
+        query: ASSIGN_USER_TIER,
+        variables: { userId: regular.id, tierId: '00000000-0000-0000-0000-000000000000' },
+      },
+      ctx(SUPERUSER_USER),
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors[0].extensions.code).toBe('NOT_FOUND');
   });
 });
 

@@ -93,16 +93,118 @@ export const userQueryResolvers = {
 
 // ─── Field Resolvers ────────────────────────────────────────────────────────
 
+/**
+ * Roles allowed to see a user's email and other admin-only fields.
+ * Mirrors the role-restriction logic on adminUsers/adminUserById so that
+ * `email` (and friends) is not silently null when admins query them.
+ */
+const STAFF_ROLES = new Set(['moderator', 'admin', 'superuser']);
+
+/**
+ * Loads the caller's role from the DB. Used by the staff-gated field
+ * resolvers below. Returns null when the caller is anonymous or the
+ * cognitoSub no longer matches a user (e.g. deleted account).
+ */
+async function getCallerRole(ctx: Context): Promise<string | null> {
+  if (!ctx.user) return null;
+  const caller = await ctx.prisma.user.findUnique({
+    where: { cognitoSub: ctx.user.sub },
+    select: { role: true },
+  });
+  return caller?.role ?? null;
+}
+
 export const userFieldResolvers = {
-  email: (parent: UserParent, _args: unknown, ctx: Context) => {
-    // Only expose email to the account owner
-    if (!ctx.user || ctx.user.sub !== parent.cognitoSub) {
-      return null;
+  email: async (parent: UserParent, _args: unknown, ctx: Context) => {
+    // Owner always sees their own email.
+    if (ctx.user && ctx.user.sub === parent.cognitoSub) {
+      const u = await ctx.prisma.user.findUnique({
+        where: { id: parent.id },
+        select: { email: true },
+      });
+      return u?.email ?? null;
     }
-    return ctx.prisma.user.findUnique({
+    // Staff (moderator/admin/superuser) can see other users' emails.
+    const callerRole = await getCallerRole(ctx);
+    if (callerRole && STAFF_ROLES.has(callerRole)) {
+      const u = await ctx.prisma.user.findUnique({
+        where: { id: parent.id },
+        select: { email: true },
+      });
+      return u?.email ?? null;
+    }
+    return null;
+  },
+
+  /**
+   * Cognito subject identifier — only useful for admin tools and never
+   * exposed to non-staff callers.
+   */
+  cognitoSub: async (parent: UserParent, _args: unknown, ctx: Context) => {
+    const callerRole = await getCallerRole(ctx);
+    if (!callerRole || !STAFF_ROLES.has(callerRole)) return null;
+    if (parent.cognitoSub) return parent.cognitoSub;
+    const u = await ctx.prisma.user.findUnique({
       where: { id: parent.id },
-      select: { email: true },
-    }).then(u => u?.email ?? null);
+      select: { cognitoSub: true },
+    });
+    return u?.cognitoSub ?? null;
+  },
+
+  failedAttempts: async (
+    parent: UserParent & { failedAttempts?: number },
+    _args: unknown,
+    ctx: Context,
+  ) => {
+    const callerRole = await getCallerRole(ctx);
+    if (!callerRole || !STAFF_ROLES.has(callerRole)) return null;
+    if (typeof parent.failedAttempts === 'number') return parent.failedAttempts;
+    const u = await ctx.prisma.user.findUnique({
+      where: { id: parent.id },
+      select: { failedAttempts: true },
+    });
+    return u?.failedAttempts ?? 0;
+  },
+
+  lockoutUntil: async (
+    parent: UserParent & { lockoutUntil?: Date | string | null },
+    _args: unknown,
+    ctx: Context,
+  ) => {
+    const callerRole = await getCallerRole(ctx);
+    if (!callerRole || !STAFF_ROLES.has(callerRole)) return null;
+    if (parent.lockoutUntil) {
+      return typeof parent.lockoutUntil === 'string'
+        ? parent.lockoutUntil
+        : parent.lockoutUntil.toISOString();
+    }
+    const u = await ctx.prisma.user.findUnique({
+      where: { id: parent.id },
+      select: { lockoutUntil: true },
+    });
+    return u?.lockoutUntil ? u.lockoutUntil.toISOString() : null;
+  },
+
+  /**
+   * Resolves the user's assigned tier. Falls back to the 'free' tier
+   * when User.tierId is null so callers get a stable Tier object even
+   * for legacy users that pre-date the tier system.
+   */
+  tier: async (parent: UserParent & { tierId?: string | null }, _args: unknown, ctx: Context) => {
+    let tierId = parent.tierId;
+    if (tierId === undefined) {
+      const u = await ctx.prisma.user.findUnique({
+        where: { id: parent.id },
+        select: { tierId: true },
+      });
+      tierId = u?.tierId ?? null;
+    }
+    if (tierId) {
+      const tier = await ctx.prisma.userTier.findUnique({ where: { id: tierId } });
+      if (tier) return tier;
+    }
+    // Fallback: return the 'free' tier when no explicit assignment.
+    return ctx.prisma.userTier.findUnique({ where: { slug: 'free' } });
   },
 
   profile: (parent: UserParent, _args: unknown, ctx: Context) => {
@@ -137,16 +239,18 @@ export const userFieldResolvers = {
 
   canSell: (parent: UserParent, _args: unknown, ctx: Context) => {
     // Look up the user's role to determine if they can sell
-    return ctx.prisma.user.findUnique({
-      where: { id: parent.id },
-      select: { role: true, sellerProfile: { select: { approved: true } } },
-    }).then(user => {
-      if (!user) return false;
-      // Admin/superuser can always sell
-      if (user.role === 'admin' || user.role === 'superuser') return true;
-      // Otherwise check seller profile approval
-      return user.sellerProfile?.approved ?? false;
-    });
+    return ctx.prisma.user
+      .findUnique({
+        where: { id: parent.id },
+        select: { role: true, sellerProfile: { select: { approved: true } } },
+      })
+      .then((user) => {
+        if (!user) return false;
+        // Admin/superuser can always sell
+        if (user.role === 'admin' || user.role === 'superuser') return true;
+        // Otherwise check seller profile approval
+        return user.sellerProfile?.approved ?? false;
+      });
   },
 
   badges: async (parent: UserParent, _args: unknown, ctx: Context) => {
@@ -157,10 +261,7 @@ export const userFieldResolvers = {
         awardedPhoto: { include: { variants: true } },
         awarder: true,
       },
-      orderBy: [
-        { badgeDefinition: { displayOrder: 'asc' } },
-        { awardedAt: 'desc' },
-      ],
+      orderBy: [{ badgeDefinition: { displayOrder: 'asc' } }, { awardedAt: 'desc' }],
     });
   },
 };

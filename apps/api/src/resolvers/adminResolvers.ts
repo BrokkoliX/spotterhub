@@ -109,7 +109,12 @@ export const adminQueryResolvers = {
     },
     ctx: Context,
   ) => {
-    await requireRole(ctx, ['admin', 'moderator']);
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can list users', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
 
     const { skip, take, cursorWhere } = buildPaginationArgs({
       first: args.first,
@@ -159,6 +164,24 @@ export const adminQueryResolvers = {
       },
       totalCount,
     };
+  },
+
+  adminUserById: async (_parent: unknown, args: { id: string }, ctx: Context) => {
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can view user detail', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const user = await ctx.prisma.user.findUnique({
+      where: { id: args.id },
+      include: { profile: true, sellerProfile: true, tier: true },
+    });
+    if (!user) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+    return user;
   },
 
   adminPhotos: async (
@@ -257,18 +280,15 @@ export const adminMutationResolvers = {
     ctx: Context,
   ) => {
     const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can change user status', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
     const target = await ctx.prisma.user.findUnique({ where: { id: args.userId } });
     if (!target) {
       throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
-    }
-
-    // Superuser status can only be changed by another superuser
-    if (target.role === 'superuser' && caller.role !== 'superuser') {
-      throw new GraphQLError('Cannot modify a superuser', { extensions: { code: 'FORBIDDEN' } });
-    }
-
-    if (!['admin', 'superuser'].includes(caller.role)) {
-      await requireRole(ctx, ['admin']);
     }
 
     if (!VALID_USER_STATUSES.includes(args.status)) {
@@ -290,25 +310,15 @@ export const adminMutationResolvers = {
     ctx: Context,
   ) => {
     const caller = await getDbUser(ctx);
-    const target = await ctx.prisma.user.findUnique({ where: { id: args.userId } });
-    if (!target) {
-      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
-    }
-
-    // Superuser role can only be changed by another superuser
-    if (target.role === 'superuser' && caller.role !== 'superuser') {
-      throw new GraphQLError('Cannot modify a superuser', { extensions: { code: 'FORBIDDEN' } });
-    }
-
-    // Prevent non-superusers from promoting someone to superuser
-    if (args.role === 'superuser' && caller.role !== 'superuser') {
-      throw new GraphQLError('Only a superuser can promote someone to superuser', {
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can change user roles', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    if (!['admin', 'superuser'].includes(caller.role)) {
-      await requireRole(ctx, ['admin']);
+    const target = await ctx.prisma.user.findUnique({ where: { id: args.userId } });
+    if (!target) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
     }
 
     if (!VALID_USER_ROLES.includes(args.role)) {
@@ -325,11 +335,50 @@ export const adminMutationResolvers = {
   },
 
   adminUnlockUser: async (_parent: unknown, args: { userId: string }, ctx: Context) => {
-    await requireRole(ctx, ['admin', 'superuser']);
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can unlock users', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
 
     return ctx.prisma.user.update({
       where: { id: args.userId },
       data: { failedAttempts: 0, lockoutUntil: null },
+    });
+  },
+
+  adminAssignUserTier: async (
+    _parent: unknown,
+    args: { userId: string; tierId: string | null },
+    ctx: Context,
+  ) => {
+    const caller = await getDbUser(ctx);
+    if (caller.role !== 'superuser') {
+      throw new GraphQLError('Only superusers can assign user tiers', {
+        extensions: { code: 'FORBIDDEN' },
+      });
+    }
+
+    const target = await ctx.prisma.user.findUnique({ where: { id: args.userId } });
+    if (!target) {
+      throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+    }
+
+    // Verify the tier exists when provided. We allow assigning inactive
+    // tiers so the superuser can move users onto a draft tier before
+    // flipping it active.
+    if (args.tierId) {
+      const tier = await ctx.prisma.userTier.findUnique({ where: { id: args.tierId } });
+      if (!tier) {
+        throw new GraphQLError('Tier not found', { extensions: { code: 'NOT_FOUND' } });
+      }
+    }
+
+    return ctx.prisma.user.update({
+      where: { id: args.userId },
+      data: { tierId: args.tierId },
+      include: { profile: true, tier: true },
     });
   },
 

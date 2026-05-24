@@ -382,31 +382,54 @@ export const photoMutationResolvers = {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
-      select: { id: true },
+      select: { id: true, tierId: true },
     });
     if (!user) {
       throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
     }
 
-    // Validate file type and size against tier limits (default to 'free')
+    // Validate file type and size against the shared minimums (per-tier
+    // file-size differentiation is not yet wired through the DB tiers).
     const uploadError = validateUpload(args.input.fileSizeBytes, args.input.mimeType, 'free');
     if (uploadError) {
       throw new GraphQLError(uploadError, { extensions: { code: 'BAD_USER_INPUT' } });
     }
 
-    // Enforce monthly upload quota
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const uploadsThisMonth = await ctx.prisma.photo.count({
-      where: { userId: user.id, createdAt: { gte: monthStart } },
-    });
-    const limit = USER_TIER_LIMITS.free.uploadsPerMonth;
-    if (uploadsThisMonth >= limit) {
-      throw new GraphQLError(
-        `Monthly upload limit reached (${limit} photos/month). Upgrade for higher limits.`,
-        { extensions: { code: 'FORBIDDEN' } },
-      );
+    // Resolve the user's tier (or fall back to the 'free' tier seeded
+    // by the migration). Any superuser-managed change to upload caps in
+    // /admin/tiers takes effect on the next upload — no caching here.
+    const tier = user.tierId
+      ? await ctx.prisma.userTier.findUnique({ where: { id: user.tierId } })
+      : await ctx.prisma.userTier.findUnique({ where: { slug: 'free' } });
+
+    // Enforce rolling daily and weekly upload quotas. A null cap means
+    // unlimited; the count query is skipped when both caps are unlimited
+    // to save a roundtrip.
+    const dailyCap = tier?.uploadsPerDay ?? null;
+    const weeklyCap = tier?.uploadsPerWeek ?? null;
+    if (dailyCap != null) {
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const uploadsToday = await ctx.prisma.photo.count({
+        where: { userId: user.id, createdAt: { gte: dayAgo } },
+      });
+      if (uploadsToday >= dailyCap) {
+        throw new GraphQLError(
+          `Daily upload limit reached (${dailyCap} photos/day). Upgrade for higher limits.`,
+          { extensions: { code: 'FORBIDDEN' } },
+        );
+      }
+    }
+    if (weeklyCap != null) {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const uploadsThisWeek = await ctx.prisma.photo.count({
+        where: { userId: user.id, createdAt: { gte: weekAgo } },
+      });
+      if (uploadsThisWeek >= weeklyCap) {
+        throw new GraphQLError(
+          `Weekly upload limit reached (${weeklyCap} photos/week). Upgrade for higher limits.`,
+          { extensions: { code: 'FORBIDDEN' } },
+        );
+      }
     }
 
     return getPresignedUploadUrl(user.id, args.input.mimeType);
