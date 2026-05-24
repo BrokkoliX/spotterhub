@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 import Supercluster from 'supercluster';
 
-import { AIRPORTS_IN_BOUNDS, PHOTOS_IN_BOUNDS } from '@/lib/queries';
+import { AIRPORTS_IN_BOUNDS, GET_SITE_SETTINGS, PHOTOS_IN_BOUNDS } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -78,6 +78,19 @@ export default function MapPage() {
     pause: !bounds,
   });
 
+  // Admin-configurable debounce between the user finishing a pan/zoom and the
+  // next bounds-based refetch. Defaults to 300 ms (matching the API default
+  // and the previous hardcoded behaviour) until the SiteSettings query
+  // resolves. We mirror the value into a ref so the `setTimeout` inside
+  // `updateBounds` always reads the current setting without forcing the map
+  // initialization effect (which depends on a stable container) to re-run.
+  const [siteSettingsResult] = useQuery({ query: GET_SITE_SETTINGS });
+  const debounceMs = siteSettingsResult.data?.siteSettings?.mapRefreshDebounceMs ?? 300;
+  const debounceMsRef = useRef<number>(debounceMs);
+  useEffect(() => {
+    debounceMsRef.current = debounceMs;
+  }, [debounceMs]);
+
   const moveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateBounds = (map: mapboxgl.Map) => {
@@ -90,16 +103,17 @@ export default function MapPage() {
       neLng: b.getNorthEast().lng,
     };
 
-    // Debounce: cancel any pending update, then defer setting bounds by 300ms.
-    // This prevents firing a fetch on every intermediate pan position — the
-    // query only fires once the user has stopped moving for 300ms.
+    // Debounce: cancel any pending update, then defer setting bounds by the
+    // admin-configured wait. This prevents firing a fetch on every
+    // intermediate pan position — the query only fires once the user has
+    // stopped moving for `debounceMsRef.current` ms.
     if (moveDebounceRef.current !== null) {
       clearTimeout(moveDebounceRef.current);
     }
     moveDebounceRef.current = setTimeout(() => {
       setBounds(newBounds);
       moveDebounceRef.current = null;
-    }, 300);
+    }, debounceMsRef.current);
   };
 
   // ─── Initialize Map ─────────────────────────────────────────────────────

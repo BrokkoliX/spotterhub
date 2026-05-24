@@ -14,6 +14,7 @@ export interface SiteSettingsParent {
   photoUploadTimeoutSeconds: number;
   accessTokenSeconds: number;
   refreshTokenSeconds: number;
+  mapRefreshDebounceMs: number;
 }
 
 export interface AdSettingsParent {
@@ -67,6 +68,7 @@ export const siteSettingsMutationResolvers = {
         photoUploadTimeoutSeconds?: number | null;
         accessTokenSeconds?: number | null;
         refreshTokenSeconds?: number | null;
+        mapRefreshDebounceMs?: number | null;
       };
     },
     ctx: Context,
@@ -145,6 +147,19 @@ export const siteSettingsMutationResolvers = {
       }
     }
 
+    // Map refresh debounce: 0 ms (no debounce) up to 10 s. Anything beyond
+    // that is almost certainly a misconfiguration that would make the map
+    // feel broken, so we reject it at the boundary.
+    const mapRefreshDebounceMs = args.input.mapRefreshDebounceMs;
+    if (
+      mapRefreshDebounceMs != null &&
+      (mapRefreshDebounceMs < 0 || mapRefreshDebounceMs > 10000)
+    ) {
+      throw new GraphQLError('mapRefreshDebounceMs must be between 0 and 10000', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
     const data: Record<string, unknown> = {
       bannerUrl: args.input.bannerUrl ?? null,
       tagline: args.input.tagline ?? null,
@@ -154,6 +169,7 @@ export const siteSettingsMutationResolvers = {
     if (timeout != null) data.photoUploadTimeoutSeconds = timeout;
     if (accessTokenSeconds != null) data.accessTokenSeconds = accessTokenSeconds;
     if (refreshTokenSeconds != null) data.refreshTokenSeconds = refreshTokenSeconds;
+    if (mapRefreshDebounceMs != null) data.mapRefreshDebounceMs = mapRefreshDebounceMs;
 
     return ctx.prisma.siteSettings.upsert({
       where: { id: 'site_settings' },

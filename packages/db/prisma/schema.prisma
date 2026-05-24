@@ -944,6 +944,12 @@ model SiteSettings {
   /// Lifetime of issued refresh tokens, in seconds. Default 604800 (7 days).
   /// Validated 3600–2592000 (1h–30d) in the resolver.
   refreshTokenSeconds      Int      @default(604800) @map("refresh_token_seconds")
+  /// Debounce window applied on the world map between the last `moveend`
+  /// event and the next bounds-based refetch of airports/photos. Lower values
+  /// feel snappier but cause more queries while the user is still panning;
+  /// higher values are gentler on the API. Default 300 ms preserves the
+  /// previously-hardcoded behaviour. Validated 0–10000 in the resolver.
+  mapRefreshDebounceMs     Int      @default(300) @map("map_refresh_debounce_ms")
   updatedAt                DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")

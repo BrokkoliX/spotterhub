@@ -26,6 +26,9 @@ export default function AdminSettingsPage() {
   // Session-token lifetimes — defaults match the API's SiteSettings defaults.
   const [accessTokenSeconds, setAccessTokenSeconds] = useState('3600');
   const [refreshTokenSeconds, setRefreshTokenSeconds] = useState('604800');
+  // World-map refresh debounce (ms). Default mirrors the API's SiteSettings
+  // default and the previously-hardcoded 300 ms used on /map.
+  const [mapRefreshDebounceMs, setMapRefreshDebounceMs] = useState('300');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -37,6 +40,7 @@ export default function AdminSettingsPage() {
       setTimeoutSeconds(String(data.siteSettings.photoUploadTimeoutSeconds));
       setAccessTokenSeconds(String(data.siteSettings.accessTokenSeconds));
       setRefreshTokenSeconds(String(data.siteSettings.refreshTokenSeconds));
+      setMapRefreshDebounceMs(String(data.siteSettings.mapRefreshDebounceMs));
     }
   }, [data]);
 
@@ -52,6 +56,7 @@ export default function AdminSettingsPage() {
     const timeout = parseInt(timeoutSeconds, 10);
     const access = parseInt(accessTokenSeconds, 10);
     const refresh = parseInt(refreshTokenSeconds, 10);
+    const mapDebounce = parseInt(mapRefreshDebounceMs, 10);
 
     if (isNaN(min) || isNaN(max)) {
       setMessage({ type: 'error', text: 'Please enter valid numbers.' });
@@ -96,6 +101,13 @@ export default function AdminSettingsPage() {
       });
       return;
     }
+    if (isNaN(mapDebounce) || mapDebounce < 0 || mapDebounce > 10000) {
+      setMessage({
+        type: 'error',
+        text: 'Map refresh debounce must be between 0 and 10,000 ms.',
+      });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -106,6 +118,7 @@ export default function AdminSettingsPage() {
           photoUploadTimeoutSeconds: timeout,
           accessTokenSeconds: access,
           refreshTokenSeconds: refresh,
+          mapRefreshDebounceMs: mapDebounce,
         },
       });
       if (result.error) {
@@ -237,6 +250,32 @@ export default function AdminSettingsPage() {
             <span className={styles.hint}>
               3,600 seconds (1 hour) to 2,592,000 seconds (30 days). Default: 604,800 (7 days). This
               is how long users stay logged in across browser restarts.
+            </span>
+          </div>
+
+          <h2 className={styles.sectionTitle}>🗺 World Map</h2>
+          <p className={styles.sectionDesc}>
+            Controls how aggressively the world map refetches airports and photos as the user pans
+            and zooms. The debounce is the wait between the last map movement and the next data
+            refresh — raise it while calibrating to make the map feel calmer, lower it for a
+            snappier feel at the cost of more API traffic.
+          </p>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label} htmlFor="mapRefreshDebounceMs">
+              Map refresh debounce (ms)
+            </label>
+            <input
+              id="mapRefreshDebounceMs"
+              type="number"
+              className={styles.input}
+              value={mapRefreshDebounceMs}
+              onChange={(e) => setMapRefreshDebounceMs(e.target.value)}
+              min={0}
+              max={10000}
+            />
+            <span className={styles.hint}>
+              0 to 10,000 milliseconds. Default: 300 ms. Set to 0 to refresh on every map movement.
             </span>
           </div>
 

@@ -2920,6 +2920,7 @@ export const GET_SITE_SETTINGS = gql`
       photoUploadTimeoutSeconds
       accessTokenSeconds
       refreshTokenSeconds
+      mapRefreshDebounceMs
       updatedAt
     }
   }
@@ -2936,6 +2937,7 @@ export const UPDATE_SITE_SETTINGS = gql`
       photoUploadTimeoutSeconds
       accessTokenSeconds
       refreshTokenSeconds
+      mapRefreshDebounceMs
       updatedAt
     }
   }

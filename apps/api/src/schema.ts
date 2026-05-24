@@ -2899,6 +2899,14 @@ export const typeDefs = gql`
     Configurable from the admin settings page (superuser-only).
     """
     refreshTokenSeconds: Int!
+    """
+    Debounce window (ms) between the last map 'moveend' event and the next
+    bounds-based refetch of airports/photos on the world map. Lower values
+    feel snappier but issue more queries while panning; higher values are
+    gentler on the API. Default 300. Configurable from the admin settings
+    page (superuser-only).
+    """
+    mapRefreshDebounceMs: Int!
     updatedAt: String!
   }
 
@@ -2910,6 +2918,7 @@ export const typeDefs = gql`
     photoUploadTimeoutSeconds: Int
     accessTokenSeconds: Int
     refreshTokenSeconds: Int
+    mapRefreshDebounceMs: Int
   }
 
   # ─── Ad Settings ───────────────────────────────────────────────────────────────
