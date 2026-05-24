@@ -1131,6 +1131,11 @@ export const ADMIN_USERS = gql`
             displayName
             avatarUrl
           }
+          tier {
+            id
+            slug
+            name
+          }
         }
       }
       pageInfo {
@@ -1272,6 +1277,134 @@ export const ADMIN_UPDATE_USER_ROLE = gql`
       id
       role
     }
+  }
+`;
+
+export const ADMIN_USER_BY_ID = gql`
+  query AdminUserById($id: ID!) {
+    adminUserById(id: $id) {
+      id
+      username
+      email
+      role
+      status
+      createdAt
+      lastLoginAt
+      cognitoSub
+      failedAttempts
+      lockoutUntil
+      profile {
+        displayName
+        avatarUrl
+        bio
+      }
+      tier {
+        id
+        slug
+        name
+        priceCents
+        currency
+      }
+    }
+  }
+`;
+
+export const ADMIN_UNLOCK_USER = gql`
+  mutation AdminUnlockUser($userId: ID!) {
+    adminUnlockUser(userId: $userId) {
+      id
+      failedAttempts
+      lockoutUntil
+    }
+  }
+`;
+
+export const ADMIN_ASSIGN_USER_TIER = gql`
+  mutation AdminAssignUserTier($userId: ID!, $tierId: ID) {
+    adminAssignUserTier(userId: $userId, tierId: $tierId) {
+      id
+      tier {
+        id
+        slug
+        name
+      }
+    }
+  }
+`;
+
+export const TIERS = gql`
+  query Tiers {
+    tiers {
+      id
+      slug
+      name
+      priceCents
+      currency
+      uploadsPerDay
+      uploadsPerWeek
+      canCreateCommunity
+      displayOrder
+      isActive
+    }
+  }
+`;
+
+export const ADMIN_TIERS = gql`
+  query AdminTiers {
+    adminTiers {
+      id
+      slug
+      name
+      priceCents
+      currency
+      uploadsPerDay
+      uploadsPerWeek
+      canCreateCommunity
+      displayOrder
+      isActive
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const CREATE_TIER = gql`
+  mutation CreateTier($input: CreateTierInput!) {
+    createTier(input: $input) {
+      id
+      slug
+      name
+      priceCents
+      currency
+      uploadsPerDay
+      uploadsPerWeek
+      canCreateCommunity
+      displayOrder
+      isActive
+    }
+  }
+`;
+
+export const UPDATE_TIER = gql`
+  mutation UpdateTier($id: ID!, $input: UpdateTierInput!) {
+    updateTier(id: $id, input: $input) {
+      id
+      slug
+      name
+      priceCents
+      currency
+      uploadsPerDay
+      uploadsPerWeek
+      canCreateCommunity
+      displayOrder
+      isActive
+    }
+  }
+`;
+
+export const DELETE_TIER = gql`
+  mutation DeleteTier($id: ID!) {
+    deleteTier(id: $id)
   }
 `;
 

@@ -1,0 +1,18 @@
+.clickableRow {
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.clickableRow:hover {
+  background: var(--color-bg-hover);
+}
+
+.clickableRow:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.totalCount {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}

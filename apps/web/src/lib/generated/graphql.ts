@@ -235,6 +235,23 @@ export type AirportEdge = {
   node: Airport;
 };
 
+/**
+ * Lightweight airport data for map markers. Omits expensive relations
+ * (photoCount, spottingLocations) so a viewport-bounded query can return
+ * thousands of rows cheaply.
+ */
+export type AirportMapMarker = {
+  __typename?: 'AirportMapMarker';
+  city?: Maybe<Scalars['String']['output']>;
+  country?: Maybe<Scalars['String']['output']>;
+  iataCode?: Maybe<Scalars['String']['output']>;
+  icaoCode: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  latitude: Scalars['Float']['output'];
+  longitude: Scalars['Float']['output'];
+  name: Scalars['String']['output'];
+};
+
 /** Minimal airport info for typeahead search results. */
 export type AirportSearchResult = {
   __typename?: 'AirportSearchResult';
@@ -314,13 +331,60 @@ export type ApproveSellerPayload = {
  */
 export type AuthPayload = {
   __typename?: 'AuthPayload';
+  /**
+   * Lifetime in seconds of the access-token cookie just issued by the API.
+   * The web BFF mirrors this when setting the browser cookie so both stay in
+   * lockstep with the value configured in admin settings.
+   */
+  accessTokenMaxAge?: Maybe<Scalars['Int']['output']>;
   /** Opaque refresh token — stored in DB and sent via HttpOnly cookie. Used to obtain new access tokens. */
   refreshToken?: Maybe<Scalars['String']['output']>;
+  /** Lifetime in seconds of the refresh-token cookie just issued by the API. */
+  refreshTokenMaxAge?: Maybe<Scalars['Int']['output']>;
   /** Short-lived JWT access token (1 hour). Sent via HttpOnly cookie on browser requests. */
   token: Scalars['String']['output'];
   /** The authenticated user. */
   user: User;
 };
+
+export enum BadgeCategory {
+  Award = 'AWARD',
+  Community = 'COMMUNITY',
+  Diversity = 'DIVERSITY',
+  Engagement = 'ENGAGEMENT',
+  Streak = 'STREAK',
+  Upload = 'UPLOAD'
+}
+
+export type BadgeDefinition = {
+  __typename?: 'BadgeDefinition';
+  category: BadgeCategory;
+  createdAt: Scalars['String']['output'];
+  description: Scalars['String']['output'];
+  displayOrder: Scalars['Int']['output'];
+  iconUrl?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  isActive: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  tier: BadgeTier;
+  triggerMetric?: Maybe<Scalars['String']['output']>;
+  triggerThreshold?: Maybe<Scalars['Int']['output']>;
+  triggerType: BadgeTriggerType;
+  updatedAt: Scalars['String']['output'];
+};
+
+export enum BadgeTier {
+  Bronze = 'BRONZE',
+  Gold = 'GOLD',
+  Platinum = 'PLATINUM',
+  Silver = 'SILVER'
+}
+
+export enum BadgeTriggerType {
+  Automatic = 'AUTOMATIC',
+  Awarded = 'AWARDED'
+}
 
 /** A comment on a photo, with optional threaded replies. */
 export type Comment = {
@@ -528,6 +592,15 @@ export type CommunityModerationLogEdge = {
   node: CommunityModerationLog;
 };
 
+export enum CommunityPhotoCategory {
+  Airport = 'AIRPORT',
+  Event = 'EVENT',
+  Hangar = 'HANGAR',
+  Other = 'OTHER',
+  People = 'PEOPLE',
+  Scenery = 'SCENERY'
+}
+
 export enum CommunityRole {
   Admin = 'admin',
   Member = 'member',
@@ -618,6 +691,20 @@ export type CreateAlbumInput = {
   title: Scalars['String']['input'];
 };
 
+export type CreateBadgeDefinitionInput = {
+  category: BadgeCategory;
+  description: Scalars['String']['input'];
+  displayOrder?: InputMaybe<Scalars['Int']['input']>;
+  iconUrl?: InputMaybe<Scalars['String']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  name: Scalars['String']['input'];
+  slug: Scalars['String']['input'];
+  tier: BadgeTier;
+  triggerMetric?: InputMaybe<Scalars['String']['input']>;
+  triggerThreshold?: InputMaybe<Scalars['Int']['input']>;
+  triggerType: BadgeTriggerType;
+};
+
 export type CreateCommunityEventInput = {
   coverUrl?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -704,6 +791,8 @@ export type CreatePhotoInput = {
   airportIcao?: InputMaybe<Scalars['String']['input']>;
   /** Photo caption or description. */
   caption?: InputMaybe<Scalars['String']['input']>;
+  /** Community photo category. Required when kind = COMMUNITY, ignored otherwise. */
+  communityCategory?: InputMaybe<CommunityPhotoCategory>;
   /** Full EXIF data as JSON. */
   exifData?: InputMaybe<Scalars['JSON']['input']>;
   /** File size in bytes. */
@@ -712,6 +801,8 @@ export type CreatePhotoInput = {
   gearBody?: InputMaybe<Scalars['String']['input']>;
   /** Lens used (from user's gear list). */
   gearLens?: InputMaybe<Scalars['String']['input']>;
+  /** Photo kind: AIRCRAFT (default) or COMMUNITY for non-aircraft community photos. */
+  kind?: InputMaybe<PhotoKind>;
   /** Latitude of where the photo was taken. */
   latitude?: InputMaybe<Scalars['Float']['input']>;
   /** License for the photo. */
@@ -768,6 +859,18 @@ export type CreateSpottingLocationInput = {
   longitude: Scalars['Float']['input'];
   /** Name of the spotting location. */
   name: Scalars['String']['input'];
+};
+
+export type CreateTierInput = {
+  canCreateCommunity?: InputMaybe<Scalars['Boolean']['input']>;
+  currency?: InputMaybe<Scalars['String']['input']>;
+  displayOrder?: InputMaybe<Scalars['Int']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  name: Scalars['String']['input'];
+  priceCents?: InputMaybe<Scalars['Int']['input']>;
+  slug: Scalars['String']['input'];
+  uploadsPerDay?: InputMaybe<Scalars['Int']['input']>;
+  uploadsPerWeek?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type CreateVariantInput = {
@@ -1053,6 +1156,12 @@ export type Mutation = {
    */
   addPhotosToCommunityAlbum: Album;
   /**
+   * Assign a subscription tier to a user. Pass 'tierId' to set, or null
+   * to clear (the user will fall back to the 'free' tier at runtime).
+   * Requires superuser role.
+   */
+  adminAssignUserTier: User;
+  /**
    * Bulk import aircraft hierarchy from CSV data. Requires superuser role.
    * CSV format: manufacturer|family|variant|iataCode|icaoCode (one per line)
    */
@@ -1066,18 +1175,23 @@ export type Mutation = {
   /** Resolve or dismiss a report. Requires admin or moderator role. */
   adminResolveReport: Report;
   /**
+   * Clear a user's failed login attempts and lockout state.
+   * Requires superuser role.
+   */
+  adminUnlockUser: User;
+  /**
    * Update a photo's moderation status (approved, rejected, pending, review).
    * Requires admin or moderator role.
    */
   adminUpdatePhotoModeration: Photo;
   /**
-   * Update a user's role (user, moderator, admin).
-   * Requires admin or superuser role.
+   * Update a user's role (user, moderator, admin, superuser).
+   * Requires superuser role.
    */
   adminUpdateUserRole: User;
   /**
    * Update a user's account status (active, suspended, banned).
-   * Requires admin or superuser role.
+   * Requires superuser role.
    */
   adminUpdateUserStatus: User;
   /** Apply to become a seller. Creates a SellerProfile in pending state. */
@@ -1094,6 +1208,8 @@ export type Mutation = {
   approvePhoto: Photo;
   /** Approve a seller application. Creates a Stripe Connect account and returns onboarding link. */
   approveSeller: ApproveSellerPayload;
+  /** Manually award a badge to a user. Requires superuser role. */
+  awardBadge: UserBadge;
   /**
    * Ban a member from the community. Sets their status to banned.
    * They cannot rejoin until unbanned. Requires owner or admin role.
@@ -1112,6 +1228,8 @@ export type Mutation = {
   createAirport: Airport;
   /** Create a new album. Requires authentication. */
   createAlbum: Album;
+  /** Create a new badge definition. Requires superuser role. */
+  createBadgeDefinition: BadgeDefinition;
   /** Create a new community. The creator automatically becomes the owner. */
   createCommunity: Community;
   /** Create a community-scoped album. Requires community owner or admin role. */
@@ -1164,6 +1282,11 @@ export type Mutation = {
   createReport: Report;
   /** Create a spotting location near an airport. Requires authentication. */
   createSpottingLocation: SpottingLocation;
+  /**
+   * Create a new user tier. Requires superuser role. The slug must be
+   * unique across all tiers.
+   */
+  createTier: Tier;
   /** Create an aircraft variant. Requires admin or superuser role. */
   createVariant: AircraftVariant;
   /** Delete an aircraft record. Requires admin or superuser role. */
@@ -1182,6 +1305,8 @@ export type Mutation = {
    * Only the album owner can delete.
    */
   deleteAlbum: Scalars['Boolean']['output'];
+  /** Delete a badge definition. Requires superuser role. */
+  deleteBadgeDefinition: Scalars['Boolean']['output'];
   /**
    * Delete a comment. Only the comment author can delete.
    * Deleting a parent comment cascades to all replies.
@@ -1233,6 +1358,11 @@ export type Mutation = {
   deletePhotoCategory: Scalars['Boolean']['output'];
   /** Delete a spotting location. Only the creator can delete. */
   deleteSpottingLocation: Scalars['Boolean']['output'];
+  /**
+   * Delete a user tier. Fails if any user is still assigned to the
+   * tier; reassign or clear those users first. Requires superuser role.
+   */
+  deleteTier: Scalars['Boolean']['output'];
   /** Delete an aircraft variant. Requires admin or superuser role. */
   deleteVariant: Scalars['Boolean']['output'];
   /** Follow an airport. Idempotent. Returns the airport. */
@@ -1332,6 +1462,8 @@ export type Mutation = {
   reviewContactMessage: ContactMessage;
   /** Review a pending list item (approve or reject). Requires admin or superuser role. */
   reviewListItem: PendingListItem;
+  /** Revoke a badge from a user. Requires superuser role. */
+  revokeBadge: Scalars['Boolean']['output'];
   /** RSVP to an event. status: going | maybe | not_going. */
   rsvpEvent: EventAttendee;
   /**
@@ -1405,6 +1537,8 @@ export type Mutation = {
    * In a future session, this will accept a file upload via presigned S3 URL.
    */
   updateAvatar: Profile;
+  /** Update an existing badge definition. Requires superuser role. */
+  updateBadgeDefinition: BadgeDefinition;
   /** Update a comment's body. Only the comment author can update. */
   updateComment: Comment;
   /** Update a community's details. Requires owner or community admin role. */
@@ -1428,7 +1562,10 @@ export type Mutation = {
   updateMarketplaceCategory: MarketplaceCategory;
   /** Update an existing collectible listing. Only the seller can update. */
   updateMarketplaceItem: MarketplaceItem;
-  /** Update metadata on an existing photo. Only the photo owner can update. */
+  /**
+   * Update metadata on an existing photo. The photo owner, or any admin,
+   * moderator, or superuser can update.
+   */
   updatePhoto: Photo;
   /** Update a photo category. Requires admin or superuser role. */
   updatePhotoCategory: PhotoCategory;
@@ -1441,6 +1578,11 @@ export type Mutation = {
   updateSellerStatus: SellerProfile;
   /** Update site-wide settings (banner, tagline). Requires admin or superuser role. */
   updateSiteSettings: SiteSettings;
+  /**
+   * Update an existing user tier. Requires superuser role. The slug
+   * cannot be changed once created.
+   */
+  updateTier: Tier;
   /** Update an aircraft variant. Requires admin or superuser role. */
   updateVariant: AircraftVariant;
   /** Upsert an aircraft record by registration. Requires admin or superuser role. */
@@ -1484,6 +1626,12 @@ export type MutationAddPhotosToCommunityAlbumArgs = {
 };
 
 
+export type MutationAdminAssignUserTierArgs = {
+  tierId?: InputMaybe<Scalars['ID']['input']>;
+  userId: Scalars['ID']['input'];
+};
+
+
 export type MutationAdminImportAircraftHierarchyArgs = {
   csvData: Scalars['String']['input'];
 };
@@ -1502,6 +1650,11 @@ export type MutationAdminImportAirportsArgs = {
 export type MutationAdminResolveReportArgs = {
   action: Scalars['String']['input'];
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationAdminUnlockUserArgs = {
+  userId: Scalars['ID']['input'];
 };
 
 
@@ -1543,6 +1696,13 @@ export type MutationApproveSellerArgs = {
 };
 
 
+export type MutationAwardBadgeArgs = {
+  badgeDefinitionId: Scalars['ID']['input'];
+  photoId?: InputMaybe<Scalars['ID']['input']>;
+  userId: Scalars['ID']['input'];
+};
+
+
 export type MutationBanCommunityMemberArgs = {
   communityId: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -1577,6 +1737,11 @@ export type MutationCreateAirportArgs = {
 
 export type MutationCreateAlbumArgs = {
   input: CreateAlbumInput;
+};
+
+
+export type MutationCreateBadgeDefinitionArgs = {
+  input: CreateBadgeDefinitionInput;
 };
 
 
@@ -1686,6 +1851,11 @@ export type MutationCreateSpottingLocationArgs = {
 };
 
 
+export type MutationCreateTierArgs = {
+  input: CreateTierInput;
+};
+
+
 export type MutationCreateVariantArgs = {
   input: CreateVariantInput;
 };
@@ -1712,6 +1882,11 @@ export type MutationDeleteAirportArgs = {
 
 
 export type MutationDeleteAlbumArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteBadgeDefinitionArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -1810,6 +1985,11 @@ export type MutationDeletePhotoCategoryArgs = {
 
 
 export type MutationDeleteSpottingLocationArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteTierArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -1988,6 +2168,12 @@ export type MutationReviewListItemArgs = {
 };
 
 
+export type MutationRevokeBadgeArgs = {
+  badgeDefinitionId: Scalars['ID']['input'];
+  userId: Scalars['ID']['input'];
+};
+
+
 export type MutationRsvpEventArgs = {
   eventId: Scalars['ID']['input'];
   status: Scalars['String']['input'];
@@ -2111,6 +2297,12 @@ export type MutationUpdateAvatarArgs = {
 };
 
 
+export type MutationUpdateBadgeDefinitionArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateBadgeDefinitionInput;
+};
+
+
 export type MutationUpdateCommentArgs = {
   body: Scalars['String']['input'];
   id: Scalars['ID']['input'];
@@ -2202,6 +2394,12 @@ export type MutationUpdateSiteSettingsArgs = {
 };
 
 
+export type MutationUpdateTierArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateTierInput;
+};
+
+
 export type MutationUpdateVariantArgs = {
   id: Scalars['ID']['input'];
   input: UpdateVariantInput;
@@ -2250,6 +2448,27 @@ export type MutationUpsertVariantArgs = {
 
 export type MutationVerifyEmailArgs = {
   token: Scalars['String']['input'];
+};
+
+/** A photo upload with its position in the moderation queue. */
+export type MyUploadEdge = {
+  __typename?: 'MyUploadEdge';
+  cursor: Scalars['String']['output'];
+  node: Photo;
+  /**
+   * Position in the global pending queue (1 = next to be reviewed).
+   * Null if the photo is not in pending status.
+   */
+  queuePosition?: Maybe<Scalars['Int']['output']>;
+};
+
+export type MyUploadsConnection = {
+  __typename?: 'MyUploadsConnection';
+  edges: Array<MyUploadEdge>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+  /** Total number of photos currently in the global pending queue. */
+  totalPendingCount: Scalars['Int']['output'];
 };
 
 /** An in-app notification for a user. */
@@ -2395,6 +2614,8 @@ export type Photo = {
   caption?: Maybe<Scalars['String']['output']>;
   /** Number of comments on this photo. */
   commentCount: Scalars['Int']['output'];
+  /** Community photo category. Only set when kind = COMMUNITY. */
+  communityCategory?: Maybe<CommunityPhotoCategory>;
   createdAt: Scalars['String']['output'];
   /** Full EXIF data as JSON. */
   exifData?: Maybe<Scalars['JSON']['output']>;
@@ -2411,6 +2632,8 @@ export type Photo = {
   isDeleted: Scalars['Boolean']['output'];
   /** Whether the currently authenticated user has liked this photo. */
   isLikedByMe: Scalars['Boolean']['output'];
+  /** Photo kind: AIRCRAFT (default) or COMMUNITY for non-aircraft community photos. */
+  kind: PhotoKind;
   /** License under which the photo is published. */
   license: PhotoLicense;
   /** Number of likes on this photo. */
@@ -2443,6 +2666,12 @@ export type Photo = {
   photographer?: Maybe<User>;
   /** Name of the photographer. */
   photographerName?: Maybe<Scalars['String']['output']>;
+  /**
+   * Reason supplied by a moderator when this photo was rejected, if any.
+   * Visible only to the photo owner and to moderators/admins/superusers; null
+   * for everyone else, for non-rejected photos, and when no reason was given.
+   */
+  rejectionReason?: Maybe<Scalars['String']['output']>;
   /** Other photos of the same aircraft (matched by serial number or linked aircraft record). */
   similarAircraftPhotos: PhotoConnection;
   /** User-applied tags. */
@@ -2465,6 +2694,23 @@ export type PhotoSimilarAircraftPhotosArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
 };
+
+export type PhotoAward = {
+  __typename?: 'PhotoAward';
+  awardedAt: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  likeCount: Scalars['Int']['output'];
+  period: PhotoAwardPeriod;
+  periodEnd: Scalars['String']['output'];
+  periodStart: Scalars['String']['output'];
+  photo: Photo;
+};
+
+export enum PhotoAwardPeriod {
+  Day = 'DAY',
+  Month = 'MONTH',
+  Week = 'WEEK'
+}
 
 /** A photo category for classification (e.g., cabin, cockpit, exterior). */
 export type PhotoCategory = {
@@ -2489,6 +2735,11 @@ export type PhotoEdge = {
   cursor: Scalars['String']['output'];
   node: Photo;
 };
+
+export enum PhotoKind {
+  Aircraft = 'AIRCRAFT',
+  Community = 'COMMUNITY'
+}
 
 export enum PhotoLicense {
   AllRightsReserved = 'ALL_RIGHTS_RESERVED',
@@ -2548,6 +2799,7 @@ export enum PhotoSortBy {
   PopularDay = 'popular_day',
   PopularMonth = 'popular_month',
   PopularWeek = 'popular_week',
+  Random = 'random',
   Recent = 'recent'
 }
 
@@ -2628,9 +2880,20 @@ export type Query = {
   /** Dashboard statistics for admins. Requires admin or moderator role. */
   adminStats: AdminStats;
   /**
+   * List all user tiers (including inactive) for the superuser tier
+   * management page. Requires superuser role.
+   */
+  adminTiers: Array<Tier>;
+  /**
+   * Fetch a single user by id with full administrative detail (email,
+   * cognitoSub, lockout state, tier, etc.) for the admin user-detail
+   * drawer. Requires superuser role.
+   */
+  adminUserById?: Maybe<User>;
+  /**
    * Paginated list of users for admin management.
    * Optionally filter by role or status, and search by username/email.
-   * Requires admin or moderator role.
+   * Requires superuser role.
    */
   adminUsers: UserConnection;
   /** Fetch a single aircraft by registration. */
@@ -2653,6 +2916,11 @@ export type Query = {
   airport?: Maybe<Airport>;
   /** List all airports with optional pagination. */
   airports: AirportConnection;
+  /**
+   * Fetch airports within a geographic bounding box. Lightweight payload
+   * intended for map markers. Capped at 2000 per call.
+   */
+  airportsInBounds: Array<AirportMapMarker>;
   /** Fetch a single album by ID. */
   album?: Maybe<Album>;
   /**
@@ -2660,6 +2928,8 @@ export type Query = {
    * authenticated user's albums.
    */
   albums: AlbumConnection;
+  /** List all badge definitions. Optionally filter by category or active status. */
+  badgeDefinitions: Array<BadgeDefinition>;
   /** Paginated comments for a photo. Returns top-level comments with nested replies. */
   comments: CommentConnection;
   /** Browse/discover communities with optional search, category filter, and pagination. */
@@ -2736,12 +3006,20 @@ export type Query = {
    * Requires authentication.
    */
   mySales: OrderConnection;
+  /**
+   * Paginated list of the authenticated user's uploads, grouped by moderation status.
+   * Each photo includes its queue position (1-based) among all pending photos, ordered
+   * by upload date (oldest = position 1). Requires authentication.
+   */
+  myUploads: MyUploadsConnection;
   /** Paginated list of the current user's notifications, newest first. */
   notifications: NotificationConnection;
   /** Paginated list of pending list items for admin review. */
   pendingListItems: PendingListItemConnection;
   /** Fetch a single photo by ID. Returns null if not found. */
   photo?: Maybe<Photo>;
+  /** Photo awards for a given period type. Returns recent awards. */
+  photoAwards: Array<PhotoAward>;
   /** List all photo categories. */
   photoCategories: Array<PhotoCategory>;
   /**
@@ -2776,6 +3054,11 @@ export type Query = {
   sellerProfile?: Maybe<SellerProfile>;
   /** Fetch site-wide settings (banner, tagline). Returns null if not set. */
   siteSettings?: Maybe<SiteSettings>;
+  /**
+   * List active user tiers in display order. Public so that pricing
+   * pages and tier badges can render without authentication.
+   */
+  tiers: Array<Tier>;
   /** Count of unread notifications for the current user. Returns 0 if unauthenticated. */
   unreadNotificationCount: Scalars['Int']['output'];
   /**
@@ -2783,6 +3066,8 @@ export type Query = {
    * Returns null if the user does not exist or their profile is private.
    */
   user?: Maybe<User>;
+  /** List badges earned by a specific user. */
+  userBadges: Array<UserBadge>;
   /** Paginated list of users. Supports cursor-based pagination. */
   users: UserConnection;
 };
@@ -2833,6 +3118,11 @@ export type QueryAdminSellerApplicationsArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAdminUserByIdArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -2910,6 +3200,15 @@ export type QueryAirportsArgs = {
 };
 
 
+export type QueryAirportsInBoundsArgs = {
+  first?: InputMaybe<Scalars['Int']['input']>;
+  neLat: Scalars['Float']['input'];
+  neLng: Scalars['Float']['input'];
+  swLat: Scalars['Float']['input'];
+  swLng: Scalars['Float']['input'];
+};
+
+
 export type QueryAlbumArgs = {
   id: Scalars['ID']['input'];
 };
@@ -2920,6 +3219,12 @@ export type QueryAlbumsArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   userId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type QueryBadgeDefinitionsArgs = {
+  category?: InputMaybe<BadgeCategory>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -3072,6 +3377,14 @@ export type QueryMySalesArgs = {
 };
 
 
+export type QueryMyUploadsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  moderationStatus?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryNotificationsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
@@ -3094,13 +3407,21 @@ export type QueryPhotoArgs = {
 };
 
 
+export type QueryPhotoAwardsArgs = {
+  first?: InputMaybe<Scalars['Int']['input']>;
+  period: PhotoAwardPeriod;
+};
+
+
 export type QueryPhotosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   airline?: InputMaybe<Scalars['String']['input']>;
   airportCode?: InputMaybe<Scalars['String']['input']>;
   albumId?: InputMaybe<Scalars['ID']['input']>;
+  communityCategory?: InputMaybe<CommunityPhotoCategory>;
   family?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  kind?: InputMaybe<PhotoKind>;
   manufacturer?: InputMaybe<Scalars['String']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   photographer?: InputMaybe<Scalars['String']['input']>;
@@ -3171,6 +3492,11 @@ export type QuerySellerProfileArgs = {
 
 export type QueryUserArgs = {
   username: Scalars['String']['input'];
+};
+
+
+export type QueryUserBadgesArgs = {
+  userId: Scalars['ID']['input'];
 };
 
 
@@ -3345,11 +3671,29 @@ export type SignUpPayload = {
 
 export type SiteSettings = {
   __typename?: 'SiteSettings';
+  /**
+   * Lifetime of issued JWT access tokens, in seconds. Default 3600 (1 hour).
+   * Configurable from the admin settings page (superuser-only).
+   */
+  accessTokenSeconds: Scalars['Int']['output'];
   bannerUrl?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  /**
+   * Debounce window (ms) between the last map 'moveend' event and the next
+   * bounds-based refetch of airports/photos on the world map. Lower values
+   * feel snappier but issue more queries while panning; higher values are
+   * gentler on the API. Default 300. Configurable from the admin settings
+   * page (superuser-only).
+   */
+  mapRefreshDebounceMs: Scalars['Int']['output'];
   maxPhotoLongEdge: Scalars['Int']['output'];
   minPhotoLongEdge: Scalars['Int']['output'];
   photoUploadTimeoutSeconds: Scalars['Int']['output'];
+  /**
+   * Lifetime of issued refresh tokens, in seconds. Default 604800 (7 days).
+   * Configurable from the admin settings page (superuser-only).
+   */
+  refreshTokenSeconds: Scalars['Int']['output'];
   tagline?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['String']['output'];
 };
@@ -3377,6 +3721,53 @@ export type SubmitSellerFeedbackInput = {
   itemId?: InputMaybe<Scalars['ID']['input']>;
   rating: Scalars['Int']['input'];
   sellerId: Scalars['ID']['input'];
+};
+
+/**
+ * A user subscription tier. The set of tiers is managed from the
+ * superuser-only /admin/tiers page; each tier defines a price and the
+ * platform capabilities granted to its members (upload caps, ability
+ * to create communities, …).
+ */
+export type Tier = {
+  __typename?: 'Tier';
+  /** Whether members of this tier can create new communities. */
+  canCreateCommunity: Scalars['Boolean']['output'];
+  createdAt: Scalars['String']['output'];
+  /** ISO-4217 currency code (e.g. 'USD'). */
+  currency: Scalars['String']['output'];
+  /**
+   * Sort order (ascending) for the admin UI and any future
+   * user-facing pricing page.
+   */
+  displayOrder: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
+  /**
+   * Whether this tier is currently selectable for new assignments.
+   * Inactive tiers are hidden from pickers but existing users keep
+   * their assignment.
+   */
+  isActive: Scalars['Boolean']['output'];
+  /** Display name shown in admin UIs and (eventually) on a pricing page. */
+  name: Scalars['String']['output'];
+  /** Price in minor units of the configured currency. 0 = free. */
+  priceCents: Scalars['Int']['output'];
+  /**
+   * Stable lowercase identifier (e.g. 'free', 'premium'). Used by
+   * backend code to look up limits.
+   */
+  slug: Scalars['String']['output'];
+  updatedAt: Scalars['String']['output'];
+  /**
+   * Maximum photos a user on this tier can upload in any rolling
+   * 24-hour window. null = unlimited.
+   */
+  uploadsPerDay?: Maybe<Scalars['Int']['output']>;
+  /**
+   * Maximum photos a user on this tier can upload in any rolling
+   * 7-day window. null = unlimited.
+   */
+  uploadsPerWeek?: Maybe<Scalars['Int']['output']>;
 };
 
 export type UpdateAdSettingsInput = {
@@ -3432,6 +3823,19 @@ export type UpdateAlbumInput = {
   isPublic?: InputMaybe<Scalars['Boolean']['input']>;
   /** New title for the album. */
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateBadgeDefinitionInput = {
+  category?: InputMaybe<BadgeCategory>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  displayOrder?: InputMaybe<Scalars['Int']['input']>;
+  iconUrl?: InputMaybe<Scalars['String']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  tier?: InputMaybe<BadgeTier>;
+  triggerMetric?: InputMaybe<Scalars['String']['input']>;
+  triggerThreshold?: InputMaybe<Scalars['Int']['input']>;
+  triggerType?: InputMaybe<BadgeTriggerType>;
 };
 
 export type UpdateCommunityEventInput = {
@@ -3497,9 +3901,11 @@ export type UpdatePhotoInput = {
   airportCode?: InputMaybe<Scalars['String']['input']>;
   airportIcao?: InputMaybe<Scalars['String']['input']>;
   caption?: InputMaybe<Scalars['String']['input']>;
+  communityCategory?: InputMaybe<CommunityPhotoCategory>;
   exifData?: InputMaybe<Scalars['JSON']['input']>;
   gearBody?: InputMaybe<Scalars['String']['input']>;
   gearLens?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<PhotoKind>;
   latitude?: InputMaybe<Scalars['Float']['input']>;
   locationPrivacy?: InputMaybe<LocationPrivacyMode>;
   locationType?: InputMaybe<Scalars['String']['input']>;
@@ -3528,11 +3934,25 @@ export type UpdateProfileInput = {
 };
 
 export type UpdateSiteSettingsInput = {
+  accessTokenSeconds?: InputMaybe<Scalars['Int']['input']>;
   bannerUrl?: InputMaybe<Scalars['String']['input']>;
+  mapRefreshDebounceMs?: InputMaybe<Scalars['Int']['input']>;
   maxPhotoLongEdge?: InputMaybe<Scalars['Int']['input']>;
   minPhotoLongEdge?: InputMaybe<Scalars['Int']['input']>;
   photoUploadTimeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
+  refreshTokenSeconds?: InputMaybe<Scalars['Int']['input']>;
   tagline?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateTierInput = {
+  canCreateCommunity?: InputMaybe<Scalars['Boolean']['input']>;
+  currency?: InputMaybe<Scalars['String']['input']>;
+  displayOrder?: InputMaybe<Scalars['Int']['input']>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  priceCents?: InputMaybe<Scalars['Int']['input']>;
+  uploadsPerDay?: InputMaybe<Scalars['Int']['input']>;
+  uploadsPerWeek?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type UpdateVariantInput = {
@@ -3552,13 +3972,25 @@ export type UploadUrlPayload = {
 /** A registered SpotterSpace user. */
 export type User = {
   __typename?: 'User';
+  /** Badges earned by this user, ordered by display order. */
+  badges: Array<UserBadge>;
   /** Whether the user can sell (approved seller or admin/superuser). */
   canSell: Scalars['Boolean']['output'];
+  /**
+   * Cognito subject identifier. Only visible to staff (moderator, admin,
+   * superuser) when querying via admin endpoints; null otherwise.
+   */
+  cognitoSub?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
-  /** Email address. Only visible to the account owner. */
+  /**
+   * Email address. Visible to the account owner and to staff
+   * (moderator, admin, superuser). Returns null otherwise.
+   */
   email?: Maybe<Scalars['String']['output']>;
   /** Whether the email has been verified. */
   emailVerified: Scalars['Boolean']['output'];
+  /** Number of consecutive failed login attempts. Staff-only. */
+  failedAttempts?: Maybe<Scalars['Int']['output']>;
   /** Number of users following this user. */
   followerCount: Scalars['Int']['output'];
   /** Number of users this user follows. */
@@ -3568,19 +4000,37 @@ export type User = {
   isFollowedByMe: Scalars['Boolean']['output'];
   /** Last sign-in timestamp, if ever signed in. */
   lastLoginAt?: Maybe<Scalars['String']['output']>;
+  /** Timestamp until which the account is locked out from sign-in. Staff-only. */
+  lockoutUntil?: Maybe<Scalars['String']['output']>;
   /** Number of photos uploaded by this user. */
   photoCount: Scalars['Int']['output'];
   /** The user's profile, if one has been created. */
   profile?: Maybe<Profile>;
-  /** Platform role: user, moderator, or admin. */
+  /** Platform role: user, moderator, admin, or superuser. */
   role: UserRole;
   /** The user's seller profile, if any. */
   sellerProfile?: Maybe<SellerProfile>;
   /** Account status: active, suspended, or banned. */
   status: UserStatus;
+  /**
+   * Subscription tier currently assigned to this user. Falls back to the
+   * tier with slug 'free' when the user has not been explicitly assigned.
+   * Visible to the owner and to staff (moderator, admin, superuser).
+   */
+  tier?: Maybe<Tier>;
   updatedAt: Scalars['String']['output'];
   /** Unique username, used in profile URLs (/u/username). */
   username: Scalars['String']['output'];
+};
+
+export type UserBadge = {
+  __typename?: 'UserBadge';
+  awardedAt: Scalars['String']['output'];
+  awardedPhoto?: Maybe<Photo>;
+  awarder?: Maybe<User>;
+  badgeDefinition: BadgeDefinition;
+  id: Scalars['ID']['output'];
+  user: User;
 };
 
 /** Relay-style connection for paginated user lists. */
@@ -3646,7 +4096,7 @@ export type ResetPasswordMutationVariables = Exact<{
 
 export type ResetPasswordMutation = { __typename?: 'Mutation', resetPassword: { __typename?: 'AuthPayload', token: string, user: { __typename?: 'User', id: string, email?: string | null, username: string, role: UserRole } } };
 
-export type PhotoFieldsFragment = { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type PhotoFieldsFragment = { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type PhotosQueryVariables = Exact<{
   first?: InputMaybe<Scalars['Int']['input']>;
@@ -3661,18 +4111,19 @@ export type PhotosQueryVariables = Exact<{
   variant?: InputMaybe<Scalars['String']['input']>;
   airline?: InputMaybe<Scalars['String']['input']>;
   photographer?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<PhotoKind>;
   sortBy?: InputMaybe<PhotoSortBy>;
 }>;
 
 
-export type PhotosQuery = { __typename?: 'Query', photos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type PhotosQuery = { __typename?: 'Query', photos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type PhotoQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type PhotoQuery = { __typename?: 'Query', photo?: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } | null };
+export type PhotoQuery = { __typename?: 'Query', photo?: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } | null };
 
 export type GetUploadUrlMutationVariables = Exact<{
   input: GetUploadUrlInput;
@@ -3686,7 +4137,15 @@ export type CreatePhotoMutationVariables = Exact<{
 }>;
 
 
-export type CreatePhotoMutation = { __typename?: 'Mutation', createPhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
+export type CreatePhotoMutation = { __typename?: 'Mutation', createPhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
+
+export type UpdatePhotoMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  input: UpdatePhotoInput;
+}>;
+
+
+export type UpdatePhotoMutation = { __typename?: 'Mutation', updatePhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
 
 export type DeletePhotoMutationVariables = Exact<{
   photoId: Scalars['ID']['input'];
@@ -3700,21 +4159,21 @@ export type LikePhotoMutationVariables = Exact<{
 }>;
 
 
-export type LikePhotoMutation = { __typename?: 'Mutation', likePhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
+export type LikePhotoMutation = { __typename?: 'Mutation', likePhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
 
 export type UnlikePhotoMutationVariables = Exact<{
   photoId: Scalars['ID']['input'];
 }>;
 
 
-export type UnlikePhotoMutation = { __typename?: 'Mutation', unlikePhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
+export type UnlikePhotoMutation = { __typename?: 'Mutation', unlikePhoto: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } };
 
 export type UserQueryVariables = Exact<{
   username: Scalars['String']['input'];
 }>;
 
 
-export type UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, role: UserRole, photoCount: number, followerCount: number, followingCount: number, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, bio?: string | null, avatarUrl?: string | null, locationRegion?: string | null, experienceLevel?: string | null, gear?: string | null, interests: Array<string>, favoriteAircraft: Array<string>, favoriteAirports: Array<string>, isPublic: boolean, cameraBodies: Array<string>, lenses: Array<string> } | null } | null };
+export type UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, role: UserRole, photoCount: number, followerCount: number, followingCount: number, isFollowedByMe: boolean, badges: Array<{ __typename?: 'UserBadge', id: string, awardedAt: string, badgeDefinition: { __typename?: 'BadgeDefinition', id: string, slug: string, name: string, description: string, iconUrl?: string | null, category: BadgeCategory, tier: BadgeTier } }>, profile?: { __typename?: 'Profile', displayName?: string | null, bio?: string | null, avatarUrl?: string | null, locationRegion?: string | null, experienceLevel?: string | null, gear?: string | null, interests: Array<string>, favoriteAircraft: Array<string>, favoriteAirports: Array<string>, isPublic: boolean, cameraBodies: Array<string>, lenses: Array<string> } | null } | null };
 
 export type FollowUserMutationVariables = Exact<{
   userId: Scalars['ID']['input'];
@@ -3813,7 +4272,7 @@ export type SearchPhotosQueryVariables = Exact<{
 }>;
 
 
-export type SearchPhotosQuery = { __typename?: 'Query', searchPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type SearchPhotosQuery = { __typename?: 'Query', searchPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type SearchUsersQueryVariables = Exact<{
   query: Scalars['String']['input'];
@@ -3865,6 +4324,17 @@ export type PhotosInBoundsQueryVariables = Exact<{
 
 
 export type PhotosInBoundsQuery = { __typename?: 'Query', photosInBounds: Array<{ __typename?: 'PhotoMapMarker', id: string, latitude: number, longitude: number, thumbnailUrl?: string | null, caption?: string | null }> };
+
+export type AirportsInBoundsQueryVariables = Exact<{
+  swLat: Scalars['Float']['input'];
+  swLng: Scalars['Float']['input'];
+  neLat: Scalars['Float']['input'];
+  neLng: Scalars['Float']['input'];
+  first?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type AirportsInBoundsQuery = { __typename?: 'Query', airportsInBounds: Array<{ __typename?: 'AirportMapMarker', id: string, icaoCode: string, iataCode?: string | null, name: string, city?: string | null, country?: string | null, latitude: number, longitude: number }> };
 
 export type PhotosNearbyQueryVariables = Exact<{
   latitude: Scalars['Float']['input'];
@@ -4015,7 +4485,7 @@ export type FollowingFeedQueryVariables = Exact<{
 }>;
 
 
-export type FollowingFeedQuery = { __typename?: 'Query', followingFeed: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type FollowingFeedQuery = { __typename?: 'Query', followingFeed: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type AdminStatsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -4042,7 +4512,7 @@ export type AdminUsersQueryVariables = Exact<{
 }>;
 
 
-export type AdminUsersQuery = { __typename?: 'Query', adminUsers: { __typename?: 'UserConnection', totalCount: number, edges: Array<{ __typename?: 'UserEdge', cursor: string, node: { __typename?: 'User', id: string, username: string, email?: string | null, role: UserRole, status: UserStatus, createdAt: string, lastLoginAt?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type AdminUsersQuery = { __typename?: 'Query', adminUsers: { __typename?: 'UserConnection', totalCount: number, edges: Array<{ __typename?: 'UserEdge', cursor: string, node: { __typename?: 'User', id: string, username: string, email?: string | null, role: UserRole, status: UserStatus, createdAt: string, lastLoginAt?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null, tier?: { __typename?: 'Tier', id: string, slug: string, name: string } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type AdminPhotosQueryVariables = Exact<{
   moderationStatus?: InputMaybe<Scalars['String']['input']>;
@@ -4052,7 +4522,7 @@ export type AdminPhotosQueryVariables = Exact<{
 }>;
 
 
-export type AdminPhotosQuery = { __typename?: 'Query', adminPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+export type AdminPhotosQuery = { __typename?: 'Query', adminPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
 
 export type AdminAirportsQueryVariables = Exact<{
   search?: InputMaybe<Scalars['String']['input']>;
@@ -4122,6 +4592,60 @@ export type AdminUpdateUserRoleMutationVariables = Exact<{
 
 export type AdminUpdateUserRoleMutation = { __typename?: 'Mutation', adminUpdateUserRole: { __typename?: 'User', id: string, role: UserRole } };
 
+export type AdminUserByIdQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type AdminUserByIdQuery = { __typename?: 'Query', adminUserById?: { __typename?: 'User', id: string, username: string, email?: string | null, role: UserRole, status: UserStatus, createdAt: string, lastLoginAt?: string | null, cognitoSub?: string | null, failedAttempts?: number | null, lockoutUntil?: string | null, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null, bio?: string | null } | null, tier?: { __typename?: 'Tier', id: string, slug: string, name: string, priceCents: number, currency: string } | null } | null };
+
+export type AdminUnlockUserMutationVariables = Exact<{
+  userId: Scalars['ID']['input'];
+}>;
+
+
+export type AdminUnlockUserMutation = { __typename?: 'Mutation', adminUnlockUser: { __typename?: 'User', id: string, failedAttempts?: number | null, lockoutUntil?: string | null } };
+
+export type AdminAssignUserTierMutationVariables = Exact<{
+  userId: Scalars['ID']['input'];
+  tierId?: InputMaybe<Scalars['ID']['input']>;
+}>;
+
+
+export type AdminAssignUserTierMutation = { __typename?: 'Mutation', adminAssignUserTier: { __typename?: 'User', id: string, tier?: { __typename?: 'Tier', id: string, slug: string, name: string } | null } };
+
+export type TiersQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TiersQuery = { __typename?: 'Query', tiers: Array<{ __typename?: 'Tier', id: string, slug: string, name: string, priceCents: number, currency: string, uploadsPerDay?: number | null, uploadsPerWeek?: number | null, canCreateCommunity: boolean, displayOrder: number, isActive: boolean }> };
+
+export type AdminTiersQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminTiersQuery = { __typename?: 'Query', adminTiers: Array<{ __typename?: 'Tier', id: string, slug: string, name: string, priceCents: number, currency: string, uploadsPerDay?: number | null, uploadsPerWeek?: number | null, canCreateCommunity: boolean, displayOrder: number, isActive: boolean, createdAt: string, updatedAt: string }> };
+
+export type CreateTierMutationVariables = Exact<{
+  input: CreateTierInput;
+}>;
+
+
+export type CreateTierMutation = { __typename?: 'Mutation', createTier: { __typename?: 'Tier', id: string, slug: string, name: string, priceCents: number, currency: string, uploadsPerDay?: number | null, uploadsPerWeek?: number | null, canCreateCommunity: boolean, displayOrder: number, isActive: boolean } };
+
+export type UpdateTierMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  input: UpdateTierInput;
+}>;
+
+
+export type UpdateTierMutation = { __typename?: 'Mutation', updateTier: { __typename?: 'Tier', id: string, slug: string, name: string, priceCents: number, currency: string, uploadsPerDay?: number | null, uploadsPerWeek?: number | null, canCreateCommunity: boolean, displayOrder: number, isActive: boolean } };
+
+export type DeleteTierMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteTierMutation = { __typename?: 'Mutation', deleteTier: boolean };
+
 export type AdminUpdatePhotoModerationMutationVariables = Exact<{
   photoId: Scalars['ID']['input'];
   status: Scalars['String']['input'];
@@ -4150,7 +4674,7 @@ export type CommunityQueryVariables = Exact<{
 }>;
 
 
-export type CommunityQuery = { __typename?: 'Query', community?: { __typename?: 'Community', id: string, name: string, slug: string, description?: string | null, bannerUrl?: string | null, avatarUrl?: string | null, category?: string | null, visibility: CommunityVisibility, location?: string | null, inviteCode?: string | null, createdAt: string, memberCount: number, owner: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, myMembership?: { __typename?: 'CommunityMember', id: string, role: CommunityRole, status: string } | null, members: { __typename?: 'CommunityMemberConnection', totalCount: number, edges: Array<{ __typename?: 'CommunityMemberEdge', node: { __typename?: 'CommunityMember', id: string, role: CommunityRole, status: string, joinedAt: string, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, photos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, albums: { __typename?: 'AlbumConnection', totalCount: number, edges: Array<{ __typename?: 'AlbumEdge', node: { __typename?: 'Album', id: string, title: string, description?: string | null, isPublic: boolean, photoCount: number, createdAt: string, updatedAt: string, communityId?: string | null, community?: { __typename?: 'Community', id: string, name: string, slug: string } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, coverPhoto?: { __typename?: 'Photo', id: string, variants: Array<{ __typename?: 'PhotoVariant', variantType: string, url: string, width: number, height: number }> } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } | null };
+export type CommunityQuery = { __typename?: 'Query', community?: { __typename?: 'Community', id: string, name: string, slug: string, description?: string | null, bannerUrl?: string | null, avatarUrl?: string | null, category?: string | null, visibility: CommunityVisibility, location?: string | null, inviteCode?: string | null, createdAt: string, memberCount: number, owner: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, myMembership?: { __typename?: 'CommunityMember', id: string, role: CommunityRole, status: string } | null, members: { __typename?: 'CommunityMemberConnection', totalCount: number, edges: Array<{ __typename?: 'CommunityMemberEdge', node: { __typename?: 'CommunityMember', id: string, role: CommunityRole, status: string, joinedAt: string, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, photos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, tags: Array<string>, likeCount: number, commentCount: number, license: PhotoLicense, watermarkEnabled: boolean, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, photographerName?: string | null, gearBody?: string | null, gearLens?: string | null, exifData?: any | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string, isFollowedByMe: boolean } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string, isFollowedByMe: boolean } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null, isFollowedByMe: boolean } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, albums: { __typename?: 'AlbumConnection', totalCount: number, edges: Array<{ __typename?: 'AlbumEdge', node: { __typename?: 'Album', id: string, title: string, description?: string | null, isPublic: boolean, photoCount: number, createdAt: string, updatedAt: string, communityId?: string | null, community?: { __typename?: 'Community', id: string, name: string, slug: string } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, coverPhoto?: { __typename?: 'Photo', id: string, variants: Array<{ __typename?: 'PhotoVariant', variantType: string, url: string, width: number, height: number }> } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } } | null };
 
 export type CommunitiesQueryVariables = Exact<{
   search?: InputMaybe<Scalars['String']['input']>;
@@ -4959,14 +5483,14 @@ export type ExportAircraftSpecificCategoriesQuery = { __typename?: 'Query', airc
 export type SiteSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SiteSettingsQuery = { __typename?: 'Query', siteSettings?: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, minPhotoLongEdge: number, maxPhotoLongEdge: number, updatedAt: string } | null };
+export type SiteSettingsQuery = { __typename?: 'Query', siteSettings?: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, minPhotoLongEdge: number, maxPhotoLongEdge: number, photoUploadTimeoutSeconds: number, accessTokenSeconds: number, refreshTokenSeconds: number, mapRefreshDebounceMs: number, updatedAt: string } | null };
 
 export type UpdateSiteSettingsMutationVariables = Exact<{
   input: UpdateSiteSettingsInput;
 }>;
 
 
-export type UpdateSiteSettingsMutation = { __typename?: 'Mutation', updateSiteSettings: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, minPhotoLongEdge: number, maxPhotoLongEdge: number, updatedAt: string } };
+export type UpdateSiteSettingsMutation = { __typename?: 'Mutation', updateSiteSettings: { __typename?: 'SiteSettings', id: string, bannerUrl?: string | null, tagline?: string | null, minPhotoLongEdge: number, maxPhotoLongEdge: number, photoUploadTimeoutSeconds: number, accessTokenSeconds: number, refreshTokenSeconds: number, mapRefreshDebounceMs: number, updatedAt: string } };
 
 export type AdSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -5190,6 +5714,63 @@ export type CreatePhotoPurchaseMutationVariables = Exact<{
 
 export type CreatePhotoPurchaseMutation = { __typename?: 'Mutation', createPhotoPurchase: { __typename?: 'PurchasePayload', sessionId: string, checkoutUrl: string } };
 
+export type MyUploadsQueryVariables = Exact<{
+  moderationStatus?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  after?: InputMaybe<Scalars['String']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type MyUploadsQuery = { __typename?: 'Query', myUploads: { __typename?: 'MyUploadsConnection', totalCount: number, totalPendingCount: number, edges: Array<{ __typename?: 'MyUploadEdge', cursor: string, queuePosition?: number | null, node: { __typename?: 'Photo', id: string, caption?: string | null, originalUrl: string, moderationStatus: ModerationStatus, createdAt: string, variants: Array<{ __typename?: 'PhotoVariant', variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', registration: string, variant?: { __typename?: 'AircraftVariant', name: string } | null } | null } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } };
+
+export type BadgeDefinitionsQueryVariables = Exact<{
+  category?: InputMaybe<BadgeCategory>;
+  isActive?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type BadgeDefinitionsQuery = { __typename?: 'Query', badgeDefinitions: Array<{ __typename?: 'BadgeDefinition', id: string, slug: string, name: string, description: string, iconUrl?: string | null, category: BadgeCategory, tier: BadgeTier, triggerType: BadgeTriggerType, triggerMetric?: string | null, triggerThreshold?: number | null, isActive: boolean, displayOrder: number, createdAt: string, updatedAt: string }> };
+
+export type CreateBadgeDefinitionMutationVariables = Exact<{
+  input: CreateBadgeDefinitionInput;
+}>;
+
+
+export type CreateBadgeDefinitionMutation = { __typename?: 'Mutation', createBadgeDefinition: { __typename?: 'BadgeDefinition', id: string, slug: string, name: string, description: string, category: BadgeCategory, tier: BadgeTier, triggerType: BadgeTriggerType, triggerMetric?: string | null, triggerThreshold?: number | null, isActive: boolean, displayOrder: number } };
+
+export type UpdateBadgeDefinitionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  input: UpdateBadgeDefinitionInput;
+}>;
+
+
+export type UpdateBadgeDefinitionMutation = { __typename?: 'Mutation', updateBadgeDefinition: { __typename?: 'BadgeDefinition', id: string, slug: string, name: string, description: string, category: BadgeCategory, tier: BadgeTier, triggerType: BadgeTriggerType, triggerMetric?: string | null, triggerThreshold?: number | null, isActive: boolean, displayOrder: number } };
+
+export type DeleteBadgeDefinitionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteBadgeDefinitionMutation = { __typename?: 'Mutation', deleteBadgeDefinition: boolean };
+
+export type AwardBadgeMutationVariables = Exact<{
+  userId: Scalars['ID']['input'];
+  badgeDefinitionId: Scalars['ID']['input'];
+  photoId?: InputMaybe<Scalars['ID']['input']>;
+}>;
+
+
+export type AwardBadgeMutation = { __typename?: 'Mutation', awardBadge: { __typename?: 'UserBadge', id: string, awardedAt: string, badgeDefinition: { __typename?: 'BadgeDefinition', id: string, name: string, tier: BadgeTier }, user: { __typename?: 'User', id: string, username: string } } };
+
+export type RevokeBadgeMutationVariables = Exact<{
+  userId: Scalars['ID']['input'];
+  badgeDefinitionId: Scalars['ID']['input'];
+}>;
+
+
+export type RevokeBadgeMutation = { __typename?: 'Mutation', revokeBadge: boolean };
+
 export const PhotoFieldsFragmentDoc = gql`
     fragment PhotoFields on Photo {
   id
@@ -5203,6 +5784,7 @@ export const PhotoFieldsFragmentDoc = gql`
   fileSizeBytes
   mimeType
   moderationStatus
+  rejectionReason
   tags
   likeCount
   commentCount
@@ -5224,6 +5806,8 @@ export const PhotoFieldsFragmentDoc = gql`
   operatorType
   msn
   manufacturingDate
+  kind
+  communityCategory
   aircraft {
     id
     registration
@@ -5467,7 +6051,7 @@ export function useResetPasswordMutation() {
   return Urql.useMutation<ResetPasswordMutation, ResetPasswordMutationVariables>(ResetPasswordDocument);
 };
 export const PhotosDocument = gql`
-    query Photos($first: Int, $after: String, $page: Int, $userId: ID, $albumId: ID, $airportCode: String, $tags: [String!], $manufacturer: String, $family: String, $variant: String, $airline: String, $photographer: String, $sortBy: PhotoSortBy) {
+    query Photos($first: Int, $after: String, $page: Int, $userId: ID, $albumId: ID, $airportCode: String, $tags: [String!], $manufacturer: String, $family: String, $variant: String, $airline: String, $photographer: String, $kind: PhotoKind, $sortBy: PhotoSortBy) {
   photos(
     first: $first
     after: $after
@@ -5481,6 +6065,7 @@ export const PhotosDocument = gql`
     variant: $variant
     airline: $airline
     photographer: $photographer
+    kind: $kind
     sortBy: $sortBy
   ) {
     edges {
@@ -5535,6 +6120,17 @@ export const CreatePhotoDocument = gql`
 export function useCreatePhotoMutation() {
   return Urql.useMutation<CreatePhotoMutation, CreatePhotoMutationVariables>(CreatePhotoDocument);
 };
+export const UpdatePhotoDocument = gql`
+    mutation UpdatePhoto($id: ID!, $input: UpdatePhotoInput!) {
+  updatePhoto(id: $id, input: $input) {
+    ...PhotoFields
+  }
+}
+    ${PhotoFieldsFragmentDoc}`;
+
+export function useUpdatePhotoMutation() {
+  return Urql.useMutation<UpdatePhotoMutation, UpdatePhotoMutationVariables>(UpdatePhotoDocument);
+};
 export const DeletePhotoDocument = gql`
     mutation DeletePhoto($photoId: ID!) {
   deletePhoto(id: $photoId)
@@ -5576,6 +6172,19 @@ export const UserDocument = gql`
     followerCount
     followingCount
     isFollowedByMe
+    badges {
+      id
+      awardedAt
+      badgeDefinition {
+        id
+        slug
+        name
+        description
+        iconUrl
+        category
+        tier
+      }
+    }
     profile {
       displayName
       bio
@@ -6003,6 +6612,30 @@ export const PhotosInBoundsDocument = gql`
 export function usePhotosInBoundsQuery(options: Omit<Urql.UseQueryArgs<PhotosInBoundsQueryVariables>, 'query'>) {
   return Urql.useQuery<PhotosInBoundsQuery, PhotosInBoundsQueryVariables>({ query: PhotosInBoundsDocument, ...options });
 };
+export const AirportsInBoundsDocument = gql`
+    query AirportsInBounds($swLat: Float!, $swLng: Float!, $neLat: Float!, $neLng: Float!, $first: Int) {
+  airportsInBounds(
+    swLat: $swLat
+    swLng: $swLng
+    neLat: $neLat
+    neLng: $neLng
+    first: $first
+  ) {
+    id
+    icaoCode
+    iataCode
+    name
+    city
+    country
+    latitude
+    longitude
+  }
+}
+    `;
+
+export function useAirportsInBoundsQuery(options: Omit<Urql.UseQueryArgs<AirportsInBoundsQueryVariables>, 'query'>) {
+  return Urql.useQuery<AirportsInBoundsQuery, AirportsInBoundsQueryVariables>({ query: AirportsInBoundsDocument, ...options });
+};
 export const PhotosNearbyDocument = gql`
     query PhotosNearby($latitude: Float!, $longitude: Float!, $radiusMeters: Float, $first: Int) {
   photosNearby(
@@ -6363,6 +6996,11 @@ export const AdminUsersDocument = gql`
           displayName
           avatarUrl
         }
+        tier {
+          id
+          slug
+          name
+        }
       }
     }
     pageInfo {
@@ -6541,6 +7179,158 @@ export const AdminUpdateUserRoleDocument = gql`
 
 export function useAdminUpdateUserRoleMutation() {
   return Urql.useMutation<AdminUpdateUserRoleMutation, AdminUpdateUserRoleMutationVariables>(AdminUpdateUserRoleDocument);
+};
+export const AdminUserByIdDocument = gql`
+    query AdminUserById($id: ID!) {
+  adminUserById(id: $id) {
+    id
+    username
+    email
+    role
+    status
+    createdAt
+    lastLoginAt
+    cognitoSub
+    failedAttempts
+    lockoutUntil
+    profile {
+      displayName
+      avatarUrl
+      bio
+    }
+    tier {
+      id
+      slug
+      name
+      priceCents
+      currency
+    }
+  }
+}
+    `;
+
+export function useAdminUserByIdQuery(options: Omit<Urql.UseQueryArgs<AdminUserByIdQueryVariables>, 'query'>) {
+  return Urql.useQuery<AdminUserByIdQuery, AdminUserByIdQueryVariables>({ query: AdminUserByIdDocument, ...options });
+};
+export const AdminUnlockUserDocument = gql`
+    mutation AdminUnlockUser($userId: ID!) {
+  adminUnlockUser(userId: $userId) {
+    id
+    failedAttempts
+    lockoutUntil
+  }
+}
+    `;
+
+export function useAdminUnlockUserMutation() {
+  return Urql.useMutation<AdminUnlockUserMutation, AdminUnlockUserMutationVariables>(AdminUnlockUserDocument);
+};
+export const AdminAssignUserTierDocument = gql`
+    mutation AdminAssignUserTier($userId: ID!, $tierId: ID) {
+  adminAssignUserTier(userId: $userId, tierId: $tierId) {
+    id
+    tier {
+      id
+      slug
+      name
+    }
+  }
+}
+    `;
+
+export function useAdminAssignUserTierMutation() {
+  return Urql.useMutation<AdminAssignUserTierMutation, AdminAssignUserTierMutationVariables>(AdminAssignUserTierDocument);
+};
+export const TiersDocument = gql`
+    query Tiers {
+  tiers {
+    id
+    slug
+    name
+    priceCents
+    currency
+    uploadsPerDay
+    uploadsPerWeek
+    canCreateCommunity
+    displayOrder
+    isActive
+  }
+}
+    `;
+
+export function useTiersQuery(options?: Omit<Urql.UseQueryArgs<TiersQueryVariables>, 'query'>) {
+  return Urql.useQuery<TiersQuery, TiersQueryVariables>({ query: TiersDocument, ...options });
+};
+export const AdminTiersDocument = gql`
+    query AdminTiers {
+  adminTiers {
+    id
+    slug
+    name
+    priceCents
+    currency
+    uploadsPerDay
+    uploadsPerWeek
+    canCreateCommunity
+    displayOrder
+    isActive
+    createdAt
+    updatedAt
+  }
+}
+    `;
+
+export function useAdminTiersQuery(options?: Omit<Urql.UseQueryArgs<AdminTiersQueryVariables>, 'query'>) {
+  return Urql.useQuery<AdminTiersQuery, AdminTiersQueryVariables>({ query: AdminTiersDocument, ...options });
+};
+export const CreateTierDocument = gql`
+    mutation CreateTier($input: CreateTierInput!) {
+  createTier(input: $input) {
+    id
+    slug
+    name
+    priceCents
+    currency
+    uploadsPerDay
+    uploadsPerWeek
+    canCreateCommunity
+    displayOrder
+    isActive
+  }
+}
+    `;
+
+export function useCreateTierMutation() {
+  return Urql.useMutation<CreateTierMutation, CreateTierMutationVariables>(CreateTierDocument);
+};
+export const UpdateTierDocument = gql`
+    mutation UpdateTier($id: ID!, $input: UpdateTierInput!) {
+  updateTier(id: $id, input: $input) {
+    id
+    slug
+    name
+    priceCents
+    currency
+    uploadsPerDay
+    uploadsPerWeek
+    canCreateCommunity
+    displayOrder
+    isActive
+  }
+}
+    `;
+
+export function useUpdateTierMutation() {
+  return Urql.useMutation<UpdateTierMutation, UpdateTierMutationVariables>(UpdateTierDocument);
+};
+export const DeleteTierDocument = gql`
+    mutation DeleteTier($id: ID!) {
+  deleteTier(id: $id)
+}
+    `;
+
+export function useDeleteTierMutation() {
+  return Urql.useMutation<DeleteTierMutation, DeleteTierMutationVariables>(DeleteTierDocument);
 };
 export const AdminUpdatePhotoModerationDocument = gql`
     mutation AdminUpdatePhotoModeration($photoId: ID!, $status: String!) {
@@ -8514,6 +9304,10 @@ export const SiteSettingsDocument = gql`
     tagline
     minPhotoLongEdge
     maxPhotoLongEdge
+    photoUploadTimeoutSeconds
+    accessTokenSeconds
+    refreshTokenSeconds
+    mapRefreshDebounceMs
     updatedAt
   }
 }
@@ -8530,6 +9324,10 @@ export const UpdateSiteSettingsDocument = gql`
     tagline
     minPhotoLongEdge
     maxPhotoLongEdge
+    photoUploadTimeoutSeconds
+    accessTokenSeconds
+    refreshTokenSeconds
+    mapRefreshDebounceMs
     updatedAt
   }
 }
@@ -9308,4 +10106,157 @@ export const CreatePhotoPurchaseDocument = gql`
 
 export function useCreatePhotoPurchaseMutation() {
   return Urql.useMutation<CreatePhotoPurchaseMutation, CreatePhotoPurchaseMutationVariables>(CreatePhotoPurchaseDocument);
+};
+export const MyUploadsDocument = gql`
+    query MyUploads($moderationStatus: String, $first: Int, $after: String, $page: Int) {
+  myUploads(
+    moderationStatus: $moderationStatus
+    first: $first
+    after: $after
+    page: $page
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        caption
+        originalUrl
+        moderationStatus
+        createdAt
+        variants {
+          variantType
+          url
+          width
+          height
+        }
+        aircraft {
+          registration
+          variant {
+            name
+          }
+        }
+      }
+      queuePosition
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+    totalPendingCount
+  }
+}
+    `;
+
+export function useMyUploadsQuery(options?: Omit<Urql.UseQueryArgs<MyUploadsQueryVariables>, 'query'>) {
+  return Urql.useQuery<MyUploadsQuery, MyUploadsQueryVariables>({ query: MyUploadsDocument, ...options });
+};
+export const BadgeDefinitionsDocument = gql`
+    query BadgeDefinitions($category: BadgeCategory, $isActive: Boolean) {
+  badgeDefinitions(category: $category, isActive: $isActive) {
+    id
+    slug
+    name
+    description
+    iconUrl
+    category
+    tier
+    triggerType
+    triggerMetric
+    triggerThreshold
+    isActive
+    displayOrder
+    createdAt
+    updatedAt
+  }
+}
+    `;
+
+export function useBadgeDefinitionsQuery(options?: Omit<Urql.UseQueryArgs<BadgeDefinitionsQueryVariables>, 'query'>) {
+  return Urql.useQuery<BadgeDefinitionsQuery, BadgeDefinitionsQueryVariables>({ query: BadgeDefinitionsDocument, ...options });
+};
+export const CreateBadgeDefinitionDocument = gql`
+    mutation CreateBadgeDefinition($input: CreateBadgeDefinitionInput!) {
+  createBadgeDefinition(input: $input) {
+    id
+    slug
+    name
+    description
+    category
+    tier
+    triggerType
+    triggerMetric
+    triggerThreshold
+    isActive
+    displayOrder
+  }
+}
+    `;
+
+export function useCreateBadgeDefinitionMutation() {
+  return Urql.useMutation<CreateBadgeDefinitionMutation, CreateBadgeDefinitionMutationVariables>(CreateBadgeDefinitionDocument);
+};
+export const UpdateBadgeDefinitionDocument = gql`
+    mutation UpdateBadgeDefinition($id: ID!, $input: UpdateBadgeDefinitionInput!) {
+  updateBadgeDefinition(id: $id, input: $input) {
+    id
+    slug
+    name
+    description
+    category
+    tier
+    triggerType
+    triggerMetric
+    triggerThreshold
+    isActive
+    displayOrder
+  }
+}
+    `;
+
+export function useUpdateBadgeDefinitionMutation() {
+  return Urql.useMutation<UpdateBadgeDefinitionMutation, UpdateBadgeDefinitionMutationVariables>(UpdateBadgeDefinitionDocument);
+};
+export const DeleteBadgeDefinitionDocument = gql`
+    mutation DeleteBadgeDefinition($id: ID!) {
+  deleteBadgeDefinition(id: $id)
+}
+    `;
+
+export function useDeleteBadgeDefinitionMutation() {
+  return Urql.useMutation<DeleteBadgeDefinitionMutation, DeleteBadgeDefinitionMutationVariables>(DeleteBadgeDefinitionDocument);
+};
+export const AwardBadgeDocument = gql`
+    mutation AwardBadge($userId: ID!, $badgeDefinitionId: ID!, $photoId: ID) {
+  awardBadge(
+    userId: $userId
+    badgeDefinitionId: $badgeDefinitionId
+    photoId: $photoId
+  ) {
+    id
+    awardedAt
+    badgeDefinition {
+      id
+      name
+      tier
+    }
+    user {
+      id
+      username
+    }
+  }
+}
+    `;
+
+export function useAwardBadgeMutation() {
+  return Urql.useMutation<AwardBadgeMutation, AwardBadgeMutationVariables>(AwardBadgeDocument);
+};
+export const RevokeBadgeDocument = gql`
+    mutation RevokeBadge($userId: ID!, $badgeDefinitionId: ID!) {
+  revokeBadge(userId: $userId, badgeDefinitionId: $badgeDefinitionId)
+}
+    `;
+
+export function useRevokeBadgeMutation() {
+  return Urql.useMutation<RevokeBadgeMutation, RevokeBadgeMutationVariables>(RevokeBadgeDocument);
 };

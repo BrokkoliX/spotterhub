@@ -10,7 +10,9 @@ import styles from './page.module.css';
 
 export default function AdminDashboard() {
   const { user, ready } = useAuth();
-  const isAdmin = user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
+  const isAdmin =
+    user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
+  const isSuperuser = user?.role === 'superuser';
 
   const [{ data, fetching }] = useQuery({
     query: ADMIN_STATS,
@@ -72,13 +74,24 @@ export default function AdminDashboard() {
             <div className={styles.quickLinkDesc}>User inquiries and feedback</div>
           </div>
         </Link>
-        <Link href="/admin/users" className={styles.quickLink}>
-          <span className={styles.quickLinkIcon}>👥</span>
-          <div>
-            <div className={styles.quickLinkLabel}>Users</div>
-            <div className={styles.quickLinkDesc}>Manage roles &amp; status</div>
-          </div>
-        </Link>
+        {isSuperuser && (
+          <>
+            <Link href="/admin/users" className={styles.quickLink}>
+              <span className={styles.quickLinkIcon}>👥</span>
+              <div>
+                <div className={styles.quickLinkLabel}>Users</div>
+                <div className={styles.quickLinkDesc}>Manage roles, status &amp; tiers</div>
+              </div>
+            </Link>
+            <Link href="/admin/tiers" className={styles.quickLink}>
+              <span className={styles.quickLinkIcon}>🎟️</span>
+              <div>
+                <div className={styles.quickLinkLabel}>Tiers</div>
+                <div className={styles.quickLinkDesc}>Pricing &amp; upload-cap configuration</div>
+              </div>
+            </Link>
+          </>
+        )}
         <Link href="/admin/photos" className={styles.quickLink}>
           <span className={styles.quickLinkIcon}>📷</span>
           <div>
