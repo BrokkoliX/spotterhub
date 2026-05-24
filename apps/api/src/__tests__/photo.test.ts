@@ -406,6 +406,49 @@ describe('Photo: updatePhoto', () => {
     expect(data.errors).toBeDefined();
     expect(data.errors![0].extensions?.code).toBe('FORBIDDEN');
   });
+
+  it('allows a moderator to update a photo they do not own', async () => {
+    const { user: owner } = await createTestUser({
+      email: 'owner-mod-edit@test.com',
+      username: 'owner-mod-edit',
+      cognitoSub: 'sub-owner-mod-edit',
+    });
+    const { ctx: modCtx } = await createTestUser({
+      email: 'mod-edit@test.com',
+      username: 'mod-edit',
+      cognitoSub: 'sub-mod-edit',
+      role: 'moderator',
+    });
+
+    const photo = await prisma.photo.create({
+      data: {
+        userId: owner.id,
+        originalUrl: 'https://example.com/photo.jpg',
+        moderationStatus: 'approved',
+      },
+    });
+
+    const result = await server.executeOperation(
+      {
+        query: UPDATE_PHOTO,
+        variables: {
+          id: photo.id,
+          input: { caption: 'Edited by moderator' },
+        },
+      },
+      { contextValue: modCtx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const updated = data.data?.updatePhoto as Record<string, unknown>;
+    expect(updated.caption).toBe('Edited by moderator');
+  });
 });
 
 describe('Photo: deletePhoto', () => {

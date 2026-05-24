@@ -45,13 +45,19 @@ export function createTestContext(user: Context['user'] = null): Context {
 }
 
 export async function createTestUser(
-  overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {},
+  overrides: Partial<{
+    email: string;
+    username: string;
+    cognitoSub: string;
+    role: 'user' | 'moderator' | 'admin' | 'superuser';
+  }> = {},
 ) {
   const user = await prisma.user.create({
     data: {
       email: overrides.email ?? 'test@example.com',
       username: overrides.username ?? 'testuser',
       cognitoSub: overrides.cognitoSub ?? 'test-sub-1',
+      ...(overrides.role !== undefined && { role: overrides.role }),
     },
   });
   const ctx = createTestContext({

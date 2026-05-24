@@ -37,6 +37,7 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   const isPrivileged =
     ready && (user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'superuser');
   const canDelete = isOwner || isPrivileged;
+  const canEdit = isOwner || isPrivileged;
 
   const handleDelete = async () => {
     if (!confirm('Delete this photo? This cannot be undone.')) return;
@@ -257,6 +258,15 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                 />
                 <span className={styles.stat}>💬 {photo.commentCount}</span>
                 <ReportButton targetType="photo" targetId={photo.id} />
+                {canEdit && (
+                  <Link
+                    href={`/photos/${photo.id}/edit`}
+                    className={styles.deleteBtn}
+                    title="Edit photo"
+                  >
+                    ✏️ Edit
+                  </Link>
+                )}
                 {canDelete && (
                   <button
                     className={styles.deleteBtn}

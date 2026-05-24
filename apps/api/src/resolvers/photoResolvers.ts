@@ -632,7 +632,7 @@ export const photoMutationResolvers = {
     const authUser = requireAuth(ctx);
     const user = await ctx.prisma.user.findUnique({
       where: { cognitoSub: authUser.sub },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!user) {
       throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
@@ -645,8 +645,13 @@ export const photoMutationResolvers = {
     if (!photo) {
       throw new GraphQLError('Photo not found', { extensions: { code: 'NOT_FOUND' } });
     }
-    if (photo.userId !== user.id) {
-      throw new GraphQLError('You can only edit your own photos', {
+
+    // Admin/moderator/superuser can edit any photo; everyone else must be the owner.
+    const isPrivileged =
+      user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser';
+
+    if (!isPrivileged && photo.userId !== user.id) {
+      throw new GraphQLError('You do not have permission to edit this photo', {
         extensions: { code: 'FORBIDDEN' },
       });
     }

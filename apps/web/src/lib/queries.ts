@@ -311,6 +311,15 @@ export const CREATE_PHOTO = gql`
   ${PHOTO_FIELDS}
 `;
 
+export const UPDATE_PHOTO = gql`
+  mutation UpdatePhoto($id: ID!, $input: UpdatePhotoInput!) {
+    updatePhoto(id: $id, input: $input) {
+      ...PhotoFields
+    }
+  }
+  ${PHOTO_FIELDS}
+`;
+
 export const DELETE_PHOTO = gql`
   mutation DeletePhoto($photoId: ID!) {
     deletePhoto(id: $photoId)

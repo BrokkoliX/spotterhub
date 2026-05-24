@@ -771,7 +771,8 @@ export const typeDefs = gql`
     createPhoto(input: CreatePhotoInput!): Photo!
 
     """
-    Update metadata on an existing photo. Only the photo owner can update.
+    Update metadata on an existing photo. The photo owner, or any admin,
+    moderator, or superuser can update.
     """
     updatePhoto(id: ID!, input: UpdatePhotoInput!): Photo!
 
