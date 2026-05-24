@@ -1,16 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
+import { ForumHero } from '@/components/forum';
 import { useAuth } from '@/lib/auth';
-import {
-  CREATE_FORUM_CATEGORY,
-  DELETE_FORUM_CATEGORY,
-  GET_COMMUNITY,
-} from '@/lib/queries';
+import { CREATE_FORUM_CATEGORY, DELETE_FORUM_CATEGORY, GET_COMMUNITY } from '@/lib/queries';
 import type { ForumCategoriesQuery } from '@/lib/generated/graphql';
 import { useForumCategoriesQuery } from '@/lib/generated/graphql';
 
@@ -46,7 +43,11 @@ function NewCategoryModal({
     e.preventDefault();
     setError('');
     setSubmitting(true);
-    const result = await createCategory({ communityId, name: name.trim(), description: description.trim() || undefined });
+    const result = await createCategory({
+      communityId,
+      name: name.trim(),
+      description: description.trim() || undefined,
+    });
     setSubmitting(false);
     if (result.error) {
       setError(result.error.graphQLErrors?.[0]?.message || result.error.message);
@@ -56,7 +57,12 @@ function NewCategoryModal({
   };
 
   return (
-    <div className={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className={styles.modal}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className={styles.modalCard}>
         <div className={styles.modalTitle}>New Forum Category</div>
         <form onSubmit={handleSubmit}>
@@ -85,7 +91,9 @@ function NewCategoryModal({
           </div>
           {error && <div className={styles.error}>{error}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
             <button type="submit" className="btn btn-primary" disabled={submitting}>
               {submitting ? 'Creating…' : 'Create Category'}
             </button>
@@ -101,7 +109,6 @@ function NewCategoryModal({
 export default function ForumPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, ready } = useAuth();
-  const router = useRouter();
 
   const [showNewCategory, setShowNewCategory] = useState(false);
 
@@ -124,7 +131,6 @@ export default function ForumPage() {
 
   const myRole = community?.myMembership?.role ?? null;
   const isAdmin = myRole === 'owner' || myRole === 'admin';
-  const isMember = !!community?.myMembership;
 
   const refresh = () => reexecuteQuery({ requestPolicy: 'network-only' });
 
@@ -138,94 +144,113 @@ export default function ForumPage() {
   if (!community) return <div className={styles.empty}>Community not found.</div>;
 
   return (
-    <div className={styles.page}>
-      {/* Breadcrumb */}
-      <nav className={styles.breadcrumb}>
-        <Link href="/communities">Communities</Link>
-        <span>/</span>
-        <Link href={`/communities/${slug}`}>{community.name}</Link>
-        <span>/</span>
-        <span>Forum</span>
-      </nav>
+    <>
+      <ForumHero
+        title="Forum"
+        description={`Discussions in ${community.name}`}
+        breadcrumbs={[
+          { label: 'Communities', href: '/communities' },
+          { label: community.name, href: `/communities/${slug}` },
+          { label: 'Forum' },
+        ]}
+        meta={
+          categories.length > 0 ? (
+            <span>
+              {categories.length} categor{categories.length === 1 ? 'y' : 'ies'}
+            </span>
+          ) : undefined
+        }
+        action={
+          ready && user && isAdmin ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowNewCategory(true)}
+            >
+              + New Category
+            </button>
+          ) : undefined
+        }
+      />
 
-      {/* Header */}
-      <div className={styles.header}>
-        <h1 className={styles.title}>💬 Forum</h1>
-        {ready && user && isAdmin && (
-          <button className="btn btn-primary" onClick={() => setShowNewCategory(true)}>
-            + New Category
-          </button>
+      <div className={styles.page}>
+        {/* Category list */}
+        {fetching && categories.length === 0 && <div className={styles.loading}>Loading…</div>}
+
+        {!fetching && categories.length === 0 && (
+          <div className={styles.empty}>
+            No forum categories yet.
+            {isAdmin && (
+              <div style={{ marginTop: 12 }}>
+                <button className="btn btn-primary" onClick={() => setShowNewCategory(true)}>
+                  Create the first category
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {categories.length > 0 && (
+          <div className={styles.categoryList}>
+            {categories.map((cat) => (
+              <div key={cat.id} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                <Link
+                  href={`/communities/${slug}/forum/${cat.slug}`}
+                  className={styles.categoryCard}
+                  style={{ flex: 1 }}
+                >
+                  <div className={styles.categoryIcon}>💬</div>
+                  <div className={styles.categoryBody}>
+                    <div className={styles.categoryName}>{cat.name}</div>
+                    {cat.description && (
+                      <div className={styles.categoryDesc}>{cat.description}</div>
+                    )}
+                    <div className={styles.categoryMeta}>
+                      <span>
+                        {cat.threadCount} thread{cat.threadCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  {cat.latestThread && (
+                    <div className={styles.categoryLatest}>
+                      <div style={{ marginBottom: 2, fontSize: '0.6875rem' }}>Latest</div>
+                      <div className={styles.categoryLatestTitle}>{cat.latestThread.title}</div>
+                      <div style={{ marginTop: 2 }}>by {cat.latestThread.author.username}</div>
+                      <div>{formatDate(cat.latestThread.lastPostAt)}</div>
+                    </div>
+                  )}
+                </Link>
+                {isAdmin && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{
+                      flexShrink: 0,
+                      alignSelf: 'center',
+                      fontSize: '0.75rem',
+                      padding: '4px 10px',
+                    }}
+                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                    title="Delete category"
+                  >
+                    🗑
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showNewCategory && community && (
+          <NewCategoryModal
+            communityId={community.id}
+            onClose={() => setShowNewCategory(false)}
+            onCreated={() => {
+              setShowNewCategory(false);
+              refresh();
+            }}
+          />
         )}
       </div>
-
-      {/* Category list */}
-      {fetching && categories.length === 0 && (
-        <div className={styles.loading}>Loading…</div>
-      )}
-
-      {!fetching && categories.length === 0 && (
-        <div className={styles.empty}>
-          No forum categories yet.
-          {isAdmin && (
-            <div style={{ marginTop: 12 }}>
-              <button className="btn btn-primary" onClick={() => setShowNewCategory(true)}>
-                Create the first category
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {categories.length > 0 && (
-        <div className={styles.categoryList}>
-          {categories.map((cat) => (
-            <div key={cat.id} style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-              <Link
-                href={`/communities/${slug}/forum/${cat.slug}`}
-                className={styles.categoryCard}
-                style={{ flex: 1 }}
-              >
-                <div className={styles.categoryIcon}>💬</div>
-                <div className={styles.categoryBody}>
-                  <div className={styles.categoryName}>{cat.name}</div>
-                  {cat.description && (
-                    <div className={styles.categoryDesc}>{cat.description}</div>
-                  )}
-                  <div className={styles.categoryMeta}>
-                    <span>{cat.threadCount} thread{cat.threadCount !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-                {cat.latestThread && (
-                  <div className={styles.categoryLatest}>
-                    <div style={{ marginBottom: 2, fontSize: '0.6875rem' }}>Latest</div>
-                    <div className={styles.categoryLatestTitle}>{cat.latestThread.title}</div>
-                    <div style={{ marginTop: 2 }}>by {cat.latestThread.author.username}</div>
-                    <div>{formatDate(cat.latestThread.lastPostAt)}</div>
-                  </div>
-                )}
-              </Link>
-              {isAdmin && (
-                <button
-                  className="btn btn-secondary"
-                  style={{ flexShrink: 0, alignSelf: 'center', fontSize: '0.75rem', padding: '4px 10px' }}
-                  onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                  title="Delete category"
-                >
-                  🗑
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showNewCategory && community && (
-        <NewCategoryModal
-          communityId={community.id}
-          onClose={() => setShowNewCategory(false)}
-          onCreated={() => { setShowNewCategory(false); refresh(); }}
-        />
-      )}
-    </div>
+    </>
   );
 }

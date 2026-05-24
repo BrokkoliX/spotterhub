@@ -2,13 +2,11 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useMutation, useQuery } from 'urql';
+import { useMutation } from 'urql';
 
+import { ForumHero } from '@/components/forum';
 import { useAuth } from '@/lib/auth';
-import {
-  CREATE_GLOBAL_FORUM_CATEGORY,
-  DELETE_FORUM_CATEGORY,
-} from '@/lib/queries';
+import { CREATE_GLOBAL_FORUM_CATEGORY, DELETE_FORUM_CATEGORY } from '@/lib/queries';
 import { useGlobalForumCategoriesQuery } from '@/lib/generated/graphql';
 
 import styles from './page.module.css';
@@ -23,13 +21,7 @@ function formatDate(iso: string) {
 
 // ─── New Category Modal ──────────────────────────────────────────────────────
 
-function NewCategoryModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: () => void;
-}) {
+function NewCategoryModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -54,7 +46,12 @@ function NewCategoryModal({
   };
 
   return (
-    <div className={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className={styles.modal}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className={styles.modalCard}>
         <div className={styles.modalTitle}>New Forum Category</div>
         <form onSubmit={handleSubmit}>
@@ -83,7 +80,9 @@ function NewCategoryModal({
           </div>
           {error && <div className={styles.error}>{error}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
             <button type="submit" className="btn btn-primary" disabled={submitting}>
               {submitting ? 'Creating…' : 'Create Category'}
             </button>
@@ -116,33 +115,33 @@ export default function GlobalForumPage() {
 
   return (
     <div>
-      {/* Hero Banner */}
-      <div className={styles.hero}>
-        <div className={styles.heroGradient} />
-        <div className={styles.heroContent}>
-          <div className={styles.heroEmoji}>💬</div>
-          <h1 className={styles.heroTitle}>Global Forum</h1>
-          <p className={styles.heroSubtitle}>
-            Aviation discussion from across the SpotterSpace community
-          </p>
-        </div>
-      </div>
-
-      <div className="container">
-        {/* Header */}
-        <div className={styles.header}>
-          <h2 className={styles.sectionTitle}>Categories</h2>
-          {ready && user && isAdmin && (
-            <button className="btn btn-primary" onClick={() => setShowNewCategory(true)}>
+      <ForumHero
+        variant="tall"
+        title="Global Forum"
+        description="Aviation discussion from across the SpotterSpace community"
+        meta={
+          categories.length > 0 ? (
+            <span>
+              {categories.length} categor{categories.length === 1 ? 'y' : 'ies'}
+            </span>
+          ) : undefined
+        }
+        action={
+          ready && user && isAdmin ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowNewCategory(true)}
+            >
               + New Category
             </button>
-          )}
-        </div>
+          ) : undefined
+        }
+      />
 
+      <div className="container" style={{ paddingTop: 24, paddingBottom: 48 }}>
         {/* Category list */}
-        {fetching && categories.length === 0 && (
-          <div className={styles.loading}>Loading…</div>
-        )}
+        {fetching && categories.length === 0 && <div className={styles.loading}>Loading…</div>}
 
         {!fetching && categories.length === 0 && (
           <div className={styles.empty}>
@@ -169,7 +168,9 @@ export default function GlobalForumPage() {
                       <div className={styles.categoryDesc}>{cat.description}</div>
                     )}
                     <div className={styles.categoryMeta}>
-                      <span>{cat.threadCount} thread{cat.threadCount !== 1 ? 's' : ''}</span>
+                      <span>
+                        {cat.threadCount} thread{cat.threadCount !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
                   {cat.latestThread && (
@@ -177,7 +178,8 @@ export default function GlobalForumPage() {
                       <div className={styles.categoryLatestLabel}>Latest</div>
                       <div className={styles.categoryLatestTitle}>{cat.latestThread.title}</div>
                       <div className={styles.categoryLatestMeta}>
-                        by {cat.latestThread.author?.username ?? 'unknown'} · {formatDate(cat.latestThread.lastPostAt)}
+                        by {cat.latestThread.author?.username ?? 'unknown'} ·{' '}
+                        {formatDate(cat.latestThread.lastPostAt)}
                       </div>
                     </div>
                   )}
@@ -200,7 +202,9 @@ export default function GlobalForumPage() {
       {showNewCategory && (
         <NewCategoryModal
           onClose={() => setShowNewCategory(false)}
-          onCreated={() => { setShowNewCategory(false); }}
+          onCreated={() => {
+            setShowNewCategory(false);
+          }}
         />
       )}
     </div>
