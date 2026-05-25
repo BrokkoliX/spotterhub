@@ -144,14 +144,17 @@ export class SpotterSpaceStack extends Stack {
     // management later, import via `cdk import` rather than redeclaring it.
 
     // ─── Task sizing (stage-aware) ─────────────────────────────────────────
-    // Dev workload is single-instance and sees minimal traffic, so we
-    // right-size each service independently. Web (Next.js) starts cleanly
-    // at 0.25 vCPU / 0.5 GB. Api (Apollo + Prisma) needs more memory at
-    // boot so 256/512 OOM-killed during startup; 512/1024 is the smallest
-    // size that comes up reliably and is still ~4x cheaper than the
-    // previous 1024/3072. Prod keeps generous headroom for real load.
-    const apiTaskCpu = stage === 'prod' ? '1024' : '512';
-    const apiTaskMemory = stage === 'prod' ? '2048' : '1024';
+    // Dev workload is single-instance and sees minimal traffic, so both
+    // services run at the smallest Fargate size (256 CPU / 512 MB).
+    // Empirical baseline (2026-05-25, task def :254): the api boots cleanly
+    // on 256/512 with a brief CPU peak around 42% during Prisma migrate +
+    // Apollo startup, then settles to <1% CPU and ~13% memory steady-state.
+    // An older comment here claimed 256/512 OOM-killed at boot; that was
+    // observed under different conditions (heavier image and zombie task
+    // contention) and no longer holds. Prod retains generous headroom for
+    // real traffic; revisit if dev memory peaks ever exceed ~70%.
+    const apiTaskCpu = stage === 'prod' ? '1024' : '256';
+    const apiTaskMemory = stage === 'prod' ? '2048' : '512';
     const webTaskCpu = stage === 'prod' ? '1024' : '256';
     const webTaskMemory = stage === 'prod' ? '2048' : '512';
 

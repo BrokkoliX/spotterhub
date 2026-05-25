@@ -1,6 +1,6 @@
 # SpotterHub — Deployment & Operations Guide
 
-> **Last updated:** 2026-05-24
+> **Last updated:** 2026-05-25
 > **Domain:** spotterspace.com (registered 2026-04-11 via Amazon Registrar)
 > **AWS Region:** us-east-1
 > **AWS Account:** 654654553862
@@ -28,23 +28,19 @@
 ## Architecture Overview
 
 ```
-                 ┌─ spotterspace.com ─┐
-                 │   CloudFront       │
-                 │   301 → www        │
-                 └────────────────────┘
-                           │
-    ┌──────────────────────┼──────────────────────┐
-    │                      │                      │
-    ▼                      ▼                      ▼
-www.spotterspace.com   api.spotterspace.com   spotterspace.com
-    CNAME                  CNAME                  A (alias)
-    │                      │                      │
-    ▼                      ▼                      ▼
-┌──────────────────────────────────────┐  ┌──────────────┐
-│         ALB (spotterspace-alb)       │  │ CloudFront   │
-│  :443 HTTPS  ─── host-based rules   │  │ Apex Redirect│
-│  :80  HTTP   ─── host-based rules   │  └──────────────┘
-│  api.* → apiTG   │  www.* → webTG   │
+        ┌──────────────────────────────────────┐
+        │   www.spotterspace.com (CNAME → ALB) │
+        │   api.spotterspace.com (CNAME → ALB) │
+        │   spotterspace.com  (no record — apex│
+        │   not served; visit www. instead)    │
+        └──────────────────────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────┐
+│         ALB (spotterspace-alb)       │
+│  :443 HTTPS  ─── host-based rules    │
+│  :80  HTTP   ─── host-based rules    │
+│  api.* → apiTG   │  www.* → webTG    │
 └──────┬───────────────────┬───────────┘
        │                   │
        ▼                   ▼
@@ -61,16 +57,20 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 │ spotterhub-db│     │ spotterhub-  │
 │ Port 5432    │     │ photos       │
 └──────────────┘     └──────────────┘
+
+Photo CDN: d2ur47prd8ljwz.cloudfront.net → s3://spotterhub-photos
+(internal CloudFront; no DNS alias, used by signed URLs from the API)
 ```
 
 ### Live Endpoints
 
-| Endpoint      | URL                                  | Status |
-| ------------- | ------------------------------------ | ------ |
-| Web App       | https://www.spotterspace.com         | ✅     |
-| API GraphQL   | https://api.spotterspace.com/graphql | ✅     |
-| API Health    | https://api.spotterspace.com/health  | ✅     |
-| Apex Redirect | https://spotterspace.com → www       | ✅     |
+| Endpoint    | URL                                  | Status |
+| ----------- | ------------------------------------ | ------ |
+| Web App     | https://www.spotterspace.com         | ✅     |
+| API GraphQL | https://api.spotterspace.com/graphql | ✅     |
+| API Health  | https://api.spotterspace.com/health  | ✅     |
+
+> **Apex note:** `https://spotterspace.com` (no `www.`) is not served. The Route 53 zone has no A/CNAME record at the apex, and there is no CloudFront distribution performing an apex-to-www redirect. Earlier revisions of this document referenced one, but that infrastructure was never deployed to production. If apex-to-www becomes important, add a CloudFront distribution + Route 53 alias as a follow-up.
 
 ### Key AWS Resources
 
@@ -81,9 +81,9 @@ www.spotterspace.com   api.spotterspace.com   spotterspace.com
 | Web ECS Service     | `spotterspace-dev-web`                                              |
 | API ECR Repo        | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-api` |
 | Web ECR Repo        | `654654553862.dkr.ecr.us-east-1.amazonaws.com/spotterspace-dev-web` |
-| API Task Definition | `spotterspace-dev-api` (current: :234, 512 CPU / 1024 MB)           |
-| Web Task Definition | `spotterspace-dev-web` (current: :181, 256 CPU / 512 MB)            |
-| RDS                 | `spotterhub-db` (PostgreSQL 16.3, db.t3.medium, private subnets)    |
+| API Task Definition | `spotterspace-dev-api` (current: :254, 256 CPU / 512 MB)            |
+| Web Task Definition | `spotterspace-dev-web` (current: :199, 256 CPU / 512 MB)            |
+| RDS                 | `spotterhub-db` (PostgreSQL 16.3, db.t3.micro, private subnets)     |
 | S3                  | `spotterhub-photos`                                                 |
 | ALB                 | `spotterspace-alb`                                                  |
 | Secrets Manager     | `spotterhub/DATABASE_URL`, `spotterhub/JWT_SECRET`                  |
@@ -468,11 +468,12 @@ CMD ["node", "apps/web/apps/web/server.js"]
 
 ## DNS & HTTPS
 
-| Record                 | Type      | Target                            |
-| ---------------------- | --------- | --------------------------------- |
-| `www.spotterspace.com` | CNAME     | ALB DNS name                      |
-| `api.spotterspace.com` | CNAME     | ALB DNS name                      |
-| `spotterspace.com`     | A (alias) | CloudFront (apex redirect to www) |
+| Record                 | Type  | Target       |
+| ---------------------- | ----- | ------------ |
+| `www.spotterspace.com` | CNAME | ALB DNS name |
+| `api.spotterspace.com` | CNAME | ALB DNS name |
+
+The apex `spotterspace.com` has no A or CNAME record. Visiting it directly does not resolve to the application; use `www.` instead. See the Architecture Overview note above for follow-up if apex-to-www redirect is needed.
 
 **SSL:** ACM certificate covers `spotterspace.com` + `*.spotterspace.com`, DNS-validated via Route 53.
 
