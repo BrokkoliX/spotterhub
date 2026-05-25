@@ -18,7 +18,7 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-deploy-role-654654553862-us-east-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::654654553862:role/cdk-hnb659fds-cfn-exec-role-654654553862-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-654654553862-us-east-1/c2061a579aba622b4213c3c375ffe0d6cc36a4a13ddcac772a47bf7baf6f6d84.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-654654553862-us-east-1/e3afb00b1fb46e978bb9a6bdb708cb55db900cf5dc877c0a64a6b19e2bcf6468.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": ["SpotterSpace-dev-Stack.assets"],

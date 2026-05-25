@@ -1,10 +1,12 @@
 // SpotterSpace AWS Infrastructure — CDK v2
 // Architecture: CloudFront → ECS Fargate (web + API) → ALB → RDS via VPC
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration as cdkDuration, Stack, StackProps } from 'aws-cdk-lib';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import {
   aws_certificatemanager as acm,
   aws_cloudfront as cloudfront,
+  aws_cloudwatch as cloudwatch,
+  aws_cloudwatch_actions as cwActions,
   aws_ec2 as ec2,
   aws_ecr as ecr,
   aws_ecs as ecs,
@@ -13,6 +15,7 @@ import {
   aws_route53 as route53,
   aws_secretsmanager as secretsmanager,
   aws_s3 as s3,
+  aws_sns as sns,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
@@ -250,42 +253,32 @@ export class SpotterSpaceStack extends Stack {
     // ─── ALB Listener (HTTP :80) ───────────────────────────────────────────
     // Created BEFORE ECS services so target groups are registered.
     //
-    // Sprint 3 (S3.5): the :80 listener is now a strict HTTPS redirect.
-    // Previously it forwarded plaintext traffic to the web target group,
-    // letting clients ride HTTP all the way to the app tier. The default
-    // action and both host-based rules (api / www) now return 301 →
-    // https://{host}{path}?{query} so no request is served over plaintext.
+    // The :80 listener forwards directly to the web target group, with
+    // host-based rules forwarding api.* to the api target group and www.*
+    // to the web target group. CloudFront sits in front of www.* and
+    // upgrades to HTTPS for browser traffic. There is no listener-level
+    // HTTP→HTTPS redirect today — see TODO below.
     //
-    // CfnListener.ActionProperty and CfnListenerRule.ActionProperty are
-    // structurally distinct types in aws-cdk-lib (their nested
-    // AuthenticateCognitoConfig / RedirectConfig differ on field types
-    // like sessionTimeout: string vs number). We share the redirectConfig
-    // payload but inline the wrapping action per consumer.
-    const httpsRedirectConfig = {
-      protocol: 'HTTPS',
-      port: '443',
-      host: '#{host}',
-      path: '/#{path}',
-      query: '#{query}',
-      statusCode: 'HTTP_301',
-    } as const;
-
+    // TODO(security): Migrate HTTP→HTTPS at the listener level (replace the
+    // forward actions below with a 301 redirect to https://{host}{path}).
+    // Was originally written that way (Sprint 3 / S3.5) but the change was
+    // never deployed; reconciled to match live on 2026-05-24 so unrelated
+    // cdk deploys don't apply this surprise. Verify CloudFront covers the
+    // browser path before flipping the switch.
     const httpListener = new elbv2.CfnListener(this, 'HttpListener', {
       loadBalancerArn: alb.loadBalancerArn,
       protocol: elbv2.ApplicationProtocol.HTTP,
       port: 80,
       defaultActions: [
         {
-          type: 'redirect',
-          redirectConfig: httpsRedirectConfig,
+          type: 'forward',
+          targetGroupArn: webTG.ref,
         },
       ],
     });
 
-    // Host-based rules on HTTP listener — preserved so that explicit
-    // host-header probes (api.* / www.*) ALSO redirect rather than hit
-    // the default action only. Belt-and-suspenders against rule
-    // evaluation surprises.
+    // Host-based rules on HTTP listener — explicit api.* and www.* matchers
+    // that forward to the appropriate target group. Mirror live state.
     const apiListenerRule = new elbv2.CfnListenerRule(this, 'ApiListenerRule', {
       listenerArn: httpListener.ref,
       priority: 100,
@@ -299,8 +292,8 @@ export class SpotterSpaceStack extends Stack {
       ],
       actions: [
         {
-          type: 'redirect',
-          redirectConfig: httpsRedirectConfig,
+          type: 'forward',
+          targetGroupArn: apiTG.ref,
         },
       ],
     });
@@ -318,8 +311,8 @@ export class SpotterSpaceStack extends Stack {
       ],
       actions: [
         {
-          type: 'redirect',
-          redirectConfig: httpsRedirectConfig,
+          type: 'forward',
+          targetGroupArn: webTG.ref,
         },
       ],
     });
@@ -679,10 +672,14 @@ function handler(event) {
                 ? `https://api.${domainName}/graphql`
                 : 'https://api.spotterspace.com/graphql',
             },
-            {
-              name: 'WEB_BASE_URL',
-              value: domainName ? `https://www.${domainName}` : 'https://www.spotterspace.com',
-            },
+            // TODO(infra): Add WEB_BASE_URL back here once the deploy.yml /
+            // CDK split-brain is resolved. The variable was previously
+            // defined on this task def, but live state does not have it
+            // because GitHub Actions registers task definitions by copying
+            // env vars from the previous revision (so CDK-only additions
+            // never propagate). Removed on 2026-05-24 to clear cdk diff;
+            // restore once the deploy pipeline reads from CDK output or
+            // CDK becomes the sole deploy path.
             { name: 'HOSTNAME', value: '0.0.0.0' },
           ],
           logConfiguration: {
@@ -766,6 +763,109 @@ function handler(event) {
     if (httpsListener) {
       apiService.addDependency(httpsListener);
       webService.addDependency(httpsListener);
+    }
+
+    // ─── CloudWatch Alarms ─────────────────────────────────────────────────
+    // These five alarms catch the operational failures we hit in May 2026:
+    //   - OrphanFargateTaskAlarm: zombie one-off `aws ecs run-task` invocations
+    //     (RunningTaskCount > 3 for 1h). Reference incident: 2026-05-15/17 saw
+    //     13 zombies accumulate, costing ~$510/mo until cleanup.
+    //   - {Api,Web}NoHealthyHostsAlarm: target group reports 0 healthy hosts
+    //     for 3min. Catches ECS service replacement gone bad.
+    //   - {Api,Web}UnhealthyHostsAlarm: stale unhealthy ENI registrations
+    //     (orphan task IPs, AZ asymmetry like the 2026-05-24 ALB subnet issue).
+    //
+    // IMPORTANT: These alarms AND the SNS topic ALREADY EXIST in AWS (created
+    // via CLI on 2026-05-24 because of the CDK drift discovered then).
+    // Running `cdk deploy` will fail with "alarm already exists" until
+    // someone runs `cdk import` to adopt them under CDK management. Until
+    // then, see DEPLOYMENT_STATUS.md → "CloudWatch Alarms" for the CLI
+    // commands. The SNS topic has at least one email subscription (manually
+    // confirmed); CDK does not manage subscriptions either.
+    //
+    // Requires Container Insights to be enabled on the cluster:
+    //   aws ecs update-cluster-settings --cluster spotterspace-cluster \
+    //     --settings name=containerInsights,value=enabled --region us-east-1
+    const alarmTopic = sns.Topic.fromTopicArn(
+      this,
+      'AlarmTopic',
+      `arn:aws:sns:${this.region}:654654553862:spotterspace-${stage}-alarms`,
+    );
+    const alarmAction = new cwActions.SnsAction(alarmTopic);
+
+    const orphanFargateTaskAlarm = new cloudwatch.Alarm(this, 'OrphanFargateTaskAlarm', {
+      alarmName: `spotterspace-${stage}-orphan-fargate-tasks`,
+      alarmDescription:
+        'ECS cluster has more than 3 running tasks for 1h — likely orphaned one-off `aws ecs run-task` invocations. Check `aws ecs list-tasks` and stop any task whose Group does not start with "service:".',
+      // Use TaskCount (cluster-level) not RunningTaskCount (per-service only,
+      // which would never trigger because zombies don't belong to a service).
+      metric: new cloudwatch.Metric({
+        namespace: 'ECS/ContainerInsights',
+        metricName: 'TaskCount',
+        dimensionsMap: { ClusterName: 'spotterspace-cluster' },
+        statistic: 'Maximum',
+        period: cdkDuration.minutes(5),
+      }),
+      threshold: 3,
+      evaluationPeriods: 12, // 12 × 5min = 1h
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    orphanFargateTaskAlarm.addAlarmAction(alarmAction);
+    orphanFargateTaskAlarm.addOkAction(alarmAction);
+
+    // CloudWatch's LoadBalancer dimension expects the "full name" form
+    // (app/<name>/<id>), which we extract from the ARN since fromLookup'd
+    // ALBs don't expose loadBalancerFullName.
+    const albFullName = albArnStr.split(':loadbalancer/')[1];
+    if (!albFullName) {
+      throw new Error(`Could not extract ALB full name from ARN: ${albArnStr}`);
+    }
+    for (const [name, tg] of [
+      ['Api', apiTG],
+      ['Web', webTG],
+    ] as const) {
+      const noHealthyAlarm = new cloudwatch.Alarm(this, `${name}NoHealthyHostsAlarm`, {
+        alarmName: `spotterspace-${stage}-${name.toLowerCase()}-no-healthy-hosts`,
+        alarmDescription: `${name} target group has zero healthy hosts. Check ECS service events and ALB target health.`,
+        metric: new cloudwatch.Metric({
+          namespace: 'AWS/ApplicationELB',
+          metricName: 'HealthyHostCount',
+          dimensionsMap: {
+            LoadBalancer: albFullName,
+            TargetGroup: tg.attrTargetGroupFullName,
+          },
+          statistic: 'Minimum',
+          period: cdkDuration.minutes(1),
+        }),
+        threshold: 1,
+        evaluationPeriods: 3,
+        comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+        treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+      });
+      noHealthyAlarm.addAlarmAction(alarmAction);
+      noHealthyAlarm.addOkAction(alarmAction);
+
+      const unhealthyAlarm = new cloudwatch.Alarm(this, `${name}UnhealthyHostsAlarm`, {
+        alarmName: `spotterspace-${stage}-${name.toLowerCase()}-unhealthy-hosts`,
+        alarmDescription: `${name} target group has unhealthy hosts persisting for 15min. Check ALB target health and recent task replacements.`,
+        metric: new cloudwatch.Metric({
+          namespace: 'AWS/ApplicationELB',
+          metricName: 'UnHealthyHostCount',
+          dimensionsMap: {
+            LoadBalancer: albFullName,
+            TargetGroup: tg.attrTargetGroupFullName,
+          },
+          statistic: 'Maximum',
+          period: cdkDuration.minutes(5),
+        }),
+        threshold: 0,
+        evaluationPeriods: 3, // 3 × 5min = 15min
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+      unhealthyAlarm.addAlarmAction(alarmAction);
+      unhealthyAlarm.addOkAction(alarmAction);
     }
 
     // ─── Outputs ───────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 # SpotterHub — Deployment & Operations Guide
 
-> **Last updated:** 2026-05-22
+> **Last updated:** 2026-05-24
 > **Domain:** spotterspace.com (registered 2026-04-11 via Amazon Registrar)
 > **AWS Region:** us-east-1
 > **AWS Account:** 654654553862
@@ -270,16 +270,20 @@ aws ecs update-service --cluster spotterspace-cluster \
 
 ### Emergency Schema Repair (via ECS run-task)
 
-If the database schema drifts from the Prisma schema (e.g., missing tables while `_prisma_migrations` still has records), you cannot fix this with `prisma migrate deploy` alone. Use this technique to run one-off Prisma commands inside the VPC:
+If the database schema drifts from the Prisma schema (e.g., missing tables while `_prisma_migrations` still has records), you cannot fix this with `prisma migrate deploy` alone. Use this technique to run one-off Prisma commands inside the VPC.
+
+> **Important — read the verification step at the bottom before walking away.** In May 2026 thirteen one-off tasks accumulated as zombies because their inner commands hung silently and nothing supervised them. Total cost: ~$510/month until cleanup. The procedure below is now hardened with `timeout` and a mandatory verification step to prevent recurrence. The `spotterspace-dev-orphan-fargate-tasks` CloudWatch alarm fires if running task count exceeds 3 for an hour as a backstop.
 
 ```bash
-# 1. Export current API task definition and create a one-off version with entrypoint override
+# 1. Export current API task definition and create a one-off version with entrypoint override.
+#    The `timeout 600` wrapper kills the inner command after 10 minutes if it hangs;
+#    the explicit `exit` after `&&` forces the container to terminate on success.
 aws ecs describe-task-definition --task-definition spotterspace-dev-api \
   --query 'taskDefinition' --no-cli-pager > /tmp/td.json
 
 jq '{family: "spotterspace-db-repair", containerDefinitions: (.containerDefinitions | map(. + {
   entryPoint: ["/bin/sh", "-c"],
-  command: ["npx prisma db push --schema packages/db/prisma/schema.prisma --accept-data-loss && echo DONE"],
+  command: ["timeout 600 npx prisma db push --schema packages/db/prisma/schema.prisma --accept-data-loss && echo DONE; exit"],
   essential: true
 })), taskRoleArn, executionRoleArn, networkMode, requiresCompatibilities, cpu, memory}' \
   /tmp/td.json > /tmp/repair-td.json
@@ -302,13 +306,43 @@ aws ecs run-task --cluster spotterspace-cluster \
 
 # 4. After tables are recreated, re-baseline migration history:
 #    Register another one-off task with command:
-#    "npx prisma migrate resolve --applied <migration_name> --schema packages/db/prisma/schema.prisma"
+#    "timeout 600 npx prisma migrate resolve --applied <migration_name> --schema packages/db/prisma/schema.prisma; exit"
 #    Repeat for each migration.
 
 # 5. Clean up: deregister the one-off task definitions
 aws ecs deregister-task-definition --task-definition spotterspace-db-repair:1 \
   --region us-east-1 --no-cli-pager
 ```
+
+#### Mandatory verification step (before walking away)
+
+Every running task must belong to a managed service. Anything in `family:*` is a leftover one-off and must be stopped. Run this after step 5 and before closing the terminal:
+
+```bash
+aws ecs list-tasks --cluster spotterspace-cluster --region us-east-1 \
+  --query 'taskArns[]' --output text | xargs -n1 \
+aws ecs describe-tasks --cluster spotterspace-cluster --region us-east-1 \
+  --query 'tasks[].{Group:group,StartedBy:startedBy,Task:taskArn}' \
+  --output table --tasks
+```
+
+Every row must have `Group` starting with `service:` (e.g. `service:spotterspace-dev-api`). If any row shows `family:<name>`, stop it immediately:
+
+```bash
+aws ecs stop-task --cluster spotterspace-cluster --region us-east-1 \
+  --task <taskArn-from-table-above> \
+  --reason 'Cleanup of one-off run-task'
+```
+
+#### Convention for new one-off task commands
+
+When writing any future `aws ecs run-task` invocation, follow this pattern for the container command override so it self-terminates on hang:
+
+```bash
+command: ["sh", "-c", "timeout <max-seconds> <real-command>; exit"]
+```
+
+This will use `timeout 600 npx prisma migrate deploy; exit` for the example above, where `600` is a hard ceiling beyond which the inner command is killed regardless of progress. The trailing `; exit` ensures the container exits even if the inner command is killed by `timeout` (which exits non-zero — without `exit`, some shells would keep the container alive on certain inner-command crashes).
 
 ### Connection String
 
@@ -448,13 +482,32 @@ CMD ["node", "apps/web/apps/web/server.js"]
 
 ## Network & Security Groups
 
-| Resource           | ID                                                     | Purpose                                       |
-| ------------------ | ------------------------------------------------------ | --------------------------------------------- |
-| VPC                | `vpc-09a6870488b73260e`                                | 10.0.0.0/20, us-east-1                        |
-| Private Subnets    | `subnet-082c94f0897298f6e`, `subnet-096b774ed307c85ed` | ECS tasks + RDS                               |
-| ALB + ECS SG       | `sg-08e5864c53710a095`                                 | Self-referencing, shared by ALB and ECS tasks |
-| RDS SG             | `sg-0925439b428efdf13`                                 | Allows port 5432 from ECS SG                  |
-| SM VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0`                                 | Allows port 443 from ECS SG                   |
+| Resource           | ID                      | Purpose                                       |
+| ------------------ | ----------------------- | --------------------------------------------- |
+| VPC                | `vpc-09a6870488b73260e` | 10.0.0.0/20, us-east-1                        |
+| ALB + ECS SG       | `sg-08e5864c53710a095`  | Self-referencing, shared by ALB and ECS tasks |
+| RDS SG             | `sg-0925439b428efdf13`  | Allows port 5432 from ECS SG                  |
+| SM VPC Endpoint SG | `sg-0ddf2cd67fa1b09f0`  | Allows port 443 from ECS SG                   |
+
+### Subnets
+
+The VPC has separate public and private subnets in each AZ. Internet-facing ALBs **must** live in public subnets (route 0.0.0.0/0 → IGW). ECS tasks and RDS live in private subnets (route 0.0.0.0/0 → NAT).
+
+| Subnet ID                  | AZ         | CIDR        | Type    | Route 0.0.0.0/0       | Used by              |
+| -------------------------- | ---------- | ----------- | ------- | --------------------- | -------------------- |
+| `subnet-022c0065046782a64` | us-east-1a | 10.0.0.0/24 | Public  | igw-071992d39cf002394 | ALB ENI (us-east-1a) |
+| `subnet-018a8199c40f7ed73` | us-east-1b | 10.0.3.0/24 | Public  | igw-071992d39cf002394 | ALB ENI (us-east-1b) |
+| `subnet-082c94f0897298f6e` | us-east-1a | 10.0.1.0/24 | Private | nat-02f376c5d696b61ff | ECS tasks, RDS       |
+| `subnet-096b774ed307c85ed` | us-east-1b | 10.0.2.0/24 | Private | nat-02f376c5d696b61ff | ECS tasks, RDS       |
+
+> **Historical note (2026-05-24):** The ALB was previously placed across one public (`subnet-022c...`) and one private (`subnet-096b...`) subnet. The private subnet's lack of an IGW route caused TCP connections to ~50% of incoming requests (those routed by Route 53 to the bad ENI's public IP) to time out for ~75 seconds before retrying via the working IP. AWS does not reject the misconfiguration at create time. The fix was to create `subnet-018a8199c40f7ed73` as a true public subnet in us-east-1b and swap the ALB to use it via `aws elbv2 set-subnets`. **Never put an internet-facing ALB in a subnet whose default route is a NAT Gateway.**
+
+### Route Tables
+
+| Route Table             | Routes (excluding `local`)          | Associated Subnets             |
+| ----------------------- | ----------------------------------- | ------------------------------ |
+| `rtb-0cc1e4d41c2264bfc` | 0.0.0.0/0 → `igw-071992d39cf002394` | Both public subnets (1a + 1b)  |
+| `rtb-0989410e3b8f596fc` | 0.0.0.0/0 → `nat-02f376c5d696b61ff` | Both private subnets (1a + 1b) |
 
 ---
 
@@ -485,6 +538,84 @@ aws elbv2 describe-target-health \
   --target-group-arn arn:aws:elasticloadbalancing:us-east-1:654654553862:targetgroup/spotterspace-dev-web-tg/53bffb7b973906cb \
   --region us-east-1
 ```
+
+### CloudWatch Alarms
+
+| Alarm                                   | Catches                                                                 | Threshold                        |
+| --------------------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| `spotterspace-dev-orphan-fargate-tasks` | Zombie one-off `aws ecs run-task` invocations that don't self-terminate | TaskCount > 3 for 1h             |
+| `spotterspace-dev-api-no-healthy-hosts` | API target group with zero healthy hosts (service replacement gone bad) | HealthyHostCount < 1 for 3min    |
+| `spotterspace-dev-web-no-healthy-hosts` | Web target group with zero healthy hosts                                | HealthyHostCount < 1 for 3min    |
+| `spotterspace-dev-api-unhealthy-hosts`  | Stale unhealthy ENI registrations (orphan task IPs, AZ asymmetry)       | UnHealthyHostCount > 0 for 15min |
+| `spotterspace-dev-web-unhealthy-hosts`  | Same as api but for web target group                                    | UnHealthyHostCount > 0 for 15min |
+
+The orphan-fargate-tasks alarm uses `ECS/ContainerInsights TaskCount` (cluster-level), not `RunningTaskCount` (which is only emitted per-service and so cluster-only filters never receive data). Container Insights must remain enabled on the cluster. To re-enable if disabled:
+
+```bash
+aws ecs update-cluster-settings --cluster spotterspace-cluster \
+  --settings name=containerInsights,value=enabled --region us-east-1
+```
+
+#### Baseline (2026-05-24, 2h window)
+
+`TaskCount` stayed between 2 and 3 across 120 one-minute datapoints with `desiredCount: 1+1` (Min=2, Max=3, Avg=2.05). The Max=3 was a brief deploy blip where a new task started before the old one stopped. This validates `> 3 for 1h` as the correct threshold: no false positives on normal deploys, but the 1h evaluation window catches any task that fails to self-terminate. Re-run the baseline in 1-2 weeks once more data has accumulated:
+
+```bash
+aws cloudwatch get-metric-statistics --region us-east-1 --no-cli-pager \
+  --namespace ECS/ContainerInsights --metric-name TaskCount \
+  --dimensions Name=ClusterName,Value=spotterspace-cluster \
+  --start-time "$(date -u -v-7d '+%Y-%m-%dT%H:%M:%SZ')" \
+  --end-time "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+  --period 3600 --statistics Maximum Average Minimum SampleCount \
+  --query 'Datapoints | sort_by(@, &Timestamp)' --output table
+```
+
+#### SNS notifications
+
+All five alarms are wired (both `AlarmActions` and `OKActions`) to the SNS topic `arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms`. The topic has one email subscription for `robi_sz@yahoo.com`. **The subscription was in `PendingConfirmation` state at the time of writing** — AWS sent a confirmation email; clicking the link inside transitions it to `Confirmed` and notifications begin. To check status:
+
+```bash
+aws sns list-subscriptions-by-topic --region us-east-1 --no-cli-pager \
+  --topic-arn arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms \
+  --query 'Subscriptions[].{Endpoint:Endpoint,Protocol:Protocol,SubscriptionArn:SubscriptionArn}' --output table
+```
+
+A `SubscriptionArn` value starting with `arn:aws:sns:...` (rather than the literal string `PendingConfirmation`) means the subscription is active.
+
+These alarms and the SNS topic were created via the AWS CLI directly on 2026-05-24 because of pre-existing drift between `infrastructure/lib/spotterspace-stack.ts` and the live CloudFormation stack (see [CDK Drift Warning](#cdk-drift-warning) below). The CDK source has since been updated to mirror them, but `cdk deploy` will still fail with "alarm already exists" until someone runs `cdk import` to adopt them under CloudFormation management. Until then, check alarm status from the console or:
+
+```bash
+aws cloudwatch describe-alarms --alarm-name-prefix spotterspace-dev- \
+  --region us-east-1 --no-cli-pager \
+  --query 'MetricAlarms[].{Name:AlarmName,State:StateValue}' --output table
+```
+
+### ECR Image Lifecycle
+
+Both ECR repositories (`spotterspace-dev-api`, `spotterspace-dev-web`) have a lifecycle policy that retains only the most recent 10 images. Older images expire automatically. To inspect:
+
+```bash
+aws ecr get-lifecycle-policy --repository-name spotterspace-dev-api \
+  --region us-east-1 --no-cli-pager --query lifecyclePolicyText --output text
+```
+
+To re-apply (the policy JSON):
+
+```bash
+aws ecr put-lifecycle-policy --repository-name spotterspace-dev-api \
+  --region us-east-1 --no-cli-pager \
+  --lifecycle-policy-text '{"rules":[{"rulePriority":1,"description":"Keep last 10 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+```
+
+### CDK Drift Warning
+
+> **Do not run `cdk deploy` without first running `cdk diff` and reviewing every change.** Reconciled on 2026-05-24: HTTP/web/API listener actions in CDK source now use `forward` (matching live), `WEB_BASE_URL` env var removed from the web task definition (it never reached prod because GitHub Actions copies env from previous task def revisions), and the CloudWatch Alarms section was added to CDK. After reconciliation `cdk diff` reports only image-tag deltas on `ApiTaskDef` and `WebTaskDef`, which is expected because CI manages task def images out-of-band via `aws ecs register-task-definition`.
+
+Three follow-up items remain before `cdk deploy` is safe again:
+
+1. The five CloudWatch alarms and the `spotterspace-dev-alarms` SNS topic exist in AWS but not in CloudFormation. Running `cdk deploy` will fail with "already exists" errors until they are adopted via `cdk import`. Until then, treat them as CLI-managed.
+2. The HTTP→HTTPS redirect was originally added to CDK but never deployed; live state forwards HTTP straight to the web target group. The CDK source now matches live; restore the redirect after coordinating with `deploy.yml` so the change actually deploys.
+3. `WEB_BASE_URL` (and any other env var added to CDK) will be silently dropped on next deploy because `deploy.yml` registers task definitions by copying env vars from the previous revision. Either move task definition management entirely to CDK, or update `deploy.yml` to read env vars from a CDK CfnOutput.
 
 ### ECS Task Status
 

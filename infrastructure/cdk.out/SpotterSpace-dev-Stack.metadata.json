@@ -173,6 +173,36 @@
       "data": "ApiCnameRecord2222559D"
     }
   ],
+  "/SpotterSpace-dev-Stack/OrphanFargateTaskAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "OrphanFargateTaskAlarmFA190301"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiNoHealthyHostsAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiNoHealthyHostsAlarm0FC06E19"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/ApiUnhealthyHostsAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiUnhealthyHostsAlarm7C2FB323"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/WebNoHealthyHostsAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebNoHealthyHostsAlarmB596B600"
+    }
+  ],
+  "/SpotterSpace-dev-Stack/WebUnhealthyHostsAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebUnhealthyHostsAlarm635D64C0"
+    }
+  ],
   "/SpotterSpace-dev-Stack/CDKMetadata/Default": [
     {
       "type": "aws:cdk:logicalId",

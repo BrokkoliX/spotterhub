@@ -326,7 +326,7 @@
                   {
                     "Ref": "AWS::URLSuffix"
                   },
-                  "/spotterspace-dev-api:1a9aac906f9521edf3035c0727a58cc35c3b104b"
+                  "/spotterspace-dev-api:21e0492bbd0cf5115d6319f1331a64906a5bfca5"
                 ]
               ]
             },
@@ -405,7 +405,7 @@
                   {
                     "Ref": "AWS::URLSuffix"
                   },
-                  "/spotterspace-dev-web:1a9aac906f9521edf3035c0727a58cc35c3b104b"
+                  "/spotterspace-dev-web:21e0492bbd0cf5115d6319f1331a64906a5bfca5"
                 ]
               ]
             },
@@ -503,10 +503,164 @@
         "aws:cdk:path": "SpotterSpace-dev-Stack/WebService"
       }
     },
+    "OrphanFargateTaskAlarmFA190301": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "AlarmDescription": "ECS cluster has more than 3 running tasks for 1h — likely orphaned one-off `aws ecs run-task` invocations. Check `aws ecs list-tasks` and stop any task whose Group does not start with \"service:\".",
+        "AlarmName": "spotterspace-dev-orphan-fargate-tasks",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "ClusterName",
+            "Value": "spotterspace-cluster"
+          }
+        ],
+        "EvaluationPeriods": 12,
+        "MetricName": "TaskCount",
+        "Namespace": "ECS/ContainerInsights",
+        "OKActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "Period": 300,
+        "Statistic": "Maximum",
+        "Threshold": 3,
+        "TreatMissingData": "notBreaching"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/OrphanFargateTaskAlarm/Resource"
+      }
+    },
+    "ApiNoHealthyHostsAlarm0FC06E19": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "AlarmDescription": "Api target group has zero healthy hosts. Check ECS service events and ALB target health.",
+        "AlarmName": "spotterspace-dev-api-no-healthy-hosts",
+        "ComparisonOperator": "LessThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": "app/spotterspace-alb/c1d7545a9ffd1121"
+          },
+          {
+            "Name": "TargetGroup",
+            "Value": {
+              "Fn::GetAtt": ["ApiTargetGroup", "TargetGroupFullName"]
+            }
+          }
+        ],
+        "EvaluationPeriods": 3,
+        "MetricName": "HealthyHostCount",
+        "Namespace": "AWS/ApplicationELB",
+        "OKActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "Period": 60,
+        "Statistic": "Minimum",
+        "Threshold": 1,
+        "TreatMissingData": "breaching"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiNoHealthyHostsAlarm/Resource"
+      }
+    },
+    "ApiUnhealthyHostsAlarm7C2FB323": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "AlarmDescription": "Api target group has unhealthy hosts persisting for 15min. Check ALB target health and recent task replacements.",
+        "AlarmName": "spotterspace-dev-api-unhealthy-hosts",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": "app/spotterspace-alb/c1d7545a9ffd1121"
+          },
+          {
+            "Name": "TargetGroup",
+            "Value": {
+              "Fn::GetAtt": ["ApiTargetGroup", "TargetGroupFullName"]
+            }
+          }
+        ],
+        "EvaluationPeriods": 3,
+        "MetricName": "UnHealthyHostCount",
+        "Namespace": "AWS/ApplicationELB",
+        "OKActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "Period": 300,
+        "Statistic": "Maximum",
+        "Threshold": 0,
+        "TreatMissingData": "notBreaching"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/ApiUnhealthyHostsAlarm/Resource"
+      }
+    },
+    "WebNoHealthyHostsAlarmB596B600": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "AlarmDescription": "Web target group has zero healthy hosts. Check ECS service events and ALB target health.",
+        "AlarmName": "spotterspace-dev-web-no-healthy-hosts",
+        "ComparisonOperator": "LessThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": "app/spotterspace-alb/c1d7545a9ffd1121"
+          },
+          {
+            "Name": "TargetGroup",
+            "Value": {
+              "Fn::GetAtt": ["WebTargetGroup", "TargetGroupFullName"]
+            }
+          }
+        ],
+        "EvaluationPeriods": 3,
+        "MetricName": "HealthyHostCount",
+        "Namespace": "AWS/ApplicationELB",
+        "OKActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "Period": 60,
+        "Statistic": "Minimum",
+        "Threshold": 1,
+        "TreatMissingData": "breaching"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebNoHealthyHostsAlarm/Resource"
+      }
+    },
+    "WebUnhealthyHostsAlarm635D64C0": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "AlarmDescription": "Web target group has unhealthy hosts persisting for 15min. Check ALB target health and recent task replacements.",
+        "AlarmName": "spotterspace-dev-web-unhealthy-hosts",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": "app/spotterspace-alb/c1d7545a9ffd1121"
+          },
+          {
+            "Name": "TargetGroup",
+            "Value": {
+              "Fn::GetAtt": ["WebTargetGroup", "TargetGroupFullName"]
+            }
+          }
+        ],
+        "EvaluationPeriods": 3,
+        "MetricName": "UnHealthyHostCount",
+        "Namespace": "AWS/ApplicationELB",
+        "OKActions": ["arn:aws:sns:us-east-1:654654553862:spotterspace-dev-alarms"],
+        "Period": 300,
+        "Statistic": "Maximum",
+        "Threshold": 0,
+        "TreatMissingData": "notBreaching"
+      },
+      "Metadata": {
+        "aws:cdk:path": "SpotterSpace-dev-Stack/WebUnhealthyHostsAlarm/Resource"
+      }
+    },
     "CDKMetadata": {
       "Type": "AWS::CDK::Metadata",
       "Properties": {
-        "Analytics": "v2:deflate64:H4sIAAAAAAAA/02Q0UoDQQxFv8X3aaxbFX3tCiIIwtZ3SbPZJd3tTEkyLWWZf5e2SvuUcy85EFJB9fgC8zs82IzaYTbKGqaVIw2hYUtZiQMe7GdiqqDu4oopq/jxXVPefcRe2SzYApaZBvYlGgcmhYZ3ycSTHs/VmHqD6TP1Zy3UXfznEnhEc6ExYbvGESNJ7PcVTHUXv1F79qsj5hxZb7nJI5dArC6dEDpvMWLPClN97U7CTSxBU3Z+WsBUR9xyw5S0PS1daMVeApP93WDDG3cSxSXFcH6B7oW4lFP4yr7LXkJMLcPG7vfVHB5e4fluYyIzzdFly9Bc5i9OwJ/dbQEAAA=="
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/02QQWvDMAyFf0vvrtal29iOawZjMBikvQ9XUTI1jh0suaUE//eRdKM96dPjPdBTAcXDM6wW9iRLrLul4z2MW7XYmYokpIhk7Em+R8ICysZvCVNkPb/HkIYP30YSMbKGTcKOdGOFDGGEioYgrCGeZ8mFVmD8DO0cM2Xj/zkbclaU0QVb762zHtm3xwLGsvE7G1vSa4ZFyVO85So5ygYpKjeMVqm33rYUYSyv2hS4WbOJISk9rmEsve2pIgyxnkwX2pJmQyh/N0j3Rg17Vg7ezC+IR0bKRrzALgyMc0d0IdUnq/gD46uzsZ+8M+Q84VfSIWk2PtQEB7k7Fiu4f4GnxUGYlzF55Z6gusxfO8TTdJcBAAA="
       },
       "Metadata": {
         "aws:cdk:path": "SpotterSpace-dev-Stack/CDKMetadata/Default"
