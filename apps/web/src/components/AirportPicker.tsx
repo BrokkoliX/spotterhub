@@ -36,9 +36,9 @@ export default function AirportPicker({
   const wrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [searchResult, search] = useQuery({
+  const [searchResult, executeSearch] = useQuery({
     query: SEARCH_AIRPORTS,
-    variables: { query, first: 8 },
+    variables: { query: '', first: 8 },
     pause: true,
   });
 
@@ -50,7 +50,8 @@ export default function AirportPicker({
     }
   }, [searchResult.data]);
 
-  // Debounce search
+  // Debounce + manual trigger — avoids urql's reactive variable re-evaluation
+  // when pause is true (variables are not re-read while paused).
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
@@ -58,7 +59,7 @@ export default function AirportPicker({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (val.length >= 2) {
-        search({ requestPolicy: 'network-only' });
+        executeSearch({ variables: { query: val, first: 8 }, requestPolicy: 'network-only' });
       } else {
         setResults([]);
       }
