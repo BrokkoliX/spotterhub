@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { use, useState, useEffect } from 'react';
+import { type FormEvent, use, useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -12,7 +13,14 @@ import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { ReportButton } from '@/components/ReportButton';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
-import { GET_PHOTO, DELETE_PHOTO, CREATE_PHOTO_PURCHASE, GET_AD_SETTINGS } from '@/lib/queries';
+import {
+  GET_PHOTO,
+  DELETE_PHOTO,
+  CREATE_PHOTO_PURCHASE,
+  GET_AD_SETTINGS,
+  APPROVE_PHOTO,
+  REJECT_PHOTO,
+} from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -24,14 +32,36 @@ interface PhotoVariant {
 }
 
 export default function PhotoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.page}>
+          <div className="container">
+            <p className={styles.loading}>Loading…</p>
+          </div>
+        </div>
+      }
+    >
+      <PhotoDetailInner params={params} />
+    </Suspense>
+  );
+}
+
+function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') ?? '/';
   const { user, ready } = useAuth();
   const router = useRouter();
   const [result] = useQuery({ query: GET_PHOTO, variables: { id } });
   const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
   const { data, fetching, error } = result;
   const [{ fetching: deleting }, deletePhoto] = useMutation(DELETE_PHOTO);
+  const [{ fetching: approving }, approvePhoto] = useMutation(APPROVE_PHOTO);
+  const [{ fetching: rejecting }, rejectPhoto] = useMutation(REJECT_PHOTO);
   const [imgError, setImgError] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const isOwner = ready && user?.id === data?.photo?.user?.id;
   const isPrivileged =
@@ -43,8 +73,19 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
     if (!confirm('Delete this photo? This cannot be undone.')) return;
     const res = await deletePhoto({ photoId: id });
     if (res.data?.deletePhoto) {
-      router.push('/');
+      router.push(returnTo);
     }
+  };
+
+  const handleApprove = async () => {
+    await approvePhoto({ photoId: id });
+  };
+
+  const handleReject = async (e: FormEvent) => {
+    e.preventDefault();
+    await rejectPhoto({ photoId: id, reason: rejectReason.trim() || undefined });
+    setShowRejectModal(false);
+    setRejectReason('');
   };
 
   // Marketplace purchase
@@ -122,8 +163,8 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className={styles.page}>
       <div className="container">
-        <Link href="/" className={styles.backLink}>
-          ← Back to feed
+        <Link href={returnTo} className={styles.backLink}>
+          ← Back
         </Link>
 
         <div className={styles.layout}>
@@ -140,6 +181,24 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
                 This photo is pending review by a moderator. It is not yet visible in the public
                 feed.
               </span>
+              {isPrivileged && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button
+                    className={styles.moderationBtnApprove}
+                    onClick={handleApprove}
+                    disabled={approving}
+                  >
+                    {approving ? 'Approving…' : '✓ Approve'}
+                  </button>
+                  <button
+                    className={styles.moderationBtnReject}
+                    onClick={() => setShowRejectModal(true)}
+                    disabled={rejecting}
+                  >
+                    ✗ Reject
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -789,6 +848,73 @@ export default function PhotoDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
         </div>
+
+        {/* Reject modal */}
+        {showRejectModal && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100,
+            }}
+            onClick={() => setShowRejectModal(false)}
+          >
+            <div
+              style={{
+                background: 'var(--color-bg-card)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 24,
+                width: '100%',
+                maxWidth: 520,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ marginBottom: 16, fontSize: '1.125rem' }}>Reject Photo</h2>
+              <form onSubmit={handleReject}>
+                <div style={{ marginBottom: 12 }}>
+                  <label
+                    htmlFor="reject-reason"
+                    style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}
+                  >
+                    Reason (optional, sent to the photographer)
+                  </label>
+                  <textarea
+                    id="reject-reason"
+                    className="input"
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    rows={4}
+                    placeholder="e.g. Image is heavily blurred / duplicate of an existing photo / contains personal information"
+                    style={{ width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowRejectModal(false)}
+                    disabled={rejecting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn"
+                    style={{ background: '#dc2626', color: '#fff' }}
+                    disabled={rejecting}
+                  >
+                    {rejecting ? 'Rejecting…' : 'Reject Photo'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

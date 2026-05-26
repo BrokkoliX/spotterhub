@@ -148,6 +148,7 @@
 - [x] `/admin/settings` — general settings (photo dimension limits)
 - [x] `/settings/site` — custom banner and tagline
 - [x] Admin/moderator soft-delete + hard-delete for photos, albums, forum threads, forum posts, comments (requires role + reason logged to moderation audit)
+- [x] Photo moderation queue — approve/reject from photo detail page inline (admin can approve/reject without returning to admin list)
 
 ### Aircraft Taxonomy
 
@@ -233,6 +234,7 @@ npx turbo run generate --filter=@spotterspace/db
 - **Sharp image processing (production fix):** ESM dynamic `import('sharp')` was returning a module object instead of the Sharp function. Fixed with `mod.default ?? mod` to unwrap correctly. Docker image explicitly installs `@img/sharp-linuxmusl-arm64` and `@img/sharp-linuxmusl-x64` after `npm prune` to ensure native binaries survive the prune step.
 - **Watermark rendering:** Docker image installs `font-noto` and `fontconfig` packages so Sharp's SVG composite can render text. When `watermarkEnabled` is true during upload, a "© SpotterSpace" watermark is composited onto the display-size image in the bottom-right corner using Sharp's SVG overlay.
 - **`regeneratePhotoVariants` mutation:** Allows photo owners and admins to re-trigger variant generation (thumbnail, display, watermarked) for existing photos. Useful after fixing processing bugs or changing watermark logic.
+- **`returnTo` query param on photo detail:** When navigating to `/photos/[id]` from the admin photo list (`/admin/photos`), a `returnTo` param is passed so the back link returns to the admin list rather than the public feed.
 - **Feed thumbnail priority:** `PhotoCard.tsx` always prefers `thumbnail_16x9` for uniform 16:9 aspect ratio in feed cards, regardless of watermark setting. The watermarked variant is used only on the photo detail page.
 
 ---

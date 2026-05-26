@@ -156,7 +156,7 @@ export default function AdminPhotosPage() {
               {photos.edges.map(({ node }) => (
                 <tr key={node.id}>
                   <td>
-                    <Link href={`/photos/${node.id}`}>
+                    <Link href={`/photos/${node.id}?returnTo=%2Fadmin%2Fphotos`}>
                       <Image
                         src={thumbUrl(node)}
                         alt={node.caption ?? 'Photo'}
