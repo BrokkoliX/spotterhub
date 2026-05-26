@@ -30,16 +30,21 @@ export default function AirportPicker({
 }: AirportPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [results, setResults] = useState<Airport[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [searchResult, executeSearch] = useQuery({
+  // Drive urql variables reactively from `debouncedQuery`. urql v5's
+  // executeQuery does not accept new variables, so manual triggering with
+  // `pause: true` silently no-ops. Instead, gate execution via `pause` based
+  // on debounced input length.
+  const [searchResult] = useQuery({
     query: SEARCH_AIRPORTS,
-    variables: { query: '', first: 8 },
-    pause: true,
+    variables: { query: debouncedQuery, first: 8 },
+    pause: debouncedQuery.length < 2,
   });
 
   useEffect(() => {
@@ -54,8 +59,7 @@ export default function AirportPicker({
     }
   }, [searchResult.data]);
 
-  // Debounce + manual trigger — avoids urql's reactive variable re-evaluation
-  // when pause is true (variables are not re-read while paused).
+  // Debounce input → debouncedQuery, which urql watches via `variables`.
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
@@ -64,8 +68,9 @@ export default function AirportPicker({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (val.length >= 2) {
-        executeSearch({ query: val, first: 8 });
+        setDebouncedQuery(val);
       } else {
+        setDebouncedQuery('');
         setResults([]);
       }
     }, 300);
