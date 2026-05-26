@@ -1,6 +1,6 @@
 # SpotterHub — Project Status
 
-> **Last updated:** 2026-05-22
+> **Last updated:** 2026-05-26
 > **Purpose:** Living document tracking implemented features and operational notes. See `PRODUCT.md` for current product overview.
 
 ---
@@ -74,7 +74,7 @@
 
 ### Map & Locations
 
-- [x] Mapbox GL JS map with Supercluster photo markers
+- [x] Mapbox GL JS map with Supercluster photo markers (photo locations only — no airport markers)
 - [x] Airport pages with spotting locations
 - [x] Photos in bounds / nearby queries (PostGIS-ready, bounding-box Haversine currently)
 - [x] Create/delete spotting locations
@@ -236,6 +236,7 @@ npx turbo run generate --filter=@spotterspace/db
 - **Watermark rendering:** Docker image installs `font-noto` and `fontconfig` packages so Sharp's SVG composite can render text. When `watermarkEnabled` is true during upload, a "© SpotterSpace" watermark is composited onto the display-size image in the bottom-right corner using Sharp's SVG overlay.
 - **`regeneratePhotoVariants` mutation:** Allows photo owners and admins to re-trigger variant generation (thumbnail, display, watermarked) for existing photos. Useful after fixing processing bugs or changing watermark logic.
 - **`returnTo` query param on photo detail:** When navigating to `/photos/[id]` from the admin photo list (`/admin/photos`), a `returnTo` param is passed so the back link returns to the admin list rather than the public feed.
+- **Photo counts exclude deleted/rejected:** `userPhotoCount` (DataLoader), airport `photoCount`, album `photoCount`, and admin `totalPhotos` only include photos where `isDeleted: false` AND `moderationStatus: 'approved'`.
 - **Feed thumbnail priority:** `PhotoCard.tsx` always prefers `thumbnail_16x9` for uniform 16:9 aspect ratio in feed cards, regardless of watermark setting. The watermarked variant is used only on the photo detail page.
 
 ---
