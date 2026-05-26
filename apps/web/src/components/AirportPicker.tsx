@@ -45,6 +45,10 @@ export default function AirportPicker({
   useEffect(() => {
     if (searchResult.data?.searchAirports) {
       setResults(searchResult.data.searchAirports as Airport[]);
+      // Auto-open dropdown when results arrive
+      if (searchResult.data.searchAirports.length > 0) {
+        setOpen(true);
+      }
     } else {
       setResults([]);
     }
@@ -56,10 +60,11 @@ export default function AirportPicker({
     const val = e.target.value;
     setQuery(val);
     setHighlightedIndex(-1);
+    setOpen(false); // close dropdown while typing; re-opens via effect above
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (val.length >= 2) {
-        executeSearch({ variables: { query: val, first: 8 }, requestPolicy: 'network-only' });
+        executeSearch({ query: val, first: 8 });
       } else {
         setResults([]);
       }
