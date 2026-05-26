@@ -64,7 +64,7 @@ export function createLoaders(prisma: PrismaClient): Loaders {
     userPhotoCount: new DataLoader(async (userIds: readonly string[]) => {
       const counts = await prisma.photo.groupBy({
         by: ['userId'],
-        where: { userId: { in: [...userIds] } },
+        where: { userId: { in: [...userIds] }, isDeleted: false, moderationStatus: 'approved' },
         _count: true,
       });
       const map = new Map(counts.map((c) => [c.userId, c._count]));

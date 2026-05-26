@@ -236,7 +236,7 @@ export const airportQueryResolvers = {
 export const airportFieldResolvers = {
   photoCount: async (parent: AirportParent, _args: unknown, ctx: Context) => {
     return ctx.prisma.photoLocation.count({
-      where: { airportId: parent.id },
+      where: { airportId: parent.id, photo: { isDeleted: false, moderationStatus: 'approved' } },
     });
   },
 

@@ -32,7 +32,7 @@ export const adminQueryResolvers = {
       totalSpottingLocations,
     ] = await Promise.all([
       ctx.prisma.user.count(),
-      ctx.prisma.photo.count(),
+      ctx.prisma.photo.count({ where: { isDeleted: false, moderationStatus: 'approved' } }),
       ctx.prisma.photo.count({ where: { moderationStatus: 'pending' } }),
       ctx.prisma.report.count({ where: { status: 'open' } }),
       ctx.prisma.airport.count(),

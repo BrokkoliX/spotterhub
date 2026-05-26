@@ -2,7 +2,12 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  getDbUser,
+  buildPaginationArgs,
+} from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -681,9 +686,13 @@ export const albumFieldResolvers = {
 
   photoCount: (parent: AlbumParent, _args: unknown, ctx: Context) => {
     if (parent.communityId) {
-      return ctx.prisma.albumPhoto.count({ where: { albumId: parent.id } });
+      return ctx.prisma.albumPhoto.count({
+        where: { albumId: parent.id, photo: { isDeleted: false, moderationStatus: 'approved' } },
+      });
     }
-    return ctx.prisma.photo.count({ where: { albumId: parent.id } });
+    return ctx.prisma.photo.count({
+      where: { albumId: parent.id, isDeleted: false, moderationStatus: 'approved' },
+    });
   },
 
   community: (parent: AlbumParent, _args: unknown, ctx: Context) => {
@@ -705,7 +714,11 @@ export const albumFieldResolvers = {
     });
   },
 
-  photos: async (parent: AlbumParent, args: { first?: number; after?: string; page?: number }, ctx: Context) => {
+  photos: async (
+    parent: AlbumParent,
+    args: { first?: number; after?: string; page?: number },
+    ctx: Context,
+  ) => {
     const { skip, take } = buildPaginationArgs({
       first: args.first,
       after: args.after,

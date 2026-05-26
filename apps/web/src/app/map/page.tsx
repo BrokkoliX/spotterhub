@@ -7,22 +7,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 import Supercluster from 'supercluster';
 
-import { AIRPORTS_IN_BOUNDS, GET_SITE_SETTINGS, PHOTOS_IN_BOUNDS } from '@/lib/queries';
+import { GET_SITE_SETTINGS, PHOTOS_IN_BOUNDS } from '@/lib/queries';
 
 import styles from './page.module.css';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-interface AirportMarkerData {
-  id: string;
-  icaoCode: string;
-  iataCode?: string | null;
-  name: string;
-  city?: string | null;
-  country?: string | null;
-  latitude: number;
-  longitude: number;
-}
 
 interface PhotoMarkerData {
   id: string;
@@ -38,15 +27,6 @@ type PhotoPointProps = {
   caption?: string | null;
 };
 
-type AirportPointProps = {
-  airportId: string;
-  icaoCode: string;
-  iataCode?: string | null;
-  name: string;
-  city?: string | null;
-  country?: string | null;
-};
-
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -55,9 +35,7 @@ export default function MapPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const photoClusterRef = useRef<Supercluster<PhotoPointProps> | null>(null);
-  const airportClusterRef = useRef<Supercluster<AirportPointProps> | null>(null);
   const photoMarkersRef = useRef<mapboxgl.Marker[]>([]);
-  const airportMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [bounds, setBounds] = useState<{
     swLat: number;
@@ -65,12 +43,6 @@ export default function MapPage() {
     neLat: number;
     neLng: number;
   } | null>(null);
-
-  const [airportsResult] = useQuery({
-    query: AIRPORTS_IN_BOUNDS,
-    variables: bounds ? { ...bounds, first: 2000 } : undefined,
-    pause: !bounds,
-  });
 
   const [photosResult] = useQuery({
     query: PHOTOS_IN_BOUNDS,
@@ -152,104 +124,6 @@ export default function MapPage() {
       mapRef.current = null;
     };
   }, []);
-
-  // ─── Airport Markers with Clustering ───────────────────────────────────
-
-  const renderAirportMarkers = useCallback(() => {
-    const map = mapRef.current;
-    if (!map || !airportClusterRef.current) return;
-
-    // Clear existing airport markers
-    for (const m of airportMarkersRef.current) {
-      m.remove();
-    }
-    airportMarkersRef.current = [];
-
-    const zoom = Math.floor(map.getZoom());
-    const b = map.getBounds();
-    if (!b) return;
-    const clusters = airportClusterRef.current.getClusters(
-      [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
-      zoom,
-    );
-
-    for (const feature of clusters) {
-      const [lng, lat] = feature.geometry.coordinates;
-      const props = feature.properties as Record<string, unknown>;
-
-      if (props.cluster) {
-        const count = props.point_count as number;
-        const el = document.createElement('div');
-        const size = count < 10 ? 32 : count < 100 ? 40 : 48;
-        el.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:#3b82f6;border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:${size < 40 ? 12 : 14}px;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.3);`;
-        el.textContent = String(count);
-        el.title = `${count} airports`;
-
-        el.addEventListener('click', () => {
-          const clusterId = props.cluster_id;
-          const expansionZoom = airportClusterRef.current!.getClusterExpansionZoom(
-            clusterId as number,
-          );
-          map.flyTo({ center: [lng, lat], zoom: expansionZoom });
-        });
-
-        const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map);
-        airportMarkersRef.current.push(marker);
-      } else {
-        // Single airport marker
-        const code = (props.iataCode as string | null | undefined) ?? (props.icaoCode as string);
-        const el = document.createElement('div');
-        el.style.cssText =
-          'width:28px;height:28px;border-radius:50%;background:#3b82f6;border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
-        el.textContent = '✈';
-        el.title = `${props.name as string} (${code})`;
-
-        const popup = new mapboxgl.Popup({ offset: 18, maxWidth: '260px' }).setHTML(
-          `<div style="font-family:system-ui,sans-serif;">
-            <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${props.name as string}</div>
-            <div style="font-size:12px;color:#888;margin-bottom:4px;">${code}${props.city ? ` · ${props.city as string}` : ''}${props.country ? `, ${props.country as string}` : ''}</div>
-            <a href="/airports/${props.icaoCode as string}" style="display:inline-block;padding:5px 12px;background:#3b82f6;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;font-weight:500;">View Airport</a>
-          </div>`,
-        );
-
-        const marker = new mapboxgl.Marker(el).setLngLat([lng, lat]).setPopup(popup).addTo(map);
-        airportMarkersRef.current.push(marker);
-      }
-    }
-  }, []);
-
-  // Load airports into Supercluster when query results change
-  useEffect(() => {
-    const airports: AirportMarkerData[] = airportsResult.data?.airportsInBounds ?? [];
-    if (airports.length === 0) {
-      for (const m of airportMarkersRef.current) m.remove();
-      airportMarkersRef.current = [];
-      airportClusterRef.current = null;
-      return;
-    }
-
-    const points: Supercluster.PointFeature<AirportPointProps>[] = airports.map((a) => ({
-      type: 'Feature' as const,
-      geometry: { type: 'Point' as const, coordinates: [a.longitude, a.latitude] },
-      properties: {
-        airportId: a.id,
-        icaoCode: a.icaoCode,
-        iataCode: a.iataCode,
-        name: a.name,
-        city: a.city,
-        country: a.country,
-      },
-    }));
-
-    const cluster = new Supercluster<AirportPointProps>({
-      radius: 50,
-      maxZoom: 14,
-    });
-    cluster.load(points);
-    airportClusterRef.current = cluster;
-
-    renderAirportMarkers();
-  }, [airportsResult.data, renderAirportMarkers]);
 
   // ─── Photo Markers with Clustering ─────────────────────────────────────
 
@@ -361,14 +235,13 @@ export default function MapPage() {
 
     const onZoomEnd = () => {
       renderPhotoMarkers();
-      renderAirportMarkers();
     };
     map.on('zoomend', onZoomEnd);
 
     return () => {
       map.off('zoomend', onZoomEnd);
     };
-  }, [renderPhotoMarkers, renderAirportMarkers]);
+  }, [renderPhotoMarkers]);
 
   // ─── No Token Guard ────────────────────────────────────────────────────
 
@@ -403,7 +276,7 @@ export default function MapPage() {
   return (
     <div className={styles.page}>
       <div className={styles.mapContainer}>
-        {(!mapReady || airportsResult.fetching || photosResult.fetching) && (
+        {(!mapReady || photosResult.fetching) && (
           <div className={styles.loading}>{!mapReady ? 'Loading map…' : 'Loading markers…'}</div>
         )}
         <div ref={mapContainerRef} className={styles.map} />
