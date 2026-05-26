@@ -8,10 +8,15 @@ export function Footer() {
       <div className={styles.inner}>
         <div className={styles.brand}>
           <span className={styles.logo}>✈️ SpotterSpace</span>
-          <p className={styles.tagline}>
-            The premier platform for aviation photographers.
-          </p>
+          <p className={styles.tagline}>The premier platform for aviation photographers.</p>
         </div>
+
+        <nav className={styles.links} aria-label="Help">
+          <Link href="/help">Help Center</Link>
+          <Link href="/help/getting-started">Getting Started</Link>
+          <Link href="/help/photos">Photos</Link>
+          <Link href="/help/account">Account</Link>
+        </nav>
 
         <nav className={styles.links} aria-label="Legal">
           <Link href="/legal-notice">Legal Notice</Link>

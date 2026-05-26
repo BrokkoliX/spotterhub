@@ -1,0 +1,254 @@
+.page {
+  padding: 32px 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────────────── */
+
+.sidebar {
+  position: sticky;
+  top: 24px;
+}
+
+.sidebarHeader {
+  margin-bottom: 16px;
+}
+
+.sidebarTitle {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.sidebarTitle:hover {
+  color: var(--color-accent);
+}
+
+.category {
+  margin-bottom: 24px;
+}
+
+.categoryTitle {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.categoryTitle:hover {
+  color: var(--color-text);
+}
+
+.articleList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.articleLink {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s, color 0.1s;
+}
+
+.articleLink:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+
+.articleLink.active {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* ─── Content ──────────────────────────────────────────────────────────── */
+
+.content {
+  min-width: 0;
+}
+
+/* ─── Article Page ─────────────────────────────────────────────────────── */
+
+.article {
+  max-width: 680px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-bottom: 24px;
+}
+
+.backLink:hover {
+  color: var(--color-text);
+}
+
+.articleHeader {
+  margin-bottom: 32px;
+}
+
+.articleTitle {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.articleDescription {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.articleMeta {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 12px;
+  margin-top: 24px;
+}
+
+.body {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  line-height: 1.75;
+}
+
+.body p {
+  margin-bottom: 16px;
+}
+
+.body ul,
+.body ol {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+.body li {
+  margin-bottom: 6px;
+}
+
+.body strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.feedback {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.feedbackText {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.feedbackBtn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.feedbackBtn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-muted);
+}
+
+.feedbackThanks {
+  font-size: 0.875rem;
+  color: #16a34a;
+}
+
+/* ─── Category Index Page ──────────────────────────────────────────────── */
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.categoryCard {
+  display: block;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.categoryCard:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.categoryCardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.categoryCardDesc {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.categoryCardCount {
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  font-weight: 500;
+}

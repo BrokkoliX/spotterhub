@@ -224,6 +224,9 @@ export function Header() {
           <Link href="/marketplace" className={styles.navLink}>
             Marketplace
           </Link>
+          <Link href="/help" className={styles.navLink}>
+            Help
+          </Link>
           {showUser && (
             <Link href="/albums" className={styles.navLink}>
               Albums
@@ -369,6 +372,13 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Marketplace
+              </Link>
+              <Link
+                href="/help"
+                className={styles.mobileNavLink}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Help Center
               </Link>
 
               {showUser && (

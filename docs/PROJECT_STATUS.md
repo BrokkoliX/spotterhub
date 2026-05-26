@@ -170,6 +170,7 @@
 - [x] Communities directory page
 - [x] Global forum pages
 - [x] Legal notice (`/legal-notice`) and imprint pages
+- [x] Help Center (`/help`) — public sidebar layout, category index, 8 initial articles (getting started, photos, account, communities, admin)
 - [x] Upload page redesigned
 - [x] Signup page with display name field
 - [x] Explore page (`/explore`) — unified browse and follow for topics
