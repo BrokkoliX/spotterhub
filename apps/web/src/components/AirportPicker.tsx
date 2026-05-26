@@ -39,15 +39,13 @@ export default function AirportPicker({
   const [searchResult, search] = useQuery({
     query: SEARCH_AIRPORTS,
     variables: { query, first: 8 },
-    pause: query.length < 2,
+    pause: true,
   });
 
   useEffect(() => {
     if (searchResult.data?.searchAirports) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- urql data update requires setState in effect
       setResults(searchResult.data.searchAirports as Airport[]);
     } else {
-       
       setResults([]);
     }
   }, [searchResult.data]);
@@ -58,13 +56,13 @@ export default function AirportPicker({
     setQuery(val);
     setHighlightedIndex(-1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (val.length > 0) {
-      debounceRef.current = setTimeout(() => {
-        // query will re-run via pause condition
-      }, 300);
-    } else {
-      setResults([]);
-    }
+    debounceRef.current = setTimeout(() => {
+      if (val.length >= 2) {
+        search({ requestPolicy: 'network-only' });
+      } else {
+        setResults([]);
+      }
+    }, 300);
   };
 
   const selectAirport = (airport: Airport) => {
@@ -134,7 +132,9 @@ export default function AirportPicker({
           className={styles.input}
           value={query}
           onChange={handleChange}
-          onFocus={() => query.length > 0 && setOpen(true)}
+          onFocus={() => {
+            if (results.length > 0) setOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"

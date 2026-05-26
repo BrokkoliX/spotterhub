@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { type LatLngExpression, type LeafletMouseEvent } from 'leaflet';
 import { useEffect, useState } from 'react';
 import L from 'leaflet';
@@ -25,16 +25,22 @@ interface MapPickerProps {
 const DEFAULT_CENTER: LatLngExpression = [33.9425, -118.4081]; // KLAX
 const DEFAULT_ZOOM = 10;
 
-function MapClickHandler({
-  onSelect,
-}: {
-  onSelect: (lat: number, lng: number) => void;
-}) {
+function MapClickHandler({ onSelect }: { onSelect: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e: LeafletMouseEvent) {
       onSelect(e.latlng.lat, e.latlng.lng);
     },
   });
+  return null;
+}
+
+function MapFocusHandler({ position }: { position: { lat: number; lng: number } | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.flyTo([position.lat, position.lng], 14, { duration: 1.0 });
+    }
+  }, [position, map]);
   return null;
 }
 
@@ -54,9 +60,7 @@ export default function MapPicker({ position, onSelect }: MapPickerProps) {
     );
   }
 
-  const center: LatLngExpression = position
-    ? [position.lat, position.lng]
-    : DEFAULT_CENTER;
+  const center: LatLngExpression = position ? [position.lat, position.lng] : DEFAULT_CENTER;
 
   return (
     <MapContainer
@@ -70,6 +74,7 @@ export default function MapPicker({ position, onSelect }: MapPickerProps) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapClickHandler onSelect={onSelect} />
+      <MapFocusHandler position={position} />
       {position && (
         <Marker
           position={[position.lat, position.lng]}
