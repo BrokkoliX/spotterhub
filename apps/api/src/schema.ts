@@ -246,7 +246,19 @@ export const typeDefs = gql`
       sortBy: PhotoSortBy
       kind: PhotoKind
       communityCategory: CommunityPhotoCategory
+      """
+      Restrict to photos that have been awarded a badge with this slug
+      (e.g. 'admin-choice-week' for the home page's Admin's Choice tab).
+      """
+      awardSlug: String
     ): PhotoConnection!
+
+    """
+    A single random approved, non-deleted photo. Used by the home-page
+    hero to surface a different community photo on every reload.
+    Returns null only when there are no approved photos at all.
+    """
+    randomPhoto: Photo
 
     """
     Search photos by free text. Matches against caption, aircraft type,

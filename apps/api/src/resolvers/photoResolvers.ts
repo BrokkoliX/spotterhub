@@ -60,6 +60,12 @@ export interface PhotosArgs {
   sortBy?: PhotoSortBy;
   kind?: 'AIRCRAFT' | 'COMMUNITY';
   communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
+  /**
+   * Filter to photos that have been awarded a badge with this slug
+   * (via UserBadge.awardedPhotoId). Used by the "Admin's Choice" feed
+   * tab on the home page (slug = 'admin-choice-week').
+   */
+  awardSlug?: string;
 }
 
 export interface CreatePhotoInput {
@@ -227,6 +233,16 @@ export const photoQueryResolvers = {
       where.communityCategory = args.communityCategory;
     }
 
+    // Filter to photos that have been awarded a specific badge — used by
+    // the "Admin's Choice" feed tab on the home page. We use `some` with
+    // a slug match on the related BadgeDefinition. Each `awardedPhotoId`
+    // on UserBadge is what links a badge instance back to a photo.
+    if (args.awardSlug) {
+      where.awardedBadges = {
+        some: { badgeDefinition: { slug: args.awardSlug, isActive: true } },
+      };
+    }
+
     // Aircraft hierarchy filters — all three can be applied simultaneously
     const aircraftFilter: Record<string, unknown> = {};
     if (args.manufacturer) {
@@ -304,6 +320,50 @@ export const photoQueryResolvers = {
       },
       totalCount,
     };
+  },
+
+  /**
+   * Single random approved photo, used by the home-page hero banner.
+   *
+   * Selecting a random row efficiently on a large table is non-trivial:
+   *   - `ORDER BY random() LIMIT 1` is O(N) and gets slow once the
+   *     table has even a few hundred thousand rows.
+   *   - Sampling tricks like `TABLESAMPLE` aren't compatible with the
+   *     partial filter we need (only approved + not deleted), so they
+   *     can return zero rows on small/sparse datasets.
+   *
+   * We use the cheaper "count + random offset" technique: a single
+   * indexed COUNT (cheap thanks to the partial `photos_feed_recent_idx`
+   * added in migration 20260527190620), one Math.random() in JS, then
+   * one indexed lookup with OFFSET. Total cost: two index-only scans.
+   */
+  randomPhoto: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    const where = {
+      moderationStatus: 'approved' as const,
+      isDeleted: false,
+    };
+    const total = await ctx.prisma.photo.count({ where });
+    if (total === 0) return null;
+    const offset = Math.floor(Math.random() * total);
+    return ctx.prisma.photo.findFirst({
+      where,
+      // Stable ordering required so OFFSET is deterministic for the
+      // duration of one request. createdAt has an index, so this is
+      // an index scan, not a full sort.
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      include: {
+        user: true,
+        variants: true,
+        tags: true,
+        aircraft: {
+          include: { manufacturer: true, family: true, variant: true, airlineRef: true },
+        },
+        location: { include: { airport: true, spottingLocation: true } },
+        photoCategory: true,
+        aircraftSpecificCategory: true,
+      },
+    });
   },
 
   myUploads: async (
