@@ -1185,6 +1185,7 @@ model BadgeDefinition {
   triggerMetric    String?          @map("trigger_metric")
   triggerThreshold Int?             @map("trigger_threshold")
   isActive         Boolean          @default(true) @map("is_active")
+  isRepeatable     Boolean          @default(false) @map("is_repeatable")
   displayOrder     Int              @default(0) @map("display_order")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
@@ -1209,7 +1210,10 @@ model UserBadge {
   awardedPhoto    Photo?          @relation(fields: [awardedPhotoId], references: [id], onDelete: SetNull)
   awarder         User?           @relation("BadgeAwarder", fields: [awardedBy], references: [id], onDelete: SetNull)
 
-  @@unique([userId, badgeDefinitionId])
+  // Uniqueness intentionally not enforced at the DB level. Dedup is handled
+  // in application code based on `BadgeDefinition.isRepeatable` so that
+  // repeatable badges (e.g. Admin's Choice of the Week, tied to different
+  // photos each time) can be granted multiple times to the same user.
   @@index([userId])
   @@index([badgeDefinitionId])
   @@map("user_badges")

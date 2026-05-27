@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { PrismaClient } from '@prisma/client';
 
+import { seedBadges } from './seed-badges.js';
+
 const prisma = new PrismaClient();
 
 /**
@@ -1124,6 +1126,10 @@ async function main() {
   }
 
   console.log(`  ✅ Photo locations: ${locationCount} photos linked to airports`);
+
+  // ─── Badge Definitions ──────────────────────────────────────────────────
+
+  await seedBadges(prisma);
 
   console.log('✅ Seed complete!');
 }

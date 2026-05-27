@@ -53,11 +53,7 @@ export const badgeQueryResolvers = {
     });
   },
 
-  photoAwards: async (
-    _parent: unknown,
-    args: { period: string; first?: number },
-    ctx: Context,
-  ) => {
+  photoAwards: async (_parent: unknown, args: { period: string; first?: number }, ctx: Context) => {
     const take = Math.min(args.first ?? 10, 50);
     return ctx.prisma.photoAward.findMany({
       where: { period: args.period as 'DAY' | 'WEEK' | 'MONTH' },
@@ -87,13 +83,20 @@ export const badgeMutationResolvers = {
         slug: slug as string,
         name: name as string,
         description: description as string,
-        category: category as 'UPLOAD' | 'ENGAGEMENT' | 'COMMUNITY' | 'STREAK' | 'DIVERSITY' | 'AWARD',
+        category: category as
+          | 'UPLOAD'
+          | 'ENGAGEMENT'
+          | 'COMMUNITY'
+          | 'STREAK'
+          | 'DIVERSITY'
+          | 'AWARD',
         tier: tier as 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM',
         triggerType: triggerType as 'AUTOMATIC' | 'AWARDED',
         iconUrl: (rest.iconUrl as string) ?? null,
         triggerMetric: (rest.triggerMetric as string) ?? null,
         triggerThreshold: (rest.triggerThreshold as number) ?? null,
         isActive: (rest.isActive as boolean) ?? true,
+        isRepeatable: (rest.isRepeatable as boolean) ?? false,
         displayOrder: (rest.displayOrder as number) ?? 0,
       },
     });
@@ -119,11 +122,7 @@ export const badgeMutationResolvers = {
     });
   },
 
-  deleteBadgeDefinition: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteBadgeDefinition: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     await requireSuperuser(ctx);
 
     const existing = await ctx.prisma.badgeDefinition.findUnique({ where: { id: args.id } });
@@ -158,21 +157,35 @@ export const badgeMutationResolvers = {
       throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
     }
 
-    const existing = await ctx.prisma.userBadge.findUnique({
-      where: {
-        userId_badgeDefinitionId: {
+    // Dedup logic depends on whether the badge is repeatable. Non-repeatable
+    // badges can be earned at most once per user. Repeatable badges (e.g.
+    // Admin's Choice of the Week, Photo of the Day) can be earned multiple
+    // times — but not twice for the exact same photo.
+    if (!badge.isRepeatable) {
+      const existing = await ctx.prisma.userBadge.findFirst({
+        where: { userId: args.userId, badgeDefinitionId: args.badgeDefinitionId },
+      });
+      if (existing) {
+        throw new GraphQLError('User already has this badge', {
+          extensions: { code: 'BAD_USER_INPUT' },
+        });
+      }
+    } else if (args.photoId) {
+      const existingForPhoto = await ctx.prisma.userBadge.findFirst({
+        where: {
           userId: args.userId,
           badgeDefinitionId: args.badgeDefinitionId,
+          awardedPhotoId: args.photoId,
         },
-      },
-    });
-    if (existing) {
-      throw new GraphQLError('User already has this badge', {
-        extensions: { code: 'BAD_USER_INPUT' },
       });
+      if (existingForPhoto) {
+        throw new GraphQLError('This photo has already received this badge', {
+          extensions: { code: 'BAD_USER_INPUT' },
+        });
+      }
     }
 
-    return ctx.prisma.userBadge.create({
+    const userBadge = await ctx.prisma.userBadge.create({
       data: {
         userId: args.userId,
         badgeDefinitionId: args.badgeDefinitionId,
@@ -186,32 +199,61 @@ export const badgeMutationResolvers = {
         user: true,
       },
     });
+
+    // Notify the recipient. Include photo context when a photo is tied.
+    await ctx.prisma.notification.create({
+      data: {
+        userId: args.userId,
+        type: 'badge_earned',
+        title: `🏆 Badge earned: ${badge.name} (${badge.tier})`,
+        body: args.photoId
+          ? `${badge.description} — awarded for one of your photos.`
+          : badge.description,
+        data: { badgeSlug: badge.slug, badgeId: badge.id, photoId: args.photoId ?? null },
+      },
+    });
+
+    return userBadge;
   },
 
   revokeBadge: async (
     _parent: unknown,
-    args: { userId: string; badgeDefinitionId: string },
+    args: { userId: string; badgeDefinitionId: string; userBadgeId?: string },
     ctx: Context,
   ) => {
     await requireSuperuser(ctx);
 
-    const existing = await ctx.prisma.userBadge.findUnique({
-      where: {
-        userId_badgeDefinitionId: {
+    // When userBadgeId is supplied, revoke that specific row — required
+    // for repeatable badges where multiple rows can exist for the same
+    // (userId, badgeDefinitionId) pair (e.g. Admin's Choice of the Week
+    // earned on three different photos).
+    if (args.userBadgeId) {
+      const existing = await ctx.prisma.userBadge.findFirst({
+        where: {
+          id: args.userBadgeId,
           userId: args.userId,
           badgeDefinitionId: args.badgeDefinitionId,
         },
-      },
+      });
+      if (!existing) {
+        throw new GraphQLError('Badge award not found', {
+          extensions: { code: 'NOT_FOUND' },
+        });
+      }
+      await ctx.prisma.userBadge.delete({ where: { id: existing.id } });
+      return true;
+    }
+
+    // Otherwise, revoke any rows matching the user+badge pair. For
+    // non-repeatable badges this matches at most one row.
+    const result = await ctx.prisma.userBadge.deleteMany({
+      where: { userId: args.userId, badgeDefinitionId: args.badgeDefinitionId },
     });
-    if (!existing) {
+    if (result.count === 0) {
       throw new GraphQLError('User does not have this badge', {
         extensions: { code: 'NOT_FOUND' },
       });
     }
-
-    await ctx.prisma.userBadge.delete({
-      where: { id: existing.id },
-    });
     return true;
   },
 };
@@ -220,7 +262,11 @@ export const badgeMutationResolvers = {
 
 export const badgeFieldResolvers = {
   UserBadge: {
-    badgeDefinition: (parent: { badgeDefinition?: unknown; badgeDefinitionId: string }, _args: unknown, ctx: Context) => {
+    badgeDefinition: (
+      parent: { badgeDefinition?: unknown; badgeDefinitionId: string },
+      _args: unknown,
+      ctx: Context,
+    ) => {
       if (parent.badgeDefinition) return parent.badgeDefinition;
       return ctx.prisma.badgeDefinition.findUnique({ where: { id: parent.badgeDefinitionId } });
     },
@@ -228,12 +274,23 @@ export const badgeFieldResolvers = {
       if (parent.user) return parent.user;
       return ctx.prisma.user.findUnique({ where: { id: parent.userId } });
     },
-    awardedPhoto: (parent: { awardedPhoto?: unknown; awardedPhotoId?: string | null }, _args: unknown, ctx: Context) => {
+    awardedPhoto: (
+      parent: { awardedPhoto?: unknown; awardedPhotoId?: string | null },
+      _args: unknown,
+      ctx: Context,
+    ) => {
       if (parent.awardedPhoto) return parent.awardedPhoto;
       if (!parent.awardedPhotoId) return null;
-      return ctx.prisma.photo.findUnique({ where: { id: parent.awardedPhotoId }, include: { variants: true } });
+      return ctx.prisma.photo.findUnique({
+        where: { id: parent.awardedPhotoId },
+        include: { variants: true },
+      });
     },
-    awarder: (parent: { awarder?: unknown; awardedBy?: string | null }, _args: unknown, ctx: Context) => {
+    awarder: (
+      parent: { awarder?: unknown; awardedBy?: string | null },
+      _args: unknown,
+      ctx: Context,
+    ) => {
       if (parent.awarder) return parent.awarder;
       if (!parent.awardedBy) return null;
       return ctx.prisma.user.findUnique({ where: { id: parent.awardedBy } });
@@ -299,11 +356,7 @@ export async function checkAndAwardBadges(
   return newBadgeIds;
 }
 
-async function computeMetricValue(
-  ctx: Context,
-  userId: string,
-  metric: string,
-): Promise<number> {
+async function computeMetricValue(ctx: Context, userId: string, metric: string): Promise<number> {
   switch (metric) {
     case 'photo_count':
       return ctx.prisma.photo.count({

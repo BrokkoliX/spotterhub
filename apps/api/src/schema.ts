@@ -1597,9 +1597,13 @@ export const typeDefs = gql`
     awardBadge(userId: ID!, badgeDefinitionId: ID!, photoId: ID): UserBadge!
 
     """
-    Revoke a badge from a user. Requires superuser role.
+    Revoke a badge from a user. Requires superuser role. For repeatable
+    badges (e.g. Admin's Choice of the Week) where multiple awards can
+    exist for the same (userId, badgeDefinitionId) pair, supply
+    userBadgeId to target a specific instance. When omitted, all
+    matching rows are removed.
     """
-    revokeBadge(userId: ID!, badgeDefinitionId: ID!): Boolean!
+    revokeBadge(userId: ID!, badgeDefinitionId: ID!, userBadgeId: ID): Boolean!
   }
 
   # ─── Auth Types ──────────────────────────────────────────────────────────
@@ -3967,6 +3971,12 @@ export const typeDefs = gql`
     triggerMetric: String
     triggerThreshold: Int
     isActive: Boolean!
+    """
+    When true, the same user can earn this badge multiple times — typically
+    once per photo (e.g. Admin's Choice of the Week, Photo of the Day).
+    Non-repeatable badges can be earned at most once per user.
+    """
+    isRepeatable: Boolean!
     displayOrder: Int!
     createdAt: String!
     updatedAt: String!
@@ -4001,6 +4011,7 @@ export const typeDefs = gql`
     triggerMetric: String
     triggerThreshold: Int
     isActive: Boolean
+    isRepeatable: Boolean
     displayOrder: Int
   }
 
@@ -4014,6 +4025,7 @@ export const typeDefs = gql`
     triggerMetric: String
     triggerThreshold: Int
     isActive: Boolean
+    isRepeatable: Boolean
     displayOrder: Int
   }
 
