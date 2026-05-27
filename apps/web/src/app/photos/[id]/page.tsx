@@ -328,14 +328,18 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                             border: '1px solid var(--color-border)',
                           }}
                         >
-                          <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
+                          <div style={{ aspectRatio: '16/9', overflow: 'hidden' }}>
                             <img
                               src={
+                                similar.variants?.find((v) => v.variantType === 'thumbnail_16x9')
+                                  ?.url ??
+                                similar.variants?.find((v) => v.variantType === 'display')?.url ??
                                 similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
                                 similar.variants?.[0]?.url ??
                                 ''
                               }
                               alt=""
+                              loading="lazy"
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
                           </div>
