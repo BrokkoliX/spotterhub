@@ -8,6 +8,7 @@ import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
 import { AdBanner } from '@/components/AdBanner';
+import { AdminChoiceButton } from '@/components/AdminChoiceButton';
 import { CommentSection } from '@/components/CommentSection';
 import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
@@ -214,6 +215,17 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                   : 'A moderator rejected this photo. No reason was provided.'}
               </span>
             </div>
+          )}
+
+          {/* Admin tools — superuser-only, on approved photos.
+              The component itself hides if the admin-choice-week badge
+              is missing or inactive, so it's safe to mount here. */}
+          {ready && user?.role === 'superuser' && photo.moderationStatus === 'approved' && (
+            <AdminChoiceButton
+              photoId={photo.id}
+              uploaderId={photo.user.id}
+              uploaderUsername={photo.user.username}
+            />
           )}
 
           {/* Image */}

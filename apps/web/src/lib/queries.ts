@@ -3842,6 +3842,7 @@ export const GET_BADGE_DEFINITIONS = gql`
       triggerMetric
       triggerThreshold
       isActive
+      isRepeatable
       displayOrder
       createdAt
       updatedAt
@@ -3862,6 +3863,7 @@ export const CREATE_BADGE_DEFINITION = gql`
       triggerMetric
       triggerThreshold
       isActive
+      isRepeatable
       displayOrder
     }
   }
@@ -3880,6 +3882,7 @@ export const UPDATE_BADGE_DEFINITION = gql`
       triggerMetric
       triggerThreshold
       isActive
+      isRepeatable
       displayOrder
     }
   }
@@ -3910,7 +3913,59 @@ export const AWARD_BADGE = gql`
 `;
 
 export const REVOKE_BADGE = gql`
-  mutation RevokeBadge($userId: ID!, $badgeDefinitionId: ID!) {
-    revokeBadge(userId: $userId, badgeDefinitionId: $badgeDefinitionId)
+  mutation RevokeBadge($userId: ID!, $badgeDefinitionId: ID!, $userBadgeId: ID) {
+    revokeBadge(userId: $userId, badgeDefinitionId: $badgeDefinitionId, userBadgeId: $userBadgeId)
+  }
+`;
+
+export const GET_USER_BADGES = gql`
+  query UserBadges($userId: ID!) {
+    userBadges(userId: $userId) {
+      id
+      awardedAt
+      user {
+        id
+        username
+      }
+      badgeDefinition {
+        id
+        slug
+        name
+        description
+        category
+        tier
+        triggerType
+        isRepeatable
+      }
+      awardedPhoto {
+        id
+        caption
+        variants {
+          variantType
+          url
+        }
+      }
+      awarder {
+        id
+        username
+      }
+    }
+  }
+`;
+
+export const ADMIN_LOOKUP_PHOTO = gql`
+  query AdminLookupPhoto($id: ID!) {
+    photo(id: $id) {
+      id
+      caption
+      user {
+        id
+        username
+      }
+      variants {
+        variantType
+        url
+      }
+    }
   }
 `;
