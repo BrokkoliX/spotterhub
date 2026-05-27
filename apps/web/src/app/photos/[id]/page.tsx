@@ -228,53 +228,139 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
             />
           )}
 
-          {/* Image */}
-          <div
-            className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}
-          >
-            {imageUrl && !imgError ? (
-              <img
-                src={imageUrl}
-                alt={photo.caption ?? `Photo by ${displayName}`}
-                className={`${styles.image} ${isFullscreen ? styles.fullscreenImage : ''}`}
-                onError={() => setImgError(true)}
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                style={{ cursor: 'pointer' }}
-              />
-            ) : (
-              <div className={styles.imagePlaceholder}>📷</div>
+          {/* Main column — wraps everything that lives in the left column
+              of the .layout grid so the photo, ads, buy card and the
+              "More from this aircraft" strip stack together as one grid
+              child, independent of the sidebar's height. */}
+          <div className={styles.mainColumn}>
+            {/* Image */}
+            <div
+              className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}
+            >
+              {imageUrl && !imgError ? (
+                <img
+                  src={imageUrl}
+                  alt={photo.caption ?? `Photo by ${displayName}`}
+                  className={`${styles.image} ${isFullscreen ? styles.fullscreenImage : ''}`}
+                  onError={() => setImgError(true)}
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  style={{ cursor: 'pointer' }}
+                />
+              ) : (
+                <div className={styles.imagePlaceholder}>📷</div>
+              )}
+            </div>
+
+            {/* Ad after image */}
+            {adData?.adSettings?.slotPhotoDetail && (
+              <AdBanner slotId={adData.adSettings.slotPhotoDetail} />
+            )}
+
+            {/* Buy Button (for priced photos not owned by viewer) */}
+            {canBuy && listingPrice && (
+              <div className={styles.buyCard}>
+                <div className={styles.buyPrice}>${listingPrice}</div>
+                <div className={styles.buyLabel}>for a high-resolution license</div>
+                <button
+                  className={styles.buyBtn}
+                  onClick={handleBuy}
+                  disabled={purchasing}
+                  type="button"
+                >
+                  {purchasing ? 'Redirecting to Stripe…' : `Buy this photo — $${listingPrice}`}
+                </button>
+                {purchaseError && <p className={styles.buyError}>{purchaseError}</p>}
+                <p className={styles.buyNote}>
+                  Secure payment via Stripe · Seller receives most of the amount
+                </p>
+              </div>
+            )}
+
+            {/* Owner listing badge */}
+            {isOwner && photo.listing?.active && (
+              <div className={styles.listedBadge}>📋 Listed for ${photo.listing.priceUsd}</div>
+            )}
+
+            {/* More from this aircraft — sits directly below the main image
+                inside this column. Width matches the photo column; the
+                sidebar to the right remains in its own grid column. */}
+            {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: 12,
+                  }}
+                >
+                  {photo.similarAircraftPhotos.edges.map(
+                    ({
+                      node: similar,
+                    }: {
+                      node: {
+                        id: string;
+                        variants?: {
+                          variantType: string;
+                          url: string;
+                          width: number;
+                          height: number;
+                        }[];
+                        aircraft?: {
+                          registration: string;
+                          manufacturer?: { name: string } | null;
+                          family?: { name: string } | null;
+                          variant?: { name: string } | null;
+                        } | null;
+                        user?: { username: string } | null;
+                      };
+                    }) => (
+                      <Link
+                        key={similar.id}
+                        href={`/photos/${similar.id}`}
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <div
+                          style={{
+                            borderRadius: 'var(--radius-sm)',
+                            overflow: 'hidden',
+                            background: 'var(--color-bg-base)',
+                            border: '1px solid var(--color-border)',
+                          }}
+                        >
+                          <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
+                            <img
+                              src={
+                                similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
+                                similar.variants?.[0]?.url ??
+                                ''
+                              }
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                          <div style={{ padding: '8px 10px', fontSize: '0.8125rem' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                              {similar.aircraft?.registration ?? '—'}
+                            </div>
+                            <div style={{ color: 'var(--color-text-muted)' }}>
+                              {[
+                                similar.aircraft?.manufacturer?.name,
+                                similar.aircraft?.family?.name,
+                                similar.aircraft?.variant?.name,
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ),
+                  )}
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Ad after image */}
-          {adData?.adSettings?.slotPhotoDetail && (
-            <AdBanner slotId={adData.adSettings.slotPhotoDetail} />
-          )}
-
-          {/* Buy Button (for priced photos not owned by viewer) */}
-          {canBuy && listingPrice && (
-            <div className={styles.buyCard}>
-              <div className={styles.buyPrice}>${listingPrice}</div>
-              <div className={styles.buyLabel}>for a high-resolution license</div>
-              <button
-                className={styles.buyBtn}
-                onClick={handleBuy}
-                disabled={purchasing}
-                type="button"
-              >
-                {purchasing ? 'Redirecting to Stripe…' : `Buy this photo — $${listingPrice}`}
-              </button>
-              {purchaseError && <p className={styles.buyError}>{purchaseError}</p>}
-              <p className={styles.buyNote}>
-                Secure payment via Stripe · Seller receives most of the amount
-              </p>
-            </div>
-          )}
-
-          {/* Owner listing badge */}
-          {isOwner && photo.listing?.active && (
-            <div className={styles.listedBadge}>📋 Listed for ${photo.listing.priceUsd}</div>
-          )}
 
           {/* Sidebar */}
           <div className={styles.sidebar}>
@@ -793,87 +879,6 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
               <AdBanner slotId={adData.adSettings.slotPhotoDetail} />
             )}
           </div>
-
-          {/* More from this aircraft — sits directly below the main image,
-              matching its column width. The .layout grid uses align-items:
-              start, so this becomes a new row in column 1 with column 2
-              (under the sidebar) left empty. */}
-          {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                  gap: 12,
-                }}
-              >
-                {photo.similarAircraftPhotos.edges.map(
-                  ({
-                    node: similar,
-                  }: {
-                    node: {
-                      id: string;
-                      variants?: {
-                        variantType: string;
-                        url: string;
-                        width: number;
-                        height: number;
-                      }[];
-                      aircraft?: {
-                        registration: string;
-                        manufacturer?: { name: string } | null;
-                        family?: { name: string } | null;
-                        variant?: { name: string } | null;
-                      } | null;
-                      user?: { username: string } | null;
-                    };
-                  }) => (
-                    <Link
-                      key={similar.id}
-                      href={`/photos/${similar.id}`}
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <div
-                        style={{
-                          borderRadius: 'var(--radius-sm)',
-                          overflow: 'hidden',
-                          background: 'var(--color-bg-base)',
-                          border: '1px solid var(--color-border)',
-                        }}
-                      >
-                        <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
-                          <img
-                            src={
-                              similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
-                              similar.variants?.[0]?.url ??
-                              ''
-                            }
-                            alt=""
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </div>
-                        <div style={{ padding: '8px 10px', fontSize: '0.8125rem' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                            {similar.aircraft?.registration ?? '—'}
-                          </div>
-                          <div style={{ color: 'var(--color-text-muted)' }}>
-                            {[
-                              similar.aircraft?.manufacturer?.name,
-                              similar.aircraft?.family?.name,
-                              similar.aircraft?.variant?.name,
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ),
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Reject modal */}

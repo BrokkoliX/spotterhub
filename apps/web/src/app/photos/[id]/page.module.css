@@ -28,11 +28,15 @@
   }
 }
 
-/* Helper for blocks that should run the full width of the layout
-   (both the main column and the sidebar column) — e.g. the
-   "More from this aircraft" strip below the main image. */
-.fullSpan {
-  grid-column: 1 / -1;
+/* Vertical flex stack used as the photo-detail layout's first column.
+   Wrapping the image, ads, buy card and the "More from this aircraft"
+   strip together guarantees the strip sits directly below the image
+   regardless of how tall the sidebar (column 2) gets. */
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 /* ─── Image ────────────────────────────────────────────────────────────── */
