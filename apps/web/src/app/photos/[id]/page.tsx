@@ -794,11 +794,12 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
             )}
           </div>
 
-          {/* More from this aircraft — full-width strip below the main image
-              and sidebar. Uses the .fullSpan helper to span both layout
-              columns so thumbnails get room to breathe. */}
+          {/* More from this aircraft — sits directly below the main image,
+              matching its column width. The .layout grid uses align-items:
+              start, so this becomes a new row in column 1 with column 2
+              (under the sidebar) left empty. */}
           {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
-            <div className={`${styles.card} ${styles.fullSpan}`}>
+            <div className={styles.card}>
               <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
               <div
                 style={{
