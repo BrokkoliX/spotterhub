@@ -783,84 +783,6 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
               </div>
             )}
 
-            {/* More aircraft photos */}
-            {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
-              <div className={styles.card}>
-                <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                    gap: 8,
-                  }}
-                >
-                  {photo.similarAircraftPhotos.edges.map(
-                    ({
-                      node: similar,
-                    }: {
-                      node: {
-                        id: string;
-                        variants?: {
-                          variantType: string;
-                          url: string;
-                          width: number;
-                          height: number;
-                        }[];
-                        aircraft?: {
-                          registration: string;
-                          manufacturer?: { name: string } | null;
-                          family?: { name: string } | null;
-                          variant?: { name: string } | null;
-                        } | null;
-                        user?: { username: string } | null;
-                      };
-                    }) => (
-                      <Link
-                        key={similar.id}
-                        href={`/photos/${similar.id}`}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <div
-                          style={{
-                            borderRadius: 'var(--radius-sm)',
-                            overflow: 'hidden',
-                            background: 'var(--color-bg-base)',
-                            border: '1px solid var(--color-border)',
-                          }}
-                        >
-                          <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
-                            <img
-                              src={
-                                similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
-                                similar.variants?.[0]?.url ??
-                                ''
-                              }
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          </div>
-                          <div style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
-                            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                              {similar.aircraft?.registration ?? '—'}
-                            </div>
-                            <div style={{ color: 'var(--color-text-muted)' }}>
-                              {[
-                                similar.aircraft?.manufacturer?.name,
-                                similar.aircraft?.family?.name,
-                                similar.aircraft?.variant?.name,
-                              ]
-                                .filter(Boolean)
-                                .join(' ')}
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Comments */}
             <div className={styles.card}>
               <CommentSection photoId={photo.id} />
@@ -871,6 +793,86 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
               <AdBanner slotId={adData.adSettings.slotPhotoDetail} />
             )}
           </div>
+
+          {/* More from this aircraft — full-width strip below the main image
+              and sidebar. Uses the .fullSpan helper to span both layout
+              columns so thumbnails get room to breathe. */}
+          {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
+            <div className={`${styles.card} ${styles.fullSpan}`}>
+              <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: 12,
+                }}
+              >
+                {photo.similarAircraftPhotos.edges.map(
+                  ({
+                    node: similar,
+                  }: {
+                    node: {
+                      id: string;
+                      variants?: {
+                        variantType: string;
+                        url: string;
+                        width: number;
+                        height: number;
+                      }[];
+                      aircraft?: {
+                        registration: string;
+                        manufacturer?: { name: string } | null;
+                        family?: { name: string } | null;
+                        variant?: { name: string } | null;
+                      } | null;
+                      user?: { username: string } | null;
+                    };
+                  }) => (
+                    <Link
+                      key={similar.id}
+                      href={`/photos/${similar.id}`}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <div
+                        style={{
+                          borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden',
+                          background: 'var(--color-bg-base)',
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
+                          <img
+                            src={
+                              similar.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
+                              similar.variants?.[0]?.url ??
+                              ''
+                            }
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                        <div style={{ padding: '8px 10px', fontSize: '0.8125rem' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                            {similar.aircraft?.registration ?? '—'}
+                          </div>
+                          <div style={{ color: 'var(--color-text-muted)' }}>
+                            {[
+                              similar.aircraft?.manufacturer?.name,
+                              similar.aircraft?.family?.name,
+                              similar.aircraft?.variant?.name,
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Reject modal */}

@@ -28,6 +28,13 @@
   }
 }
 
+/* Helper for blocks that should run the full width of the layout
+   (both the main column and the sidebar column) — e.g. the
+   "More from this aircraft" strip below the main image. */
+.fullSpan {
+  grid-column: 1 / -1;
+}
+
 /* ─── Image ────────────────────────────────────────────────────────────── */
 
 .imageContainer {
