@@ -251,6 +251,7 @@ export const GET_PHOTOS = gql`
     $photographer: String
     $kind: PhotoKind
     $sortBy: PhotoSortBy
+    $awardSlug: String
   ) {
     photos(
       first: $first
@@ -267,6 +268,7 @@ export const GET_PHOTOS = gql`
       photographer: $photographer
       kind: $kind
       sortBy: $sortBy
+      awardSlug: $awardSlug
     ) {
       edges {
         cursor
@@ -287,6 +289,15 @@ export const GET_PHOTOS = gql`
 export const GET_PHOTO = gql`
   query Photo($id: ID!) {
     photo(id: $id) {
+      ...PhotoFields
+    }
+  }
+  ${PHOTO_FIELDS}
+`;
+
+export const GET_RANDOM_PHOTO = gql`
+  query RandomPhoto {
+    randomPhoto {
       ...PhotoFields
     }
   }

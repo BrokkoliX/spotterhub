@@ -7,6 +7,20 @@
   overflow: hidden;
   background: linear-gradient(135deg, #0a0a1a 0%, #0f1f3d 40%, #1a2d5a 70%, #0f3460 100%);
   background-color: #0a0a1a;
+  transition: height 0.25s ease;
+}
+
+/* Tall variant — used when a random hero photo has loaded. The image
+   is set as the element's background-image inline; we only adjust the
+   geometry and overlay strength here. */
+.heroTall {
+  height: 420px;
+}
+
+@media (max-width: 767px) {
+  .heroTall {
+    height: 280px;
+  }
 }
 
 .heroGradient {
@@ -24,6 +38,17 @@
   background: linear-gradient(to bottom, rgba(10, 10, 26, 0.3) 0%, rgba(10, 10, 26, 0.7) 100%);
 }
 
+/* When the hero is tall + photo-backed we want a stronger gradient so
+   the title is always legible regardless of the underlying image. */
+.heroTall .heroBannerOverlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 26, 0.45) 0%,
+    rgba(10, 10, 26, 0.55) 50%,
+    rgba(10, 10, 26, 0.85) 100%
+  );
+}
+
 .heroContent {
   position: relative;
   z-index: 1;
@@ -33,6 +58,13 @@
   justify-content: center;
   height: 100%;
   padding: 0 24px;
+}
+
+.heroTall .heroContent {
+  /* In the tall hero we want the title to sit roughly two-thirds of the
+     way down so the photo isn't covered by text. */
+  justify-content: flex-end;
+  padding: 0 32px 40px;
 }
 
 .heroEmoji {
@@ -48,8 +80,53 @@
   margin: 0;
 }
 
+.heroTall .heroTitle {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
 .heroSubtitle {
   display: none;
+}
+
+/* Subtitle is only meaningful in the tall hero. */
+.heroTall .heroSubtitle {
+  display: block;
+  margin: 8px 0 0;
+  font-size: clamp(0.9375rem, 1.6vw, 1.125rem);
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+  max-width: 640px;
+}
+
+/* Photographer credit chip (bottom-right, only when a random photo is
+   shown). Subtle so it doesn't fight the title for attention but still
+   provides attribution + a click target back to the photo. */
+.heroAttribution {
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.heroAttribution:hover {
+  background: rgba(0, 0, 0, 0.65);
+  transform: translateY(-1px);
 }
 
 .heroStats {

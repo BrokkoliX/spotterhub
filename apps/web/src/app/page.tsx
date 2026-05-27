@@ -16,6 +16,7 @@ import {
   GET_AIRCRAFT_VARIANTS,
   GET_FOLLOWING_FEED,
   GET_PHOTOS,
+  GET_RANDOM_PHOTO,
   GET_SITE_SETTINGS,
   GET_AD_SETTINGS,
   SEARCH_AIRLINES,
@@ -27,7 +28,14 @@ import styles from './page.module.css';
 
 const PAGE_SIZE = 24;
 
-type FeedTab = 'recent' | 'following' | 'mine';
+/**
+ * Slug of the badge that powers the "Admin's Choice" feed tab. Stays in
+ * sync with apps/web/src/components/AdminChoiceButton.tsx — keep the two
+ * in lockstep if the slug ever changes.
+ */
+const ADMIN_CHOICE_BADGE_SLUG = 'admin-choice-week';
+
+type FeedTab = 'recent' | 'following' | 'mine' | 'admin_choice';
 type SortOption =
   | 'recent'
   | 'popular_day'
@@ -170,6 +178,24 @@ export default function HomePage() {
 
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
   const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
+
+  // Random photo for the hero. `network-only` ensures the cache is not
+  // consulted, so a fresh photo is picked on every page reload (which
+  // is the user-visible behaviour we want for the hero banner).
+  const [{ data: randomPhotoData }] = useQuery({
+    query: GET_RANDOM_PHOTO,
+    requestPolicy: 'network-only',
+  });
+  const heroPhoto = randomPhotoData?.randomPhoto as PhotoData | null | undefined;
+  const heroDisplayVariant = heroPhoto?.variants?.find(
+    (v: { variantType: string }) => v.variantType === 'display',
+  );
+  const heroFallbackVariant = heroPhoto?.variants?.find(
+    (v: { variantType: string }) => v.variantType === 'thumbnail',
+  );
+  const heroImageUrl =
+    heroDisplayVariant?.url ?? heroFallbackVariant?.url ?? heroPhoto?.originalUrl ?? null;
+
   const siteBannerUrl = siteData?.siteSettings?.bannerUrl;
   const siteTagline = siteData?.siteSettings?.tagline;
   const feedAdSlot = adData?.adSettings?.slotFeed ?? null;
@@ -375,6 +401,18 @@ export default function HomePage() {
     pause: feedTab !== 'mine' || !user,
   });
 
+  // "Admin's Choice" feed: photos that have been awarded the
+  // admin-choice-week badge. Filters on the new `awardSlug` server arg.
+  const [{ data: adminChoiceData, fetching: adminChoiceFetching }] = useQuery({
+    query: GET_PHOTOS,
+    variables: {
+      first: PAGE_SIZE,
+      page: currentPage,
+      awardSlug: ADMIN_CHOICE_BADGE_SLUG,
+    },
+    pause: feedTab !== 'admin_choice',
+  });
+
   const handleTabChange = (tab: FeedTab) => {
     setFeedTab(tab);
   };
@@ -391,13 +429,21 @@ export default function HomePage() {
       ? data?.photos
       : feedTab === 'following'
         ? followingData?.followingFeed
-        : mineData?.photos;
+        : feedTab === 'admin_choice'
+          ? adminChoiceData?.photos
+          : mineData?.photos;
   const totalCount = connection?.totalCount ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const displayedPhotos: PhotoData[] =
     connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
   const isLoading =
-    feedTab === 'recent' ? fetching : feedTab === 'following' ? followingFetching : mineFetching;
+    feedTab === 'recent'
+      ? fetching
+      : feedTab === 'following'
+        ? followingFetching
+        : feedTab === 'admin_choice'
+          ? adminChoiceFetching
+          : mineFetching;
 
   // Single config driving both the active-filter chips and clear-all behavior.
   const filterConfigs: Array<{
@@ -593,26 +639,46 @@ export default function HomePage() {
     />
   );
 
+  // Hero treatment: a random approved photo as a full-bleed background.
+  // Falls back to the admin-configurable site banner, then to a gradient,
+  // so first paint never looks broken.
+  const heroBackgroundUrl = heroImageUrl ?? siteBannerUrl ?? null;
+  const heroIsTall = !!heroImageUrl;
+  const heroPhotoOwnerName =
+    heroPhoto?.user?.profile?.displayName ?? heroPhoto?.user?.username ?? null;
+
   return (
     <div>
       {/* Hero Banner */}
       <div
-        className={styles.hero}
+        className={`${styles.hero} ${heroIsTall ? styles.heroTall : ''}`}
         style={
-          siteBannerUrl
+          heroBackgroundUrl
             ? {
-                backgroundImage: `url(${siteBannerUrl})`,
+                backgroundImage: `url(${heroBackgroundUrl})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }
             : undefined
         }
       >
-        {siteBannerUrl && <div className={styles.heroBannerOverlay} />}
-        {!siteBannerUrl && <div className={styles.heroGradient} />}
+        {heroBackgroundUrl && <div className={styles.heroBannerOverlay} />}
+        {!heroBackgroundUrl && <div className={styles.heroGradient} />}
         <div className={styles.heroContent}>
           <h1 className={styles.heroTitle}>SpotterSpace</h1>
+          {siteTagline && <p className={styles.heroSubtitle}>{siteTagline}</p>}
         </div>
+        {/* Attribution chip: every random hero photo links back to its
+            detail page so the photographer gets credit and clicks. */}
+        {heroPhoto && heroPhotoOwnerName && (
+          <Link
+            href={`/photos/${heroPhoto.id}`}
+            className={styles.heroAttribution}
+            title={`View photo by ${heroPhotoOwnerName}`}
+          >
+            📸 {heroPhotoOwnerName}
+          </Link>
+        )}
       </div>
 
       {feedAdSlot && (
@@ -814,6 +880,14 @@ export default function HomePage() {
               My Photos
             </button>
           )}
+          <button
+            type="button"
+            className={`${styles.tab} ${feedTab === 'admin_choice' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('admin_choice')}
+            title="Photos hand-picked by site admins"
+          >
+            🏆 Admin&apos;s Choice
+          </button>
         </div>
 
         {/* Sign-in prompt */}
@@ -827,7 +901,7 @@ export default function HomePage() {
         )}
 
         {/* Photo Grid */}
-        {(feedTab === 'recent' || user) && (
+        {(feedTab === 'recent' || feedTab === 'admin_choice' || user) && (
           <PhotoGrid
             key={gridKey}
             photos={displayedPhotos}
@@ -842,9 +916,11 @@ export default function HomePage() {
                 ? 'No photos yet. Follow users, airports, or topics to build your feed!'
                 : feedTab === 'mine'
                   ? "You haven't published any photos yet. Head to Upload to share your first shot!"
-                  : fetching
-                    ? undefined
-                    : 'No photos match your filters.'
+                  : feedTab === 'admin_choice'
+                    ? "No Admin's Choice photos have been awarded yet — check back soon."
+                    : fetching
+                      ? undefined
+                      : 'No photos match your filters.'
             }
           />
         )}

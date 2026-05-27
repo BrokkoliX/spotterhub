@@ -433,19 +433,6 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                     )}
                   </li>
                 )}
-                {!photo.aircraft && photo.airportCode && (
-                  <li className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Airport</span>
-                    <span className={styles.metaValue}>{photo.airportCode}</span>
-                    {user && (
-                      <TopicFollowButton
-                        targetType="airport"
-                        value={photo.airportCode}
-                        initialIsFollowing={false}
-                      />
-                    )}
-                  </li>
-                )}
                 {!photo.aircraft && photo.takenAt && (
                   <li className={styles.metaItem}>
                     <span className={styles.metaLabel}>Taken</span>
@@ -647,11 +634,13 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
               </div>
             )}
 
-            {/* Location */}
-            {photo.location && (
+            {/* Location — render whenever any location data is available:
+                a PhotoLocation row (with coordinates and/or linked airport),
+                or a free-form `airportCode` string on the Photo itself. */}
+            {(photo.location || photo.airportCode) && (
               <div className={styles.card}>
                 <h3 className={styles.cardTitle}>📍 Location</h3>
-                {process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
+                {photo.location && process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
                   <img
                     src={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-s+f59e0b(${photo.location.longitude},${photo.location.latitude})/${photo.location.longitude},${photo.location.latitude},12,0/300x200@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`}
                     alt="Photo location"
@@ -663,7 +652,7 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                   />
                 )}
                 <ul className={styles.metaList}>
-                  {photo.location.airport && (
+                  {photo.location?.airport ? (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Airport</span>
                       <span className={styles.metaValue}>
@@ -673,9 +662,32 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                         {photo.location.airport.iataCode && ` (${photo.location.airport.iataCode})`}
                         {photo.location.airport.icaoCode && ` / ${photo.location.airport.icaoCode}`}
                       </span>
+                      {user && photo.location.airport.icaoCode && (
+                        <TopicFollowButton
+                          targetType="airport"
+                          value={photo.location.airport.icaoCode}
+                          initialIsFollowing={false}
+                        />
+                      )}
                     </li>
-                  )}
-                  {photo.location.spottingLocation && (
+                  ) : photo.airportCode ? (
+                    /* No PhotoLocation row, but the photo has a raw airport
+                       code — show it so the place isn't hidden entirely. */
+                    <li className={styles.metaItem}>
+                      <span className={styles.metaLabel}>Airport</span>
+                      <span className={styles.metaValue}>
+                        <Link href={`/airports/${photo.airportCode}`}>{photo.airportCode}</Link>
+                      </span>
+                      {user && (
+                        <TopicFollowButton
+                          targetType="airport"
+                          value={photo.airportCode}
+                          initialIsFollowing={false}
+                        />
+                      )}
+                    </li>
+                  ) : null}
+                  {photo.location?.spottingLocation && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Spot</span>
                       <span className={styles.metaValue}>
@@ -683,19 +695,19 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       </span>
                     </li>
                   )}
-                  {photo.location.country && (
+                  {photo.location?.country && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Country</span>
                       <span className={styles.metaValue}>{photo.location.country}</span>
                     </li>
                   )}
-                  {photo.location.locationType && (
+                  {photo.location?.locationType && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Location Type</span>
                       <span className={styles.metaValue}>{photo.location.locationType}</span>
                     </li>
                   )}
-                  {photo.location.privacyMode === 'approximate' && (
+                  {photo.location?.privacyMode === 'approximate' && (
                     <li className={styles.metaItem}>
                       <span className={styles.metaLabel}>Accuracy</span>
                       <span className={styles.metaValue}>~1 km</span>
