@@ -3,6 +3,7 @@ import { GraphQLError } from 'graphql';
 import type { Context } from '../context.js';
 import { resolveUserId } from '../utils/resolverHelpers.js';
 
+import { checkAndAwardBadges } from './badgeResolvers.js';
 import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -63,6 +64,12 @@ export const likeMutationResolvers = {
         body: `@${liker.username} liked your photo`,
         data: { photoId: args.photoId },
       }).catch(() => {});
+    }
+
+    // Re-evaluate engagement badges on the photo owner. Fire-and-forget so
+    // badge errors cannot break the like mutation.
+    if (photoOwner) {
+      checkAndAwardBadges(ctx, photoOwner.userId, 'like_received_count').catch(() => {});
     }
 
     // Clear cached like count so subsequent field resolvers see the updated value

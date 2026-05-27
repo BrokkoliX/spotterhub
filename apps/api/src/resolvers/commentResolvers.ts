@@ -2,9 +2,16 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser, resolveUserId, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  getDbUser,
+  resolveUserId,
+  buildPaginationArgs,
+} from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
+import { checkAndAwardBadges } from './badgeResolvers.js';
 import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -190,6 +197,10 @@ export const commentMutationResolvers = {
         }).catch(() => {});
       }
     }
+
+    // Re-evaluate engagement badges on the commenter. Fire-and-forget so
+    // badge errors cannot break the comment mutation.
+    checkAndAwardBadges(ctx, userId, 'comment_count').catch(() => {});
 
     return comment;
   },

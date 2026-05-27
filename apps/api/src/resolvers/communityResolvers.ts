@@ -3,9 +3,15 @@ import { randomBytes } from 'node:crypto';
 import { GraphQLError } from 'graphql';
 
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  getDbUser,
+  buildPaginationArgs,
+} from '../utils/resolverHelpers.js';
 import { validateStringLength, validateSlug } from '../utils/validation.js';
 
+import { checkAndAwardBadges } from './badgeResolvers.js';
 import { createNotification } from './notificationResolvers.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -87,7 +93,17 @@ async function logModerationAction(
     communityId: string;
     moderatorId: string;
     targetUserId: string;
-    action: 'ban' | 'unban' | 'kick' | 'pin_thread' | 'unpin_thread' | 'lock_thread' | 'unlock_thread' | 'delete_post' | 'delete_photo' | 'delete_comment';
+    action:
+      | 'ban'
+      | 'unban'
+      | 'kick'
+      | 'pin_thread'
+      | 'unpin_thread'
+      | 'lock_thread'
+      | 'unlock_thread'
+      | 'delete_post'
+      | 'delete_photo'
+      | 'delete_comment';
     reason?: string;
     metadata?: Record<string, unknown>;
   },
@@ -175,7 +191,16 @@ export const communityQueryResolvers = {
 
   communityMembers: async (
     _parent: unknown,
-    args: { communityId: string; filter?: { search?: string; role?: string[]; status?: string[]; first?: number; after?: string } },
+    args: {
+      communityId: string;
+      filter?: {
+        search?: string;
+        role?: string[];
+        status?: string[];
+        first?: number;
+        after?: string;
+      };
+    },
     ctx: Context,
   ) => {
     const dbUser = await getDbUser(ctx);
@@ -183,7 +208,10 @@ export const communityQueryResolvers = {
 
     // Verify caller is admin/owner
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!isSuperuser && (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))) {
+    if (
+      !isSuperuser &&
+      (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))
+    ) {
       throw new GraphQLError('Only community owners and admins can view the member list', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -321,6 +349,11 @@ export const communityMutationResolvers = {
       return comm;
     });
 
+    // Re-evaluate community badges on the creator. createCommunity also
+    // auto-adds the owner as a member, so both metrics may have advanced.
+    checkAndAwardBadges(ctx, dbUser.id, 'community_created_count').catch(() => {});
+    checkAndAwardBadges(ctx, dbUser.id, 'community_join_count').catch(() => {});
+
     return community;
   },
 
@@ -346,7 +379,8 @@ export const communityMutationResolvers = {
 
     if (args.input.name) validateStringLength(args.input.name, 'Community name', 3, 100);
     if (args.input.slug) validateSlug(args.input.slug, 'Community slug');
-    if (args.input.description) validateStringLength(args.input.description, 'Description', 0, 2000);
+    if (args.input.description)
+      validateStringLength(args.input.description, 'Description', 0, 2000);
 
     const { slug, visibility, ...rest } = args.input;
     const data: Record<string, unknown> = {};
@@ -392,11 +426,7 @@ export const communityMutationResolvers = {
     return ctx.prisma.community.update({ where: { id: args.id }, data });
   },
 
-  deleteCommunity: async (
-    _parent: unknown,
-    args: { id: string },
-    ctx: Context,
-  ) => {
+  deleteCommunity: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
     const community = await ctx.prisma.community.findUnique({ where: { id: args.id } });
     if (!community) {
@@ -483,14 +513,14 @@ export const communityMutationResolvers = {
       }
     }
 
+    // Re-evaluate community badges on the joiner. Fire-and-forget so badge
+    // errors cannot break the join mutation.
+    checkAndAwardBadges(ctx, dbUser.id, 'community_join_count').catch(() => {});
+
     return member;
   },
 
-  leaveCommunity: async (
-    _parent: unknown,
-    args: { communityId: string },
-    ctx: Context,
-  ) => {
+  leaveCommunity: async (_parent: unknown, args: { communityId: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
     const membership = await getMembership(ctx, args.communityId, dbUser.id);
     if (!membership) {
@@ -520,7 +550,10 @@ export const communityMutationResolvers = {
 
     // Get caller's membership
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!isSuperuser && (!callerMembership || !['owner', 'admin', 'moderator'].includes(callerMembership.role))) {
+    if (
+      !isSuperuser &&
+      (!callerMembership || !['owner', 'admin', 'moderator'].includes(callerMembership.role))
+    ) {
       throw new GraphQLError('You do not have permission to remove members', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -562,7 +595,10 @@ export const communityMutationResolvers = {
 
     // Caller must be owner or admin or superuser
     const callerMembership = await getMembership(ctx, args.communityId, dbUser.id);
-    if (!isSuperuser && (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))) {
+    if (
+      !isSuperuser &&
+      (!callerMembership || !['owner', 'admin'].includes(callerMembership.role))
+    ) {
       throw new GraphQLError('Only owners and admins can change member roles', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -648,11 +684,7 @@ export const communityMutationResolvers = {
     return ctx.prisma.community.findUnique({ where: { id: args.communityId } });
   },
 
-  generateInviteCode: async (
-    _parent: unknown,
-    args: { communityId: string },
-    ctx: Context,
-  ) => {
+  generateInviteCode: async (_parent: unknown, args: { communityId: string }, ctx: Context) => {
     const dbUser = await getDbUser(ctx);
     const isSuperuser = dbUser.role === 'superuser';
     const membership = await getMembership(ctx, args.communityId, dbUser.id);
