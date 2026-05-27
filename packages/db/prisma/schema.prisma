@@ -517,6 +517,11 @@ model Photo {
   @@index([aircraftId])
   @@index([aircraftId, createdAt(sort: Desc)])
   @@index([kind])
+  // Note: partial composite indexes for the home-feed sort modes
+  // (`photos_feed_recent_idx`, `photos_feed_popular_idx`,
+  // `photos_feed_kind_recent_idx`) are managed via raw SQL in
+  // migration 20260527190620_add_photo_feed_indexes — Prisma does not
+  // model partial indexes, so they intentionally don't appear here.
   @@map("photos")
 }
 
