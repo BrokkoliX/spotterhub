@@ -169,70 +169,71 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
         </Link>
 
         <div className={styles.layout}>
-          {/* Moderation banner — visible to the owner and to moderators/admins.
-              The backend's rejectionReason resolver already enforces this
-              authorization, so we conservatively gate the banner here too. */}
-          {(isOwner || isPrivileged) && photo.moderationStatus === 'pending' && (
-            <div
-              className={`${styles.moderationBanner} ${styles.moderationBannerPending}`}
-              role="status"
-            >
-              <span className={styles.moderationBannerTitle}>⏳ Awaiting moderation</span>
-              <span className={styles.moderationBannerBody}>
-                This photo is pending review by a moderator. It is not yet visible in the public
-                feed.
-              </span>
-              {isPrivileged && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button
-                    className={styles.moderationBtnApprove}
-                    onClick={handleApprove}
-                    disabled={approving}
-                  >
-                    {approving ? 'Approving…' : '✓ Approve'}
-                  </button>
-                  <button
-                    className={styles.moderationBtnReject}
-                    onClick={() => setShowRejectModal(true)}
-                    disabled={rejecting}
-                  >
-                    ✗ Reject
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {(isOwner || isPrivileged) && photo.moderationStatus === 'rejected' && (
-            <div
-              className={`${styles.moderationBanner} ${styles.moderationBannerRejected}`}
-              role="status"
-            >
-              <span className={styles.moderationBannerTitle}>🚫 Photo rejected</span>
-              <span className={styles.moderationBannerBody}>
-                {photo.rejectionReason
-                  ? `Reason: ${photo.rejectionReason}`
-                  : 'A moderator rejected this photo. No reason was provided.'}
-              </span>
-            </div>
-          )}
-
-          {/* Admin tools — superuser-only, on approved photos.
-              The component itself hides if the admin-choice-week badge
-              is missing or inactive, so it's safe to mount here. */}
-          {ready && user?.role === 'superuser' && photo.moderationStatus === 'approved' && (
-            <AdminChoiceButton
-              photoId={photo.id}
-              uploaderId={photo.user.id}
-              uploaderUsername={photo.user.username}
-            />
-          )}
-
           {/* Main column — wraps everything that lives in the left column
               of the .layout grid so the photo, ads, buy card and the
               "More from this aircraft" strip stack together as one grid
-              child, independent of the sidebar's height. */}
+              child, independent of the sidebar's height. Moderation banners
+              and admin tools also live here so they don't accidentally
+              hijack the grid's column-1 slot from the image. */}
           <div className={styles.mainColumn}>
+            {/* Moderation banner — visible to the owner and to moderators/admins.
+                The backend's rejectionReason resolver already enforces this
+                authorization, so we conservatively gate the banner here too. */}
+            {(isOwner || isPrivileged) && photo.moderationStatus === 'pending' && (
+              <div
+                className={`${styles.moderationBanner} ${styles.moderationBannerPending}`}
+                role="status"
+              >
+                <span className={styles.moderationBannerTitle}>⏳ Awaiting moderation</span>
+                <span className={styles.moderationBannerBody}>
+                  This photo is pending review by a moderator. It is not yet visible in the public
+                  feed.
+                </span>
+                {isPrivileged && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button
+                      className={styles.moderationBtnApprove}
+                      onClick={handleApprove}
+                      disabled={approving}
+                    >
+                      {approving ? 'Approving…' : '✓ Approve'}
+                    </button>
+                    <button
+                      className={styles.moderationBtnReject}
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={rejecting}
+                    >
+                      ✗ Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(isOwner || isPrivileged) && photo.moderationStatus === 'rejected' && (
+              <div
+                className={`${styles.moderationBanner} ${styles.moderationBannerRejected}`}
+                role="status"
+              >
+                <span className={styles.moderationBannerTitle}>🚫 Photo rejected</span>
+                <span className={styles.moderationBannerBody}>
+                  {photo.rejectionReason
+                    ? `Reason: ${photo.rejectionReason}`
+                    : 'A moderator rejected this photo. No reason was provided.'}
+                </span>
+              </div>
+            )}
+
+            {/* Admin tools — superuser-only, on approved photos.
+                The component itself hides if the admin-choice-week badge
+                is missing or inactive, so it's safe to mount here. */}
+            {ready && user?.role === 'superuser' && photo.moderationStatus === 'approved' && (
+              <AdminChoiceButton
+                photoId={photo.id}
+                uploaderId={photo.user.id}
+                uploaderUsername={photo.user.username}
+              />
+            )}
             {/* Image */}
             <div
               className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}
