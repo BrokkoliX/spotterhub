@@ -287,7 +287,7 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 sidebar to the right remains in its own grid column. */}
             {photo.similarAircraftPhotos && photo.similarAircraftPhotos.edges.length > 0 && (
               <div className={styles.card}>
-                <h3 className={styles.cardTitle}>✈️ More from this aircraft</h3>
+                <h3 className={styles.cardTitle}>✈️ More from this aircraft / Airport</h3>
                 <div
                   style={{
                     display: 'grid',
