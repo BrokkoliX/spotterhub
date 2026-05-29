@@ -130,7 +130,14 @@ export const communityQueryResolvers = {
 
   communities: async (
     _parent: unknown,
-    args: { search?: string; category?: string; first?: number; after?: string; page?: number },
+    args: {
+      search?: string;
+      category?: string;
+      first?: number;
+      after?: string;
+      page?: number;
+      sort?: 'recent' | 'popular';
+    },
     ctx: Context,
   ) => {
     const { skip, take, cursorWhere } = buildPaginationArgs({
@@ -153,10 +160,22 @@ export const communityQueryResolvers = {
       Object.assign(where, cursorWhere);
     }
 
+    // Sort selection. 'recent' (default, also what every existing caller
+    // gets implicitly) sorts by createdAt desc. 'popular' sorts by the
+    // count of active members desc, with createdAt desc as a tiebreaker
+    // — this keeps the order deterministic for ties while still letting
+    // the cursor pagination (which is keyed on createdAt) work for
+    // callers that want to paginate.
+    const sort = args.sort ?? 'recent';
+    const orderBy =
+      sort === 'popular'
+        ? [{ members: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
+        : { createdAt: 'desc' as const };
+
     const [items, totalCount] = await Promise.all([
       ctx.prisma.community.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take: take + 1,
       }),

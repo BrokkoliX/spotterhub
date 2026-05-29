@@ -13,6 +13,17 @@ export const typeDefs = gql`
     random
   }
 
+  """
+  Sort order for the communities discovery list. 'recent' returns the
+  most recently created communities first (default); 'popular' returns
+  the communities with the most members first. Powers community-discovery
+  surfaces on the home page (e.g. trending communities widget).
+  """
+  enum CommunitySort {
+    recent
+    popular
+  }
+
   enum UserRole {
     user
     moderator
@@ -228,7 +239,8 @@ export const typeDefs = gql`
 
     """
     Paginated, filterable photo feed. Supports cursor-based pagination
-    and filtering by user, album, airport, and tags.
+    and filtering by user, album, airport, tags, and community membership
+    (via the album the photo lives in).
     """
     photos(
       first: Int = 20
@@ -246,6 +258,13 @@ export const typeDefs = gql`
       sortBy: PhotoSortBy
       kind: PhotoKind
       communityCategory: CommunityPhotoCategory
+      """
+      Restrict to photos whose album belongs to one of the given communities.
+      Powers community-scoped feeds on the home page (e.g. a 'photos from
+      communities you joined' tab). Photos whose album has no community
+      (or photos with no album at all) are excluded when this filter is set.
+      """
+      communityIds: [ID!]
       """
       Restrict to photos that have been awarded a badge with this slug
       (e.g. 'admin-choice-week' for the home page's Admin's Choice tab).
@@ -478,6 +497,13 @@ export const typeDefs = gql`
       first: Int = 20
       after: String
       page: Int
+      """
+      Sort order. Defaults to 'recent' (most recently created first) for
+      backwards compatibility with existing callers. Use 'popular' to get
+      communities with the most members first — useful for surfacing
+      trending communities on discovery surfaces.
+      """
+      sort: CommunitySort = recent
     ): CommunityConnection!
 
     """
@@ -544,6 +570,14 @@ export const typeDefs = gql`
     Paginated list of threads in a category. Pinned threads appear first.
     """
     forumThreads(categoryId: ID!, first: Int, after: String, page: Int): ForumThreadConnection!
+
+    """
+    The most recently active forum threads across all categories
+    (both global and community-scoped), ordered by lastPostAt desc.
+    Intended for home-page surfaces that show recent discussion activity.
+    Soft-deleted threads are excluded for non-privileged users.
+    """
+    recentForumThreads(first: Int = 5): [ForumThread!]!
 
     """
     Fetch a single forum thread by ID.
@@ -1865,6 +1899,13 @@ export const typeDefs = gql`
     """
     albumId: ID
     """
+    The community this photo belongs to, resolved through its album
+    (a photo lives in a community when its album is owned by one).
+    Null when the photo has no album, or the album has no community.
+    Used by per-photo community-attribution UIs.
+    """
+    community: Community
+    """
     Photo caption or description.
     """
     caption: String
@@ -3170,6 +3211,12 @@ export const typeDefs = gql`
   type ForumCategory {
     id: ID!
     communityId: ID
+    """
+    The community that owns this category, or null for global categories.
+    Resolved from communityId. Used by surfaces that attribute threads to
+    their owning community (e.g. cross-community recent-threads lists).
+    """
+    community: Community
     name: String!
     description: String
     slug: String!

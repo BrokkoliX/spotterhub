@@ -61,6 +61,13 @@ export interface PhotosArgs {
   kind?: 'AIRCRAFT' | 'COMMUNITY';
   communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
   /**
+   * Restrict to photos whose album belongs to one of the given communities.
+   * Powers community-scoped feed views (e.g. a 'photos from communities you
+   * joined' tab on the home page). Photos with no album, or with an album
+   * that has no communityId, are excluded when this is set.
+   */
+  communityIds?: string[];
+  /**
    * Filter to photos that have been awarded a badge with this slug
    * (via UserBadge.awardedPhotoId). Used by the "Admin's Choice" feed
    * tab on the home page (slug = 'admin-choice-week').
@@ -126,6 +133,7 @@ export interface UpdatePhotoInput {
 export interface PhotoParent {
   id: string;
   userId: string;
+  albumId?: string | null;
   aircraftId?: string | null;
   photographerId?: string | null;
   photographerName?: string | null;
@@ -231,6 +239,17 @@ export const photoQueryResolvers = {
     }
     if (args.communityCategory) {
       where.communityCategory = args.communityCategory;
+    }
+
+    // Community filter — restrict to photos whose album belongs to one
+    // of the given communities. Powers community-scoped feed views on
+    // the home page. Empty array means "no communities", which would
+    // return zero rows; we treat that the same as "filter not applied"
+    // to avoid surprising the caller, since the typical signed-in user
+    // with no community memberships should still see the empty state
+    // surfaced by the UI rather than a hard zero from the API.
+    if (args.communityIds && args.communityIds.length > 0) {
+      where.album = { is: { communityId: { in: args.communityIds } } };
     }
 
     // Filter to photos that have been awarded a specific badge — used by
@@ -1226,6 +1245,36 @@ export const photoFieldResolvers = {
     return ctx.prisma.aircraftSpecificCategory.findUnique({
       where: { id: parent.aircraftSpecificCategoryId },
     });
+  },
+
+  /**
+   * The community a photo belongs to, resolved via its album. Returns
+   * null when the photo has no album, or the album has no community.
+   *
+   * If a parent resolver already included `album.community`, we use it
+   * directly (zero extra queries). Otherwise we fall back to a single
+   * indexed lookup that joins photo → album → community. This is the
+   * path the home-page feed takes today; it's a small N+1 we accept
+   * because per-card community attribution is only rendered for cards
+   * currently in view, and Postgres serves it from the album's
+   * primary-key index.
+   */
+  community: async (
+    parent: PhotoParent & {
+      album?: { community?: unknown } | null;
+    },
+    _args: unknown,
+    ctx: Context,
+  ) => {
+    if (parent.album && 'community' in parent.album) {
+      return parent.album.community ?? null;
+    }
+    if (!parent.albumId) return null;
+    const album = await ctx.prisma.album.findUnique({
+      where: { id: parent.albumId },
+      select: { community: true },
+    });
+    return album?.community ?? null;
   },
 
   listing: (parent: PhotoParent, _args: unknown, ctx: Context) => {

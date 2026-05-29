@@ -203,3 +203,322 @@ describe('Photo: randomPhoto', () => {
     }
   });
 });
+
+// ─── Community-context queries ──────────────────────────────────────────────
+
+const PHOTOS_BY_COMMUNITY = `
+  query Photos($communityIds: [ID!]) {
+    photos(first: 20, communityIds: $communityIds) {
+      totalCount
+      edges {
+        node { id caption community { id name slug } }
+      }
+    }
+  }
+`;
+
+const COMMUNITIES_SORTED = `
+  query Communities($sort: CommunitySort) {
+    communities(first: 10, sort: $sort) {
+      edges { node { id name slug } }
+    }
+  }
+`;
+
+const RECENT_THREADS = `
+  query RecentForumThreads($first: Int) {
+    recentForumThreads(first: $first) {
+      id
+      title
+    }
+  }
+`;
+
+async function seedCommunity(ownerId: string, name: string, slug: string) {
+  return prisma.community.create({
+    data: { name, slug, ownerId, visibility: 'public' },
+  });
+}
+
+async function seedAlbumInCommunity(userId: string, communityId: string, title: string) {
+  return prisma.album.create({
+    data: { userId, communityId, title },
+  });
+}
+
+async function seedPhotoInAlbum(userId: string, albumId: string, caption: string) {
+  return prisma.photo.create({
+    data: {
+      userId,
+      albumId,
+      caption,
+      originalUrl: `https://example.com/${caption}.jpg`,
+      mimeType: 'image/jpeg',
+      moderationStatus: 'approved',
+    },
+  });
+}
+
+describe('Photo: photos(communityIds) filter', () => {
+  it('returns only photos whose album belongs to one of the given communities', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+
+    const c1 = await seedCommunity(user.id, 'LAX Spotters', 'lax-spotters');
+    const c2 = await seedCommunity(user.id, 'JFK Spotters', 'jfk-spotters');
+    const albumC1 = await seedAlbumInCommunity(user.id, c1.id, 'LAX album');
+    const albumC2 = await seedAlbumInCommunity(user.id, c2.id, 'JFK album');
+
+    const p1 = await seedPhotoInAlbum(user.id, albumC1.id, 'lax-photo');
+    await seedPhotoInAlbum(user.id, albumC2.id, 'jfk-photo');
+    await seedPhoto(user.id, 'orphan-no-album'); // no album → must be excluded
+
+    const res = await server.executeOperation(
+      { query: PHOTOS_BY_COMMUNITY, variables: { communityIds: [c1.id] } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as {
+      totalCount: number;
+      edges: Array<{ node: { id: string; community: { id: string; slug: string } | null } }>;
+    };
+    expect(feed.totalCount).toBe(1);
+    expect(feed.edges).toHaveLength(1);
+    expect(feed.edges[0].node.id).toBe(p1.id);
+    expect(feed.edges[0].node.community?.slug).toBe('lax-spotters');
+  });
+
+  it('treats the filter as not-applied when communityIds is empty', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    await seedPhoto(user.id, 'p1');
+    await seedPhoto(user.id, 'p2');
+
+    const res = await server.executeOperation(
+      { query: PHOTOS_BY_COMMUNITY, variables: { communityIds: [] } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as { totalCount: number };
+    // Empty array means "no filter" — both approved photos returned, not zero.
+    expect(feed.totalCount).toBe(2);
+  });
+});
+
+describe('Photo: community field resolver', () => {
+  it('returns the community of the photo album', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const community = await seedCommunity(user.id, 'Heathrow', 'egll');
+    const album = await seedAlbumInCommunity(user.id, community.id, 'EGLL album');
+    await seedPhotoInAlbum(user.id, album.id, 'p1');
+
+    const res = await server.executeOperation(
+      { query: PHOTOS_BY_COMMUNITY, variables: { communityIds: [community.id] } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    const feed = data.data?.photos as {
+      edges: Array<{ node: { community: { name: string; slug: string } | null } }>;
+    };
+    expect(feed.edges[0].node.community).toEqual(
+      expect.objectContaining({ name: 'Heathrow', slug: 'egll' }),
+    );
+  });
+
+  it('returns null for a photo with no album', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    await seedPhoto(user.id, 'orphan');
+
+    const res = await server.executeOperation(
+      { query: `query { photos(first: 5) { edges { node { community { id } } } } }` },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as { edges: Array<{ node: { community: unknown } }> };
+    expect(feed.edges).toHaveLength(1);
+    expect(feed.edges[0].node.community).toBeNull();
+  });
+});
+
+describe('Query: communities(sort)', () => {
+  it('orders by member count desc when sort = popular', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+
+    const small = await seedCommunity(user.id, 'Small', 'small');
+    const big = await seedCommunity(user.id, 'Big', 'big');
+    const medium = await seedCommunity(user.id, 'Medium', 'medium');
+
+    // Helper to add N active members to a community.
+    async function addMembers(communityId: string, count: number) {
+      for (let i = 0; i < count; i++) {
+        const u = await prisma.user.create({
+          data: {
+            email: `m-${communityId}-${i}@test.com`,
+            username: `m-${communityId.slice(0, 6)}-${i}`,
+            cognitoSub: `m-${communityId}-${i}`,
+          },
+        });
+        await prisma.communityMember.create({
+          data: { communityId, userId: u.id, status: 'active', role: 'member' },
+        });
+      }
+    }
+    await addMembers(big.id, 5);
+    await addMembers(medium.id, 2);
+    await addMembers(small.id, 0);
+
+    const res = await server.executeOperation(
+      { query: COMMUNITIES_SORTED, variables: { sort: 'popular' } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const slugs = (
+      data.data?.communities as { edges: Array<{ node: { slug: string } }> }
+    ).edges.map((e) => e.node.slug);
+    expect(slugs).toEqual(['big', 'medium', 'small']);
+  });
+
+  it('orders by createdAt desc when sort = recent (default)', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    await seedCommunity(user.id, 'First', 'first');
+    // Force a tick so createdAt differs.
+    await new Promise((r) => setTimeout(r, 10));
+    await seedCommunity(user.id, 'Second', 'second');
+
+    const res = await server.executeOperation(
+      { query: COMMUNITIES_SORTED, variables: { sort: 'recent' } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    const slugs = (
+      data.data?.communities as { edges: Array<{ node: { slug: string } }> }
+    ).edges.map((e) => e.node.slug);
+    expect(slugs).toEqual(['second', 'first']);
+  });
+});
+
+describe('Query: recentForumThreads', () => {
+  it('returns threads from any category, ordered by lastPostAt desc', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+
+    // Two global categories, one per thread.
+    const catA = await prisma.forumCategory.create({
+      data: { name: 'A', slug: 'a', position: 0 },
+    });
+    const catB = await prisma.forumCategory.create({
+      data: { name: 'B', slug: 'b', position: 1 },
+    });
+    const oldThread = await prisma.forumThread.create({
+      data: {
+        categoryId: catA.id,
+        authorId: user.id,
+        title: 'Old',
+        lastPostAt: new Date(Date.now() - 60_000),
+      },
+    });
+    const newThread = await prisma.forumThread.create({
+      data: {
+        categoryId: catB.id,
+        authorId: user.id,
+        title: 'New',
+        lastPostAt: new Date(),
+      },
+    });
+
+    const res = await server.executeOperation(
+      { query: RECENT_THREADS, variables: { first: 5 } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const threads = data.data?.recentForumThreads as Array<{ id: string; title: string }>;
+    expect(threads.map((t) => t.id)).toEqual([newThread.id, oldThread.id]);
+  });
+
+  it('respects the first cap', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const cat = await prisma.forumCategory.create({
+      data: { name: 'C', slug: 'c', position: 0 },
+    });
+    for (let i = 0; i < 4; i++) {
+      await prisma.forumThread.create({
+        data: {
+          categoryId: cat.id,
+          authorId: user.id,
+          title: `T${i}`,
+          lastPostAt: new Date(Date.now() + i * 1000),
+        },
+      });
+    }
+
+    const res = await server.executeOperation(
+      { query: RECENT_THREADS, variables: { first: 2 } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    const threads = data.data?.recentForumThreads as Array<{ id: string }>;
+    expect(threads).toHaveLength(2);
+  });
+
+  it('hides soft-deleted threads from non-privileged users', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext(); // anonymous viewer
+
+    const cat = await prisma.forumCategory.create({
+      data: { name: 'D', slug: 'd', position: 0 },
+    });
+    await prisma.forumThread.create({
+      data: {
+        categoryId: cat.id,
+        authorId: user.id,
+        title: 'visible',
+        lastPostAt: new Date(),
+      },
+    });
+    await prisma.forumThread.create({
+      data: {
+        categoryId: cat.id,
+        authorId: user.id,
+        title: 'hidden',
+        isDeleted: true,
+        lastPostAt: new Date(),
+      },
+    });
+
+    const res = await server.executeOperation(
+      { query: RECENT_THREADS, variables: { first: 5 } },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    const threads = data.data?.recentForumThreads as Array<{ title: string }>;
+    expect(threads.map((t) => t.title)).toEqual(['visible']);
+  });
+});

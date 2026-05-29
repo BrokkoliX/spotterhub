@@ -2,7 +2,12 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
-import { decodeCursor, encodeCursor, getDbUser, buildPaginationArgs } from '../utils/resolverHelpers.js';
+import {
+  decodeCursor,
+  encodeCursor,
+  getDbUser,
+  buildPaginationArgs,
+} from '../utils/resolverHelpers.js';
 import { validateStringLength } from '../utils/validation.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -194,6 +199,26 @@ export const forumQueryResolvers = {
   forumThread: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const filter = await deletedFilter(ctx);
     return ctx.prisma.forumThread.findFirst({ where: { id: args.id, ...filter } });
+  },
+
+  /**
+   * Most recently active forum threads across ALL categories (both
+   * global and community-scoped), ordered by lastPostAt desc. Intended
+   * for home-page surfaces that show recent discussion activity.
+   *
+   * Honors the same deletedFilter as `forumThreads` so soft-deleted
+   * threads are hidden from regular users while still visible to
+   * moderators. Capped at 20 to keep this query cheap on the home
+   * page; the default of 5 is enough for compact recent-threads strips.
+   */
+  recentForumThreads: async (_parent: unknown, args: { first?: number }, ctx: Context) => {
+    const take = Math.min(Math.max(args.first ?? 5, 1), 20);
+    const filter = await deletedFilter(ctx);
+    return ctx.prisma.forumThread.findMany({
+      where: filter,
+      orderBy: { lastPostAt: 'desc' },
+      take,
+    });
   },
 
   forumPosts: async (
@@ -823,6 +848,11 @@ export const forumMutationResolvers = {
 export const forumCategoryFieldResolvers = {
   threadCount: (parent: ForumCategoryParent, _args: unknown, ctx: Context) => {
     return ctx.loaders.forumCategoryThreadCount.load(parent.id);
+  },
+
+  community: (parent: ForumCategoryParent, _args: unknown, ctx: Context) => {
+    if (!parent.communityId) return null;
+    return ctx.prisma.community.findUnique({ where: { id: parent.communityId } });
   },
 
   latestThread: (parent: ForumCategoryParent, _args: unknown, ctx: Context) => {
