@@ -334,6 +334,12 @@ model User {
   // Last successful sign-in timestamp (updated on each login)
   lastLoginAt       DateTime? @map("last_login_at")
 
+  // Per-user list of in-feed widget surfaces the user has permanently
+  // dismissed (e.g. "home_community_block"). Persists across devices and
+  // sessions. Mutated only via the dismissFeedWidget GraphQL mutation,
+  // which is idempotent (no duplicates appended).
+  dismissedFeedWidgets String[] @default([]) @map("dismissed_feed_widgets")
+
   // Subscription tier. Nullable so the column can be added before the seed
   // runs; resolvers fall back to the tier with slug 'free' when null.
   tierId            String?   @map("tier_id") @db.Uuid

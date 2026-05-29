@@ -119,7 +119,11 @@ import {
 } from './resolvers/siteSettingsResolvers.js';
 import { spottingLocationMutationResolvers } from './resolvers/spottingLocationResolvers.js';
 import { tierMutationResolvers, tierQueryResolvers } from './resolvers/tierResolvers.js';
-import { userFieldResolvers, userQueryResolvers } from './resolvers/userResolvers.js';
+import {
+  userFieldResolvers,
+  userMutationResolvers,
+  userQueryResolvers,
+} from './resolvers/userResolvers.js';
 
 // ─── JSON Scalar ────────────────────────────────────────────────────────────
 
@@ -222,6 +226,7 @@ export const resolvers = {
   Mutation: {
     ...authMutationResolvers,
     ...profileMutationResolvers,
+    ...userMutationResolvers,
     ...photoMutationResolvers,
     ...likeMutationResolvers,
     ...followMutationResolvers,

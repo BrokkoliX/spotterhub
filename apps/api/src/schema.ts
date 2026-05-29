@@ -823,6 +823,15 @@ export const typeDefs = gql`
     updateAvatar(avatarUrl: String!): Profile!
 
     """
+    Permanently dismiss an in-feed widget surface for the authenticated user.
+    The widgetId is a stable, client-supplied identifier (e.g.
+    "home_community_block"). Idempotent — appending a widgetId that is
+    already in the list is a no-op. Returns the updated User so the client
+    can refresh its cached dismissedFeedWidgets list.
+    """
+    dismissFeedWidget(widgetId: String!): User!
+
+    """
     Request a presigned S3 URL for uploading a photo.
     The client uploads directly to S3, then calls createPhoto with the returned key.
     """
@@ -1810,6 +1819,12 @@ export const typeDefs = gql`
     Last sign-in timestamp, if ever signed in.
     """
     lastLoginAt: String
+    """
+    Stable identifiers of in-feed widget surfaces the user has permanently
+    dismissed (e.g. "home_community_block"). Only visible to the account
+    owner; null for everyone else. Mutated via dismissFeedWidget.
+    """
+    dismissedFeedWidgets: [String!]
     createdAt: String!
     updatedAt: String!
   }

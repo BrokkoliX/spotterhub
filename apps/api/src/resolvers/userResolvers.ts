@@ -1,3 +1,5 @@
+import { GraphQLError } from 'graphql';
+
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { decodeCursor, encodeCursor, buildPaginationArgs } from '../utils/resolverHelpers.js';
@@ -8,6 +10,17 @@ export interface UserParent {
   id: string;
   cognitoSub?: string;
 }
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+/**
+ * Bounds on the dismissedFeedWidgets array. The real values clients will
+ * pass (`home_community_block`, future surface IDs) are short and few; the
+ * caps exist to defend against pathological / malicious input rather than
+ * to constrain legitimate use.
+ */
+const MAX_WIDGET_ID_LENGTH = 64;
+const MAX_DISMISSED_WIDGETS = 100;
 
 // ─── Query Resolvers ────────────────────────────────────────────────────────
 
@@ -88,6 +101,70 @@ export const userQueryResolvers = {
       },
       totalCount,
     };
+  },
+};
+
+// ─── Mutation Resolvers ─────────────────────────────────────────────────────
+
+export const userMutationResolvers = {
+  /**
+   * Permanently dismiss an in-feed widget surface for the authenticated
+   * user. The widgetId is a stable, client-supplied identifier
+   * (e.g. "home_community_block"). Idempotent — appending a widgetId
+   * that is already in the list is a no-op and short-circuits without a
+   * write. A length cap on individual IDs and a hard cap on list size
+   * defend against pathological input.
+   *
+   * Returns the updated User with profile + sellerProfile included so the
+   * shape matches the `me` query, which is the most common client cache
+   * key for the current user.
+   */
+  dismissFeedWidget: async (_parent: unknown, args: { widgetId: string }, ctx: Context) => {
+    const auth = requireAuth(ctx);
+
+    const widgetId = args.widgetId?.trim();
+    if (!widgetId) {
+      throw new GraphQLError('widgetId must be a non-empty string', {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+    if (widgetId.length > MAX_WIDGET_ID_LENGTH) {
+      throw new GraphQLError(`widgetId must be ${MAX_WIDGET_ID_LENGTH} characters or fewer`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    const existing = await ctx.prisma.user.findUnique({
+      where: { cognitoSub: auth.sub },
+      select: { id: true, dismissedFeedWidgets: true },
+    });
+    if (!existing) {
+      throw new GraphQLError('User not found', {
+        extensions: { code: 'NOT_FOUND' },
+      });
+    }
+
+    // Idempotent path: already dismissed → return current state without writing.
+    if (existing.dismissedFeedWidgets.includes(widgetId)) {
+      return ctx.prisma.user.findUnique({
+        where: { id: existing.id },
+        include: { profile: true, sellerProfile: true },
+      });
+    }
+
+    if (existing.dismissedFeedWidgets.length >= MAX_DISMISSED_WIDGETS) {
+      throw new GraphQLError(`Cannot dismiss more than ${MAX_DISMISSED_WIDGETS} widgets`, {
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    }
+
+    return ctx.prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        dismissedFeedWidgets: { set: [...existing.dismissedFeedWidgets, widgetId] },
+      },
+      include: { profile: true, sellerProfile: true },
+    });
   },
 };
 
@@ -235,6 +312,28 @@ export const userFieldResolvers = {
     if (!parent.lastLoginAt) return null;
     if (typeof parent.lastLoginAt === 'string') return parent.lastLoginAt;
     return parent.lastLoginAt.toISOString();
+  },
+
+  /**
+   * Owner-only — the dismissed-widgets list is a per-user UI preference,
+   * not something staff need to inspect. Returns null for any caller that
+   * is not the account owner, mirroring the privacy pattern used by
+   * email/failedAttempts/lockoutUntil. If the parent object did not
+   * include the field (e.g. the calling fragment didn't select it),
+   * fetch it from the DB.
+   */
+  dismissedFeedWidgets: async (
+    parent: UserParent & { dismissedFeedWidgets?: string[] },
+    _args: unknown,
+    ctx: Context,
+  ) => {
+    if (!ctx.user || ctx.user.sub !== parent.cognitoSub) return null;
+    if (Array.isArray(parent.dismissedFeedWidgets)) return parent.dismissedFeedWidgets;
+    const u = await ctx.prisma.user.findUnique({
+      where: { id: parent.id },
+      select: { dismissedFeedWidgets: true },
+    });
+    return u?.dismissedFeedWidgets ?? [];
   },
 
   canSell: (parent: UserParent, _args: unknown, ctx: Context) => {
