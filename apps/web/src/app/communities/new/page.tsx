@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -33,8 +33,19 @@ export default function NewCommunityPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Auth guard. Redirects must happen inside useEffect — calling
+  // router.push() synchronously during render touches window.location
+  // and crashes the production prerender pass with `ReferenceError:
+  // location is not defined`. Matches the pattern in following/page.tsx,
+  // discover/page.tsx, verify-email/page.tsx, settings/site/page.tsx, and
+  // settings/profile/page.tsx.
+  useEffect(() => {
+    if (ready && !user) {
+      router.push('/signin');
+    }
+  }, [ready, user, router]);
+
   if (ready && !user) {
-    router.push('/signin');
     return null;
   }
 
@@ -158,7 +169,10 @@ export default function NewCommunityPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <label className={styles.label}>Location <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
+            <label className={styles.label}>
+              Location{' '}
+              <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span>
+            </label>
             <input
               className={styles.input}
               type="text"
@@ -171,7 +185,11 @@ export default function NewCommunityPage() {
           {error && <div className={styles.error}>{error}</div>}
 
           <div className={styles.actions}>
-            <button className={`btn btn-primary ${styles.submitBtn}`} type="submit" disabled={submitting}>
+            <button
+              className={`btn btn-primary ${styles.submitBtn}`}
+              type="submit"
+              disabled={submitting}
+            >
               {submitting ? 'Creating…' : 'Create Community'}
             </button>
           </div>

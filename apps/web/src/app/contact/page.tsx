@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'urql';
@@ -21,8 +21,22 @@ export default function ContactPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Auth guard
-  if (!ready) {
+  // Auth guard. Redirects must happen inside useEffect — calling
+  // router.replace() synchronously during render touches window.location
+  // and crashes the production prerender pass with `ReferenceError:
+  // location is not defined`. Matches the pattern in following/page.tsx,
+  // discover/page.tsx, verify-email/page.tsx, settings/site/page.tsx, and
+  // settings/profile/page.tsx.
+  useEffect(() => {
+    if (ready && !user) {
+      router.replace('/signin?redirect=/contact');
+    }
+  }, [ready, user, router]);
+
+  // Render a loading state while auth is resolving and during the brief
+  // moment before useEffect's redirect fires. Returning `null` here would
+  // produce a layout-collapsed flash before the redirect.
+  if (!ready || !user) {
     return (
       <div className={styles.page}>
         <div className={styles.inner}>
@@ -30,11 +44,6 @@ export default function ContactPage() {
         </div>
       </div>
     );
-  }
-
-  if (!user) {
-    router.replace('/signin?redirect=/contact');
-    return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,7 +105,8 @@ export default function ContactPage() {
           </Link>
           <h1 className={styles.title}>Contact Us</h1>
           <p className={styles.subtitle}>
-            Have a question, feedback, or found a bug? Send us a message and we&#39;ll get back to you.
+            Have a question, feedback, or found a bug? Send us a message and we&#39;ll get back to
+            you.
           </p>
         </div>
 
@@ -139,11 +149,7 @@ export default function ContactPage() {
               <Link href="/" className="btn btn-secondary">
                 Cancel
               </Link>
-              <button
-                type="submit"
-                className="btn btn-primary btn-lg"
-                disabled={fetching}
-              >
+              <button type="submit" className="btn btn-primary btn-lg" disabled={fetching}>
                 {fetching ? 'Sending…' : 'Send Message'}
               </button>
             </div>
