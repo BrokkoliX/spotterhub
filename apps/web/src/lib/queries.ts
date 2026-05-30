@@ -65,8 +65,30 @@ export const RESET_PASSWORD = gql`
 
 // ─── Photos ─────────────────────────────────────────────────────────────────
 
-export const PHOTO_FIELDS = gql`
-  fragment PhotoFields on Photo {
+/**
+ * Card-sized photo fragment for use in feeds, grids, and search results.
+ *
+ * Excludes detail-only heavy fields:
+ *   - similarAircraftPhotos: the killer — its field resolver runs an extra
+ *     findMany + count per photo, so a 24-photo feed page would trigger
+ *     roughly 50 SQL queries when this lived in the shared fragment.
+ *   - exifData: full EXIF JSON blob, used only on the detail page meta
+ *     sidebar.
+ *   - fileSizeBytes, mimeType: detail page meta sidebar only.
+ *   - moderationStatus, rejectionReason: shown via banners on the detail
+ *     page; the admin queue extends this fragment to add them back.
+ *   - license, watermarkEnabled: detail page only.
+ *   - photoCategory, aircraftSpecificCategory: detail page meta sidebar.
+ *   - location { ... }: powers the detail page Mapbox embed.
+ *   - photographer / photographerName: detail page secondary attribution.
+ *   - operatorType, msn, manufacturingDate: detail page meta sidebar.
+ *   - aircraft sub-fields beyond manufacturer/family/variant/registration:
+ *     detail page meta sidebar.
+ *
+ * Anything PhotoCard.tsx or PhotoGrid.tsx (list view) reads is in here.
+ */
+export const PHOTO_CARD_FIELDS = gql`
+  fragment PhotoCardFields on Photo {
     id
     caption
     airline
@@ -75,74 +97,32 @@ export const PHOTO_FIELDS = gql`
     originalUrl
     originalWidth
     originalHeight
-    fileSizeBytes
-    mimeType
-    moderationStatus
-    rejectionReason
     tags
     likeCount
     commentCount
-    license
-    watermarkEnabled
     isLikedByMe
     createdAt
-    photoCategory {
-      id
-      name
-      label
-    }
-    aircraftSpecificCategory {
-      id
-      name
-      label
-    }
     operatorIcao
-    operatorType
-    msn
-    manufacturingDate
     kind
     communityCategory
     aircraft {
       id
       registration
-      airline
-      msn
-      manufacturingDate
       manufacturer {
         id
         name
-        isFollowedByMe
       }
       family {
         id
         name
-        isFollowedByMe
       }
       variant {
         id
         name
         iataCode
         icaoCode
-        isFollowedByMe
-      }
-      operatorType
-      airlineRef {
-        id
-        name
-        icaoCode
-        iataCode
-        isFollowedByMe
       }
     }
-    photographer {
-      id
-      username
-      profile {
-        displayName
-        avatarUrl
-      }
-    }
-    photographerName
     gearBody
     gearLens
     user {
@@ -161,6 +141,72 @@ export const PHOTO_FIELDS = gql`
       width
       height
     }
+  }
+`;
+
+/**
+ * Detail-sized photo fragment for the /photos/[id] page. Extends
+ * PhotoCardFields with everything the detail page renders: full meta
+ * sidebar, EXIF blob, location + map data, the secondary photographer
+ * credit, moderation banners, and the similar-aircraft-photos rail.
+ *
+ * Use this only for queries whose response is consumed by the detail
+ * page. Anything that uses PhotoCardFields is appropriate for a feed,
+ * grid, or list view.
+ */
+export const PHOTO_DETAIL_FIELDS = gql`
+  fragment PhotoDetailFields on Photo {
+    ...PhotoCardFields
+    fileSizeBytes
+    mimeType
+    moderationStatus
+    rejectionReason
+    license
+    watermarkEnabled
+    photoCategory {
+      id
+      name
+      label
+    }
+    aircraftSpecificCategory {
+      id
+      name
+      label
+    }
+    operatorType
+    msn
+    manufacturingDate
+    aircraft {
+      airline
+      msn
+      manufacturingDate
+      operatorType
+      manufacturer {
+        isFollowedByMe
+      }
+      family {
+        isFollowedByMe
+      }
+      variant {
+        isFollowedByMe
+      }
+      airlineRef {
+        id
+        name
+        icaoCode
+        iataCode
+        isFollowedByMe
+      }
+    }
+    photographer {
+      id
+      username
+      profile {
+        displayName
+        avatarUrl
+      }
+    }
+    photographerName
     location {
       id
       latitude
@@ -233,7 +279,16 @@ export const PHOTO_FIELDS = gql`
       }
     }
   }
+  ${PHOTO_CARD_FIELDS}
 `;
+
+/**
+ * Backwards-compatible alias for any callers we have not migrated yet.
+ * New code should import PHOTO_CARD_FIELDS or PHOTO_DETAIL_FIELDS
+ * directly. Aliasing to the detail fragment is the safe default — it
+ * over-fetches but never under-fetches.
+ */
+export const PHOTO_FIELDS = PHOTO_DETAIL_FIELDS;
 
 export const GET_PHOTOS = gql`
   query Photos(
@@ -273,7 +328,7 @@ export const GET_PHOTOS = gql`
       edges {
         cursor
         node {
-          ...PhotoFields
+          ...PhotoCardFields
         }
       }
       pageInfo {
@@ -283,25 +338,25 @@ export const GET_PHOTOS = gql`
       totalCount
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const GET_PHOTO = gql`
   query Photo($id: ID!) {
     photo(id: $id) {
-      ...PhotoFields
+      ...PhotoDetailFields
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_DETAIL_FIELDS}
 `;
 
 export const GET_RANDOM_PHOTO = gql`
   query RandomPhoto {
     randomPhoto {
-      ...PhotoFields
+      ...PhotoCardFields
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const GET_UPLOAD_URL = gql`
@@ -316,19 +371,19 @@ export const GET_UPLOAD_URL = gql`
 export const CREATE_PHOTO = gql`
   mutation CreatePhoto($input: CreatePhotoInput!) {
     createPhoto(input: $input) {
-      ...PhotoFields
+      ...PhotoCardFields
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const UPDATE_PHOTO = gql`
   mutation UpdatePhoto($id: ID!, $input: UpdatePhotoInput!) {
     updatePhoto(id: $id, input: $input) {
-      ...PhotoFields
+      ...PhotoCardFields
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const DELETE_PHOTO = gql`
@@ -340,19 +395,19 @@ export const DELETE_PHOTO = gql`
 export const LIKE_PHOTO = gql`
   mutation LikePhoto($photoId: ID!) {
     likePhoto(photoId: $photoId) {
-      ...PhotoFields
+      ...PhotoCardFields
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const UNLIKE_PHOTO = gql`
   mutation UnlikePhoto($photoId: ID!) {
     unlikePhoto(photoId: $photoId) {
-      ...PhotoFields
+      ...PhotoCardFields
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 // ─── User ───────────────────────────────────────────────────────────────────
@@ -636,7 +691,7 @@ export const SEARCH_PHOTOS = gql`
       edges {
         cursor
         node {
-          ...PhotoFields
+          ...PhotoCardFields
         }
       }
       pageInfo {
@@ -646,7 +701,7 @@ export const SEARCH_PHOTOS = gql`
       totalCount
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const SEARCH_USERS = gql`
@@ -1051,7 +1106,7 @@ export const GET_FOLLOWING_FEED = gql`
       edges {
         cursor
         node {
-          ...PhotoFields
+          ...PhotoCardFields
         }
       }
       pageInfo {
@@ -1061,7 +1116,7 @@ export const GET_FOLLOWING_FEED = gql`
       totalCount
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 // ─── Admin ──────────────────────────────────────────────────────────────────
@@ -1165,7 +1220,9 @@ export const ADMIN_PHOTOS = gql`
       edges {
         cursor
         node {
-          ...PhotoFields
+          ...PhotoCardFields
+          moderationStatus
+          rejectionReason
         }
       }
       pageInfo {
@@ -1175,7 +1232,7 @@ export const ADMIN_PHOTOS = gql`
       totalCount
     }
   }
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 // ─── Admin Reference Data ────────────────────────────────────────────────────
@@ -1504,7 +1561,7 @@ export const GET_COMMUNITY = gql`
         edges {
           cursor
           node {
-            ...PhotoFields
+            ...PhotoCardFields
           }
         }
         pageInfo {
@@ -1528,7 +1585,7 @@ export const GET_COMMUNITY = gql`
     }
   }
   ${ALBUM_FIELDS}
-  ${PHOTO_FIELDS}
+  ${PHOTO_CARD_FIELDS}
 `;
 
 export const GET_COMMUNITIES = gql`
