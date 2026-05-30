@@ -7,9 +7,11 @@ import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
 import { AdBanner } from '@/components/AdBanner';
+import { CommunityFeedBlock } from '@/components/CommunityFeedBlock';
 import { FilterDrawer } from '@/components/FilterDrawer';
 import { PhotoGrid } from '@/components/PhotoGrid';
 import { useAuth } from '@/lib/auth';
+import { useResponsiveSplitIndex } from '@/lib/useResponsiveSplitIndex';
 import {
   GET_AIRCRAFT_FAMILIES,
   GET_AIRCRAFT_MANUFACTURERS,
@@ -207,6 +209,7 @@ export default function HomePage() {
   const familyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const variantTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const splitIndex = useResponsiveSplitIndex();
 
   useEffect(() => {
     clearTimeout(airportTimer.current);
@@ -901,17 +904,9 @@ export default function HomePage() {
         )}
 
         {/* Photo Grid */}
-        {(feedTab === 'recent' || feedTab === 'admin_choice' || user) && (
-          <PhotoGrid
-            key={gridKey}
-            photos={displayedPhotos}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            loading={isLoading}
-            viewMode={viewMode}
-            adSlotId={feedAdSlot ?? undefined}
-            emptyMessage={
+        {(feedTab === 'recent' || feedTab === 'admin_choice' || user) &&
+          (() => {
+            const emptyMessage =
               feedTab === 'following'
                 ? 'No photos yet. Follow users, airports, or topics to build your feed!'
                 : feedTab === 'mine'
@@ -920,10 +915,68 @@ export default function HomePage() {
                     ? "No Admin's Choice photos have been awarded yet — check back soon."
                     : fetching
                       ? undefined
-                      : 'No photos match your filters.'
+                      : 'No photos match your filters.';
+
+            // The in-feed community block only anchors on the default
+            // Recent tab on the first page (per design doc). On any other
+            // tab or page the photo grid renders unsplit.
+            const showCommunityBlock = feedTab === 'recent' && currentPage === 1;
+
+            if (!showCommunityBlock) {
+              return (
+                <PhotoGrid
+                  key={gridKey}
+                  photos={displayedPhotos}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  loading={isLoading}
+                  viewMode={viewMode}
+                  adSlotId={feedAdSlot ?? undefined}
+                  emptyMessage={emptyMessage}
+                />
+              );
             }
-          />
-        )}
+
+            // Split-rendering path. When we have fewer photos than the
+            // split index, render everything in the first grid and put
+            // the community block underneath it — there is nothing to put
+            // after the block, and rendering an empty second grid would
+            // either show its empty state (wrong) or render nothing at
+            // all (visually identical to the simpler single-grid path).
+            const headPhotos = displayedPhotos.slice(0, splitIndex);
+            const tailPhotos = displayedPhotos.slice(splitIndex);
+            const hasTail = tailPhotos.length > 0;
+
+            return (
+              <>
+                <PhotoGrid
+                  key={`${gridKey}-head`}
+                  photos={headPhotos}
+                  currentPage={1}
+                  totalPages={1}
+                  onPageChange={() => {}}
+                  loading={hasTail ? false : isLoading}
+                  viewMode={viewMode}
+                  adSlotId={feedAdSlot ?? undefined}
+                  emptyMessage={hasTail ? undefined : emptyMessage}
+                />
+                <CommunityFeedBlock />
+                {hasTail && (
+                  <PhotoGrid
+                    key={`${gridKey}-tail`}
+                    photos={tailPhotos}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    loading={isLoading}
+                    viewMode={viewMode}
+                    adSlotId={feedAdSlot ?? undefined}
+                  />
+                )}
+              </>
+            );
+          })()}
       </div>
     </div>
   );

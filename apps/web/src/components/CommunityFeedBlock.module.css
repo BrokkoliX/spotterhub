@@ -1,0 +1,204 @@
+.block {
+  position: relative;
+  margin: 1.5rem 0;
+  padding: 1.25rem 1.25rem 1.25rem 1.25rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  /*
+   * Layout contract: this block sits between two PhotoGrid instances on
+   * the home page. A fixed min-height keeps the second grid in place
+   * regardless of which of the three variants ends up rendering, and
+   * regardless of whether queries have hydrated yet. Values picked from
+   * the middle of the design doc's "approximate target heights" range
+   * (160-200 desktop, 140-160 mobile).
+   */
+  min-height: 180px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .block {
+    min-height: 150px;
+  }
+}
+
+/*
+ * Empty-shell variant rendered while data is loading or when no variant
+ * is eligible. Reserves the same vertical space as a populated block so
+ * the second photo grid never jumps when the real block resolves in.
+ * Visually neutral: no border or background tint, just a transparent
+ * gap matching the populated block's footprint.
+ */
+.placeholder {
+  margin: 1.5rem 0;
+  min-height: 180px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .placeholder {
+    min-height: 150px;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.subtitle {
+  margin: 0.125rem 0 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close:hover {
+  background: var(--color-bg-card);
+  color: var(--color-text);
+}
+
+/* ─── Communities row (your-communities + trending variants) ──────────────── */
+
+.cardRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .cardRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.cardAvatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: var(--color-bg-input);
+  background-size: cover;
+  background-position: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.cardBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.cardName {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.125rem;
+}
+
+/* ─── Threads list (latest discussions variant) ───────────────────────────── */
+
+.threadList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.threadRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.threadRow:hover {
+  border-color: var(--color-accent);
+}
+
+.threadTitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.threadMeta {
+  margin: 0.125rem 0 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.threadStats {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}

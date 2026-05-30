@@ -2,9 +2,11 @@
 
 ## Status
 
-Design locked, API shipped, web pending. This document captures the full design for an in-feed community surface on the home page, replacing an earlier sidebar pilot that broke the existing photo-grid aesthetic and tested poorly. It also records the rationale for each non-obvious decision, so future maintainers do not re-litigate settled questions.
+Design locked, API shipped, web shipped. This document captures the full design for an in-feed community surface on the home page, replacing an earlier sidebar pilot that broke the existing photo-grid aesthetic and tested poorly. It also records the rationale for each non-obvious decision, so future maintainers do not re-litigate settled questions.
 
-The API additions described under "What is already built" have landed. The Prisma migration, `dismissFeedWidget` mutation, `User.dismissedFeedWidgets` field, `Query.recentForumThreads`, `Query.communities(sort:)`, `Query.photos(communityIds:)`, `Photo.community`, and `ForumCategory.community` are all on `main`. Web implementation has not started.
+The API additions described under "What is already built" landed in commits `66c07b3f` and `737d14f3`. The Prisma migration, `dismissFeedWidget` mutation, `User.dismissedFeedWidgets` field, `Query.recentForumThreads`, `Query.communities(sort:)`, `Query.photos(communityIds:)`, `Photo.community`, and `ForumCategory.community` are all on `main`.
+
+The web implementation followed in `apps/web`: `<CommunityFeedBlock>` plus `useResponsiveSplitIndex()` hook, wired into the home page via split-rendering of two `<PhotoGrid>` instances around the block on the default Recent tab on page one only. Test coverage in `apps/web/src/__tests__/communityFeedBlock.test.tsx` (10 cases — variant precedence, dismissal flow, render-stability, signed-out signup-funnel branch, thread href construction) and `apps/web/src/__tests__/useResponsiveSplitIndex.test.tsx` (4 cases — desktop/mobile defaults, breakpoint crossing, SSR safety).
 
 ## Hypothesis
 

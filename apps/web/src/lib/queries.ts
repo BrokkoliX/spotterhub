@@ -596,6 +596,7 @@ export const GET_ME = gql`
         stripeOnboardingComplete
         stripeAccountId
       }
+      dismissedFeedWidgets
     }
   }
 `;
@@ -1531,8 +1532,22 @@ export const GET_COMMUNITY = gql`
 `;
 
 export const GET_COMMUNITIES = gql`
-  query Communities($search: String, $category: String, $first: Int, $after: String, $page: Int) {
-    communities(search: $search, category: $category, first: $first, after: $after, page: $page) {
+  query Communities(
+    $search: String
+    $category: String
+    $first: Int
+    $after: String
+    $page: Int
+    $sort: CommunitySort
+  ) {
+    communities(
+      search: $search
+      category: $category
+      first: $first
+      after: $after
+      page: $page
+      sort: $sort
+    ) {
       edges {
         cursor
         node {
@@ -1566,6 +1581,36 @@ export const MY_COMMUNITIES = gql`
       slug
       avatarUrl
       memberCount
+    }
+  }
+`;
+
+export const GET_RECENT_FORUM_THREADS = gql`
+  query RecentForumThreads($first: Int) {
+    recentForumThreads(first: $first) {
+      id
+      title
+      postCount
+      lastPostAt
+      category {
+        id
+        slug
+        name
+        community {
+          id
+          slug
+          name
+        }
+      }
+    }
+  }
+`;
+
+export const DISMISS_FEED_WIDGET = gql`
+  mutation DismissFeedWidget($widgetId: String!) {
+    dismissFeedWidget(widgetId: $widgetId) {
+      id
+      dismissedFeedWidgets
     }
   }
 `;
