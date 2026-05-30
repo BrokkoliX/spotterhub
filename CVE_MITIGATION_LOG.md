@@ -4,6 +4,29 @@ This file tracks security advisories that have been addressed in the SpotterHub 
 
 The convention is to append new entries at the top, keeping the most recent mitigations visible first. Each entry should contain enough detail that a future auditor can reproduce the upgrade decision without re-reading the original advisory.
 
+## 2026-05-30 — Build-environment hygiene and Resend key rotation flag
+
+Two related items were discovered during a `next build` failure investigation. They are recorded together because they were found in the same file (the gitignored project root `.env`) and both relate to environment hygiene rather than a published CVE.
+
+### NODE_ENV=development polluting production builds
+
+The project root `.env` file (and the tracked `.env.example` template) contained a hard-coded `NODE_ENV=development` line. When `next build` runs, it expects to set its own `NODE_ENV=production`; the root-level export pre-empted that and put the build into a hybrid state where the production prerender pipeline ran against the development React build. The user-visible symptom was a misleading `TypeError: Cannot read properties of null (reading 'useContext')` crash on the synthesized `/_global-error` route, with stack frames hidden behind Next.js's "ignore-listed frames" filter. Next.js did print a `⚠ You are using a non-standard "NODE_ENV" value in your environment` warning on every build, but the connection between the warning and the downstream crash was not obvious.
+
+The line was removed from both `.env` (gitignored, edited locally) and `.env.example` (tracked, committed):
+
+```
+- # ─── Environment ────────────────────────────────────────────────────────
+- NODE_ENV=development
+```
+
+Each tool now selects its own NODE_ENV based on the command being run: `next dev` → `development`, `next build` → `production`, `vitest` → `test`, plain `node dist/index.js` → defaults to `production`. Verification: `cd apps/web && rm -rf .next && npx next build` now passes cleanly with no warnings, generating all 47 routes in roughly 66 ms of static-generation work.
+
+The investigation also surfaced two real production bugs that the misleading `_global-error` symptom had been masking. Two client-side pages (`apps/web/src/app/contact/page.tsx` and `apps/web/src/app/communities/new/page.tsx`) called `router.push()` or `router.replace()` synchronously during render as part of an unauthenticated-user redirect guard. That pattern crashes any production prerender pass with `ReferenceError: location is not defined` because `router.push` ultimately reads `window.location`. Both pages were refactored to perform the redirect inside `useEffect`, matching the pattern already established in `following/page.tsx`, `discover/page.tsx`, `verify-email/page.tsx`, `settings/site/page.tsx`, and `settings/profile/page.tsx`. The diagnostic technique that surfaced these errors was the Next.js 16 `--debug-prerender` flag, which disables the `prerenderEarlyExit` experiment and the source-frame ignore list, exposing the real source locations behind the prerender failures.
+
+### Resend API key flagged for rotation
+
+A live `RESEND_API_KEY` value was observed in the gitignored project root `.env` file during the same investigation. The file is not committed (`.env` is in `.gitignore`), so the key is not in the repository history. However, the value did appear in tool-call output during the agent session that produced this entry, which crosses the security boundary of "secrets must not appear in logs". The recommendation is to rotate the key in the Resend dashboard, update the local `.env`, and update the production secret store (whichever ECS task definition or AWS Secrets Manager entry holds the live value). Until the rotation lands, the existing key remains operationally valid; this is a precautionary rotation, not a confirmed compromise.
+
 ## 2026-05-22 — Apollo Server 4 → 5 upgrade (GHSA-9q82-xgwf-vj6h)
 
 Bumped `@apollo/server` from `4.13.0` to `5.5.1` to close **GHSA-9q82-xgwf-vj6h** (Apollo Server XS-Search read-only CSRF bypass). This was the only advisory in the previous post-`audit-fix` set rated as a real production-traffic risk; everything else was dev/test-time.
