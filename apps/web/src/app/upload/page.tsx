@@ -20,6 +20,7 @@ import exifr from 'exifr';
 import { useAuth } from '@/lib/auth';
 import SearchableSelect from '@/components/SearchableSelect';
 import { UploadTabs } from '@/components/UploadTabs';
+import { UploadRules } from '@/components/UploadRules';
 import {
   CREATE_PHOTO,
   CREATE_PENDING_AIRCRAFT,
@@ -783,6 +784,8 @@ export default function UploadPage() {
                   <p className={styles.progressText}>Uploading… {uploadProgress}%</p>
                 </div>
               )}
+
+              <UploadRules />
             </div>
 
             {/* Right: Metadata form */}
