@@ -370,6 +370,11 @@ export const followQueryResolvers = {
 
     const where: Record<string, unknown> = {
       moderationStatus: 'approved',
+      // Exclude community photos: the home-page following tab is a
+      // general aircraft-spotting feed, and community photos belong
+      // inside their community context (mirrors the default applied
+      // in the `photos` resolver for unscoped queries).
+      kind: 'AIRCRAFT',
       ...cursorWhere,
       OR: orConditions,
     };

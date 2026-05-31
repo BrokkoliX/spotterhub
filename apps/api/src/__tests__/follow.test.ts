@@ -873,4 +873,47 @@ describe('followingFeed query', () => {
     expect(feed2.edges).toHaveLength(1);
     expect(feed2.pageInfo.hasNextPage).toBe(false);
   });
+
+  it('excludes COMMUNITY photos from a followed user', async () => {
+    const { ctx } = await createTestUser();
+    const { user: targetUser } = await createTestUser({
+      email: 'target3@example.com',
+      username: 'target3',
+      cognitoSub: 'test-sub-follow-target3',
+    });
+
+    // One aircraft photo and one community photo from the followed user.
+    // Only the aircraft photo should surface in the following feed —
+    // community photos belong inside their community context.
+    const aircraftPhoto = await createTestPhoto(targetUser.id, { caption: 'aircraft photo' });
+    await prisma.photo.create({
+      data: {
+        userId: targetUser.id,
+        caption: 'community photo',
+        originalUrl: 'https://example.com/community.jpg',
+        mimeType: 'image/jpeg',
+        moderationStatus: 'approved',
+        kind: 'COMMUNITY',
+        communityCategory: 'SCENERY',
+      },
+    });
+
+    await server.executeOperation(
+      { query: FOLLOW_USER, variables: { userId: targetUser.id } },
+      { contextValue: ctx },
+    );
+
+    const res = await server.executeOperation({ query: FOLLOWING_FEED }, { contextValue: ctx });
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.followingFeed as {
+      totalCount: number;
+      edges: Array<{ node: { id: string } }>;
+    };
+    expect(feed.totalCount).toBe(1);
+    expect(feed.edges).toHaveLength(1);
+    expect(feed.edges[0].node.id).toBe(aircraftPhoto.id);
+  });
 });

@@ -311,6 +311,163 @@ describe('Photo: photos(communityIds) filter', () => {
   });
 });
 
+describe('Photo: photos() excludes community photos from the general feed', () => {
+  // Helper: seed a COMMUNITY-kind photo. We bypass createPhoto and write
+  // directly because the home feed only cares about kind, moderation
+  // status, and the album→community link.
+  async function seedCommunityPhoto(userId: string, albumId: string, caption: string) {
+    return prisma.photo.create({
+      data: {
+        userId,
+        albumId,
+        caption,
+        originalUrl: `https://example.com/${caption}.jpg`,
+        mimeType: 'image/jpeg',
+        moderationStatus: 'approved',
+        kind: 'COMMUNITY',
+        communityCategory: 'SCENERY',
+      },
+    });
+  }
+
+  const PHOTOS_BASIC = `
+    query Photos {
+      photos(first: 20) {
+        totalCount
+        edges { node { id caption kind } }
+      }
+    }
+  `;
+
+  it('excludes COMMUNITY photos when no scoping args are provided', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const community = await seedCommunity(user.id, 'LAX', 'lax');
+    const album = await seedAlbumInCommunity(user.id, community.id, 'LAX album');
+    const aircraft = await seedPhoto(user.id, 'aircraft-1');
+    await seedCommunityPhoto(user.id, album.id, 'community-1');
+
+    const res = await server.executeOperation({ query: PHOTOS_BASIC }, { contextValue: ctx });
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as {
+      totalCount: number;
+      edges: Array<{ node: { id: string; kind: string } }>;
+    };
+    expect(feed.totalCount).toBe(1);
+    expect(feed.edges).toHaveLength(1);
+    expect(feed.edges[0].node.id).toBe(aircraft.id);
+    expect(feed.edges[0].node.kind).toBe('AIRCRAFT');
+  });
+
+  it('includes COMMUNITY photos when caller explicitly opts in via kind: COMMUNITY', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const community = await seedCommunity(user.id, 'JFK', 'jfk');
+    const album = await seedAlbumInCommunity(user.id, community.id, 'JFK album');
+    await seedPhoto(user.id, 'aircraft-1');
+    const communityPhoto = await seedCommunityPhoto(user.id, album.id, 'community-1');
+
+    const res = await server.executeOperation(
+      {
+        query: `query Photos { photos(first: 20, kind: COMMUNITY) { totalCount edges { node { id kind } } } }`,
+      },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as {
+      totalCount: number;
+      edges: Array<{ node: { id: string; kind: string } }>;
+    };
+    expect(feed.totalCount).toBe(1);
+    expect(feed.edges[0].node.id).toBe(communityPhoto.id);
+    expect(feed.edges[0].node.kind).toBe('COMMUNITY');
+  });
+
+  it('includes COMMUNITY photos in user-scoped queries (profile gallery)', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const community = await seedCommunity(user.id, 'SFO', 'sfo');
+    const album = await seedAlbumInCommunity(user.id, community.id, 'SFO album');
+    await seedPhoto(user.id, 'aircraft-1');
+    await seedCommunityPhoto(user.id, album.id, 'community-1');
+
+    const res = await server.executeOperation(
+      {
+        query: `query Photos($userId: ID!) { photos(first: 20, userId: $userId) { totalCount edges { node { kind } } } }`,
+        variables: { userId: user.id },
+      },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as {
+      totalCount: number;
+      edges: Array<{ node: { kind: string } }>;
+    };
+    expect(feed.totalCount).toBe(2);
+    const kinds = feed.edges.map((e) => e.node.kind).sort();
+    expect(kinds).toEqual(['AIRCRAFT', 'COMMUNITY']);
+  });
+
+  it('includes COMMUNITY photos in album-scoped queries', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const community = await seedCommunity(user.id, 'ORD', 'ord');
+    const album = await seedAlbumInCommunity(user.id, community.id, 'ORD album');
+    await seedPhoto(user.id, 'aircraft-orphan');
+    await seedCommunityPhoto(user.id, album.id, 'community-1');
+
+    const res = await server.executeOperation(
+      {
+        query: `query Photos($albumId: ID!) { photos(first: 20, albumId: $albumId) { totalCount edges { node { kind } } } }`,
+        variables: { albumId: album.id },
+      },
+      { contextValue: ctx },
+    );
+    const data = (
+      res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+    ).singleResult;
+    expect(data.errors).toBeUndefined();
+    const feed = data.data?.photos as {
+      totalCount: number;
+      edges: Array<{ node: { kind: string } }>;
+    };
+    expect(feed.totalCount).toBe(1);
+    expect(feed.edges[0].node.kind).toBe('COMMUNITY');
+  });
+
+  it('randomPhoto never returns COMMUNITY photos', async () => {
+    const { user } = await createTestUser();
+    const ctx = createTestContext();
+    const community = await seedCommunity(user.id, 'SEA', 'sea');
+    const album = await seedAlbumInCommunity(user.id, community.id, 'SEA album');
+    const aircraft1 = await seedPhoto(user.id, 'aircraft-1');
+    const aircraft2 = await seedPhoto(user.id, 'aircraft-2');
+    await seedCommunityPhoto(user.id, album.id, 'community-1');
+    await seedCommunityPhoto(user.id, album.id, 'community-2');
+
+    const aircraftIds = new Set([aircraft1.id, aircraft2.id]);
+    for (let i = 0; i < 8; i++) {
+      const res = await server.executeOperation({ query: RANDOM_PHOTO }, { contextValue: ctx });
+      const data = (
+        res.body as { singleResult: { data: Record<string, unknown>; errors?: unknown[] } }
+      ).singleResult;
+      expect(data.errors).toBeUndefined();
+      const random = data.data?.randomPhoto as { id: string } | null;
+      expect(random).not.toBeNull();
+      expect(aircraftIds.has(random!.id)).toBe(true);
+    }
+  });
+});
+
 describe('Photo: community field resolver', () => {
   it('returns the community of the photo album', async () => {
     const { user } = await createTestUser();

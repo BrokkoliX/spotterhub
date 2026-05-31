@@ -252,6 +252,24 @@ export const photoQueryResolvers = {
       where.album = { is: { communityId: { in: args.communityIds } } };
     }
 
+    // Exclude community photos from the unscoped "general" feed.
+    // Community photos belong to a community context (an album inside
+    // a community) and surfacing them in the global home/explore/airport
+    // feeds dilutes the aircraft-spotting focus those surfaces are
+    // meant to have. We only apply this default when the caller has
+    // not scoped the query to a specific user, album, community, or
+    // photo kind — those scoped views (profile galleries, album
+    // pages, community feeds, explicit COMMUNITY tab) should still
+    // return community photos as expected.
+    const isScopedQuery =
+      Boolean(args.userId) ||
+      Boolean(args.albumId) ||
+      Boolean(args.kind) ||
+      (args.communityIds !== undefined && args.communityIds.length > 0);
+    if (!isScopedQuery) {
+      where.kind = 'AIRCRAFT';
+    }
+
     // Filter to photos that have been awarded a specific badge — used by
     // the "Admin's Choice" feed tab on the home page. We use `some` with
     // a slug match on the related BadgeDefinition. Each `awardedPhotoId`
@@ -357,9 +375,14 @@ export const photoQueryResolvers = {
    * one indexed lookup with OFFSET. Total cost: two index-only scans.
    */
   randomPhoto: async (_parent: unknown, _args: unknown, ctx: Context) => {
+    // Restrict to AIRCRAFT photos: the hero banner is a general-feed
+    // surface, and community photos belong inside their community
+    // context (mirrors the default applied in the `photos` resolver
+    // for unscoped queries).
     const where = {
       moderationStatus: 'approved' as const,
       isDeleted: false,
+      kind: 'AIRCRAFT' as const,
     };
     const total = await ctx.prisma.photo.count({ where });
     if (total === 0) return null;
