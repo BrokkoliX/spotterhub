@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import { GoogleAnalytics } from 'nextjs-google-analytics';
 
+import { Analytics } from '@/components/Analytics';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { Providers, type ServerAuthState } from '@/lib/providers';
@@ -97,7 +97,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        <GoogleAnalytics trackPageViews />
+        <Analytics />
         <Providers serverAuth={serverAuth}>
           <Header />
           <main style={{ flex: 1 }}>{children}</main>
