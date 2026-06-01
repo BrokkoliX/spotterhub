@@ -675,6 +675,10 @@ function handler(event) {
                 ? `https://api.${domainName}/graphql`
                 : 'https://api.spotterspace.com/graphql',
             },
+            {
+              name: 'NEXT_PUBLIC_GA_MEASUREMENT_ID',
+              value: 'G-0J7093PRHD',
+            },
             // TODO(infra): Add WEB_BASE_URL back here once the deploy.yml /
             // CDK split-brain is resolved. The variable was previously
             // defined on this task def, but live state does not have it
