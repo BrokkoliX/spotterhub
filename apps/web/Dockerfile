@@ -3,12 +3,24 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Build arguments for Next.js public env vars
+# Build arguments for Next.js public env vars.
+#
+# NEXT_PUBLIC_* values are inlined into the client JS bundle by `next build`,
+# so anything the browser needs MUST be present at build time. Setting these
+# only on the runtime container (e.g. via the ECS task definition) does not
+# work for client-component reads — Next has already replaced the references
+# with literals during the build.
 ARG NEXT_PUBLIC_API_URL=http://api.spotterspace.com/graphql
 ARG NEXT_PUBLIC_MAPBOX_TOKEN
+ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
+ARG NEXT_PUBLIC_S3_IMAGES_HOST
+ARG NEXT_PUBLIC_S3_BUCKET
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_MAPBOX_TOKEN=$NEXT_PUBLIC_MAPBOX_TOKEN
+ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
+ENV NEXT_PUBLIC_S3_IMAGES_HOST=$NEXT_PUBLIC_S3_IMAGES_HOST
+ENV NEXT_PUBLIC_S3_BUCKET=$NEXT_PUBLIC_S3_BUCKET
 
 # Context is the monorepo root
 # Copy root workspace files first

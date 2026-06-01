@@ -677,7 +677,7 @@ function handler(event) {
             },
             {
               name: 'NEXT_PUBLIC_GA_MEASUREMENT_ID',
-              value: 'G-0J7093PRHD',
+              value: 'G-DC910C9R5M',
             },
             // TODO(infra): Add WEB_BASE_URL back here once the deploy.yml /
             // CDK split-brain is resolved. The variable was previously

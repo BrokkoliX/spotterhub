@@ -226,6 +226,7 @@ jobs:
             NEXT_PUBLIC_MAPBOX_TOKEN=${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
             NEXT_PUBLIC_S3_IMAGES_HOST=${{ vars.S3_IMAGES_HOST || 'https://d2ur47prd8ljwz.cloudfront.net' }}
             NEXT_PUBLIC_S3_BUCKET=${{ vars.S3_BUCKET_NAME || 'spotterspace-photos' }}
+            NEXT_PUBLIC_GA_MEASUREMENT_ID=${{ vars.GA_MEASUREMENT_ID || 'G-DC910C9R5M' }}
 
       - name: Update Web task definition and deploy
         env:
