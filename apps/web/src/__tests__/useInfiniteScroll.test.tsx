@@ -72,6 +72,21 @@ afterEach(() => {
   observerInstances = [];
 });
 
+// Construct a fully-typed IntersectionObserverEntry for tests that need to
+// drive the observer callback manually. Avoiding partial casts lets us keep
+// strict typing without resorting to `as unknown as` double-casts.
+function makeEntry(target: Element, isIntersecting: boolean): IntersectionObserverEntry {
+  return {
+    isIntersecting,
+    target,
+    time: 0,
+    boundingClientRect: {} as DOMRectReadOnly,
+    intersectionRatio: isIntersecting ? 1 : 0,
+    intersectionRect: {} as DOMRectReadOnly,
+    rootBounds: null,
+  };
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('useInfiniteScroll', () => {
@@ -123,7 +138,7 @@ describe('useInfiniteScroll', () => {
     const node = document.createElement('div');
     result.current(node);
     (observerInstances[0] as unknown as { callback: IntersectionObserverCallback }).callback(
-      [{ isIntersecting: true, target: node } as IntersectionObserverEntry],
+      [makeEntry(node, true)],
       {} as IntersectionObserver,
     );
 
@@ -145,7 +160,7 @@ describe('useInfiniteScroll', () => {
 
     // Simulate first intersection — should fire.
     (observerInstances[0] as unknown as { callback: IntersectionObserverCallback }).callback(
-      [{ isIntersecting: true, target: node } as IntersectionObserverEntry],
+      [makeEntry(node, true)],
       {} as IntersectionObserver,
     );
     expect(onLoadMore).toHaveBeenCalledTimes(1);
@@ -153,7 +168,7 @@ describe('useInfiniteScroll', () => {
     // Now a fetch is in flight. Subsequent intersection events must be ignored.
     rerender({ loading: true });
     (observerInstances[0] as unknown as { callback: IntersectionObserverCallback }).callback(
-      [{ isIntersecting: true, target: node } as IntersectionObserverEntry],
+      [makeEntry(node, true)],
       {} as IntersectionObserver,
     );
     expect(onLoadMore).toHaveBeenCalledTimes(1);
@@ -171,7 +186,7 @@ describe('useInfiniteScroll', () => {
 
     rerender({ hasNextPage: false });
     (observerInstances[0] as unknown as { callback: IntersectionObserverCallback }).callback(
-      [{ isIntersecting: true, target: node } as IntersectionObserverEntry],
+      [makeEntry(node, true)],
       {} as IntersectionObserver,
     );
     expect(onLoadMore).not.toHaveBeenCalled();

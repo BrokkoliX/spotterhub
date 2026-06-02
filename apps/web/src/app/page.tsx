@@ -327,7 +327,7 @@ export default function HomePage() {
 
   // ─── Queries ────────────────────────────────────────────────────────────────
 
-  const [{ data: recentData, fetching: recentFetching }, reexecuteRecent] = useQuery({
+  const [{ data: recentData, fetching: recentFetching }] = useQuery({
     query: GET_PHOTOS,
     variables: recentVars,
     pause: feedTab !== 'recent',
@@ -353,26 +353,48 @@ export default function HomePage() {
 
   // ─── Sync: when query results come in, update tab state ─────────────────────
 
+  // Per-tab response-cursor refs.
+  //
+  // IMPORTANT: TabState.endCursor is the *request* cursor — it is fed into the
+  // urql query's `variables.after`. The per-tab `lastResponseCursorRef` below
+  // holds the *response* cursor (what the server last gave us). The merge
+  // effects must only ever update the response refs, never the request
+  // cursor in TabState — otherwise the new state would feed back into the
+  // query variables, urql would refetch, the next response would advance the
+  // request cursor again, and we would self-drive a fetch loop that
+  // exhausts the entire feed without the user scrolling. Only handleLoadMore
+  // promotes a response ref into the corresponding TabState.endCursor.
+  const recentResponseCursorRef = useRef<string | null>(null);
+  const recentMergedCursorRef = useRef<string | null | undefined>(undefined);
+  const followingResponseCursorRef = useRef<string | null>(null);
+  const followingMergedCursorRef = useRef<string | null | undefined>(undefined);
+  const mineResponseCursorRef = useRef<string | null>(null);
+  const mineMergedCursorRef = useRef<string | null | undefined>(undefined);
+  const adminChoiceResponseCursorRef = useRef<string | null>(null);
+  const adminChoiceMergedCursorRef = useRef<string | null | undefined>(undefined);
+
   // Recent tab
   useEffect(() => {
     if (feedTab !== 'recent') return;
     const conn = recentData?.photos;
     if (!conn) return;
+    const responseCursor = conn.pageInfo?.endCursor ?? null;
+    if (recentMergedCursorRef.current === responseCursor && responseCursor !== null) return;
     const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-    const endCursor = conn.pageInfo?.endCursor ?? null;
     const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
 
-    // On first fetch (no cursor yet), replace. On subsequent, append.
     setRecentState((prev) =>
       prev.endCursor === null
-        ? { photos: newPhotos, endCursor, hasNextPage }
+        ? { photos: newPhotos, endCursor: prev.endCursor, hasNextPage }
         : {
             photos: [...prev.photos, ...newPhotos],
-            endCursor,
+            endCursor: prev.endCursor,
             hasNextPage,
           },
     );
     setRecentTotalCount(conn.totalCount ?? 0);
+    recentResponseCursorRef.current = responseCursor;
+    recentMergedCursorRef.current = responseCursor;
   }, [recentData, feedTab]);
 
   // Following tab
@@ -380,19 +402,22 @@ export default function HomePage() {
     if (feedTab !== 'following') return;
     const conn = followingData?.followingFeed;
     if (!conn) return;
+    const responseCursor = conn.pageInfo?.endCursor ?? null;
+    if (followingMergedCursorRef.current === responseCursor && responseCursor !== null) return;
     const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-    const endCursor = conn.pageInfo?.endCursor ?? null;
     const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
 
     setFollowingState((prev) =>
       prev.endCursor === null
-        ? { photos: newPhotos, endCursor, hasNextPage }
+        ? { photos: newPhotos, endCursor: prev.endCursor, hasNextPage }
         : {
             photos: [...prev.photos, ...newPhotos],
-            endCursor,
+            endCursor: prev.endCursor,
             hasNextPage,
           },
     );
+    followingResponseCursorRef.current = responseCursor;
+    followingMergedCursorRef.current = responseCursor;
   }, [followingData, feedTab]);
 
   // Mine tab
@@ -400,19 +425,22 @@ export default function HomePage() {
     if (feedTab !== 'mine') return;
     const conn = mineData?.photos;
     if (!conn) return;
+    const responseCursor = conn.pageInfo?.endCursor ?? null;
+    if (mineMergedCursorRef.current === responseCursor && responseCursor !== null) return;
     const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-    const endCursor = conn.pageInfo?.endCursor ?? null;
     const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
 
     setMineState((prev) =>
       prev.endCursor === null
-        ? { photos: newPhotos, endCursor, hasNextPage }
+        ? { photos: newPhotos, endCursor: prev.endCursor, hasNextPage }
         : {
             photos: [...prev.photos, ...newPhotos],
-            endCursor,
+            endCursor: prev.endCursor,
             hasNextPage,
           },
     );
+    mineResponseCursorRef.current = responseCursor;
+    mineMergedCursorRef.current = responseCursor;
   }, [mineData, feedTab]);
 
   // Admin choice tab
@@ -420,30 +448,33 @@ export default function HomePage() {
     if (feedTab !== 'admin_choice') return;
     const conn = adminChoiceData?.photos;
     if (!conn) return;
+    const responseCursor = conn.pageInfo?.endCursor ?? null;
+    if (adminChoiceMergedCursorRef.current === responseCursor && responseCursor !== null) return;
     const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-    const endCursor = conn.pageInfo?.endCursor ?? null;
     const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
 
     setAdminChoiceState((prev) =>
       prev.endCursor === null
-        ? { photos: newPhotos, endCursor, hasNextPage }
+        ? { photos: newPhotos, endCursor: prev.endCursor, hasNextPage }
         : {
             photos: [...prev.photos, ...newPhotos],
-            endCursor,
+            endCursor: prev.endCursor,
             hasNextPage,
           },
     );
+    adminChoiceResponseCursorRef.current = responseCursor;
+    adminChoiceMergedCursorRef.current = responseCursor;
   }, [adminChoiceData, feedTab]);
 
   // ─── Load more handler ───────────────────────────────────────────────────────
 
-  // Cursor changes (recentState.endCursor, mineState.endCursor, etc.) are wired
-  // directly into the per-tab `*Vars` memos above. urql re-executes the query
-  // automatically when those variables change — so this callback only needs to
-  // exist for the 'recent' tab where we additionally force a network-only
-  // refetch. The function is intentionally argument-free at the consumer side
-  // (the `after` cursor is read off state, not passed in) and stable across
-  // renders so the IntersectionObserver downstream is never rebuilt.
+  // Advances the active tab's *request* cursor (TabState.endCursor) by
+  // copying the most recent response cursor (which the merge effects keep
+  // updated in a per-tab ref) into state. urql sees the new variables and
+  // re-executes the query automatically — no explicit reexecute is needed.
+  // The function reads the current tab from a ref so its identity is stable
+  // across renders, which keeps the InfinitePhotoGrid downstream from
+  // rebuilding its IntersectionObserver.
   const feedTabRef = useRef(feedTab);
   useEffect(() => {
     feedTabRef.current = feedTab;
@@ -451,20 +482,36 @@ export default function HomePage() {
 
   const handleLoadMore = useCallback(() => {
     switch (feedTabRef.current) {
-      case 'recent':
-        reexecuteRecent({ requestPolicy: 'network-only' });
+      case 'recent': {
+        const next = recentResponseCursorRef.current;
+        if (next === null) return;
+        setRecentState((prev) => (prev.endCursor === next ? prev : { ...prev, endCursor: next }));
         break;
-      case 'following':
-        // following feed doesn't use cursor pagination in the same way
+      }
+      case 'following': {
+        const next = followingResponseCursorRef.current;
+        if (next === null) return;
+        setFollowingState((prev) =>
+          prev.endCursor === next ? prev : { ...prev, endCursor: next },
+        );
         break;
-      case 'mine':
-        // handled by mineVars (urql re-executes on variable change)
+      }
+      case 'mine': {
+        const next = mineResponseCursorRef.current;
+        if (next === null) return;
+        setMineState((prev) => (prev.endCursor === next ? prev : { ...prev, endCursor: next }));
         break;
-      case 'admin_choice':
-        // handled by adminChoiceVars (urql re-executes on variable change)
+      }
+      case 'admin_choice': {
+        const next = adminChoiceResponseCursorRef.current;
+        if (next === null) return;
+        setAdminChoiceState((prev) =>
+          prev.endCursor === next ? prev : { ...prev, endCursor: next },
+        );
         break;
+      }
     }
-  }, [reexecuteRecent]);
+  }, []);
 
   // ─── Tab switch: reset state when switching tabs ───────────────────────────
 

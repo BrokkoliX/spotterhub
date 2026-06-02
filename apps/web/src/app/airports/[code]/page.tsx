@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type FormEvent, use, useCallback, useEffect, useState, Suspense } from 'react';
+import { type FormEvent, use, useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { AirportFollowButton } from '@/components/AirportFollowButton';
@@ -76,31 +76,49 @@ function AirportPageInner({ params }: { params: Promise<{ code: string }> }) {
     variables: { code: code.toUpperCase() },
   });
 
-  const [{ data: photosData, fetching: photosFetching }, reexecutePhotos] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }] = useQuery({
     query: GET_PHOTOS,
     variables: { first: PAGE_SIZE, after: endCursor, airportCode: code.toUpperCase() },
   });
 
   const airport = airportResult.data?.airport;
 
-  // Sync accumulated photo state
+  // Sync accumulated photo state.
+  //
+  // IMPORTANT: do NOT advance `endCursor` from this effect. `endCursor` is the
+  // cursor we hand to urql via `variables.after`, so writing it here would
+  // trigger an immediate re-fetch — and the next response would then advance
+  // it again, ad infinitum. Instead, we record the response's end cursor in a
+  // ref and let `handleLoadMore` promote it to state when the user actually
+  // wants the next page.
+  const lastResponseCursorRef = useRef<string | null>(null);
+  const lastMergedCursorRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     const conn = photosData?.photos;
     if (!conn) return;
-    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const cursor = conn.pageInfo?.endCursor ?? null;
+    // Dedupe: if urql re-emits the same response (same end cursor), do not
+    // append the same edges twice.
+    if (lastMergedCursorRef.current === cursor && cursor !== null) return;
+
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
     setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
-    setEndCursor(cursor);
     setHasNextPage(hasMore);
+    lastResponseCursorRef.current = cursor;
+    lastMergedCursorRef.current = cursor;
   }, [photosData, endCursor]);
 
   const handleLoadMore = useCallback(() => {
-    if (!photosFetching && hasNextPage) {
-      reexecutePhotos({ requestPolicy: 'network-only' });
-    }
-  }, [photosFetching, hasNextPage, reexecutePhotos]);
+    if (photosFetching || !hasNextPage) return;
+    const next = lastResponseCursorRef.current;
+    if (next === null || next === endCursor) return;
+    // Advancing endCursor changes the urql variables, which causes the query
+    // to re-execute automatically. No explicit reexecute needed.
+    setEndCursor(next);
+  }, [photosFetching, hasNextPage, endCursor]);
 
   const handleCreateSpot = async (e: FormEvent) => {
     e.preventDefault();

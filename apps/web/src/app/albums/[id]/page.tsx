@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, use, useCallback, useEffect, useState, Suspense } from 'react';
+import { type FormEvent, use, useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
@@ -75,24 +75,39 @@ function AlbumDetailPageInner({ params }: { params: Promise<{ id: string }> }) {
 
   const album = albumResult.data?.album;
 
-  // Sync accumulated photo state
+  // Sync accumulated photo state.
+  //
+  // IMPORTANT: do NOT advance `endCursor` from this effect. `endCursor` is the
+  // cursor we hand to urql via `variables.after`, so writing it here would
+  // trigger an immediate re-fetch — and the next response would then advance
+  // it again, ad infinitum. Instead, we record the response's end cursor in a
+  // ref and let `handleLoadMore` promote it to state when the user actually
+  // wants the next page.
+  const lastResponseCursorRef = useRef<string | null>(null);
+  const lastMergedCursorRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     const conn = photosData?.photos;
     if (!conn) return;
-    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const cursor = conn.pageInfo?.endCursor ?? null;
+    // Dedupe: if urql re-emits the same response, do not append twice.
+    if (lastMergedCursorRef.current === cursor && cursor !== null) return;
+
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
     setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
-    setEndCursor(cursor);
     setHasNextPage(hasMore);
+    lastResponseCursorRef.current = cursor;
+    lastMergedCursorRef.current = cursor;
   }, [photosData, endCursor]);
 
   const handleLoadMore = useCallback(() => {
-    if (!photosFetching && hasNextPage) {
-      reexecutePhotosQuery({ requestPolicy: 'network-only' });
-    }
-  }, [photosFetching, hasNextPage, reexecutePhotosQuery]);
+    if (photosFetching || !hasNextPage) return;
+    const next = lastResponseCursorRef.current;
+    if (next === null || next === endCursor) return;
+    setEndCursor(next);
+  }, [photosFetching, hasNextPage, endCursor]);
 
   const isOwner = user?.username === album?.user?.username;
   const isCommunityAlbum = !!album?.communityId;

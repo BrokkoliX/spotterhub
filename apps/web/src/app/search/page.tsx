@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
@@ -58,7 +58,7 @@ function SearchPageInner() {
 
   // ─── Queries ────────────────────────────────────────────────────────────
 
-  const [{ data: photosData, fetching: photosFetching }, reexecutePhotos] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }] = useQuery({
     query: SEARCH_PHOTOS,
     variables: { query: searchQuery, first: PAGE_SIZE, after: endCursor },
     pause: !hasQuery || activeTab !== 'photos',
@@ -70,25 +70,39 @@ function SearchPageInner() {
     pause: !hasQuery || activeTab !== 'users',
   });
 
-  // Sync accumulated photo state
+  // Sync accumulated photo state.
+  //
+  // IMPORTANT: do NOT advance `endCursor` from this effect. `endCursor` is the
+  // cursor we hand to urql via `variables.after`, so writing it here would
+  // trigger an immediate re-fetch — and the next response would then advance
+  // it again, ad infinitum. Instead, we record the response's end cursor in a
+  // ref and let `handleLoadMorePhotos` promote it to state when the user
+  // actually wants the next page.
+  const lastResponseCursorRef = useRef<string | null>(null);
+  const lastMergedCursorRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     if (activeTab !== 'photos') return;
     const conn = photosData?.searchPhotos;
     if (!conn) return;
-    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const cursor = conn.pageInfo?.endCursor ?? null;
+    if (lastMergedCursorRef.current === cursor && cursor !== null) return;
+
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
     setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
-    setEndCursor(cursor);
     setHasNextPage(hasMore);
+    lastResponseCursorRef.current = cursor;
+    lastMergedCursorRef.current = cursor;
   }, [photosData, activeTab, endCursor]);
 
   const handleLoadMorePhotos = useCallback(() => {
-    if (!photosFetching && hasNextPage) {
-      reexecutePhotos({ requestPolicy: 'network-only' });
-    }
-  }, [photosFetching, hasNextPage, reexecutePhotos]);
+    if (photosFetching || !hasNextPage) return;
+    const next = lastResponseCursorRef.current;
+    if (next === null || next === endCursor) return;
+    setEndCursor(next);
+  }, [photosFetching, hasNextPage, endCursor]);
 
   // ─── Derived data ──────────────────────────────────────────────────────
 

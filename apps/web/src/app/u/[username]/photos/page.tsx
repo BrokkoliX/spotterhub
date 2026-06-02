@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, use, useCallback, useEffect, useState } from 'react';
+import { Suspense, use, useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 
 import { FollowButton } from '@/components/FollowButton';
@@ -64,30 +64,44 @@ function UserPhotosPageInner({ params }: { params: Promise<{ username: string }>
 
   const userId = userResult.data?.user?.id;
 
-  const [{ data: photosData, fetching: photosFetching }, reexecutePhotos] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }] = useQuery({
     query: GET_PHOTOS,
     variables: { first: PAGE_SIZE, after: endCursor, userId },
     pause: !userId,
   });
 
-  // Sync accumulated state
+  // Sync accumulated state.
+  //
+  // IMPORTANT: do NOT advance `endCursor` from this effect. `endCursor` is the
+  // cursor we hand to urql via `variables.after`, so writing it here would
+  // trigger an immediate re-fetch — and the next response would then advance
+  // it again, ad infinitum. Instead, we record the response's end cursor in a
+  // ref and let `handleLoadMore` promote it to state when the user actually
+  // wants the next page.
+  const lastResponseCursorRef = useRef<string | null>(null);
+  const lastMergedCursorRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     const conn = photosData?.photos;
     if (!conn) return;
-    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const cursor = conn.pageInfo?.endCursor ?? null;
+    if (lastMergedCursorRef.current === cursor && cursor !== null) return;
+
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
     const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
     setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
-    setEndCursor(cursor);
     setHasNextPage(hasMore);
+    lastResponseCursorRef.current = cursor;
+    lastMergedCursorRef.current = cursor;
   }, [photosData, endCursor]);
 
   const handleLoadMore = useCallback(() => {
-    if (!photosFetching && hasNextPage) {
-      reexecutePhotos({ requestPolicy: 'network-only' });
-    }
-  }, [photosFetching, hasNextPage, reexecutePhotos]);
+    if (photosFetching || !hasNextPage) return;
+    const next = lastResponseCursorRef.current;
+    if (next === null || next === endCursor) return;
+    setEndCursor(next);
+  }, [photosFetching, hasNextPage, endCursor]);
 
   const { user: authUser } = useAuth();
 
