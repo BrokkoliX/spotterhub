@@ -1,10 +1,9 @@
 .block {
   position: relative;
   margin: 1.5rem 0;
-  padding: 1.25rem 1.25rem 1.25rem 1.25rem;
+  padding: 1.25rem;
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  box-shadow: var(--shadow-elevated);
   /*
    * Layout contract: this block sits between two PhotoGrid instances on
    * the home page. A fixed min-height keeps the second grid in place
@@ -106,15 +105,13 @@
   gap: 0.75rem;
   padding: 0.75rem;
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 
 .card:hover {
-  border-color: var(--color-accent);
+  box-shadow: var(--shadow-elevated);
   transform: translateY(-1px);
 }
 
@@ -171,14 +168,14 @@
   gap: 0.75rem;
   padding: 0.625rem 0.75rem;
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 0;
   text-decoration: none;
   color: inherit;
+  transition: box-shadow 0.15s;
 }
 
 .threadRow:hover {
-  border-color: var(--color-accent);
+  box-shadow: var(--shadow-elevated);
 }
 
 .threadTitle {

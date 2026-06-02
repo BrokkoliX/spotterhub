@@ -23,9 +23,9 @@ body {
   --color-text: #ededed;
   --color-text-secondary: #999;
   --color-text-muted: #666;
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-accent-soft: rgba(59, 130, 246, 0.15);
+  --color-accent: #d97706;
+  --color-accent-hover: #b45309;
+  --color-accent-soft: rgba(217, 119, 6, 0.15);
   --color-danger: #ef4444;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
@@ -80,9 +80,9 @@ body {
   --color-text-secondary: #555555;
   --color-text-muted:     #888888;
 
-  --color-accent:       #2563eb;
-  --color-accent-hover: #1d4ed8;
-  --color-accent-soft:  rgba(37, 99, 235, 0.12);
+  --color-accent:       #d97706;
+  --color-accent-hover: #b45309;
+  --color-accent-soft:  rgba(217, 119, 6, 0.12);
 
   --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.10);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.14);
@@ -299,8 +299,6 @@ select {
 /* Card base */
 .card {
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -337,13 +335,11 @@ select {
   text-decoration: none;
   color: inherit;
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: border-color 0.15s, transform 0.15s;
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 
 .clickable-card:hover {
-  border-color: var(--color-accent);
+  box-shadow: var(--shadow-elevated);
   transform: translateY(-1px);
 }
 
