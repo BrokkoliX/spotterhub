@@ -62,7 +62,7 @@ function UserPhotosPageInner({ params }: { params: Promise<{ username: string }>
     variables: { username },
   });
 
-  const userId = userResult.data?.user?.id;
+  const userId = userResult?.user?.id;
 
   const [{ data: photosData, fetching: photosFetching }] = useQuery({
     query: GET_PHOTOS,
@@ -115,7 +115,7 @@ function UserPhotosPageInner({ params }: { params: Promise<{ username: string }>
     );
   }
 
-  if (!userResult.data?.user) {
+  if (!userResult?.user) {
     return (
       <div className={styles.page}>
         <div className="container">
@@ -130,7 +130,7 @@ function UserPhotosPageInner({ params }: { params: Promise<{ username: string }>
     );
   }
 
-  const user = userResult.data.user;
+  const user = userResult.user;
   const displayName = user.profile?.displayName ?? user.username;
   const isOwnProfile = authUser?.id === user.id;
 
