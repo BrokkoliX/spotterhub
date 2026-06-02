@@ -42,10 +42,45 @@ import type {
 } from '@/lib/generated/graphql';
 import dynamic from 'next/dynamic';
 import AirportPicker, { type Airport } from '@/components/AirportPicker';
+import {
+  WATERMARK_BOUNDS,
+  WATERMARK_DEFAULTS,
+  WatermarkPosition,
+  type WatermarkConfig,
+} from '@spotterspace/shared';
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false });
 
 import styles from './page.module.css';
+
+/**
+ * 9-point watermark anchors in row-major order so a 3x3 CSS grid renders
+ * them as a faithful map of the corresponding on-image positions.
+ */
+const WATERMARK_POSITION_GRID: WatermarkPosition[] = [
+  WatermarkPosition.TOP_LEFT,
+  WatermarkPosition.TOP_CENTER,
+  WatermarkPosition.TOP_RIGHT,
+  WatermarkPosition.MIDDLE_LEFT,
+  WatermarkPosition.CENTER,
+  WatermarkPosition.MIDDLE_RIGHT,
+  WatermarkPosition.BOTTOM_LEFT,
+  WatermarkPosition.BOTTOM_CENTER,
+  WatermarkPosition.BOTTOM_RIGHT,
+];
+
+/** Human-readable labels for each watermark anchor, used as a11y names + tooltips. */
+const WATERMARK_POSITION_LABELS: Record<WatermarkPosition, string> = {
+  [WatermarkPosition.TOP_LEFT]: 'Top left',
+  [WatermarkPosition.TOP_CENTER]: 'Top centre',
+  [WatermarkPosition.TOP_RIGHT]: 'Top right',
+  [WatermarkPosition.MIDDLE_LEFT]: 'Middle left',
+  [WatermarkPosition.CENTER]: 'Centre',
+  [WatermarkPosition.MIDDLE_RIGHT]: 'Middle right',
+  [WatermarkPosition.BOTTOM_LEFT]: 'Bottom left',
+  [WatermarkPosition.BOTTOM_CENTER]: 'Bottom centre',
+  [WatermarkPosition.BOTTOM_RIGHT]: 'Bottom right',
+};
 
 type UploadStep = 'select' | 'uploading' | 'form' | 'creating' | 'done';
 
@@ -299,6 +334,13 @@ export default function UploadPage() {
   const [airlineDisplay, setAirlineDisplay] = useState(''); // shown below airline dropdown
   const [license, setLicense] = useState('ALL_RIGHTS_RESERVED');
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [watermarkPosition, setWatermarkPosition] = useState<WatermarkPosition>(
+    WATERMARK_DEFAULTS.position,
+  );
+  const [watermarkSizePct, setWatermarkSizePct] = useState<number>(WATERMARK_DEFAULTS.sizePct);
+  const [watermarkOpacityPct, setWatermarkOpacityPct] = useState<number>(
+    WATERMARK_DEFAULTS.opacityPct,
+  );
   const [mode, setMode] = useState<UploadMode>('aircraft');
   const [communityCategory, setCommunityCategory] = useState<CommunityCategoryValue | ''>('');
 
@@ -538,6 +580,9 @@ export default function UploadPage() {
     setSelectedAirlineId('');
     setLicense('ALL_RIGHTS_RESERVED');
     setWatermarkEnabled(false);
+    setWatermarkPosition(WATERMARK_DEFAULTS.position);
+    setWatermarkSizePct(WATERMARK_DEFAULTS.sizePct);
+    setWatermarkOpacityPct(WATERMARK_DEFAULTS.opacityPct);
     setAircraftLocked(false);
     setShowNewAircraftModal(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -607,6 +652,14 @@ export default function UploadPage() {
     if (exifData && Object.keys(exifData).length > 0) input.exifData = exifData;
     input.license = license;
     input.watermarkEnabled = watermarkEnabled;
+    if (watermarkEnabled) {
+      const config: WatermarkConfig = {
+        position: watermarkPosition,
+        sizePct: watermarkSizePct,
+        opacityPct: watermarkOpacityPct,
+      };
+      input.watermarkConfig = config;
+    }
 
     if (mode === 'community') {
       input.communityCategory = communityCategory;
@@ -714,6 +767,9 @@ export default function UploadPage() {
                   setSelectedAirlineId('');
                   setLicense('ALL_RIGHTS_RESERVED');
                   setWatermarkEnabled(false);
+                  setWatermarkPosition(WATERMARK_DEFAULTS.position);
+                  setWatermarkSizePct(WATERMARK_DEFAULTS.sizePct);
+                  setWatermarkOpacityPct(WATERMARK_DEFAULTS.opacityPct);
                 }}
                 className="btn btn-secondary btn-lg"
                 type="button"
@@ -1377,6 +1433,88 @@ export default function UploadPage() {
                       Add © SpotterSpace watermark to this photo
                     </span>
                   </label>
+                  {watermarkEnabled && (
+                    <div className={styles.watermarkPanel}>
+                      <div className={styles.watermarkRow}>
+                        <span className={styles.watermarkRowLabel}>Position</span>
+                        <span className={styles.watermarkRowHint}>
+                          Choose where the watermark sits on the photo.
+                        </span>
+                        <div
+                          className={styles.watermarkPositionGrid}
+                          role="radiogroup"
+                          aria-label="Watermark position"
+                        >
+                          {WATERMARK_POSITION_GRID.map((pos) => {
+                            const isActive = pos === watermarkPosition;
+                            return (
+                              <label
+                                key={pos}
+                                className={`${styles.watermarkPositionCell} ${
+                                  isActive ? styles.watermarkPositionCellActive : ''
+                                }`}
+                                aria-label={WATERMARK_POSITION_LABELS[pos]}
+                                title={WATERMARK_POSITION_LABELS[pos]}
+                              >
+                                <input
+                                  type="radio"
+                                  name="watermark-position"
+                                  value={pos}
+                                  checked={isActive}
+                                  onChange={() => setWatermarkPosition(pos)}
+                                />
+                                <span className={styles.watermarkPositionDot} aria-hidden="true" />
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className={styles.watermarkRow}>
+                        <label htmlFor="watermark-size" className={styles.watermarkRowLabel}>
+                          Size
+                        </label>
+                        <span className={styles.watermarkRowHint}>
+                          Watermark height as a percentage of the photo&apos;s long edge.
+                        </span>
+                        <div className={styles.watermarkSlider}>
+                          <input
+                            id="watermark-size"
+                            type="range"
+                            min={WATERMARK_BOUNDS.sizePct.min}
+                            max={WATERMARK_BOUNDS.sizePct.max}
+                            step={1}
+                            value={watermarkSizePct}
+                            onChange={(e) => setWatermarkSizePct(Number(e.target.value))}
+                          />
+                          <span className={styles.watermarkSliderValue}>{watermarkSizePct}%</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.watermarkRow}>
+                        <label htmlFor="watermark-opacity" className={styles.watermarkRowLabel}>
+                          Opacity
+                        </label>
+                        <span className={styles.watermarkRowHint}>
+                          How visible the watermark is. Higher = more opaque.
+                        </span>
+                        <div className={styles.watermarkSlider}>
+                          <input
+                            id="watermark-opacity"
+                            type="range"
+                            min={WATERMARK_BOUNDS.opacityPct.min}
+                            max={WATERMARK_BOUNDS.opacityPct.max}
+                            step={5}
+                            value={watermarkOpacityPct}
+                            onChange={(e) => setWatermarkOpacityPct(Number(e.target.value))}
+                          />
+                          <span className={styles.watermarkSliderValue}>
+                            {watermarkOpacityPct}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {error && <p className="error-text">{error}</p>}

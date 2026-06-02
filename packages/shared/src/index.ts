@@ -51,6 +51,23 @@ export enum PhotoVariantType {
   WATERMARKED = 'watermarked',
 }
 
+/**
+ * Anchor point at which the watermark is composited onto the image.
+ * The 9-point grid keeps the picker simple in the UI and maps
+ * 1-to-1 onto Sharp's `gravity` values in the image processor.
+ */
+export enum WatermarkPosition {
+  TOP_LEFT = 'TOP_LEFT',
+  TOP_CENTER = 'TOP_CENTER',
+  TOP_RIGHT = 'TOP_RIGHT',
+  MIDDLE_LEFT = 'MIDDLE_LEFT',
+  CENTER = 'CENTER',
+  MIDDLE_RIGHT = 'MIDDLE_RIGHT',
+  BOTTOM_LEFT = 'BOTTOM_LEFT',
+  BOTTOM_CENTER = 'BOTTOM_CENTER',
+  BOTTOM_RIGHT = 'BOTTOM_RIGHT',
+}
+
 /** Notification types for the in-app notification system. */
 export enum NotificationType {
   LIKE = 'like',
@@ -161,6 +178,66 @@ export const IMAGE_VARIANT_SIZES = {
   fullRes2048: 2048,
   fullRes4096: 4096,
 } as const;
+
+// ─── Watermark Configuration ─────────────────────────────────────────────────
+
+/**
+ * User-supplied watermark settings. All numeric fields are integer
+ * percentages so the values can be safely stored as Postgres `Int` and
+ * passed through GraphQL `Int!` without float drift.
+ */
+export interface WatermarkConfig {
+  /** Anchor point on the image where the watermark is composited. */
+  position: WatermarkPosition;
+  /** Watermark text height as a percentage of the image's long edge. */
+  sizePct: number;
+  /** Opacity of the watermark text, 0-100. */
+  opacityPct: number;
+}
+
+/**
+ * Inclusive bounds for the watermark sliders. The minimums prevent a
+ * watermark so small or so transparent it provides no protection;
+ * the maximums prevent a watermark that obscures the photo.
+ */
+export const WATERMARK_BOUNDS = {
+  sizePct: { min: 2, max: 10 },
+  opacityPct: { min: 30, max: 100 },
+} as const;
+
+/** Default watermark configuration applied when the user opts in without changing the sliders. */
+export const WATERMARK_DEFAULTS: WatermarkConfig = {
+  position: WatermarkPosition.BOTTOM_RIGHT,
+  sizePct: 3,
+  opacityPct: 70,
+};
+
+/**
+ * Validates a user-supplied watermark configuration.
+ * Returns an error message describing the first failure, or null when valid.
+ * Used by the createPhoto resolver before persisting the row.
+ */
+export function validateWatermarkConfig(config: WatermarkConfig): string | null {
+  if (!Object.values(WatermarkPosition).includes(config.position)) {
+    return `Invalid watermark position: ${String(config.position)}`;
+  }
+  const { sizePct, opacityPct } = WATERMARK_BOUNDS;
+  if (
+    !Number.isInteger(config.sizePct) ||
+    config.sizePct < sizePct.min ||
+    config.sizePct > sizePct.max
+  ) {
+    return `Watermark size must be an integer between ${sizePct.min} and ${sizePct.max}`;
+  }
+  if (
+    !Number.isInteger(config.opacityPct) ||
+    config.opacityPct < opacityPct.min ||
+    config.opacityPct > opacityPct.max
+  ) {
+    return `Watermark opacity must be an integer between ${opacityPct.min} and ${opacityPct.max}`;
+  }
+  return null;
+}
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 

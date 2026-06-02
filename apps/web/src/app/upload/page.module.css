@@ -252,3 +252,95 @@
   height: 16px;
   cursor: pointer;
 }
+
+.watermarkPanel {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--color-surface-subtle, #f9fafb);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.watermarkRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.watermarkRowLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #111827);
+}
+
+.watermarkRowHint {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.watermarkPositionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+  width: 132px;
+  height: 132px;
+}
+
+.watermarkPositionCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 4px;
+  background: var(--color-surface, #ffffff);
+  cursor: pointer;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.watermarkPositionCell:hover {
+  border-color: var(--color-primary, #2563eb);
+}
+
+.watermarkPositionCellActive {
+  background: var(--color-primary, #2563eb);
+  border-color: var(--color-primary, #2563eb);
+}
+
+.watermarkPositionCell input[type='radio'] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.watermarkPositionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-secondary, #9ca3af);
+}
+
+.watermarkPositionCellActive .watermarkPositionDot {
+  background: #ffffff;
+}
+
+.watermarkSlider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.watermarkSlider input[type='range'] {
+  flex: 1;
+}
+
+.watermarkSliderValue {
+  min-width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  color: var(--color-text-primary, #111827);
+}

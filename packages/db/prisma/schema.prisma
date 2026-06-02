@@ -202,6 +202,18 @@ enum CommunityPhotoCategory {
   OTHER
 }
 
+enum WatermarkPosition {
+  TOP_LEFT
+  TOP_CENTER
+  TOP_RIGHT
+  MIDDLE_LEFT
+  CENTER
+  MIDDLE_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_CENTER
+  BOTTOM_RIGHT
+}
+
 enum AircraftStatus {
   active
   pending_approval
@@ -482,6 +494,9 @@ model Photo {
   hasActiveListing     Boolean          @default(false) @map("has_active_listing")
   license              PhotoLicense     @default(ALL_RIGHTS_RESERVED)
   watermarkEnabled     Boolean          @default(false) @map("watermark_enabled")
+  watermarkPosition    WatermarkPosition? @map("watermark_position")
+  watermarkSize        Int?             @map("watermark_size")
+  watermarkOpacity     Int?             @map("watermark_opacity")
   aircraftId           String?          @map("aircraft_id") @db.Uuid
   photographerId       String?          @map("photographer_id") @db.Uuid
   photographerName     String?          @map("photographer_name")

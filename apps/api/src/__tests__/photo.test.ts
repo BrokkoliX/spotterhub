@@ -327,6 +327,130 @@ describe('Photo: createPhoto', () => {
   });
 });
 
+describe('Photo: createPhoto watermark configuration', () => {
+  const CREATE_PHOTO_WITH_WATERMARK = `
+    mutation CreatePhotoWithWatermark($input: CreatePhotoInput!) {
+      createPhoto(input: $input) {
+        id
+        watermarkEnabled
+        watermarkConfig {
+          position
+          sizePct
+          opacityPct
+        }
+      }
+    }
+  `;
+
+  it('persists a user-supplied watermark configuration', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO_WITH_WATERMARK,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/wm-config.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 1024000,
+            watermarkConfig: {
+              position: 'BOTTOM_LEFT',
+              sizePct: 5,
+              opacityPct: 50,
+            },
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
+
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    // Supplying a config should imply watermarkEnabled=true even when the
+    // legacy boolean is omitted from the input.
+    expect(photo.watermarkEnabled).toBe(true);
+    expect(photo.watermarkConfig).toEqual({
+      position: 'BOTTOM_LEFT',
+      sizePct: 5,
+      opacityPct: 50,
+    });
+  });
+
+  it('rejects out-of-range size values with BAD_USER_INPUT', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO_WITH_WATERMARK,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/wm-bad-size.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 1024000,
+            watermarkConfig: {
+              position: 'BOTTOM_RIGHT',
+              sizePct: 99, // far above WATERMARK_BOUNDS.sizePct.max
+              opacityPct: 70,
+            },
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: {
+          data: Record<string, unknown> | null;
+          errors?: Array<{ message: string; extensions?: { code?: string } }>;
+        };
+      }
+    ).singleResult;
+
+    expect(data.errors).toBeDefined();
+    expect(data.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
+    expect(data.errors?.[0]?.message).toMatch(/Watermark size/);
+  });
+
+  it('returns null watermarkConfig when no config is supplied', async () => {
+    const { ctx } = await createTestUser();
+
+    const result = await server.executeOperation(
+      {
+        query: CREATE_PHOTO_WITH_WATERMARK,
+        variables: {
+          input: {
+            s3Key: 'uploads/test-user/wm-none.jpg',
+            mimeType: 'image/jpeg',
+            fileSizeBytes: 1024000,
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (
+      result.body as {
+        kind: 'single';
+        singleResult: { data: Record<string, unknown>; errors?: unknown[] };
+      }
+    ).singleResult;
+
+    expect(data.errors).toBeUndefined();
+    const photo = data.data?.createPhoto as Record<string, unknown>;
+    expect(photo.watermarkEnabled).toBe(false);
+    expect(photo.watermarkConfig).toBeNull();
+  });
+});
+
 describe('Photo: updatePhoto', () => {
   it('allows the owner to update their photo', async () => {
     const { user, ctx } = await createTestUser();

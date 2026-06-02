@@ -104,7 +104,7 @@ async function processPhoto(photo: PhotoJob, dryRun: boolean): Promise<void> {
   }
 
   const variants = await generateVariants(s3Key, {
-    watermarkEnabled: photo.watermarkEnabled,
+    watermark: { enabled: photo.watermarkEnabled },
   });
 
   // Atomic swap: drop the old rows and insert the new ones in one transaction

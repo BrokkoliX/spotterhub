@@ -326,4 +326,148 @@ test.describe('Upload page', () => {
     expect(createPhotoInput!.airline).toBeUndefined();
     expect(createPhotoInput!.msn).toBeUndefined();
   });
+
+  test('watermark config: enabling and customising sends watermarkConfig in payload', async ({
+    page,
+  }) => {
+    await signIn(page, 'test@example.com', 'password123');
+
+    let createPhotoInput: Record<string, unknown> | null = null;
+
+    await page.route('**/graphql', async (route) => {
+      const postData = route.request().postData();
+      if (postData && postData.includes('GetUploadUrl')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              getUploadUrl: {
+                url: 'http://localhost:4566/spotterspace-photos/wm-key.jpg',
+                key: 'wm-key.jpg',
+              },
+            },
+          }),
+        });
+        return;
+      }
+      if (postData && postData.includes('CreatePhoto')) {
+        const parsed = JSON.parse(postData) as { variables?: { input?: Record<string, unknown> } };
+        createPhotoInput = parsed.variables?.input ?? null;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              createPhoto: {
+                id: 'photo-wm-123',
+                caption: 'Watermarked test',
+              },
+            },
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
+      await route.fulfill({ status: 200 });
+    });
+
+    await page.goto('/upload');
+
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'wm-test.jpg',
+      mimeType: 'image/jpeg',
+      buffer: createTestJpeg(),
+    });
+
+    await expect(page.getByPlaceholder('Describe your photo\u2026')).toBeVisible();
+    await page.getByPlaceholder('Describe your photo\u2026').fill('Watermarked test');
+
+    // Enable watermark
+    await page.getByLabel('Add © SpotterSpace watermark to this photo').check();
+
+    // Pick BOTTOM_LEFT in the 3x3 position grid
+    await page.getByRole('radio', { name: 'Bottom left' }).check();
+
+    // Sliders: size to 5, opacity to 50
+    const sizeSlider = page.locator('#watermark-size');
+    await sizeSlider.fill('5');
+    const opacitySlider = page.locator('#watermark-opacity');
+    await opacitySlider.fill('50');
+
+    await page.getByRole('button', { name: 'Publish Photo' }).click();
+    await expect(page.getByText('Photo uploaded successfully!')).toBeVisible({ timeout: 5000 });
+
+    expect(createPhotoInput).not.toBeNull();
+    expect(createPhotoInput!.watermarkEnabled).toBe(true);
+    expect(createPhotoInput!.watermarkConfig).toEqual({
+      position: 'BOTTOM_LEFT',
+      sizePct: 5,
+      opacityPct: 50,
+    });
+  });
+
+  test('watermark config: disabled by default omits watermarkConfig', async ({ page }) => {
+    await signIn(page, 'test@example.com', 'password123');
+
+    let createPhotoInput: Record<string, unknown> | null = null;
+
+    await page.route('**/graphql', async (route) => {
+      const postData = route.request().postData();
+      if (postData && postData.includes('GetUploadUrl')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              getUploadUrl: {
+                url: 'http://localhost:4566/spotterspace-photos/no-wm.jpg',
+                key: 'no-wm.jpg',
+              },
+            },
+          }),
+        });
+        return;
+      }
+      if (postData && postData.includes('CreatePhoto')) {
+        const parsed = JSON.parse(postData) as { variables?: { input?: Record<string, unknown> } };
+        createPhotoInput = parsed.variables?.input ?? null;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              createPhoto: { id: 'photo-no-wm', caption: 'no wm' },
+            },
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.route('http://localhost:4566/spotterspace-photos/*', async (route) => {
+      await route.fulfill({ status: 200 });
+    });
+
+    await page.goto('/upload');
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'no-wm.jpg',
+      mimeType: 'image/jpeg',
+      buffer: createTestJpeg(),
+    });
+
+    await page.getByPlaceholder('Describe your photo\u2026').fill('no wm');
+    await page.getByRole('button', { name: 'Publish Photo' }).click();
+    await expect(page.getByText('Photo uploaded successfully!')).toBeVisible({ timeout: 5000 });
+
+    expect(createPhotoInput).not.toBeNull();
+    expect(createPhotoInput!.watermarkEnabled).toBe(false);
+    expect(createPhotoInput!.watermarkConfig).toBeUndefined();
+  });
 });

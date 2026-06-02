@@ -1,4 +1,10 @@
-import { validateUpload, USER_TIER_LIMITS } from '@spotterspace/shared';
+import {
+  validateUpload,
+  USER_TIER_LIMITS,
+  validateWatermarkConfig,
+  WatermarkPosition,
+  type WatermarkConfig,
+} from '@spotterspace/shared';
 import { GraphQLError } from 'graphql';
 
 import { requireAuth, requireRole } from '../auth/requireAuth.js';
@@ -101,6 +107,7 @@ export interface CreatePhotoInput {
   airportIcao?: string;
   license?: string;
   watermarkEnabled?: boolean;
+  watermarkConfig?: WatermarkConfig;
   kind?: 'AIRCRAFT' | 'COMMUNITY';
   communityCategory?: 'SCENERY' | 'EVENT' | 'HANGAR' | 'AIRPORT' | 'PEOPLE' | 'OTHER';
 }
@@ -152,6 +159,10 @@ export interface PhotoParent {
   isDeleted?: boolean;
   moderationStatus?: 'pending' | 'approved' | 'rejected' | 'review';
   moderationLabels?: unknown | null;
+  watermarkEnabled?: boolean;
+  watermarkPosition?: string | null;
+  watermarkSize?: number | null;
+  watermarkOpacity?: number | null;
 }
 
 // ─── Privacy Helpers ────────────────────────────────────────────────────────
@@ -560,6 +571,20 @@ export const photoMutationResolvers = {
     }
     const isCommunity = kind === 'COMMUNITY';
 
+    // Validate the optional watermark configuration. Out-of-range or
+    // invalid values are rejected before we hit the database or call
+    // into Sharp, so a bad client cannot corrupt persisted rows.
+    if (input.watermarkConfig) {
+      const watermarkError = validateWatermarkConfig(input.watermarkConfig);
+      if (watermarkError) {
+        throw new GraphQLError(watermarkError, { extensions: { code: 'BAD_USER_INPUT' } });
+      }
+    }
+    // Effective watermarking is on if the user supplied a config OR set the
+    // legacy boolean. Persisting both keeps the boolean accurate for old
+    // clients still reading watermarkEnabled directly.
+    const watermarkEnabled = !!input.watermarkConfig || (input.watermarkEnabled ?? false);
+
     // Validate image dimensions using admin-configured limits from SiteSettings
     const { getObject } = await import('../services/s3.js');
     const originalBuffer = await getObject(input.s3Key);
@@ -661,7 +686,10 @@ export const photoMutationResolvers = {
           | 'CC_BY_NC_SA'
           | 'CC_BY'
           | 'CC_BY_SA',
-        watermarkEnabled: input.watermarkEnabled ?? false,
+        watermarkEnabled,
+        watermarkPosition: input.watermarkConfig?.position ?? null,
+        watermarkSize: input.watermarkConfig?.sizePct ?? null,
+        watermarkOpacity: input.watermarkConfig?.opacityPct ?? null,
         tags: input.tags
           ? { create: input.tags.map((tag) => ({ tag: tag.toLowerCase().trim() })) }
           : undefined,
@@ -672,7 +700,10 @@ export const photoMutationResolvers = {
     // Generate image variants asynchronously (in dev, synchronous for simplicity)
     try {
       const variants = await generateVariants(input.s3Key, {
-        watermarkEnabled: input.watermarkEnabled ?? false,
+        watermark: {
+          enabled: watermarkEnabled,
+          config: input.watermarkConfig,
+        },
       });
       for (const variant of variants) {
         await ctx.prisma.photoVariant.create({
@@ -1112,9 +1143,27 @@ export const photoMutationResolvers = {
     // Delete existing variants
     await ctx.prisma.photoVariant.deleteMany({ where: { photoId: photo.id } });
 
-    // Regenerate variants
+    // Regenerate variants. Pass through the persisted watermark config so
+    // the regenerated `watermarked` variant matches what the uploader chose.
+    // For legacy photos without a config, generateVariants falls back to
+    // WATERMARK_DEFAULTS.
+    //
+    // The DB enum and the shared enum share identical string values but are
+    // nominally distinct types in TypeScript; translate at the boundary by
+    // looking up the shared enum member by its string value.
+    const persistedWatermarkConfig: WatermarkConfig | undefined =
+      photo.watermarkPosition && photo.watermarkSize != null && photo.watermarkOpacity != null
+        ? {
+            position: WatermarkPosition[photo.watermarkPosition],
+            sizePct: photo.watermarkSize,
+            opacityPct: photo.watermarkOpacity,
+          }
+        : undefined;
     const variants = await generateVariants(s3Key, {
-      watermarkEnabled: photo.watermarkEnabled,
+      watermark: {
+        enabled: photo.watermarkEnabled,
+        config: persistedWatermarkConfig,
+      },
     });
 
     for (const variant of variants) {
@@ -1144,6 +1193,26 @@ export const photoFieldResolvers = {
     // If user was already included by Prisma, use it directly
     if (parent.user) return parent.user;
     return ctx.prisma.user.findUnique({ where: { id: parent.userId } });
+  },
+
+  /**
+   * Per-photo watermark configuration. Returns null for legacy photos
+   * uploaded before user-configurable watermarks (or for photos without
+   * a watermark) so the GraphQL nullable field stays accurate.
+   */
+  watermarkConfig: (parent: PhotoParent) => {
+    if (
+      !parent.watermarkPosition ||
+      parent.watermarkSize == null ||
+      parent.watermarkOpacity == null
+    ) {
+      return null;
+    }
+    return {
+      position: parent.watermarkPosition,
+      sizePct: parent.watermarkSize,
+      opacityPct: parent.watermarkOpacity,
+    };
   },
 
   variants: (parent: PhotoParent & { variants?: unknown[] }, _args: unknown, ctx: Context) => {

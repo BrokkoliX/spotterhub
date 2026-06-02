@@ -53,6 +53,50 @@ export const typeDefs = gql`
     CC_BY_SA
   }
 
+  """
+  Anchor point on the image where the watermark is composited.
+  The 9-point grid covers the four corners, four edge midpoints, and the centre.
+  """
+  enum WatermarkPosition {
+    TOP_LEFT
+    TOP_CENTER
+    TOP_RIGHT
+    MIDDLE_LEFT
+    CENTER
+    MIDDLE_RIGHT
+    BOTTOM_LEFT
+    BOTTOM_CENTER
+    BOTTOM_RIGHT
+  }
+
+  """
+  Per-photo watermark settings. Returned on the Photo type when a photo
+  has been uploaded with a watermark configuration; null otherwise.
+  """
+  type WatermarkConfig {
+    position: WatermarkPosition!
+    """
+    Watermark size as a percentage of the image's long edge (2-10).
+    """
+    sizePct: Int!
+    """
+    Watermark opacity as a percentage (30-100).
+    """
+    opacityPct: Int!
+  }
+
+  """
+  Watermark settings supplied by the uploader on createPhoto. When
+  provided, the API generates a watermarked variant using these settings
+  and treats the photo as watermark-enabled regardless of the legacy
+  watermarkEnabled flag.
+  """
+  input WatermarkConfigInput {
+    position: WatermarkPosition!
+    sizePct: Int!
+    opacityPct: Int!
+  }
+
   enum CommunityVisibility {
     public
     invite_only
@@ -1995,6 +2039,12 @@ export const typeDefs = gql`
     """
     watermarkEnabled: Boolean!
     """
+    Per-photo watermark configuration (position, size, opacity).
+    Null for legacy photos uploaded before user-configurable watermarks
+    or for photos without a watermark.
+    """
+    watermarkConfig: WatermarkConfig
+    """
     Whether the currently authenticated user has liked this photo.
     """
     isLikedByMe: Boolean!
@@ -2231,6 +2281,13 @@ export const typeDefs = gql`
     Whether to generate a watermarked variant.
     """
     watermarkEnabled: Boolean
+    """
+    Watermark settings (position, size, opacity). When provided, the API
+    treats the photo as watermark-enabled regardless of watermarkEnabled
+    and uses these settings to render the watermarked variant. When omitted
+    while watermarkEnabled is true, default settings are applied.
+    """
+    watermarkConfig: WatermarkConfigInput
     """
     Photo kind: AIRCRAFT (default) or COMMUNITY for non-aircraft community photos.
     """

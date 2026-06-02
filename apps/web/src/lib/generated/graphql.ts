@@ -849,6 +849,13 @@ export type CreatePhotoInput = {
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Date/time the photo was taken (ISO 8601). */
   takenAt?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Watermark settings (position, size, opacity). When provided, the API
+   * treats the photo as watermark-enabled regardless of watermarkEnabled
+   * and uses these settings to render the watermarked variant. When omitted
+   * while watermarkEnabled is true, default settings are applied.
+   */
+  watermarkConfig?: InputMaybe<WatermarkConfigInput>;
   /** Whether to generate a watermarked variant. */
   watermarkEnabled?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -2734,6 +2741,12 @@ export type Photo = {
   user: User;
   /** Generated image variants (thumbnail, display, etc.). */
   variants: Array<PhotoVariant>;
+  /**
+   * Per-photo watermark configuration (position, size, opacity).
+   * Null for legacy photos uploaded before user-configurable watermarks
+   * or for photos without a watermark.
+   */
+  watermarkConfig?: Maybe<WatermarkConfig>;
   /** Whether a watermarked variant should be generated. */
   watermarkEnabled: Scalars['Boolean']['output'];
 };
@@ -4140,6 +4153,47 @@ export enum UserStatus {
   Suspended = 'suspended'
 }
 
+/**
+ * Per-photo watermark settings. Returned on the Photo type when a photo
+ * has been uploaded with a watermark configuration; null otherwise.
+ */
+export type WatermarkConfig = {
+  __typename?: 'WatermarkConfig';
+  /** Watermark opacity as a percentage (30-100). */
+  opacityPct: Scalars['Int']['output'];
+  position: WatermarkPosition;
+  /** Watermark size as a percentage of the image's long edge (2-10). */
+  sizePct: Scalars['Int']['output'];
+};
+
+/**
+ * Watermark settings supplied by the uploader on createPhoto. When
+ * provided, the API generates a watermarked variant using these settings
+ * and treats the photo as watermark-enabled regardless of the legacy
+ * watermarkEnabled flag.
+ */
+export type WatermarkConfigInput = {
+  opacityPct: Scalars['Int']['input'];
+  position: WatermarkPosition;
+  sizePct: Scalars['Int']['input'];
+};
+
+/**
+ * Anchor point on the image where the watermark is composited.
+ * The 9-point grid covers the four corners, four edge midpoints, and the centre.
+ */
+export enum WatermarkPosition {
+  BottomCenter = 'BOTTOM_CENTER',
+  BottomLeft = 'BOTTOM_LEFT',
+  BottomRight = 'BOTTOM_RIGHT',
+  Center = 'CENTER',
+  MiddleLeft = 'MIDDLE_LEFT',
+  MiddleRight = 'MIDDLE_RIGHT',
+  TopCenter = 'TOP_CENTER',
+  TopLeft = 'TOP_LEFT',
+  TopRight = 'TOP_RIGHT'
+}
+
 export type SignUpMutationVariables = Exact<{
   input: SignUpInput;
 }>;
@@ -4178,7 +4232,7 @@ export type ResetPasswordMutation = { __typename?: 'Mutation', resetPassword: { 
 
 export type PhotoCardFieldsFragment = { __typename?: 'Photo', id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, tags: Array<string>, likeCount: number, commentCount: number, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, gearBody?: string | null, gearLens?: string | null, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }> };
 
-export type PhotoDetailFieldsFragment = { __typename?: 'Photo', fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, license: PhotoLicense, watermarkEnabled: boolean, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, exifData?: any | null, id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, tags: Array<string>, likeCount: number, commentCount: number, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, gearBody?: string | null, gearLens?: string | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', isFollowedByMe: boolean, id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', isFollowedByMe: boolean, id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', isFollowedByMe: boolean, id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }> };
+export type PhotoDetailFieldsFragment = { __typename?: 'Photo', fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, license: PhotoLicense, watermarkEnabled: boolean, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, exifData?: any | null, id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, tags: Array<string>, likeCount: number, commentCount: number, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, gearBody?: string | null, gearLens?: string | null, watermarkConfig?: { __typename?: 'WatermarkConfig', position: WatermarkPosition, sizePct: number, opacityPct: number } | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', isFollowedByMe: boolean, id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', isFollowedByMe: boolean, id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', isFollowedByMe: boolean, id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }> };
 
 export type PhotosQueryVariables = Exact<{
   first?: InputMaybe<Scalars['Int']['input']>;
@@ -4206,7 +4260,7 @@ export type PhotoQueryVariables = Exact<{
 }>;
 
 
-export type PhotoQuery = { __typename?: 'Query', photo?: { __typename?: 'Photo', fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, license: PhotoLicense, watermarkEnabled: boolean, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, exifData?: any | null, id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, tags: Array<string>, likeCount: number, commentCount: number, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, gearBody?: string | null, gearLens?: string | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', isFollowedByMe: boolean, id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', isFollowedByMe: boolean, id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', isFollowedByMe: boolean, id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }> } | null };
+export type PhotoQuery = { __typename?: 'Query', photo?: { __typename?: 'Photo', fileSizeBytes?: number | null, mimeType?: string | null, moderationStatus: ModerationStatus, rejectionReason?: string | null, license: PhotoLicense, watermarkEnabled: boolean, operatorType?: OperatorType | null, msn?: string | null, manufacturingDate?: string | null, photographerName?: string | null, exifData?: any | null, id: string, caption?: string | null, airline?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, tags: Array<string>, likeCount: number, commentCount: number, isLikedByMe: boolean, createdAt: string, operatorIcao?: string | null, kind: PhotoKind, communityCategory?: CommunityPhotoCategory | null, gearBody?: string | null, gearLens?: string | null, watermarkConfig?: { __typename?: 'WatermarkConfig', position: WatermarkPosition, sizePct: number, opacityPct: number } | null, photoCategory?: { __typename?: 'PhotoCategory', id: string, name: string, label: string } | null, aircraftSpecificCategory?: { __typename?: 'AircraftSpecificCategory', id: string, name: string, label: string } | null, aircraft?: { __typename?: 'Aircraft', airline?: string | null, msn?: string | null, manufacturingDate?: string | null, operatorType?: OperatorType | null, id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', isFollowedByMe: boolean, id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', isFollowedByMe: boolean, id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', isFollowedByMe: boolean, id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null, airlineRef?: { __typename?: 'Airline', id: string, name: string, icaoCode?: string | null, iataCode?: string | null, isFollowedByMe: boolean } | null } | null, photographer?: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } | null, location?: { __typename?: 'PhotoLocation', id: string, latitude: number, longitude: number, privacyMode: LocationPrivacyMode, locationType?: string | null, country?: string | null, airport?: { __typename?: 'Airport', id: string, icaoCode: string, iataCode?: string | null, name: string } | null, spottingLocation?: { __typename?: 'SpottingLocation', id: string, name: string } | null } | null, similarAircraftPhotos: { __typename?: 'PhotoConnection', totalCount: number, edges: Array<{ __typename?: 'PhotoEdge', cursor: string, node: { __typename?: 'Photo', id: string, caption?: string | null, airportCode?: string | null, takenAt?: string | null, originalUrl: string, originalWidth?: number | null, originalHeight?: number | null, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }>, aircraft?: { __typename?: 'Aircraft', id: string, registration: string, manufacturer?: { __typename?: 'AircraftManufacturer', id: string, name: string } | null, family?: { __typename?: 'AircraftFamily', id: string, name: string } | null, variant?: { __typename?: 'AircraftVariant', id: string, name: string, iataCode?: string | null, icaoCode?: string | null } | null } | null, user: { __typename?: 'User', id: string, username: string, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null } } }>, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } }, user: { __typename?: 'User', id: string, username: string, isFollowedByMe: boolean, profile?: { __typename?: 'Profile', displayName?: string | null, avatarUrl?: string | null } | null }, variants: Array<{ __typename?: 'PhotoVariant', id: string, variantType: string, url: string, width: number, height: number }> } | null };
 
 export type RandomPhotoQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -5954,6 +6008,11 @@ export const PhotoDetailFieldsFragmentDoc = gql`
   rejectionReason
   license
   watermarkEnabled
+  watermarkConfig {
+    position
+    sizePct
+    opacityPct
+  }
   photoCategory {
     id
     name

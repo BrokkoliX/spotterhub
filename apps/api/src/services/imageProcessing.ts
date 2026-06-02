@@ -1,4 +1,9 @@
-import { IMAGE_VARIANT_SIZES } from '@spotterspace/shared';
+import {
+  IMAGE_VARIANT_SIZES,
+  WATERMARK_DEFAULTS,
+  WatermarkPosition,
+  type WatermarkConfig,
+} from '@spotterspace/shared';
 
 // Lazy-load sharp only when image processing is actually needed.
 // In Lambda (linux-x64), sharp's native binaries may not be available,
@@ -128,6 +133,21 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 }
 
 /**
+ * Options accepted by `generateVariants`.
+ *
+ * `watermark.enabled` controls whether a `watermarked` variant is rendered.
+ * `watermark.config` (optional) provides the per-photo position/size/opacity
+ * overrides. When omitted while `enabled` is true, `WATERMARK_DEFAULTS` is
+ * used so legacy callers still produce a sensible watermark.
+ */
+export interface GenerateVariantsOptions {
+  watermark?: {
+    enabled: boolean;
+    config?: WatermarkConfig;
+  };
+}
+
+/**
  * Generates thumbnail and display variants from an uploaded original image.
  * Fetches the original from S3, processes with Sharp, and uploads variants back.
  * Optionally generates a watermarked variant.
@@ -138,13 +158,12 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
  * error to the user.
  *
  * @param originalKey - The S3 key of the original uploaded image.
- * @param options - Optional generation options.
- * @param options.watermarkEnabled - Whether to generate a watermarked variant.
+ * @param options - Optional generation options including watermark settings.
  * @returns Array of generated variant metadata.
  */
 export function generateVariants(
   originalKey: string,
-  options: { watermarkEnabled?: boolean } = {},
+  options: GenerateVariantsOptions = {},
 ): Promise<ImageVariantResult[]> {
   return withTimeout(
     generateVariantsImpl(originalKey, options),
@@ -155,14 +174,16 @@ export function generateVariants(
 
 async function generateVariantsImpl(
   originalKey: string,
-  options: { watermarkEnabled?: boolean } = {},
+  options: GenerateVariantsOptions = {},
 ): Promise<ImageVariantResult[]> {
+  const watermarkEnabled = options.watermark?.enabled ?? false;
+  const watermarkConfig = options.watermark?.config ?? WATERMARK_DEFAULTS;
   if (process.env.LOG_LEVEL === 'debug') {
     console.log(
       '[IMG] generateVariants called with key:',
       originalKey,
       'watermarkEnabled:',
-      options.watermarkEnabled,
+      watermarkEnabled,
     );
   }
   const original = await getObject(originalKey);
@@ -211,11 +232,16 @@ async function generateVariantsImpl(
   });
 
   // Generate watermarked variant if enabled
-  if (options.watermarkEnabled) {
+  if (watermarkEnabled) {
     if (process.env.LOG_LEVEL === 'debug') {
-      console.log('[IMG] Generating watermarked variant for key:', originalKey);
+      console.log(
+        '[IMG] Generating watermarked variant for key:',
+        originalKey,
+        'config:',
+        watermarkConfig,
+      );
     }
-    const watermarked = await generateWatermarked(original);
+    const watermarked = await generateWatermarked(original, watermarkConfig);
     const watermarkedKey = deriveVariantKey(originalKey, 'watermarked');
     if (process.env.LOG_LEVEL === 'debug') {
       console.log('[IMG] Uploading watermarked variant to:', watermarkedKey);
@@ -238,48 +264,97 @@ async function generateVariantsImpl(
 }
 
 /**
- * Generates a watermarked version of an image with "© SpotterSpace" text overlay.
+ * Generates a watermarked version of an image with "© SpotterSpace" text overlay,
+ * positioned, sized, and opacity-tuned according to the supplied config.
+ *
+ * The watermark text and brand are intentionally fixed (`© SpotterSpace`) per
+ * the platform's "no personal watermarks" upload policy. Users control where
+ * the mark sits, how big it is, and how visible it is — but not what it says.
  *
  * @param buffer - The original image buffer.
+ * @param config - Per-photo watermark settings (position, size %, opacity %).
  * @returns The watermarked image buffer with dimensions.
  */
 async function generateWatermarked(
   buffer: Buffer,
+  config: WatermarkConfig,
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   if (process.env.LOG_LEVEL === 'debug') {
-    console.log('[IMG] generateWatermarked called, buffer size:', buffer.length);
+    console.log('[IMG] generateWatermarked called, buffer size:', buffer.length, 'config:', config);
   }
-  const metadata = await (await getSharp())(buffer).metadata();
+  const sharp = await getSharp();
+  const metadata = await sharp(buffer).metadata();
   if (process.env.LOG_LEVEL === 'debug') {
     console.log('[IMG] sharp metadata:', metadata.width, 'x', metadata.height);
   }
-  const width = metadata.width ?? 1920;
+  const imageWidth = metadata.width ?? 1920;
+  const imageHeight = metadata.height ?? 1080;
+  const longEdge = Math.max(imageWidth, imageHeight);
 
-  // Create a single watermark label for the bottom-right corner.
-  // Use XML entity for copyright symbol to avoid encoding issues in Alpine.
-  const fontSize = Math.max(Math.floor(width * 0.03), 24);
+  // Font size: percentage of the long edge, with a hard floor so very small
+  // images still have legible attribution.
+  const fontSize = Math.max(Math.floor((longEdge * config.sizePct) / 100), 24);
   const padding = Math.floor(fontSize * 0.5);
-  const svgW = Math.floor(fontSize * 12);
-  const svgH = Math.floor(fontSize * 2);
+
+  // Estimate the rendered text width. Sharp can't measure SVG text directly,
+  // so we approximate using a typical sans-serif advance width (~0.6em per
+  // character). "© SpotterSpace" is 14 characters; we round up generously to
+  // avoid clipping at large sizes.
+  const text = '\u00A9 SpotterSpace';
+  const approxTextWidth = Math.ceil(fontSize * 0.62 * text.length);
+  const svgW = approxTextWidth + padding * 2;
+  const svgH = Math.ceil(fontSize * 1.6) + padding;
+
+  // Map the position enum onto SVG text alignment and Sharp gravity.
+  const horizontal = horizontalFromPosition(config.position);
+  const vertical = verticalFromPosition(config.position);
+
+  // SVG anchor: x at left/middle/right of the canvas; y baseline at the
+  // top/middle/bottom band. We align inside the SVG so the same canvas can be
+  // used at any of the 9 gravity anchors without misalignment when composited.
+  let textX: number;
+  let textAnchor: 'start' | 'middle' | 'end';
+  if (horizontal === 'left') {
+    textX = padding;
+    textAnchor = 'start';
+  } else if (horizontal === 'center') {
+    textX = Math.floor(svgW / 2);
+    textAnchor = 'middle';
+  } else {
+    textX = svgW - padding;
+    textAnchor = 'end';
+  }
+
+  let textY: number;
+  if (vertical === 'top') {
+    textY = padding + fontSize;
+  } else if (vertical === 'middle') {
+    textY = Math.floor(svgH / 2 + fontSize / 2.5);
+  } else {
+    textY = svgH - padding;
+  }
+
+  const opacity = config.opacityPct / 100;
+  // Drop shadow opacity scales with the main fill so the shadow remains
+  // proportional at all opacities (legacy default 0.7 fill / 0.4 shadow).
+  const shadowOpacity = Math.min(1, opacity * (0.4 / 0.7));
 
   const svg = Buffer.from(
     `<svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg">
-      <text x="${svgW - padding}" y="${svgH - padding}" text-anchor="end"
+      <text x="${textX}" y="${textY}" text-anchor="${textAnchor}"
         font-size="${fontSize}" font-family="sans-serif" font-weight="bold">
-        <tspan fill="black" fill-opacity="0.4" dx="1" dy="1">&#169; SpotterSpace</tspan>
+        <tspan fill="black" fill-opacity="${shadowOpacity.toFixed(3)}" dx="1" dy="1">&#169; SpotterSpace</tspan>
       </text>
-      <text x="${svgW - padding}" y="${svgH - padding}" text-anchor="end"
+      <text x="${textX}" y="${textY}" text-anchor="${textAnchor}"
         font-size="${fontSize}" font-family="sans-serif" font-weight="bold"
-        fill="white" fill-opacity="0.7">&#169; SpotterSpace</text>
+        fill="white" fill-opacity="${opacity.toFixed(3)}">&#169; SpotterSpace</text>
     </svg>`,
   );
 
-  const watermarkBuffer = await (await getSharp())(svg).png().toBuffer();
+  const watermarkBuffer = await sharp(svg).png().toBuffer();
 
-  const result = await (
-    await getSharp()
-  )(buffer)
-    .composite([{ input: watermarkBuffer, gravity: 'southeast' }])
+  const result = await sharp(buffer)
+    .composite([{ input: watermarkBuffer, gravity: gravityFromPosition(config.position) }])
     .jpeg({ quality: 90 })
     .toBuffer({ resolveWithObject: true });
 
@@ -288,6 +363,66 @@ async function generateWatermarked(
     width: result.info.width,
     height: result.info.height,
   };
+}
+
+/** Maps a 9-point position to a horizontal band for SVG text alignment. */
+function horizontalFromPosition(position: WatermarkPosition): 'left' | 'center' | 'right' {
+  switch (position) {
+    case WatermarkPosition.TOP_LEFT:
+    case WatermarkPosition.MIDDLE_LEFT:
+    case WatermarkPosition.BOTTOM_LEFT:
+      return 'left';
+    case WatermarkPosition.TOP_CENTER:
+    case WatermarkPosition.CENTER:
+    case WatermarkPosition.BOTTOM_CENTER:
+      return 'center';
+    case WatermarkPosition.TOP_RIGHT:
+    case WatermarkPosition.MIDDLE_RIGHT:
+    case WatermarkPosition.BOTTOM_RIGHT:
+      return 'right';
+  }
+}
+
+/** Maps a 9-point position to a vertical band for SVG text alignment. */
+function verticalFromPosition(position: WatermarkPosition): 'top' | 'middle' | 'bottom' {
+  switch (position) {
+    case WatermarkPosition.TOP_LEFT:
+    case WatermarkPosition.TOP_CENTER:
+    case WatermarkPosition.TOP_RIGHT:
+      return 'top';
+    case WatermarkPosition.MIDDLE_LEFT:
+    case WatermarkPosition.CENTER:
+    case WatermarkPosition.MIDDLE_RIGHT:
+      return 'middle';
+    case WatermarkPosition.BOTTOM_LEFT:
+    case WatermarkPosition.BOTTOM_CENTER:
+    case WatermarkPosition.BOTTOM_RIGHT:
+      return 'bottom';
+  }
+}
+
+/** Maps a 9-point position to the corresponding Sharp `gravity` value. */
+function gravityFromPosition(position: WatermarkPosition): string {
+  switch (position) {
+    case WatermarkPosition.TOP_LEFT:
+      return 'northwest';
+    case WatermarkPosition.TOP_CENTER:
+      return 'north';
+    case WatermarkPosition.TOP_RIGHT:
+      return 'northeast';
+    case WatermarkPosition.MIDDLE_LEFT:
+      return 'west';
+    case WatermarkPosition.CENTER:
+      return 'centre';
+    case WatermarkPosition.MIDDLE_RIGHT:
+      return 'east';
+    case WatermarkPosition.BOTTOM_LEFT:
+      return 'southwest';
+    case WatermarkPosition.BOTTOM_CENTER:
+      return 'south';
+    case WatermarkPosition.BOTTOM_RIGHT:
+      return 'southeast';
+  }
 }
 
 /**

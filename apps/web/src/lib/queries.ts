@@ -163,6 +163,11 @@ export const PHOTO_DETAIL_FIELDS = gql`
     rejectionReason
     license
     watermarkEnabled
+    watermarkConfig {
+      position
+      sizePct
+      opacityPct
+    }
     photoCategory {
       id
       name
