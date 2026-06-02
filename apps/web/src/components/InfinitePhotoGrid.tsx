@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { type PhotoData } from './PhotoCard';
 import { PhotoGrid } from './PhotoGrid';
@@ -35,6 +35,12 @@ interface InfinitePhotoGridProps {
  *
  * The sentinel element at the bottom triggers onLoadMore when it
  * enters the viewport. New pages are accumulated, not replaced.
+ *
+ * Important: the trigger function passed into useInfiniteScroll is
+ * stable across renders and reads the latest endCursor/onLoadMore
+ * via a ref. This avoids re-instantiating the IntersectionObserver
+ * on every render, which would otherwise re-fire intersection on
+ * a sentinel that is still within rootMargin and cause a load loop.
  */
 export function InfinitePhotoGrid({
   photos,
@@ -50,14 +56,22 @@ export function InfinitePhotoGrid({
   selectedIds,
   onToggleSelect,
 }: InfinitePhotoGridProps) {
-  const handleLoadMore = useCallback(() => {
-    if (!loading && hasNextPage) {
-      onLoadMore(endCursor);
-    }
-  }, [loading, hasNextPage, onLoadMore, endCursor]);
+  // Keep the latest endCursor + onLoadMore reachable from a stable trigger.
+  const latestRef = useRef({ endCursor, onLoadMore });
+  useEffect(() => {
+    latestRef.current = { endCursor, onLoadMore };
+  }, [endCursor, onLoadMore]);
+
+  // Stable trigger: identity never changes (no deps), but each invocation
+  // reads the freshest endCursor + onLoadMore from `latestRef`. This is read
+  // only when the IntersectionObserver fires, never during render.
+  const trigger = useCallback(() => {
+    const { endCursor: cursor, onLoadMore: cb } = latestRef.current;
+    cb(cursor);
+  }, []);
 
   const sentinelRef = useInfiniteScroll({
-    onLoadMore: handleLoadMore,
+    onLoadMore: trigger,
     loading,
     hasNextPage,
   });

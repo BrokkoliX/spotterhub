@@ -437,28 +437,34 @@ export default function HomePage() {
 
   // ─── Load more handler ───────────────────────────────────────────────────────
 
-  const handleLoadMore = useCallback(
-    (tab: FeedTab) => (after: string | null) => {
-      // Just re-execute the query with the new cursor.
-      // urql's cache will handle appending the results, and the useEffect above
-      // will sync the accumulated state.
-      switch (tab) {
-        case 'recent':
-          reexecuteRecent({ requestPolicy: 'network-only' });
-          break;
-        case 'following':
-          // following feed doesn't use cursor pagination in the same way
-          break;
-        case 'mine':
-          // handled by mineVars
-          break;
-        case 'admin_choice':
-          // handled by adminChoiceVars
-          break;
-      }
-    },
-    [reexecuteRecent],
-  );
+  // Cursor changes (recentState.endCursor, mineState.endCursor, etc.) are wired
+  // directly into the per-tab `*Vars` memos above. urql re-executes the query
+  // automatically when those variables change — so this callback only needs to
+  // exist for the 'recent' tab where we additionally force a network-only
+  // refetch. The function is intentionally argument-free at the consumer side
+  // (the `after` cursor is read off state, not passed in) and stable across
+  // renders so the IntersectionObserver downstream is never rebuilt.
+  const feedTabRef = useRef(feedTab);
+  useEffect(() => {
+    feedTabRef.current = feedTab;
+  }, [feedTab]);
+
+  const handleLoadMore = useCallback(() => {
+    switch (feedTabRef.current) {
+      case 'recent':
+        reexecuteRecent({ requestPolicy: 'network-only' });
+        break;
+      case 'following':
+        // following feed doesn't use cursor pagination in the same way
+        break;
+      case 'mine':
+        // handled by mineVars (urql re-executes on variable change)
+        break;
+      case 'admin_choice':
+        // handled by adminChoiceVars (urql re-executes on variable change)
+        break;
+    }
+  }, [reexecuteRecent]);
 
   // ─── Tab switch: reset state when switching tabs ───────────────────────────
 
@@ -1041,7 +1047,7 @@ export default function HomePage() {
                   photos={activeState.photos}
                   endCursor={activeState.endCursor}
                   hasNextPage={activeState.hasNextPage}
-                  onLoadMore={handleLoadMore(feedTab)}
+                  onLoadMore={handleLoadMore}
                   loading={activeFetching}
                   viewMode={viewMode}
                   adSlotId={feedAdSlot ?? undefined}
@@ -1075,7 +1081,7 @@ export default function HomePage() {
                     photos={tailPhotos}
                     endCursor={activeState.endCursor}
                     hasNextPage={activeState.hasNextPage}
-                    onLoadMore={handleLoadMore(feedTab)}
+                    onLoadMore={handleLoadMore}
                     loading={activeFetching}
                     viewMode={viewMode}
                     adSlotId={feedAdSlot ?? undefined}

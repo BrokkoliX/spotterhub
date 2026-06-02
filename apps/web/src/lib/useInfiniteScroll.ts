@@ -19,7 +19,16 @@ interface UseInfiniteScrollOptions {
  * Fires onLoadMore when the sentinel enters the viewport,
  * as long as loading is false and hasNextPage is true.
  *
- * Returns a ref to attach to the sentinel div.
+ * Returns a ref-callback to attach to the sentinel div.
+ *
+ * Implementation note: the observer is built **once per sentinel element**,
+ * not on every prop change. The latest values of `onLoadMore`, `loading`,
+ * and `hasNextPage` are read from refs inside the observer callback. This
+ * prevents the observer from being torn down and recreated on every render
+ * — recreating an IntersectionObserver against a target that is already
+ * inside the rootMargin re-fires `isIntersecting` on the next tick, which
+ * causes an infinite "load more → re-render → rebuild observer → fire
+ * again" loop.
  */
 export function useInfiniteScroll({
   onLoadMore,
@@ -28,38 +37,68 @@ export function useInfiniteScroll({
   root = null,
   threshold = 0.1,
 }: UseInfiniteScrollOptions) {
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Hold the latest values in refs so the observer callback always sees
+  // the current state without needing to be reconstructed.
+  const onLoadMoreRef = useRef(onLoadMore);
+  const loadingRef = useRef(loading);
+  const hasNextPageRef = useRef(hasNextPage);
+
+  useEffect(() => {
+    onLoadMoreRef.current = onLoadMore;
+  }, [onLoadMore]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    hasNextPageRef.current = hasNextPage;
+  }, [hasNextPage]);
+
+  // The observer is owned per-sentinel. We use a ref-callback so React
+  // tells us when the underlying DOM node changes (mount, unmount, key
+  // change), and we only rebuild the observer in those cases.
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Rebuild the observer whenever the sentinel element changes
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    const handleIntersection: IntersectionObserverCallback = (entries) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && hasNextPage && !loading) {
-        onLoadMore();
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      // Tear down any previous observer when the sentinel detaches or
+      // is replaced.
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
       }
-    };
 
-    observerRef.current = new IntersectionObserver(handleIntersection, {
-      root,
-      threshold,
-      rootMargin: '200px',
-    });
+      if (!node) return;
 
-    observerRef.current.observe(sentinel);
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const [entry] = entries;
+          if (!entry?.isIntersecting) return;
+          if (loadingRef.current) return;
+          if (!hasNextPageRef.current) return;
+          onLoadMoreRef.current();
+        },
+        {
+          root,
+          threshold,
+          rootMargin: '200px',
+        },
+      );
 
+      observer.observe(node);
+      observerRef.current = observer;
+    },
+    [root, threshold],
+  );
+
+  // Disconnect on unmount as a safety net.
+  useEffect(() => {
     return () => {
       observerRef.current?.disconnect();
       observerRef.current = null;
     };
-  }, [root, threshold, hasNextPage, loading, onLoadMore]);
+  }, []);
 
   return sentinelRef;
 }
