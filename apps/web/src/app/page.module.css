@@ -420,6 +420,28 @@
   color: var(--color-accent);
 }
 
+/* ─── Sort pill icon (Lucide) ─────────────────────────────────────────────── */
+
+.sortPillIcon {
+  flex-shrink: 0;
+  /* Inherit `color` from the pill so currentColor strokes follow active state. */
+  color: inherit;
+}
+
+/* Idle-state tone classes. Active pills override via .sortPillActive (above). */
+.sortPillTone_neutral .sortPillIcon {
+  color: var(--color-text-muted);
+}
+.sortPillTone_warning .sortPillIcon {
+  color: var(--color-warning);
+}
+.sortPillTone_accent .sortPillIcon {
+  color: var(--color-accent);
+}
+.sortPillTone_success .sortPillIcon {
+  color: var(--color-success);
+}
+
 .viewToggle {
   display: flex;
   gap: 2px;

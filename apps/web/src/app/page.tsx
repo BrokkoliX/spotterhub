@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'urql';
+import { Calendar, CalendarDays, Clock, Shuffle, Sun, Trophy, type LucideIcon } from 'lucide-react';
 
 import type { PhotoData } from '@/components/PhotoCard';
 import { AdBanner } from '@/components/AdBanner';
@@ -46,13 +47,20 @@ type SortOption =
   | 'popular_all'
   | 'random';
 
-const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
-  { value: 'recent', label: 'Recent', emoji: '🕐' },
-  { value: 'popular_day', label: 'Today', emoji: '⭐' },
-  { value: 'popular_week', label: 'This Week', emoji: '🔥' },
-  { value: 'popular_month', label: 'This Month', emoji: '🚀' },
-  { value: 'popular_all', label: 'All Time', emoji: '🏆' },
-  { value: 'random', label: 'Random', emoji: '🎲' },
+type SortTone = 'neutral' | 'warning' | 'accent' | 'success';
+
+const SORT_OPTIONS: {
+  value: SortOption;
+  label: string;
+  Icon: LucideIcon;
+  tone: SortTone;
+}[] = [
+  { value: 'recent', label: 'Recent', Icon: Clock, tone: 'neutral' },
+  { value: 'popular_day', label: 'Today', Icon: Sun, tone: 'warning' },
+  { value: 'popular_week', label: 'This Week', Icon: CalendarDays, tone: 'accent' },
+  { value: 'popular_month', label: 'This Month', Icon: Calendar, tone: 'neutral' },
+  { value: 'popular_all', label: 'All Time', Icon: Trophy, tone: 'success' },
+  { value: 'random', label: 'Random', Icon: Shuffle, tone: 'neutral' },
 ];
 
 interface TypeaheadInputProps<T> {
@@ -908,17 +916,26 @@ export default function HomePage() {
           </div>
 
           <div className={styles.sortPills}>
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={`${styles.sortPill} ${sortBy === opt.value ? styles.sortPillActive : ''}`}
-                onClick={() => setSortBy(opt.value)}
-              >
-                <span>{opt.emoji}</span>
-                <span>{opt.label}</span>
-              </button>
-            ))}
+            {SORT_OPTIONS.map((opt) => {
+              const isActive = sortBy === opt.value;
+              const toneClass = isActive ? '' : styles[`sortPillTone_${opt.tone}`];
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`${styles.sortPill} ${isActive ? styles.sortPillActive : ''} ${toneClass}`}
+                  onClick={() => setSortBy(opt.value)}
+                >
+                  <opt.Icon
+                    size={16}
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                    className={styles.sortPillIcon}
+                  />
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
             <div className={styles.viewToggle}>
               <button
                 type="button"
