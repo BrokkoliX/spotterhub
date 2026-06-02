@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
 import { AdBanner } from '@/components/AdBanner';
 import { CommunityFeedBlock } from '@/components/CommunityFeedBlock';
 import { FilterDrawer } from '@/components/FilterDrawer';
-import { PhotoGrid } from '@/components/PhotoGrid';
+import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
 import { useAuth } from '@/lib/auth';
 import { useResponsiveSplitIndex } from '@/lib/useResponsiveSplitIndex';
 import {
@@ -100,7 +100,6 @@ function TypeaheadInput<T>({
         }}
         onFocus={() => meetsMin && setShowDropdown(true)}
         onBlur={() => {
-          // Delay close so a mousedown on a dropdown item fires first
           setTimeout(() => setShowDropdown(false), 150);
         }}
       />
@@ -108,7 +107,7 @@ function TypeaheadInput<T>({
         <button
           type="button"
           className={styles.filterClear}
-          onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             onChange('');
             setShowDropdown(false);
@@ -130,7 +129,7 @@ function TypeaheadInput<T>({
                   key={key}
                   type="button"
                   className={styles.filterDropdownItem}
-                  onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onSelect(item);
                     setShowDropdown(false);
@@ -152,9 +151,16 @@ function TypeaheadInput<T>({
   );
 }
 
+// ─── Per-tab state for infinite scroll ───────────────────────────────────────
+
+interface TabState {
+  photos: PhotoData[];
+  endCursor: string | null;
+  hasNextPage: boolean;
+}
+
 export default function HomePage() {
   const { user } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [feedTab, setFeedTab] = useState<FeedTab>('recent');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
@@ -175,15 +181,41 @@ export default function HomePage() {
   const [debouncedFamily, setDebouncedFamily] = useState('');
   const [debouncedVariant, setDebouncedVariant] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
-  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const splitIndex = useResponsiveSplitIndex();
+
+  // Per-tab infinite scroll state
+  const [recentState, setRecentState] = useState<TabState>({
+    photos: [],
+    endCursor: null,
+    hasNextPage: true,
+  });
+  const [followingState, setFollowingState] = useState<TabState>({
+    photos: [],
+    endCursor: null,
+    hasNextPage: true,
+  });
+  const [mineState, setMineState] = useState<TabState>({
+    photos: [],
+    endCursor: null,
+    hasNextPage: true,
+  });
+  const [adminChoiceState, setAdminChoiceState] = useState<TabState>({
+    photos: [],
+    endCursor: null,
+    hasNextPage: true,
+  });
+
+  // Total count per tab (for display purposes, not for pagination)
+  const [recentTotalCount, setRecentTotalCount] = useState(0);
+
+  // Track which tab has been initialized (so we don't re-fetch on tab re-select)
+  const initializedTabs = useRef<Set<FeedTab>>(new Set(['recent']));
 
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
   const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
 
-  // Random photo for the hero. `network-only` ensures the cache is not
-  // consulted, so a fresh photo is picked on every page reload (which
-  // is the user-visible behaviour we want for the hero banner).
+  // Hero photo
   const [{ data: randomPhotoData }] = useQuery({
     query: GET_RANDOM_PHOTO,
     requestPolicy: 'network-only',
@@ -202,66 +234,65 @@ export default function HomePage() {
   const siteTagline = siteData?.siteSettings?.tagline;
   const feedAdSlot = adData?.adSettings?.slotFeed ?? null;
 
+  // Debounce timers
   const airportTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const airlineTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const photographerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const manufacturerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const familyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const variantTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const splitIndex = useResponsiveSplitIndex();
 
   useEffect(() => {
     clearTimeout(airportTimer.current);
-    airportTimer.current = setTimeout(() => {
-      setDebouncedAirport(airportFilter);
-    }, 300);
+    airportTimer.current = setTimeout(() => setDebouncedAirport(airportFilter), 300);
     return () => clearTimeout(airportTimer.current);
   }, [airportFilter]);
 
   useEffect(() => {
     clearTimeout(airlineTimer.current);
-    airlineTimer.current = setTimeout(() => {
-      setDebouncedAirline(airlineFilter);
-    }, 300);
+    airlineTimer.current = setTimeout(() => setDebouncedAirline(airlineFilter), 300);
     return () => clearTimeout(airlineTimer.current);
   }, [airlineFilter]);
 
   useEffect(() => {
     clearTimeout(photographerTimer.current);
-    photographerTimer.current = setTimeout(() => {
-      setDebouncedPhotographer(photographerFilter);
-    }, 300);
+    photographerTimer.current = setTimeout(() => setDebouncedPhotographer(photographerFilter), 300);
     return () => clearTimeout(photographerTimer.current);
   }, [photographerFilter]);
 
   useEffect(() => {
     clearTimeout(manufacturerTimer.current);
-    manufacturerTimer.current = setTimeout(() => {
-      setDebouncedManufacturer(manufacturerFilter);
-    }, 300);
+    manufacturerTimer.current = setTimeout(() => setDebouncedManufacturer(manufacturerFilter), 300);
     return () => clearTimeout(manufacturerTimer.current);
   }, [manufacturerFilter]);
 
   useEffect(() => {
     clearTimeout(familyTimer.current);
-    familyTimer.current = setTimeout(() => {
-      setDebouncedFamily(familyFilter);
-    }, 300);
-    return () => clearTimeout(familyTimer.current);
+    familyTimer.current = setTimeout(() => setDebouncedFamily(familyFilter), 300);
+    return () => clearTimeout(photographerTimer.current);
   }, [familyFilter]);
 
   useEffect(() => {
     clearTimeout(variantTimer.current);
-    variantTimer.current = setTimeout(() => {
-      setDebouncedVariant(variantFilter);
-    }, 300);
+    variantTimer.current = setTimeout(() => setDebouncedVariant(variantFilter), 300);
     return () => clearTimeout(variantTimer.current);
   }, [variantFilter]);
 
-  const gridKey = useMemo(
-    () =>
-      `${debouncedAirport}-${debouncedAirline}-${debouncedPhotographer}-${debouncedManufacturer}-${debouncedFamily}-${debouncedVariant}-${sortBy}-${kindFilter}`,
+  // ─── Build cursor-based variables per tab ───────────────────────────────────
+
+  const recentVars = useMemo(
+    () => ({
+      first: PAGE_SIZE,
+      after: recentState.endCursor,
+      airportCode: debouncedAirport || undefined,
+      airline: debouncedAirline || undefined,
+      photographer: debouncedPhotographer || undefined,
+      manufacturer: debouncedManufacturer || undefined,
+      family: debouncedFamily || undefined,
+      variant: debouncedVariant || undefined,
+      kind: kindFilter !== 'all' ? kindFilter : undefined,
+      sortBy: sortBy !== 'recent' ? sortBy : undefined,
+    }),
     [
       debouncedAirport,
       debouncedAirline,
@@ -271,184 +302,195 @@ export default function HomePage() {
       debouncedVariant,
       sortBy,
       kindFilter,
+      recentState.endCursor,
     ],
   );
 
-  const [{ data, fetching }] = useQuery({
-    query: GET_PHOTOS,
-    variables: {
+  const followingVars = useMemo(
+    () => ({ first: PAGE_SIZE, after: followingState.endCursor }),
+    [followingState.endCursor],
+  );
+
+  const mineVars = useMemo(
+    () => ({ first: PAGE_SIZE, after: mineState.endCursor, userId: user?.id }),
+    [mineState.endCursor, user?.id],
+  );
+
+  const adminChoiceVars = useMemo(
+    () => ({
       first: PAGE_SIZE,
-      page: currentPage,
-      airportCode: debouncedAirport || undefined,
-      airline: debouncedAirline || undefined,
-      photographer: debouncedPhotographer || undefined,
-      manufacturer: debouncedManufacturer || undefined,
-      family: debouncedFamily || undefined,
-      variant: debouncedVariant || undefined,
-      kind: kindFilter !== 'all' ? kindFilter : undefined,
-      sortBy: sortBy !== 'recent' ? sortBy : undefined,
-    },
+      after: adminChoiceState.endCursor,
+      awardSlug: ADMIN_CHOICE_BADGE_SLUG,
+    }),
+    [adminChoiceState.endCursor],
+  );
+
+  // ─── Queries ────────────────────────────────────────────────────────────────
+
+  const [{ data: recentData, fetching: recentFetching }, reexecuteRecent] = useQuery({
+    query: GET_PHOTOS,
+    variables: recentVars,
     pause: feedTab !== 'recent',
   });
 
-  // Airline typeahead
-  const [showAirlineDropdown, setShowAirlineDropdown] = useState(false);
-  const [{ data: airlineData, fetching: airlineFetching }] = useQuery({
-    query: SEARCH_AIRLINES,
-    variables: { query: airlineFilter, first: 8 },
-    pause: airlineFilter.length < 2,
-  });
-
-  // Airport typeahead
-  const [showAirportDropdown, setShowAirportDropdown] = useState(false);
-  const [{ data: airportData, fetching: airportFetching }] = useQuery({
-    query: SEARCH_AIRPORTS,
-    variables: { query: airportFilter, first: 8 },
-    pause: airportFilter.length < 2,
-  });
-  const airportResults: Array<{
-    icaoCode: string;
-    iataCode: string | null;
-    name: string;
-    city: string | null;
-  }> = airportData?.searchAirports ?? [];
-  const airlineResults: string[] = airlineData?.searchAirlines ?? [];
-
-  // Photographer typeahead
-  const [showPhotographerDropdown, setShowPhotographerDropdown] = useState(false);
-  const [{ data: photographerData, fetching: photographerFetching }] = useQuery({
-    query: SEARCH_USERS,
-    variables: { query: photographerFilter, first: 8 },
-    pause: photographerFilter.length < 2,
-  });
-  const photographerResults: Array<{
-    id: string;
-    username: string;
-    profile?: { displayName?: string | null };
-  }> =
-    photographerData?.searchUsers?.edges?.map(
-      (e: { node: { id: string; username: string; profile?: { displayName?: string | null } } }) =>
-        e.node,
-    ) ?? [];
-
-  // Manufacturer typeahead
-  const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
-  const [{ data: manufacturerData, fetching: manufacturerFetching }] = useQuery({
-    query: GET_AIRCRAFT_MANUFACTURERS,
-    variables: { search: manufacturerFilter, first: 8 },
-    pause: manufacturerFilter.length < 2,
-  });
-  const manufacturerResults: Array<{ id: string; name: string }> =
-    manufacturerData?.aircraftManufacturers?.edges?.map(
-      (e: { node: { id: string; name: string } }) => e.node,
-    ) ?? [];
-
-  // Family typeahead (cascading — filtered by selected manufacturer ID when available)
-  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
-  const [{ data: familyData, fetching: familyFetching }] = useQuery({
-    query: GET_AIRCRAFT_FAMILIES,
-    variables: {
-      manufacturerId: selectedManufacturerId,
-      search: familyFilter,
-      first: 8,
-    },
-    pause: familyFilter.length < 2,
-  });
-  const familyResults: Array<{ id: string; name: string }> =
-    familyData?.aircraftFamilies?.edges?.map(
-      (e: { node: { id: string; name: string } }) => e.node,
-    ) ?? [];
-
-  // Variant typeahead
-  const [showVariantDropdown, setShowVariantDropdown] = useState(false);
-  const [{ data: variantData, fetching: variantFetching }] = useQuery({
-    query: GET_AIRCRAFT_VARIANTS,
-    variables: { search: variantFilter, first: 8 },
-    pause: variantFilter.length < 2,
-  });
-  const variantResults: Array<{ id: string; name: string }> =
-    variantData?.aircraftVariants?.edges?.map(
-      (e: { node: { id: string; name: string } }) => e.node,
-    ) ?? [];
-
-  // Click outside to close all dropdowns
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as Element;
-      if (!target.closest(`.${styles.filterInputWrap}`)) {
-        setShowAirlineDropdown(false);
-        setShowAirportDropdown(false);
-        setShowPhotographerDropdown(false);
-        setShowManufacturerDropdown(false);
-        setShowFamilyDropdown(false);
-        setShowVariantDropdown(false);
-      }
-    };
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
-
   const [{ data: followingData, fetching: followingFetching }] = useQuery({
     query: GET_FOLLOWING_FEED,
-    variables: { first: PAGE_SIZE },
+    variables: followingVars,
     pause: feedTab !== 'following' || !user,
   });
 
   const [{ data: mineData, fetching: mineFetching }] = useQuery({
     query: GET_PHOTOS,
-    variables: {
-      first: PAGE_SIZE,
-      page: currentPage,
-      userId: user?.id,
-    },
+    variables: mineVars,
     pause: feedTab !== 'mine' || !user,
   });
 
-  // "Admin's Choice" feed: photos that have been awarded the
-  // admin-choice-week badge. Filters on the new `awardSlug` server arg.
   const [{ data: adminChoiceData, fetching: adminChoiceFetching }] = useQuery({
     query: GET_PHOTOS,
-    variables: {
-      first: PAGE_SIZE,
-      page: currentPage,
-      awardSlug: ADMIN_CHOICE_BADGE_SLUG,
-    },
+    variables: adminChoiceVars,
     pause: feedTab !== 'admin_choice',
   });
 
-  const handleTabChange = (tab: FeedTab) => {
+  // ─── Sync: when query results come in, update tab state ─────────────────────
+
+  // Recent tab
+  useEffect(() => {
+    if (feedTab !== 'recent') return;
+    const conn = recentData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const endCursor = conn.pageInfo?.endCursor ?? null;
+    const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
+
+    // On first fetch (no cursor yet), replace. On subsequent, append.
+    setRecentState((prev) =>
+      prev.endCursor === null
+        ? { photos: newPhotos, endCursor, hasNextPage }
+        : {
+            photos: [...prev.photos, ...newPhotos],
+            endCursor,
+            hasNextPage,
+          },
+    );
+    setRecentTotalCount(conn.totalCount ?? 0);
+  }, [recentData, feedTab]);
+
+  // Following tab
+  useEffect(() => {
+    if (feedTab !== 'following') return;
+    const conn = followingData?.followingFeed;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const endCursor = conn.pageInfo?.endCursor ?? null;
+    const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
+
+    setFollowingState((prev) =>
+      prev.endCursor === null
+        ? { photos: newPhotos, endCursor, hasNextPage }
+        : {
+            photos: [...prev.photos, ...newPhotos],
+            endCursor,
+            hasNextPage,
+          },
+    );
+  }, [followingData, feedTab]);
+
+  // Mine tab
+  useEffect(() => {
+    if (feedTab !== 'mine') return;
+    const conn = mineData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const endCursor = conn.pageInfo?.endCursor ?? null;
+    const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
+
+    setMineState((prev) =>
+      prev.endCursor === null
+        ? { photos: newPhotos, endCursor, hasNextPage }
+        : {
+            photos: [...prev.photos, ...newPhotos],
+            endCursor,
+            hasNextPage,
+          },
+    );
+  }, [mineData, feedTab]);
+
+  // Admin choice tab
+  useEffect(() => {
+    if (feedTab !== 'admin_choice') return;
+    const conn = adminChoiceData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const endCursor = conn.pageInfo?.endCursor ?? null;
+    const hasNextPage = conn.pageInfo?.hasNextPage ?? false;
+
+    setAdminChoiceState((prev) =>
+      prev.endCursor === null
+        ? { photos: newPhotos, endCursor, hasNextPage }
+        : {
+            photos: [...prev.photos, ...newPhotos],
+            endCursor,
+            hasNextPage,
+          },
+    );
+  }, [adminChoiceData, feedTab]);
+
+  // ─── Load more handler ───────────────────────────────────────────────────────
+
+  const handleLoadMore = useCallback(
+    (tab: FeedTab) => (after: string | null) => {
+      // Just re-execute the query with the new cursor.
+      // urql's cache will handle appending the results, and the useEffect above
+      // will sync the accumulated state.
+      switch (tab) {
+        case 'recent':
+          reexecuteRecent({ requestPolicy: 'network-only' });
+          break;
+        case 'following':
+          // following feed doesn't use cursor pagination in the same way
+          break;
+        case 'mine':
+          // handled by mineVars
+          break;
+        case 'admin_choice':
+          // handled by adminChoiceVars
+          break;
+      }
+    },
+    [reexecuteRecent],
+  );
+
+  // ─── Tab switch: reset state when switching tabs ───────────────────────────
+
+  const handleTabChange = useCallback((tab: FeedTab) => {
     setFeedTab(tab);
-  };
+    if (!initializedTabs.current.has(tab)) {
+      initializedTabs.current.add(tab);
+    }
+  }, []);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    router.push(`/?${params.toString()}`, { scroll: false });
-  };
+  // ─── Active tab state ───────────────────────────────────────────────────────
 
-  const connection =
+  const activeState =
     feedTab === 'recent'
-      ? data?.photos
+      ? recentState
       : feedTab === 'following'
-        ? followingData?.followingFeed
-        : feedTab === 'admin_choice'
-          ? adminChoiceData?.photos
-          : mineData?.photos;
-  const totalCount = connection?.totalCount ?? 0;
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  const displayedPhotos: PhotoData[] =
-    connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-  const isLoading =
+        ? followingState
+        : feedTab === 'mine'
+          ? mineState
+          : adminChoiceState;
+
+  const activeFetching =
     feedTab === 'recent'
-      ? fetching
+      ? recentFetching
       : feedTab === 'following'
         ? followingFetching
         : feedTab === 'admin_choice'
           ? adminChoiceFetching
           : mineFetching;
 
-  // Single config driving both the active-filter chips and clear-all behavior.
+  // ─── Filter configs ─────────────────────────────────────────────────────────
+
   const filterConfigs: Array<{
     key: string;
     icon: string;
@@ -509,7 +551,94 @@ export default function HomePage() {
     setKindFilter('all');
   };
 
-  // Typeahead elements — reused in both desktop row and mobile drawer
+  // ─── Typeahead elements ──────────────────────────────────────────────────────
+
+  const [showAirlineDropdown, setShowAirlineDropdown] = useState(false);
+  const [{ data: airlineData, fetching: airlineFetching }] = useQuery({
+    query: SEARCH_AIRLINES,
+    variables: { query: airlineFilter, first: 8 },
+    pause: airlineFilter.length < 2,
+  });
+  const airlineResults: string[] = airlineData?.searchAirlines ?? [];
+
+  const [showAirportDropdown, setShowAirportDropdown] = useState(false);
+  const [{ data: airportData, fetching: airportFetching }] = useQuery({
+    query: SEARCH_AIRPORTS,
+    variables: { query: airportFilter, first: 8 },
+    pause: airportFilter.length < 2,
+  });
+  const airportResults: Array<{
+    icaoCode: string;
+    iataCode: string | null;
+    name: string;
+    city: string | null;
+  }> = airportData?.searchAirports ?? [];
+
+  const [showPhotographerDropdown, setShowPhotographerDropdown] = useState(false);
+  const [{ data: photographerData, fetching: photographerFetching }] = useQuery({
+    query: SEARCH_USERS,
+    variables: { query: photographerFilter, first: 8 },
+    pause: photographerFilter.length < 2,
+  });
+  const photographerResults: Array<{
+    id: string;
+    username: string;
+    profile?: { displayName?: string | null };
+  }> =
+    photographerData?.searchUsers?.edges?.map(
+      (e: { node: { id: string; username: string; profile?: { displayName?: string | null } } }) =>
+        e.node,
+    ) ?? [];
+
+  const [showManufacturerDropdown, setShowManufacturerDropdown] = useState(false);
+  const [{ data: manufacturerData, fetching: manufacturerFetching }] = useQuery({
+    query: GET_AIRCRAFT_MANUFACTURERS,
+    variables: { search: manufacturerFilter, first: 8 },
+    pause: manufacturerFilter.length < 2,
+  });
+  const manufacturerResults: Array<{ id: string; name: string }> =
+    manufacturerData?.aircraftManufacturers?.edges?.map(
+      (e: { node: { id: string; name: string } }) => e.node,
+    ) ?? [];
+
+  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
+  const [{ data: familyData, fetching: familyFetching }] = useQuery({
+    query: GET_AIRCRAFT_FAMILIES,
+    variables: { manufacturerId: selectedManufacturerId, search: familyFilter, first: 8 },
+    pause: familyFilter.length < 2,
+  });
+  const familyResults: Array<{ id: string; name: string }> =
+    familyData?.aircraftFamilies?.edges?.map(
+      (e: { node: { id: string; name: string } }) => e.node,
+    ) ?? [];
+
+  const [showVariantDropdown, setShowVariantDropdown] = useState(false);
+  const [{ data: variantData, fetching: variantFetching }] = useQuery({
+    query: GET_AIRCRAFT_VARIANTS,
+    variables: { search: variantFilter, first: 8 },
+    pause: variantFilter.length < 2,
+  });
+  const variantResults: Array<{ id: string; name: string }> =
+    variantData?.aircraftVariants?.edges?.map(
+      (e: { node: { id: string; name: string } }) => e.node,
+    ) ?? [];
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (!target.closest(`.${styles.filterInputWrap}`)) {
+        setShowAirlineDropdown(false);
+        setShowAirportDropdown(false);
+        setShowPhotographerDropdown(false);
+        setShowManufacturerDropdown(false);
+        setShowFamilyDropdown(false);
+        setShowVariantDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
   const airportTypeahead = (
     <TypeaheadInput
       icon="🛫"
@@ -561,10 +690,7 @@ export default function HomePage() {
       setShowDropdown={setShowPhotographerDropdown}
       results={photographerResults}
       fetching={photographerFetching}
-      renderItem={(u) => ({
-        key: u.id,
-        label: u.profile?.displayName || u.username,
-      })}
+      renderItem={(u) => ({ key: u.id, label: u.profile?.displayName || u.username })}
       onSelect={(u) => {
         const label = u.profile?.displayName || u.username;
         setPhotographerFilter(label);
@@ -581,9 +707,7 @@ export default function HomePage() {
       value={manufacturerFilter}
       onChange={(v) => {
         setManufacturerFilter(v);
-        // Clear the stored ID when user edits freely — cascading only applies after a selection
         setSelectedManufacturerId(undefined);
-        // Cascading: clear family + variant when manufacturer changes
         setFamilyFilter('');
         setVariantFilter('');
       }}
@@ -596,7 +720,6 @@ export default function HomePage() {
         setManufacturerFilter(m.name);
         setDebouncedManufacturer(m.name);
         setSelectedManufacturerId(m.id);
-        // Reset downstream cascades
         setFamilyFilter('');
         setVariantFilter('');
       }}
@@ -642,9 +765,6 @@ export default function HomePage() {
     />
   );
 
-  // Hero treatment: a random approved photo as a full-bleed background.
-  // Falls back to the admin-configurable site banner, then to a gradient,
-  // so first paint never looks broken.
   const heroBackgroundUrl = heroImageUrl ?? siteBannerUrl ?? null;
   const heroIsTall = !!heroImageUrl;
   const heroPhotoOwnerName =
@@ -671,8 +791,6 @@ export default function HomePage() {
           <h1 className={styles.heroTitle}>SpotterSpace</h1>
           {siteTagline && <p className={styles.heroSubtitle}>{siteTagline}</p>}
         </div>
-        {/* Attribution chip: every random hero photo links back to its
-            detail page so the photographer gets credit and clicks. */}
         {heroPhoto && heroPhotoOwnerName && (
           <Link
             href={`/photos/${heroPhoto.id}`}
@@ -693,7 +811,6 @@ export default function HomePage() {
       <div className="container">
         {/* Filter Bar */}
         <div className={styles.filterBar}>
-          {/* Mobile filter entry: chips + open button (hidden on desktop via CSS) */}
           <div className={styles.filterMobileBar}>
             {activeFilters.length > 0 && (
               <div className={styles.filterChipRow}>
@@ -728,7 +845,6 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Desktop inline filter row */}
           <div className={styles.filterRow}>
             {airportTypeahead}
             {airlineTypeahead}
@@ -738,7 +854,6 @@ export default function HomePage() {
             {variantTypeahead}
           </div>
 
-          {/* Sort Pills + View Toggle */}
           <div className={styles.sortPills}>
             {SORT_OPTIONS.map((opt) => (
               <button
@@ -913,63 +1028,55 @@ export default function HomePage() {
                   ? "You haven't published any photos yet. Head to Upload to share your first shot!"
                   : feedTab === 'admin_choice'
                     ? "No Admin's Choice photos have been awarded yet — check back soon."
-                    : fetching
-                      ? undefined
-                      : 'No photos match your filters.';
+                    : activeState.photos.length === 0 && !activeFetching
+                      ? 'No photos match your filters.'
+                      : undefined;
 
-            // The in-feed community block only anchors on the default
-            // Recent tab on the first page (per design doc). On any other
-            // tab or page the photo grid renders unsplit.
-            const showCommunityBlock = feedTab === 'recent' && currentPage === 1;
+            const showCommunityBlock = feedTab === 'recent' && activeState.photos.length > 0;
 
             if (!showCommunityBlock) {
               return (
-                <PhotoGrid
-                  key={gridKey}
-                  photos={displayedPhotos}
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                  loading={isLoading}
+                <InfinitePhotoGrid
+                  key={`${feedTab}`}
+                  photos={activeState.photos}
+                  endCursor={activeState.endCursor}
+                  hasNextPage={activeState.hasNextPage}
+                  onLoadMore={handleLoadMore(feedTab)}
+                  loading={activeFetching}
                   viewMode={viewMode}
                   adSlotId={feedAdSlot ?? undefined}
-                  emptyMessage={emptyMessage}
+                  emptyMessage={emptyMessage ?? 'No photos yet'}
                 />
               );
             }
 
-            // Split-rendering path. When we have fewer photos than the
-            // split index, render everything in the first grid and put
-            // the community block underneath it — there is nothing to put
-            // after the block, and rendering an empty second grid would
-            // either show its empty state (wrong) or render nothing at
-            // all (visually identical to the simpler single-grid path).
-            const headPhotos = displayedPhotos.slice(0, splitIndex);
-            const tailPhotos = displayedPhotos.slice(splitIndex);
+            // Split-rendering with community block
+            const headPhotos = activeState.photos.slice(0, splitIndex);
+            const tailPhotos = activeState.photos.slice(splitIndex);
             const hasTail = tailPhotos.length > 0;
 
             return (
               <>
-                <PhotoGrid
-                  key={`${gridKey}-head`}
+                <InfinitePhotoGrid
+                  key={`${feedTab}-head`}
                   photos={headPhotos}
-                  currentPage={1}
-                  totalPages={1}
-                  onPageChange={() => {}}
-                  loading={hasTail ? false : isLoading}
+                  endCursor={null}
+                  hasNextPage={false}
+                  onLoadMore={() => {}}
+                  loading={false}
                   viewMode={viewMode}
                   adSlotId={feedAdSlot ?? undefined}
-                  emptyMessage={hasTail ? undefined : emptyMessage}
+                  emptyMessage={undefined}
                 />
                 <CommunityFeedBlock />
                 {hasTail && (
-                  <PhotoGrid
-                    key={`${gridKey}-tail`}
+                  <InfinitePhotoGrid
+                    key={`${feedTab}-tail`}
                     photos={tailPhotos}
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                    loading={isLoading}
+                    endCursor={activeState.endCursor}
+                    hasNextPage={activeState.hasNextPage}
+                    onLoadMore={handleLoadMore(feedTab)}
+                    loading={activeFetching}
                     viewMode={viewMode}
                     adSlotId={feedAdSlot ?? undefined}
                   />

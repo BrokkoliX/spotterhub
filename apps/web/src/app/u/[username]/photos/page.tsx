@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, use, useState } from 'react';
+import { Suspense, use, useCallback, useEffect, useState } from 'react';
 import { useQuery } from 'urql';
 
 import { FollowButton } from '@/components/FollowButton';
 import type { PhotoData } from '@/components/PhotoCard';
-import { PhotoGrid } from '@/components/PhotoGrid';
+import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
 import { useAuth } from '@/lib/auth';
 import { GET_PHOTOS, GET_USER } from '@/lib/queries';
 
@@ -17,72 +17,79 @@ const PAGE_SIZE = 12;
 
 function getBadgeCategoryIcon(category: string): string {
   switch (category) {
-    case 'UPLOAD': return '📸';
-    case 'ENGAGEMENT': return '❤️';
-    case 'COMMUNITY': return '🤝';
-    case 'STREAK': return '🔥';
-    case 'DIVERSITY': return '🌍';
-    case 'AWARD': return '🏆';
-    default: return '🏅';
+    case 'UPLOAD':
+      return '📸';
+    case 'ENGAGEMENT':
+      return '❤️';
+    case 'COMMUNITY':
+      return '🤝';
+    case 'STREAK':
+      return '🔥';
+    case 'DIVERSITY':
+      return '🌍';
+    case 'AWARD':
+      return '🏆';
+    default:
+      return '🏅';
   }
 }
 
-export default function UserPhotosPage({
-  params,
-}: {
-  params: Promise<{ username: string }>;
-}) {
+export default function UserPhotosPage({ params }: { params: Promise<{ username: string }> }) {
   return (
-    <Suspense fallback={<div className={styles.page}><div className="container"><p className={styles.loading}>Loading…</p></div></div>}>
+    <Suspense
+      fallback={
+        <div className={styles.page}>
+          <div className="container">
+            <p className={styles.loading}>Loading…</p>
+          </div>
+        </div>
+      }
+    >
       <UserPhotosPageInner params={params} />
     </Suspense>
   );
 }
 
-function UserPhotosPageInner({
-  params,
-}: {
-  params: Promise<{ username: string }>;
-}) {
+function UserPhotosPageInner({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params);
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
-  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
-  const [userResult] = useQuery({
+  const [{ data: userResult, fetching: userFetching }] = useQuery({
     query: GET_USER,
     variables: { username },
   });
 
   const userId = userResult.data?.user?.id;
 
-  const [photosResult] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }, reexecutePhotos] = useQuery({
     query: GET_PHOTOS,
-    variables: { first: PAGE_SIZE, page: currentPage, userId },
+    variables: { first: PAGE_SIZE, after: endCursor, userId },
     pause: !userId,
   });
 
-  const { data: userData, fetching: userFetching } = userResult;
-  const { data: photosData, fetching: photosFetching } = photosResult;
-  const connection = photosResult.data?.photos;
+  // Sync accumulated state
+  useEffect(() => {
+    const conn = photosData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const cursor = conn.pageInfo?.endCursor ?? null;
+    const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
-  const photos: PhotoData[] =
-    connection?.edges?.map(
-          (e: { node: PhotoData }) => e.node,
-        ) ?? [];
+    setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
+    setEndCursor(cursor);
+    setHasNextPage(hasMore);
+  }, [photosData, endCursor]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!photosFetching && hasNextPage) {
+      reexecutePhotos({ requestPolicy: 'network-only' });
+    }
+  }, [photosFetching, hasNextPage, reexecutePhotos]);
 
   const { user: authUser } = useAuth();
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    router.push(`/u/${username}/photos?${params.toString()}`, { scroll: false });
-  };
-
-  const totalCount = connection?.totalCount ?? 0;
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   if (userFetching) {
     return (
@@ -94,7 +101,7 @@ function UserPhotosPageInner({
     );
   }
 
-  if (!userData?.user) {
+  if (!userResult.data?.user) {
     return (
       <div className={styles.page}>
         <div className="container">
@@ -109,7 +116,7 @@ function UserPhotosPageInner({
     );
   }
 
-  const user = userData.user;
+  const user = userResult.data.user;
   const displayName = user.profile?.displayName ?? user.username;
   const isOwnProfile = authUser?.id === user.id;
 
@@ -142,31 +149,19 @@ function UserPhotosPageInner({
                 </Link>
               )}
               {!isOwnProfile && (
-                <FollowButton
-                  userId={user.id}
-                  initialIsFollowing={user.isFollowedByMe}
-                />
+                <FollowButton userId={user.id} initialIsFollowing={user.isFollowedByMe} />
               )}
             </div>
             <p className={styles.username}>@{user.username}</p>
             <div className={styles.profileStats}>
               <span className={styles.profileStat}>
-                <span className={styles.profileStatValue}>
-                  {user.photoCount}
-                </span>{' '}
-                photos
+                <span className={styles.profileStatValue}>{user.photoCount}</span> photos
               </span>
               <span className={styles.profileStat}>
-                <span className={styles.profileStatValue}>
-                  {user.followerCount}
-                </span>{' '}
-                followers
+                <span className={styles.profileStatValue}>{user.followerCount}</span> followers
               </span>
               <span className={styles.profileStat}>
-                <span className={styles.profileStatValue}>
-                  {user.followingCount}
-                </span>{' '}
-                following
+                <span className={styles.profileStatValue}>{user.followingCount}</span> following
               </span>
             </div>
           </div>
@@ -177,43 +172,50 @@ function UserPhotosPageInner({
           <div className={styles.badgeSection}>
             <h3 className={styles.badgeSectionTitle}>Badges</h3>
             <div className={styles.badgeGrid}>
-              {user.badges.map((ub: { id: string; awardedAt: string; badgeDefinition: { id: string; slug: string; name: string; description: string; category: string; tier: string } }) => (
-                <div
-                  key={ub.id}
-                  className={`${styles.badgeItem} ${styles[`badgeTier${ub.badgeDefinition.tier.charAt(0) + ub.badgeDefinition.tier.slice(1).toLowerCase()}`]}`}
-                  title={`${ub.badgeDefinition.name} (${ub.badgeDefinition.tier}) — ${ub.badgeDefinition.description}`}
-                >
-                  <span className={styles.badgeIcon}>
-                    {getBadgeCategoryIcon(ub.badgeDefinition.category)}
-                  </span>
-                  <span className={styles.badgeName}>{ub.badgeDefinition.name}</span>
-                  <span className={styles.badgeTierLabel}>{ub.badgeDefinition.tier}</span>
-                </div>
-              ))}
+              {user.badges.map(
+                (ub: {
+                  id: string;
+                  awardedAt: string;
+                  badgeDefinition: {
+                    id: string;
+                    slug: string;
+                    name: string;
+                    description: string;
+                    category: string;
+                    tier: string;
+                  };
+                }) => (
+                  <div
+                    key={ub.id}
+                    className={`${styles.badgeItem} ${styles[`badgeTier${ub.badgeDefinition.tier.charAt(0) + ub.badgeDefinition.tier.slice(1).toLowerCase()}`]}`}
+                    title={`${ub.badgeDefinition.name} (${ub.badgeDefinition.tier}) — ${ub.badgeDefinition.description}`}
+                  >
+                    <span className={styles.badgeIcon}>
+                      {getBadgeCategoryIcon(ub.badgeDefinition.category)}
+                    </span>
+                    <span className={styles.badgeName}>{ub.badgeDefinition.name}</span>
+                    <span className={styles.badgeTierLabel}>{ub.badgeDefinition.tier}</span>
+                  </div>
+                ),
+              )}
             </div>
           </div>
         )}
 
         <div className={styles.tabs}>
-          <Link
-            href={`/u/${username}/photos`}
-            className={`${styles.tab} ${styles.tabActive}`}
-          >
+          <Link href={`/u/${username}/photos`} className={`${styles.tab} ${styles.tabActive}`}>
             Photos
           </Link>
-          <Link
-            href={`/u/${username}/albums`}
-            className={styles.tab}
-          >
+          <Link href={`/u/${username}/albums`} className={styles.tab}>
             Albums
           </Link>
         </div>
 
-        <PhotoGrid
+        <InfinitePhotoGrid
           photos={photos}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
+          endCursor={endCursor}
+          hasNextPage={hasNextPage}
+          onLoadMore={handleLoadMore}
           loading={photosFetching}
           emptyMessage={`${displayName} hasn't uploaded any photos yet`}
         />

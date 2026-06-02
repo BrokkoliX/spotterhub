@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useQuery } from 'urql';
 
 import type { PhotoData } from '@/components/PhotoCard';
 import { Pagination } from '@/components/Pagination';
-import { PhotoGrid } from '@/components/PhotoGrid';
+import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
 import { SEARCH_PHOTOS, SEARCH_USERS } from '@/lib/queries';
 
 import styles from './page.module.css';
@@ -41,23 +41,26 @@ export default function SearchPage() {
 }
 
 function SearchPageInner() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') ?? '';
-  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
   const [inputValue, setInputValue] = useState(initialQuery);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeTab, setActiveTab] = useState<Tab>('photos');
-  const [photosPage, setPhotosPage] = useState(initialPage);
-  const [usersPage, setUsersPage] = useState(initialPage);
+  const [usersPage, setUsersPage] = useState(1);
+
+  // Infinite scroll state for photos
+  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
   const hasQuery = searchQuery.length > 0;
 
   // ─── Queries ────────────────────────────────────────────────────────────
 
-  const [photosResult] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }, reexecutePhotos] = useQuery({
     query: SEARCH_PHOTOS,
-    variables: { query: searchQuery, first: PAGE_SIZE, page: photosPage },
+    variables: { query: searchQuery, first: PAGE_SIZE, after: endCursor },
     pause: !hasQuery || activeTab !== 'photos',
   });
 
@@ -67,20 +70,34 @@ function SearchPageInner() {
     pause: !hasQuery || activeTab !== 'users',
   });
 
+  // Sync accumulated photo state
+  useEffect(() => {
+    if (activeTab !== 'photos') return;
+    const conn = photosData?.searchPhotos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const cursor = conn.pageInfo?.endCursor ?? null;
+    const hasMore = conn.pageInfo?.hasNextPage ?? false;
+
+    setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
+    setEndCursor(cursor);
+    setHasNextPage(hasMore);
+  }, [photosData, activeTab, endCursor]);
+
+  const handleLoadMorePhotos = useCallback(() => {
+    if (!photosFetching && hasNextPage) {
+      reexecutePhotos({ requestPolicy: 'network-only' });
+    }
+  }, [photosFetching, hasNextPage, reexecutePhotos]);
+
   // ─── Derived data ──────────────────────────────────────────────────────
 
-  const photosConnection = photosResult.data?.searchPhotos;
-  const photos: PhotoData[] =
-    photosConnection?.edges?.map(
-          (e: { node: PhotoData }) => e.node,
-        ) ?? [];
+  const photosConnection = photosData?.searchPhotos;
   const photosTotalCount = photosConnection?.totalCount ?? 0;
 
   const usersConnection = usersResult.data?.searchUsers;
   const users: UserResult[] =
-    usersConnection?.edges?.map(
-          (e: { node: UserResult }) => e.node,
-        ) ?? [];
+    usersConnection?.edges?.map((e: { node: UserResult }) => e.node) ?? [];
   const usersTotalCount = usersConnection?.totalCount ?? 0;
 
   // ─── Handlers ──────────────────────────────────────────────────────────
@@ -91,7 +108,9 @@ function SearchPageInner() {
       const q = inputValue.trim();
       if (!q) return;
       setSearchQuery(q);
-      setPhotosPage(1);
+      setPhotos([]);
+      setEndCursor(null);
+      setHasNextPage(true);
       setUsersPage(1);
       router.push(`/search?q=${encodeURIComponent(q)}`, { scroll: false });
     },
@@ -102,21 +121,11 @@ function SearchPageInner() {
     setActiveTab(tab);
   }, []);
 
-  const handlePhotosPageChange = (page: number) => {
-    setPhotosPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    router.push(`/search?${params.toString()}`, { scroll: false });
-  };
-
   const handleUsersPageChange = (page: number) => {
     setUsersPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    router.push(`/search?${params.toString()}`, { scroll: false });
+    router.push(`/search?${searchParams.toString()}`, { scroll: false });
   };
 
-  const photosTotalPages = Math.ceil(photosTotalCount / PAGE_SIZE);
   const usersTotalPages = Math.ceil(usersTotalCount / PAGE_SIZE);
 
   // ─── Render ────────────────────────────────────────────────────────────
@@ -172,22 +181,22 @@ function SearchPageInner() {
             {/* Photo Results */}
             {activeTab === 'photos' && (
               <>
-                {photosResult.fetching && photos.length === 0 && (
+                {photosFetching && photos.length === 0 && (
                   <p className={styles.loading}>Searching…</p>
                 )}
-                {!photosResult.fetching && photos.length === 0 && (
+                {!photosFetching && photos.length === 0 && (
                   <div className={styles.empty}>
                     <h2>No photos found</h2>
                     <p>Try different keywords or check the Users tab.</p>
                   </div>
                 )}
                 {photos.length > 0 && (
-                  <PhotoGrid
+                  <InfinitePhotoGrid
                     photos={photos}
-                    currentPage={photosPage}
-                    totalPages={photosTotalPages}
-                    onPageChange={handlePhotosPageChange}
-                    loading={photosResult.fetching}
+                    endCursor={endCursor}
+                    hasNextPage={hasNextPage}
+                    onLoadMore={handleLoadMorePhotos}
+                    loading={photosFetching}
                     emptyMessage="No photos found"
                   />
                 )}
@@ -209,17 +218,10 @@ function SearchPageInner() {
                 {users.length > 0 && (
                   <div className={styles.userList}>
                     {users.map((u) => (
-                      <Link
-                        key={u.id}
-                        href={`/u/${u.username}/photos`}
-                        className={styles.userCard}
-                      >
+                      <Link key={u.id} href={`/u/${u.username}/photos`} className={styles.userCard}>
                         <div className={styles.userAvatar}>
                           {u.profile?.avatarUrl ? (
-                            <img
-                              src={u.profile.avatarUrl}
-                              alt={u.username}
-                            />
+                            <img src={u.profile.avatarUrl} alt={u.username} />
                           ) : (
                             '👤'
                           )}
@@ -229,9 +231,7 @@ function SearchPageInner() {
                             {u.profile?.displayName ?? u.username}
                           </div>
                           <div className={styles.userHandle}>@{u.username}</div>
-                          {u.profile?.bio && (
-                            <div className={styles.userBio}>{u.profile.bio}</div>
-                          )}
+                          {u.profile?.bio && <div className={styles.userBio}>{u.profile.bio}</div>}
                         </div>
                         <div className={styles.userStats}>
                           <span>{u.photoCount} photos</span>

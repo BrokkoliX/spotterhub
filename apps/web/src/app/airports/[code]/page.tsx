@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type FormEvent, use, useState, Suspense } from 'react';
+import { type FormEvent, use, useCallback, useEffect, useState, Suspense } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { AirportFollowButton } from '@/components/AirportFollowButton';
 import type { PhotoData } from '@/components/PhotoCard';
-import { PhotoGrid } from '@/components/PhotoGrid';
+import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
 import { useAuth } from '@/lib/auth';
 import {
   CREATE_SPOTTING_LOCATION,
@@ -33,29 +33,26 @@ const PAGE_SIZE = 12;
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export default function AirportPage({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
+export default function AirportPage({ params }: { params: Promise<{ code: string }> }) {
   return (
-    <Suspense fallback={<div className={styles.page}><div className="container"><p className={styles.loading}>Loading airport…</p></div></div>}>
+    <Suspense
+      fallback={
+        <div className={styles.page}>
+          <div className="container">
+            <p className={styles.loading}>Loading airport…</p>
+          </div>
+        </div>
+      }
+    >
       <AirportPageInner params={params} />
     </Suspense>
   );
 }
 
-function AirportPageInner({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
+function AirportPageInner({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const { user } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
-  const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Spotting location form state
   const [showSpotForm, setShowSpotForm] = useState(false);
@@ -66,6 +63,11 @@ function AirportPageInner({
   const [spotLng, setSpotLng] = useState('');
   const [spotError, setSpotError] = useState<string | null>(null);
 
+  // Infinite scroll state
+  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(true);
+
   const [, createSpottingLocation] = useMutation(CREATE_SPOTTING_LOCATION);
   const [, deleteSpottingLocation] = useMutation(DELETE_SPOTTING_LOCATION);
 
@@ -74,30 +76,31 @@ function AirportPageInner({
     variables: { code: code.toUpperCase() },
   });
 
-  const [photosResult] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }, reexecutePhotos] = useQuery({
     query: GET_PHOTOS,
-    variables: { first: PAGE_SIZE, page: currentPage, airportCode: code.toUpperCase() },
+    variables: { first: PAGE_SIZE, after: endCursor, airportCode: code.toUpperCase() },
   });
 
   const airport = airportResult.data?.airport;
-  const connection = photosResult.data?.photos;
 
-  const photos: PhotoData[] =
-    connection?.edges?.map(
-          (e: { node: PhotoData }) => e.node,
-        ) ?? [];
+  // Sync accumulated photo state
+  useEffect(() => {
+    const conn = photosData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const cursor = conn.pageInfo?.endCursor ?? null;
+    const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    router.push(`/airports/${code.toUpperCase()}?${params.toString()}`, { scroll: false });
-  };
+    setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
+    setEndCursor(cursor);
+    setHasNextPage(hasMore);
+  }, [photosData, endCursor]);
 
-  const totalCount = connection?.totalCount ?? 0;
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-
-  // ─── Spotting Location handlers ──────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    if (!photosFetching && hasNextPage) {
+      reexecutePhotos({ requestPolicy: 'network-only' });
+    }
+  }, [photosFetching, hasNextPage, reexecutePhotos]);
 
   const handleCreateSpot = async (e: FormEvent) => {
     e.preventDefault();
@@ -120,7 +123,6 @@ function AirportPageInner({
       return;
     }
 
-    // Reset form and refresh
     setSpotName('');
     setSpotDesc('');
     setSpotAccess('');
@@ -136,8 +138,6 @@ function AirportPageInner({
       reexecuteAirport({ requestPolicy: 'network-only' });
     }
   };
-
-  // ─── Loading ────────────────────────────────────────────────────────────
 
   if (airportResult.fetching) {
     return (
@@ -233,13 +233,9 @@ function AirportPageInner({
                       </button>
                     )}
                   </div>
-                  {spot.description && (
-                    <div className={styles.spotDesc}>{spot.description}</div>
-                  )}
+                  {spot.description && <div className={styles.spotDesc}>{spot.description}</div>}
                   {spot.accessNotes && (
-                    <div className={styles.spotAccess}>
-                      Access: {spot.accessNotes}
-                    </div>
+                    <div className={styles.spotAccess}>Access: {spot.accessNotes}</div>
                   )}
                 </div>
               ))}
@@ -251,10 +247,7 @@ function AirportPageInner({
           )}
 
           {user && !showSpotForm && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowSpotForm(true)}
-            >
+            <button className="btn btn-secondary" onClick={() => setShowSpotForm(true)}>
               + Add Spotting Location
             </button>
           )}
@@ -262,7 +255,9 @@ function AirportPageInner({
           {showSpotForm && (
             <form onSubmit={handleCreateSpot} className={styles.spotForm}>
               <div className="field">
-                <label htmlFor="spotName" className="label">Name *</label>
+                <label htmlFor="spotName" className="label">
+                  Name *
+                </label>
                 <input
                   id="spotName"
                   type="text"
@@ -274,7 +269,9 @@ function AirportPageInner({
                 />
               </div>
               <div className="field">
-                <label htmlFor="spotDesc" className="label">Description</label>
+                <label htmlFor="spotDesc" className="label">
+                  Description
+                </label>
                 <textarea
                   id="spotDesc"
                   className="input"
@@ -285,7 +282,9 @@ function AirportPageInner({
                 />
               </div>
               <div className="field">
-                <label htmlFor="spotAccess" className="label">Access Notes</label>
+                <label htmlFor="spotAccess" className="label">
+                  Access Notes
+                </label>
                 <input
                   id="spotAccess"
                   type="text"
@@ -297,7 +296,9 @@ function AirportPageInner({
               </div>
               <div className={styles.spotCoords}>
                 <div className="field">
-                  <label htmlFor="spotLat" className="label">Latitude</label>
+                  <label htmlFor="spotLat" className="label">
+                    Latitude
+                  </label>
                   <input
                     id="spotLat"
                     type="number"
@@ -309,7 +310,9 @@ function AirportPageInner({
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="spotLng" className="label">Longitude</label>
+                  <label htmlFor="spotLng" className="label">
+                    Longitude
+                  </label>
                   <input
                     id="spotLng"
                     type="number"
@@ -344,12 +347,12 @@ function AirportPageInner({
         {/* Photos at this airport */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Photos at {displayCode}</h2>
-          <PhotoGrid
+          <InfinitePhotoGrid
             photos={photos}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            loading={photosResult.fetching}
+            endCursor={endCursor}
+            hasNextPage={hasNextPage}
+            onLoadMore={handleLoadMore}
+            loading={photosFetching}
             emptyMessage={`No photos at ${displayCode} yet`}
           />
         </div>

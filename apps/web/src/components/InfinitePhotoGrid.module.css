@@ -1,0 +1,38 @@
+.sentinel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0;
+  min-height: 80px;
+}
+
+.loadingRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .loadingRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.skeleton {
+  aspect-ratio: 16 / 9;
+  background: var(--color-bg-card);
+  border-radius: 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.endMarker {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+}

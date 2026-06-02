@@ -9,8 +9,7 @@ import { Suspense } from 'react';
 import { useAuth } from '@/lib/auth';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
 import type { PhotoData } from '@/components/PhotoCard';
-import { PhotoGrid } from '@/components/PhotoGrid';
-import { Pagination } from '@/components/Pagination';
+import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
 import {
   GET_AIRLINES,
   GET_AIRCRAFT_MANUFACTURERS,
@@ -58,12 +57,6 @@ interface VariantNode {
   family: { id: string; name: string };
 }
 
-interface SelectedEntity {
-  type: TabType;
-  name: string;
-  value: string;
-}
-
 interface FollowingEntry {
   id: string;
   targetType: string;
@@ -77,7 +70,15 @@ const PAGE_SIZE = 24;
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<div className={styles.page}><div className="container"><p>Loading…</p></div></div>}>
+    <Suspense
+      fallback={
+        <div className={styles.page}>
+          <div className="container">
+            <p>Loading…</p>
+          </div>
+        </div>
+      }
+    >
       <ExplorePageInner />
     </Suspense>
   );
@@ -90,8 +91,6 @@ function ExplorePageInner() {
 
   const [activeTab, setActiveTab] = useState<TabType>('airlines');
   const [search, setSearch] = useState('');
-  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
-  const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Read selected entity from URL params
   const selectedType = (searchParams.get('type') as TabType) ?? null;
@@ -99,35 +98,15 @@ function ExplorePageInner() {
   const selectedName = searchParams.get('name') ?? null;
 
   // Build photo filter from selected entity
-  const photoFilter = selectedType && selectedValue
-    ? getPhotoFilter(selectedType, selectedValue)
-    : null;
+  const photoFilter =
+    selectedType && selectedValue ? getPhotoFilter(selectedType, selectedValue) : null;
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    const base = selectedType ? `/explore?${params.toString()}` : '/explore';
-    router.push(base, { scroll: false });
-  };
+  // Infinite scroll state
+  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
-  // ─── Photo query ──────────────────────────────────────────────────────────
-
-  const [{ data: photoData, fetching: photoFetching }] = useQuery({
-    query: GET_PHOTOS,
-    variables: {
-      first: PAGE_SIZE,
-      page: currentPage,
-      ...(photoFilter ?? {}),
-    },
-    pause: !user || !photoFilter,
-  });
-
-  const displayedPhotos: PhotoData[] =
-    photoData?.photos?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
-
-  // ─── Following query ───────────────────────────────────────────────────────
-
+  // Following query
   const [followingResult] = useQuery({
     query: GET_MY_FOLLOWING,
     variables: {},
@@ -135,6 +114,39 @@ function ExplorePageInner() {
   });
 
   const allFollowing: FollowingEntry[] = followingResult.data?.myFollowing ?? [];
+
+  // ─── Photo query (cursor-based) ──────────────────────────────────────────
+
+  const [{ data: photoData, fetching: photoFetching }, reexecutePhotos] = useQuery({
+    query: GET_PHOTOS,
+    variables: {
+      first: PAGE_SIZE,
+      after: endCursor,
+      ...(photoFilter ?? {}),
+    },
+    pause: !user || !photoFilter,
+  });
+
+  // Sync query results into accumulated state
+  useEffect(() => {
+    const conn = photoData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const cursor = conn.pageInfo?.endCursor ?? null;
+    const hasMore = conn.pageInfo?.hasNextPage ?? false;
+
+    setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
+    setEndCursor(cursor);
+    setHasNextPage(hasMore);
+  }, [photoData, endCursor]);
+
+  // ─── Load more ────────────────────────────────────────────────────────────
+
+  const handleLoadMore = useCallback(() => {
+    if (!photoFetching && hasNextPage) {
+      reexecutePhotos({ requestPolicy: 'network-only' });
+    }
+  }, [photoFetching, hasNextPage, reexecutePhotos]);
 
   // ─── Entity queries ────────────────────────────────────────────────────────
 
@@ -179,6 +191,10 @@ function ExplorePageInner() {
   // ─── Entity selection ──────────────────────────────────────────────────────
 
   function selectEntity(type: TabType, name: string, value: string) {
+    // Reset pagination state when selection changes
+    setPhotos([]);
+    setEndCursor(null);
+    setHasNextPage(true);
     const params = new URLSearchParams();
     params.set('type', type);
     params.set('value', value);
@@ -187,6 +203,9 @@ function ExplorePageInner() {
   }
 
   function clearSelection() {
+    setPhotos([]);
+    setEndCursor(null);
+    setHasNextPage(true);
     router.push('/explore');
   }
 
@@ -207,7 +226,8 @@ function ExplorePageInner() {
         <div className={styles.header}>
           <h1 className={styles.title}>Explore</h1>
           <p className={styles.subtitle}>
-            Browse airlines, aircraft families, variants, and manufacturers — follow any to see their photos in your feed
+            Browse airlines, aircraft families, variants, and manufacturers — follow any to see
+            their photos in your feed
           </p>
         </div>
 
@@ -262,8 +282,13 @@ function ExplorePageInner() {
                         targetType="airline"
                         value={airline.icaoCode ?? airline.name}
                         isFollowedByMe={true}
-                        isSelected={selectedType === 'airlines' && selectedValue === (airline.icaoCode ?? airline.name)}
-                        onSelect={() => selectEntity('airlines', airline.name, airline.icaoCode ?? airline.name)}
+                        isSelected={
+                          selectedType === 'airlines' &&
+                          selectedValue === (airline.icaoCode ?? airline.name)
+                        }
+                        onSelect={() =>
+                          selectEntity('airlines', airline.name, airline.icaoCode ?? airline.name)
+                        }
                       />
                     )}
                   />
@@ -272,23 +297,26 @@ function ExplorePageInner() {
                     emptyLabel="No airlines found"
                     headerLabel="Browse All Airlines"
                   >
-                    {airlinesResult.data?.airlines?.edges?.map(
-                      (e: { node: AirlineNode }) => (
-                        <EntityRow
-                          key={e.node.id}
-                          name={e.node.name}
-                          meta={
-                            [e.node.icaoCode, e.node.iataCode].filter(Boolean).join(' / ') +
-                            (e.node.country ? ` · ${e.node.country}` : '')
-                          }
-                          targetType="airline"
-                          value={e.node.icaoCode ?? e.node.name}
-                          isFollowedByMe={e.node.isFollowedByMe}
-                          isSelected={selectedType === 'airlines' && selectedValue === (e.node.icaoCode ?? e.node.name)}
-                          onSelect={() => selectEntity('airlines', e.node.name, e.node.icaoCode ?? e.node.name)}
-                        />
-                      ),
-                    )}
+                    {airlinesResult.data?.airlines?.edges?.map((e: { node: AirlineNode }) => (
+                      <EntityRow
+                        key={e.node.id}
+                        name={e.node.name}
+                        meta={
+                          [e.node.icaoCode, e.node.iataCode].filter(Boolean).join(' / ') +
+                          (e.node.country ? ` · ${e.node.country}` : '')
+                        }
+                        targetType="airline"
+                        value={e.node.icaoCode ?? e.node.name}
+                        isFollowedByMe={e.node.isFollowedByMe}
+                        isSelected={
+                          selectedType === 'airlines' &&
+                          selectedValue === (e.node.icaoCode ?? e.node.name)
+                        }
+                        onSelect={() =>
+                          selectEntity('airlines', e.node.name, e.node.icaoCode ?? e.node.name)
+                        }
+                      />
+                    ))}
                   </EntityList>
                 </>
               )}
@@ -311,8 +339,12 @@ function ExplorePageInner() {
                         targetType="manufacturer"
                         value={manufacturer.name}
                         isFollowedByMe={true}
-                        isSelected={selectedType === 'manufacturers' && selectedValue === manufacturer.name}
-                        onSelect={() => selectEntity('manufacturers', manufacturer.name, manufacturer.name)}
+                        isSelected={
+                          selectedType === 'manufacturers' && selectedValue === manufacturer.name
+                        }
+                        onSelect={() =>
+                          selectEntity('manufacturers', manufacturer.name, manufacturer.name)
+                        }
                       />
                     )}
                   />
@@ -330,7 +362,9 @@ function ExplorePageInner() {
                           targetType="manufacturer"
                           value={e.node.name}
                           isFollowedByMe={e.node.isFollowedByMe}
-                          isSelected={selectedType === 'manufacturers' && selectedValue === e.node.name}
+                          isSelected={
+                            selectedType === 'manufacturers' && selectedValue === e.node.name
+                          }
                           onSelect={() => selectEntity('manufacturers', e.node.name, e.node.name)}
                         />
                       ),
@@ -455,24 +489,16 @@ function ExplorePageInner() {
                   <button type="button" className={styles.backBtn} onClick={clearSelection}>
                     ← Back to list
                   </button>
-                  <h2 className={styles.feedTitle}>
-                    {selectedName}
-                  </h2>
+                  <h2 className={styles.feedTitle}>{selectedName}</h2>
                 </div>
-                {photoFetching ? (
+                {photoFetching && photos.length === 0 ? (
                   <p className={styles.loading}>Loading photos…</p>
-                ) : displayedPhotos.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    <div className={styles.emptyIcon}>📷</div>
-                    <p className={styles.emptyText}>No photos yet for {selectedName}</p>
-                    <p className={styles.emptySub}>Be the first to upload one!</p>
-                  </div>
                 ) : (
-                  <PhotoGrid
-                    photos={displayedPhotos}
-                    currentPage={currentPage}
-                    totalPages={Math.ceil((photoData?.photos?.totalCount ?? 0) / PAGE_SIZE)}
-                    onPageChange={handlePageChange}
+                  <InfinitePhotoGrid
+                    photos={photos}
+                    endCursor={endCursor}
+                    hasNextPage={hasNextPage}
+                    onLoadMore={handleLoadMore}
                     loading={photoFetching}
                     emptyMessage={`No photos yet for ${selectedName}`}
                   />

@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, use, useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { type FormEvent, use, useCallback, useEffect, useState, Suspense } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
 import { AddPhotosModal } from '@/components/AddPhotosModal';
 import type { PhotoData } from '@/components/PhotoCard';
-import { PhotoGrid } from '@/components/PhotoGrid';
+import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
 import {
   DELETE_ALBUM,
   GET_ALBUM,
@@ -23,27 +23,26 @@ const PAGE_SIZE = 20;
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export default function AlbumDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function AlbumDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<div className={styles.page}><div className="container"><p className={styles.loading}>Loading album…</p></div></div>}>
+    <Suspense
+      fallback={
+        <div className={styles.page}>
+          <div className="container">
+            <p className={styles.loading}>Loading album…</p>
+          </div>
+        </div>
+      }
+    >
       <AlbumDetailPageInner params={params} />
     </Suspense>
   );
 }
 
-function AlbumDetailPageInner({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+function AlbumDetailPageInner({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -54,17 +53,20 @@ function AlbumDetailPageInner({
   const [editDesc, setEditDesc] = useState('');
   const [editPublic, setEditPublic] = useState(true);
   const [editCoverPhotoId, setEditCoverPhotoId] = useState<string | null>(null);
-  const initialPage = parseInt(searchParams.get('page') ?? '1', 10);
-  const [currentPage, setCurrentPage] = useState(initialPage);
+
+  // Infinite scroll state
+  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
   const [albumResult, reexecuteAlbumQuery] = useQuery({
     query: GET_ALBUM,
     variables: { id },
   });
 
-  const [photosResult, reexecutePhotosQuery] = useQuery({
+  const [{ data: photosData, fetching: photosFetching }, reexecutePhotosQuery] = useQuery({
     query: GET_PHOTOS,
-    variables: { first: PAGE_SIZE, page: currentPage, albumId: id },
+    variables: { first: PAGE_SIZE, after: endCursor, albumId: id },
   });
 
   const [, updateAlbum] = useMutation(UPDATE_ALBUM);
@@ -72,20 +74,25 @@ function AlbumDetailPageInner({
   const [removeResult, removePhotosFromAlbum] = useMutation(REMOVE_PHOTOS_FROM_ALBUM);
 
   const album = albumResult.data?.album;
-  const connection = photosResult.data?.photos;
 
-  const photos: PhotoData[] =
-    connection?.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+  // Sync accumulated photo state
+  useEffect(() => {
+    const conn = photosData?.photos;
+    if (!conn) return;
+    const newPhotos: PhotoData[] = conn.edges?.map((e: { node: PhotoData }) => e.node) ?? [];
+    const cursor = conn.pageInfo?.endCursor ?? null;
+    const hasMore = conn.pageInfo?.hasNextPage ?? false;
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(page));
-    router.push(`/albums/${id}?${params.toString()}`, { scroll: false });
-  };
+    setPhotos((prev) => (endCursor === null ? newPhotos : [...prev, ...newPhotos]));
+    setEndCursor(cursor);
+    setHasNextPage(hasMore);
+  }, [photosData, endCursor]);
 
-  const totalCount = connection?.totalCount ?? 0;
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const handleLoadMore = useCallback(() => {
+    if (!photosFetching && hasNextPage) {
+      reexecutePhotosQuery({ requestPolicy: 'network-only' });
+    }
+  }, [photosFetching, hasNextPage, reexecutePhotosQuery]);
 
   const isOwner = user?.username === album?.user?.username;
   const isCommunityAlbum = !!album?.communityId;
@@ -93,9 +100,9 @@ function AlbumDetailPageInner({
   const isCommunityAdmin = myCommunityRole === 'owner' || myCommunityRole === 'admin';
   const isSuperuser = user?.role === 'superuser';
   const canAddPhotos = isCommunityAlbum
-    ? isSuperuser || isCommunityAdmin || !!myCommunityRole // any active member; superuser always can
+    ? isSuperuser || isCommunityAdmin || !!myCommunityRole
     : isOwner;
-  const canManageAlbum = isCommunityAlbum ? (isSuperuser || isCommunityAdmin) : isOwner;
+  const canManageAlbum = isCommunityAlbum ? isSuperuser || isCommunityAdmin : isOwner;
 
   const openEdit = () => {
     setEditTitle(album?.title ?? '');
@@ -127,7 +134,9 @@ function AlbumDetailPageInner({
   };
 
   const handlePhotosAdded = () => {
-    setCurrentPage(1);
+    setPhotos([]);
+    setEndCursor(null);
+    setHasNextPage(true);
     reexecuteAlbumQuery({ requestPolicy: 'network-only' });
     reexecutePhotosQuery({ requestPolicy: 'network-only' });
   };
@@ -145,8 +154,6 @@ function AlbumDetailPageInner({
       reexecutePhotosQuery({ requestPolicy: 'network-only' });
     }
   };
-
-  // ─── Loading / Not Found ────────────────────────────────────────────────
 
   if (albumResult.fetching) {
     return (
@@ -174,8 +181,7 @@ function AlbumDetailPageInner({
     );
   }
 
-  const displayName =
-    album.user.profile?.displayName ?? album.user.username;
+  const displayName = album.user.profile?.displayName ?? album.user.username;
 
   return (
     <div className={styles.page}>
@@ -199,10 +205,7 @@ function AlbumDetailPageInner({
             </div>
             {canAddPhotos && (
               <div className={styles.ownerActions}>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setShowAddPhotos(true)}
-                >
+                <button className="btn btn-primary" onClick={() => setShowAddPhotos(true)}>
                   {isCommunityAlbum ? '+ Add from My Photos' : '+ Add Photos'}
                 </button>
                 {!isCommunityAlbum && (
@@ -220,47 +223,33 @@ function AlbumDetailPageInner({
                 <button className="btn btn-secondary" onClick={openEdit}>
                   Edit
                 </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowDelete(true)}
-                >
+                <button className="btn btn-secondary" onClick={() => setShowDelete(true)}>
                   Delete
                 </button>
               </div>
             )}
           </div>
 
-          {album.description && (
-            <p className={styles.albumDesc}>{album.description}</p>
-          )}
+          {album.description && <p className={styles.albumDesc}>{album.description}</p>}
 
           <div className={styles.albumMeta}>
             {isCommunityAlbum && album.community ? (
               <>
                 <span>
                   Community:{' '}
-                  <Link href={`/communities/${album.community.slug}`}>
-                    {album.community.name}
-                  </Link>
+                  <Link href={`/communities/${album.community.slug}`}>{album.community.name}</Link>
                 </span>
                 <span>
-                  created by{' '}
-                  <Link href={`/u/${album.user.username}/photos`}>
-                    {displayName}
-                  </Link>
+                  created by <Link href={`/u/${album.user.username}/photos`}>{displayName}</Link>
                 </span>
               </>
             ) : (
               <span>
-                by{' '}
-                <Link href={`/u/${album.user.username}/photos`}>
-                  {displayName}
-                </Link>
+                by <Link href={`/u/${album.user.username}/photos`}>{displayName}</Link>
               </span>
             )}
             <span>
-              📷 {album.photoCount}{' '}
-              {album.photoCount === 1 ? 'photo' : 'photos'}
+              📷 {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}
             </span>
           </div>
         </div>
@@ -269,7 +258,9 @@ function AlbumDetailPageInner({
         <div className={styles.section}>
           {showRemovePhotos && selectedPhotoIds.size > 0 && (
             <div className={styles.removeBar}>
-              <span>{selectedPhotoIds.size} photo{selectedPhotoIds.size !== 1 ? 's' : ''} selected</span>
+              <span>
+                {selectedPhotoIds.size} photo{selectedPhotoIds.size !== 1 ? 's' : ''} selected
+              </span>
               <button
                 className={`btn btn-primary ${styles.dangerBtn}`}
                 onClick={handleRemovePhotos}
@@ -279,11 +270,12 @@ function AlbumDetailPageInner({
               </button>
             </div>
           )}
-          <PhotoGrid
+          <InfinitePhotoGrid
             photos={photos}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
+            endCursor={endCursor}
+            hasNextPage={hasNextPage}
+            onLoadMore={handleLoadMore}
+            loading={photosFetching}
             viewMode={showRemovePhotos ? 'list' : 'grid'}
             selectable={showRemovePhotos}
             selectedIds={selectedPhotoIds}
@@ -331,7 +323,7 @@ function AlbumDetailPageInner({
                 />
               </div>
 
-              {/* Cover Photo */}
+              {/* Cover Photo — use currently loaded photos */}
               <div style={{ marginBottom: 12 }}>
                 <span className={styles.coverLabel}>Cover Photo</span>
                 {photos.length > 0 ? (
@@ -422,14 +414,11 @@ function AlbumDetailPageInner({
             <div className={styles.modal}>
               <h2 className={styles.modalTitle}>Delete Album?</h2>
               <p style={{ marginBottom: '16px', fontSize: '0.9375rem' }}>
-                This will delete the album &ldquo;{album.title}&rdquo;.
-                Photos in the album will not be deleted.
+                This will delete the album &ldquo;{album.title}&rdquo;. Photos in the album will not
+                be deleted.
               </p>
               <div className={styles.modalActions}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowDelete(false)}
-                >
+                <button className="btn btn-secondary" onClick={() => setShowDelete(false)}>
                   Cancel
                 </button>
                 <button
@@ -440,9 +429,7 @@ function AlbumDetailPageInner({
                   {deleteResult.fetching ? 'Deleting…' : 'Delete Album'}
                 </button>
               </div>
-              {deleteResult.error && (
-                <p className={styles.error}>{deleteResult.error.message}</p>
-              )}
+              {deleteResult.error && <p className={styles.error}>{deleteResult.error.message}</p>}
             </div>
           </div>
         )}
@@ -451,9 +438,7 @@ function AlbumDetailPageInner({
         {showAddPhotos && (
           <AddPhotosModal
             albumId={id}
-            existingPhotoIds={
-              new Set(photos.map((p: PhotoData) => p.id))
-            }
+            existingPhotoIds={new Set(photos.map((p: PhotoData) => p.id))}
             onClose={() => setShowAddPhotos(false)}
             onAdded={handlePhotosAdded}
             isCommunityAlbum={isCommunityAlbum}
