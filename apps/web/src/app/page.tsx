@@ -47,7 +47,7 @@ type SortOption =
   | 'popular_all'
   | 'random';
 
-type SortTone = 'neutral' | 'warning' | 'accent' | 'success';
+type SortTone = 'recent' | 'today' | 'week' | 'month' | 'all' | 'random';
 
 const SORT_OPTIONS: {
   value: SortOption;
@@ -55,12 +55,12 @@ const SORT_OPTIONS: {
   Icon: LucideIcon;
   tone: SortTone;
 }[] = [
-  { value: 'recent', label: 'Recent', Icon: Clock, tone: 'neutral' },
-  { value: 'popular_day', label: 'Today', Icon: Sun, tone: 'warning' },
-  { value: 'popular_week', label: 'This Week', Icon: CalendarDays, tone: 'accent' },
-  { value: 'popular_month', label: 'This Month', Icon: Calendar, tone: 'neutral' },
-  { value: 'popular_all', label: 'All Time', Icon: Trophy, tone: 'success' },
-  { value: 'random', label: 'Random', Icon: Shuffle, tone: 'neutral' },
+  { value: 'recent', label: 'Recent', Icon: Clock, tone: 'recent' },
+  { value: 'popular_day', label: 'Today', Icon: Sun, tone: 'today' },
+  { value: 'popular_week', label: 'This Week', Icon: CalendarDays, tone: 'week' },
+  { value: 'popular_month', label: 'This Month', Icon: Calendar, tone: 'month' },
+  { value: 'popular_all', label: 'All Time', Icon: Trophy, tone: 'all' },
+  { value: 'random', label: 'Random', Icon: Shuffle, tone: 'random' },
 ];
 
 interface TypeaheadInputProps<T> {

@@ -428,18 +428,26 @@
   color: inherit;
 }
 
-/* Idle-state tone classes. Active pills override via .sortPillActive (above). */
-.sortPillTone_neutral .sortPillIcon {
-  color: var(--color-text-muted);
+/* Idle-state tone classes — one distinct hue per sort option (Option A).
+   Active pills override via .sortPillActive (above), which sets `color`
+   on the pill so the icon's currentColor strokes follow automatically. */
+.sortPillTone_recent .sortPillIcon {
+  color: #9ca3af; /* slate-400 — neutral, "just-happened" */
 }
-.sortPillTone_warning .sortPillIcon {
-  color: var(--color-warning);
+.sortPillTone_today .sortPillIcon {
+  color: #fbbf24; /* amber-400 — sunny */
 }
-.sortPillTone_accent .sortPillIcon {
-  color: var(--color-accent);
+.sortPillTone_week .sortPillIcon {
+  color: #fb923c; /* orange-400 — distinct from amber */
 }
-.sortPillTone_success .sortPillIcon {
-  color: var(--color-success);
+.sortPillTone_month .sortPillIcon {
+  color: #a78bfa; /* violet-400 */
+}
+.sortPillTone_all .sortPillIcon {
+  color: #34d399; /* emerald-400 — achievement */
+}
+.sortPillTone_random .sortPillIcon {
+  color: #60a5fa; /* blue-400 — playful */
 }
 
 .viewToggle {
