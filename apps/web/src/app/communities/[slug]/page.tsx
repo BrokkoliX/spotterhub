@@ -7,6 +7,7 @@ import { useMutation } from 'urql';
 
 import { ImageUploader } from '@/components/ImageUploader';
 import { ReportButton } from '@/components/ReportButton';
+import { CommunityForumCategoryList } from '@/components/forum';
 import { useAuth, type User } from '@/lib/auth';
 import {
   BAN_COMMUNITY_MEMBER,
@@ -21,7 +22,11 @@ import {
   UPDATE_COMMUNITY_MEMBER_ROLE,
   UPDATE_COMMUNITY,
 } from '@/lib/queries';
-import type { CommunityQuery, UpdateCommunityInput, CommunityVisibility } from '@/lib/generated/graphql';
+import type {
+  CommunityQuery,
+  UpdateCommunityInput,
+  CommunityVisibility,
+} from '@/lib/generated/graphql';
 import {
   useCommunityQuery,
   useGetCommunityEventsQuery,
@@ -33,7 +38,8 @@ import styles from './page.module.css';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const CLOUDFRONT_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
+const CLOUDFRONT_HOST =
+  process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
 
 function fixLocalhostUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -103,7 +109,8 @@ export default function CommunityPage() {
   const community = data?.community;
 
   if (fetching && !data) return <div className={styles.loading}>Loading…</div>;
-  if (!fetching && data && !community) return <div className={styles.empty}>Community not found.</div>;
+  if (!fetching && data && !community)
+    return <div className={styles.empty}>Community not found.</div>;
   if (!community) return <div className={styles.loading}>Loading…</div>;
 
   const myRole = community.myMembership?.role;
@@ -229,9 +236,7 @@ export default function CommunityPage() {
 
       {/* Tab Content */}
       <div className={styles.tabContent}>
-        {activeTab === 'photos' && (
-          <MagazineLayout community={community} slug={slug} />
-        )}
+        {activeTab === 'photos' && <MagazineLayout community={community} slug={slug} />}
         {activeTab === 'albums' && (
           <AlbumsTab
             albums={community.albums}
@@ -249,12 +254,8 @@ export default function CommunityPage() {
             myRole={myRole ?? 'member'}
           />
         )}
-        {activeTab === 'moderation' && canEdit && (
-          <ModerationTab communityId={community.id} />
-        )}
-        {activeTab === 'forum' && (
-          <ForumTab slug={slug} />
-        )}
+        {activeTab === 'moderation' && canEdit && <ModerationTab communityId={community.id} />}
+        {activeTab === 'forum' && <ForumTab community={community} slug={slug} isAdmin={isAdmin} />}
         {activeTab === 'events' && (
           <EventsTab slug={slug} communityId={community.id} isAdmin={canEdit} />
         )}
@@ -271,7 +272,9 @@ export default function CommunityPage() {
                 input: { mimeType: file.type, fileSizeBytes: file.size },
               });
               if (urlResult.error || !urlResult.data?.getUploadUrl) {
-                throw new Error(urlResult.error?.graphQLErrors?.[0]?.message || 'Failed to get upload URL');
+                throw new Error(
+                  urlResult.error?.graphQLErrors?.[0]?.message || 'Failed to get upload URL',
+                );
               }
               const { url: presignedUrl, key } = urlResult.data.getUploadUrl;
               const uploadRes = await fetch(presignedUrl, {
@@ -287,7 +290,9 @@ export default function CommunityPage() {
                 input: { mimeType: file.type, fileSizeBytes: file.size },
               });
               if (urlResult.error || !urlResult.data?.getUploadUrl) {
-                throw new Error(urlResult.error?.graphQLErrors?.[0]?.message || 'Failed to get upload URL');
+                throw new Error(
+                  urlResult.error?.graphQLErrors?.[0]?.message || 'Failed to get upload URL',
+                );
               }
               const { url: presignedUrl, key } = urlResult.data.getUploadUrl;
               const uploadRes = await fetch(presignedUrl, {
@@ -433,7 +438,9 @@ function HeroSection({
               <div className={styles.heroMeta}>
                 {community.location && <span>📍 {community.location}</span>}
                 <span>👥 {community.memberCount} members</span>
-                <span>{community.visibility === 'invite_only' ? '🔒 Invite Only' : '🌐 Public'}</span>
+                <span>
+                  {community.visibility === 'invite_only' ? '🔒 Invite Only' : '🌐 Public'}
+                </span>
                 {community.category && <span>📂 {community.category}</span>}
               </div>
             </div>
@@ -449,14 +456,10 @@ function HeroSection({
               🛡️ Admin
             </Link>
           )}
-          {user && (
-            <ReportButton targetType="community" targetId={community.id} />
-          )}
+          {user && <ReportButton targetType="community" targetId={community.id} />}
         </div>
 
-        {community.description && (
-          <p className={styles.heroDesc}>{community.description}</p>
-        )}
+        {community.description && <p className={styles.heroDesc}>{community.description}</p>}
 
         <div className={styles.heroActions}>
           {ready && user && (
@@ -516,17 +519,11 @@ function MagazineLayout({
       <div className={styles.mainColumn}>
         {/* Photo Grid */}
         <div>
-          <div className={styles.sectionTitle}>
-            📷 Recent Photos
-          </div>
+          <div className={styles.sectionTitle}>📷 Recent Photos</div>
           {photos.length > 0 ? (
             <div className={styles.photoGrid}>
               {photos.slice(0, 12).map((photo) => (
-                <Link
-                  key={photo.id}
-                  href={`/photos/${photo.id}`}
-                  className={styles.photoItem}
-                >
+                <Link key={photo.id} href={`/photos/${photo.id}`} className={styles.photoItem}>
                   <img
                     src={
                       photo.variants?.find((v) => v.variantType === 'thumbnail')?.url ??
@@ -601,14 +598,9 @@ function ForumActivity({
   const categories = forumData?.forumCategories ?? [];
   const recentThreads = categories
     .flatMap((c) =>
-      c.latestThread
-        ? [{ ...c.latestThread, categorySlug: c.slug, categoryName: c.name }]
-        : [],
+      c.latestThread ? [{ ...c.latestThread, categorySlug: c.slug, categoryName: c.name }] : [],
     )
-    .sort(
-      (a, b) =>
-        new Date(b.lastPostAt).getTime() - new Date(a.lastPostAt).getTime(),
-    )
+    .sort((a, b) => new Date(b.lastPostAt).getTime() - new Date(a.lastPostAt).getTime())
     .slice(0, 6);
 
   return (
@@ -691,7 +683,9 @@ function MembersPreview({ community }: { community: NonNullable<CommunityQuery['
             )}
           </>
         ) : (
-          <div className={styles.empty} style={{ padding: '16px 0' }}>No members yet.</div>
+          <div className={styles.empty} style={{ padding: '16px 0' }}>
+            No members yet.
+          </div>
         )}
       </div>
     </div>
@@ -700,13 +694,7 @@ function MembersPreview({ community }: { community: NonNullable<CommunityQuery['
 
 // ─── Events Preview (Sidebar) ────────────────────────────────────────────────
 
-function EventsPreview({
-  slug,
-  communityId,
-}: {
-  slug: string;
-  communityId: string;
-}) {
+function EventsPreview({ slug, communityId }: { slug: string; communityId: string }) {
   const [{ data }] = useGetCommunityEventsQuery({
     variables: { communityId, first: 3 },
     requestPolicy: 'cache-and-network',
@@ -750,7 +738,9 @@ function EventsPreview({
             </Link>
           </>
         ) : (
-          <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+          <div
+            style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}
+          >
             No upcoming events.
           </div>
         )}
@@ -790,15 +780,28 @@ function EventsTab({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
         <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>📅 Upcoming Events</div>
-        <Link href={`/communities/${slug}/events`} className="btn btn-secondary" style={{ fontSize: '0.8125rem' }}>
+        <Link
+          href={`/communities/${slug}/events`}
+          className="btn btn-secondary"
+          style={{ fontSize: '0.8125rem' }}
+        >
           View All Events
         </Link>
       </div>
 
       {fetching && !data && (
-        <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>Loading…</div>
+        <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>
+          Loading…
+        </div>
       )}
 
       {!fetching && events.length === 0 && (
@@ -810,7 +813,8 @@ function EventsTab({
               Create one from the{' '}
               <Link href={`/communities/${slug}/events`} style={{ color: 'var(--color-accent)' }}>
                 events page
-              </Link>.
+              </Link>
+              .
             </div>
           )}
         </div>
@@ -834,13 +838,22 @@ function EventsTab({
         >
           <div style={{ fontSize: '1.5rem', flexShrink: 0 }}>📅</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: 2 }}>{event.title}</div>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: 2 }}>
+              {event.title}
+            </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
               {formatDate(event.startsAt)}
               {event.location && ` · ${event.location}`}
             </div>
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', flexShrink: 0, textAlign: 'right' }}>
+          <div
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--color-text-muted)',
+              flexShrink: 0,
+              textAlign: 'right',
+            }}
+          >
             {event.attendeeCount} going
             {event.isFull && <span style={{ color: '#f87171', display: 'block' }}>Full</span>}
           </div>
@@ -852,17 +865,41 @@ function EventsTab({
 
 // ─── Forum Tab ───────────────────────────────────────────────────────────────
 
-function ForumTab({ slug }: { slug: string }) {
+function ForumTab({
+  community,
+  slug,
+  isAdmin,
+}: {
+  community: NonNullable<CommunityQuery['community']>;
+  slug: string;
+  isAdmin: boolean;
+}) {
   return (
-    <div style={{ textAlign: 'center', padding: '48px 0' }}>
-      <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>💬</div>
-      <div style={{ fontWeight: 600, fontSize: '1.125rem', marginBottom: 8 }}>Community Forum</div>
-      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: 20 }}>
-        Discuss topics, share tips, and connect with members.
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>💬 Forum</div>
+        <Link
+          href={`/communities/${slug}/forum`}
+          className="btn btn-secondary"
+          style={{ fontSize: '0.8125rem' }}
+        >
+          View as full page →
+        </Link>
       </div>
-      <Link href={`/communities/${slug}/forum`} className="btn btn-primary">
-        Open Forum
-      </Link>
+      <CommunityForumCategoryList
+        communityId={community.id}
+        communitySlug={slug}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
@@ -907,8 +944,17 @@ function AlbumsTab({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Albums ({albums?.totalCount ?? 0})</h2>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>
+          Albums ({albums?.totalCount ?? 0})
+        </h2>
         {isAdmin && (
           <button
             className="btn btn-primary"
@@ -952,7 +998,11 @@ function AlbumsTab({
             <button type="submit" className="btn btn-primary" disabled={creating}>
               {creating ? 'Creating…' : 'Create'}
             </button>
-            <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowCreate(false)}
+            >
               Cancel
             </button>
           </div>
@@ -967,11 +1017,7 @@ function AlbumsTab({
 
       <div className={styles.albumGrid}>
         {albumEdges.map(({ node }) => (
-          <Link
-            key={node.id}
-            href={`/albums/${node.id}`}
-            className={styles.albumCard}
-          >
+          <Link key={node.id} href={`/albums/${node.id}`} className={styles.albumCard}>
             <div className={styles.albumCover}>
               {node.coverPhoto ? (
                 <img
@@ -1008,7 +1054,9 @@ function MembersTab({
   isAdmin,
   myRole,
 }: {
-  members: NonNullable<NonNullable<CommunityQuery['community']>['members']>['edges'][number]['node'][];
+  members: NonNullable<
+    NonNullable<CommunityQuery['community']>['members']
+  >['edges'][number]['node'][];
   totalCount: number;
   communityId: string;
   isAdmin: boolean;
@@ -1048,7 +1096,8 @@ function MembersTab({
       <h2 className={styles.memberListTitle}>Members ({totalCount})</h2>
       {isAdmin && (
         <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
-          Admins can promote members to moderator or admin, or demote them. Owners cannot be modified.
+          Admins can promote members to moderator or admin, or demote them. Owners cannot be
+          modified.
         </div>
       )}
       <div className={styles.memberGrid}>
@@ -1058,10 +1107,7 @@ function MembersTab({
 
           return (
             <div key={member.id} className={styles.memberCard}>
-              <Link
-                href={`/u/${member.user.username}/photos`}
-                className={styles.memberInfo}
-              >
+              <Link href={`/u/${member.user.username}/photos`} className={styles.memberInfo}>
                 <div className={styles.memberAvatarLarge}>
                   {fixLocalhostUrl(member.user.profile?.avatarUrl) ? (
                     <img src={fixLocalhostUrl(member.user.profile?.avatarUrl)!} alt="" />
@@ -1073,7 +1119,9 @@ function MembersTab({
                   {member.user.profile?.displayName || member.user.username}
                   <RoleBadge role={member.role} />
                   {member.status === 'banned' && (
-                    <span style={{ color: '#f87171', fontSize: '0.75rem', fontWeight: 500 }}>banned</span>
+                    <span style={{ color: '#f87171', fontSize: '0.75rem', fontWeight: 500 }}>
+                      banned
+                    </span>
                   )}
                 </div>
               </Link>
@@ -1105,10 +1153,7 @@ function MembersTab({
                       Unban
                     </button>
                   )}
-                  <button
-                    className={styles.actionBtn}
-                    onClick={() => handleKick(member.user.id)}
-                  >
+                  <button className={styles.actionBtn} onClick={() => handleKick(member.user.id)}>
                     Kick
                   </button>
                 </div>
@@ -1175,9 +1220,7 @@ function ModerationTab({ communityId }: { communityId: string }) {
               <span style={{ color: 'var(--color-text-muted)' }}> — {log.reason}</span>
             )}
           </div>
-          <div className={styles.logTime}>
-            {new Date(log.createdAt).toLocaleString()}
-          </div>
+          <div className={styles.logTime}>{new Date(log.createdAt).toLocaleString()}</div>
         </div>
       ))}
     </div>
@@ -1230,7 +1273,9 @@ function SettingsTab({
     });
 
     setSaving(false);
-    const err = result as { error?: { message: string; graphQLErrors?: Array<{ message: string }> } };
+    const err = result as {
+      error?: { message: string; graphQLErrors?: Array<{ message: string }> };
+    };
     if (err.error) {
       setError(err.error.graphQLErrors?.[0]?.message || err.error.message);
     } else {
@@ -1365,11 +1410,7 @@ function SettingsTab({
               </button>
             </div>
             <div style={{ marginTop: 8 }}>
-              <button
-                className="btn btn-secondary"
-                onClick={onGenerateInvite}
-                type="button"
-              >
+              <button className="btn btn-secondary" onClick={onGenerateInvite} type="button">
                 Regenerate Code
               </button>
             </div>

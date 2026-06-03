@@ -18,3 +18,6 @@ export type { PostListProps, PostWithReplies } from './PostList';
 
 export { ReplyComposer } from './ReplyComposer';
 export type { ReplyComposerProps } from './ReplyComposer';
+
+export { CommunityForumCategoryList } from './CommunityForumCategoryList';
+export type { CommunityForumCategoryListProps } from './CommunityForumCategoryList';
