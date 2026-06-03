@@ -10,17 +10,13 @@
 .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 12px; flex-wrap: wrap; }
 .title { font-size: 1.5rem; font-weight: 700; }
 
-/* ─── Category list ──────────────────────────────────────────────────── */
-.categoryList { display: flex; flex-direction: column; gap: 12px; }
-.categoryCard { display: flex; gap: 16px; align-items: flex-start; padding: 16px 20px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-sm); text-decoration: none; color: inherit; transition: border-color 0.15s; }
-.categoryCard:hover { border-color: var(--color-accent); }
-.categoryIcon { width: 40px; height: 40px; border-radius: 8px; background: color-mix(in srgb, var(--color-accent) 15%, transparent); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
-.categoryBody { flex: 1; min-width: 0; }
-.categoryName { font-weight: 600; font-size: 1rem; margin-bottom: 2px; }
-.categoryDesc { font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: 8px; }
-.categoryMeta { display: flex; gap: 16px; font-size: 0.75rem; color: var(--color-text-muted); }
-.categoryLatest { text-align: right; flex-shrink: 0; min-width: 160px; font-size: 0.75rem; color: var(--color-text-muted); }
-.categoryLatestTitle { color: var(--color-text); font-size: 0.8125rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+/* ─── Category list ───────────────────────────────────────────────────
+ * Category-list classes (.categoryList, .categoryCard, .categoryIcon,
+ * .categoryBody, .categoryName, .categoryDesc, .categoryMeta,
+ * .categoryLatest, .categoryLatestTitle) live in
+ * src/components/forum/forum.module.css since they are owned by the
+ * shared CommunityForumCategoryList component used by this route.
+ */
 
 /* ─── Thread list ────────────────────────────────────────────────────── */
 .threadList { display: flex; flex-direction: column; gap: 2px; }
