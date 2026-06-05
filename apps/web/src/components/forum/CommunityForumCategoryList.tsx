@@ -14,7 +14,9 @@ import categoryStyles from './communityForumCategoryList.module.css';
 type ForumCategory = ForumCategoriesQuery['forumCategories'][number];
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

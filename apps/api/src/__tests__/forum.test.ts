@@ -822,3 +822,82 @@ describe('deleteForumThread', () => {
     expect((res.body as any).singleResult.errors[0].extensions.code).toBe('FORBIDDEN');
   });
 });
+
+// ─── Date Serialization (regression) ────────────────────────────────────────
+// GraphQL defaults to coercing Date objects via Date.prototype.toString(),
+// which produces strings like "Wed Jun 05 2026 ..." that some browsers
+// (notably Safari) fail to parse, surfacing as "Invalid Date" in the UI.
+// Forum field resolvers explicitly call .toISOString() to avoid this. These
+// tests pin that contract.
+describe('forum date serialization', () => {
+  const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+  function expectIso(value: unknown) {
+    expect(typeof value).toBe('string');
+    expect(value as string).toMatch(ISO_8601);
+    expect(Number.isNaN(new Date(value as string).getTime())).toBe(false);
+  }
+
+  it('serializes ForumCategory createdAt/updatedAt as ISO 8601 strings', async () => {
+    const { community } = await createCommunityWithMembers();
+    await createCategory(community.id);
+
+    const QUERY = `
+      query ($communityId: ID!) {
+        forumCategories(communityId: $communityId) { id createdAt updatedAt }
+      }
+    `;
+    const res = await server.executeOperation(
+      { query: QUERY, variables: { communityId: community.id } },
+      ctx(null),
+    );
+    const cats = (res.body as any).singleResult.data.forumCategories;
+    expect(cats).toHaveLength(1);
+    expectIso(cats[0].createdAt);
+    expectIso(cats[0].updatedAt);
+  });
+
+  it('serializes ForumThread createdAt/updatedAt/lastPostAt as ISO 8601 strings', async () => {
+    const { community } = await createCommunityWithMembers();
+    const cat = await createCategory(community.id);
+    const thread = await createThread(cat.id);
+
+    const QUERY = `
+      query ($id: ID!) {
+        forumThread(id: $id) { id createdAt updatedAt lastPostAt }
+      }
+    `;
+    const res = await server.executeOperation(
+      { query: QUERY, variables: { id: thread.id } },
+      ctx(null),
+    );
+    const t = (res.body as any).singleResult.data.forumThread;
+    expectIso(t.createdAt);
+    expectIso(t.updatedAt);
+    expectIso(t.lastPostAt);
+  });
+
+  it('serializes ForumPost createdAt/updatedAt as ISO 8601 strings', async () => {
+    const { community } = await createCommunityWithMembers();
+    const cat = await createCategory(community.id);
+    const thread = await createThread(cat.id);
+
+    const QUERY = `
+      query ($threadId: ID!) {
+        forumPosts(threadId: $threadId, first: 10) {
+          edges { node { id createdAt updatedAt } }
+        }
+      }
+    `;
+    const res = await server.executeOperation(
+      { query: QUERY, variables: { threadId: thread.id } },
+      ctx(null),
+    );
+    const edges = (res.body as any).singleResult.data.forumPosts.edges;
+    expect(edges.length).toBeGreaterThan(0);
+    for (const { node } of edges) {
+      expectIso(node.createdAt);
+      expectIso(node.updatedAt);
+    }
+  });
+});

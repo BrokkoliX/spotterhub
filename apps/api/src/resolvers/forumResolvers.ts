@@ -15,6 +15,8 @@ import { validateStringLength } from '../utils/validation.js';
 export interface ForumCategoryParent {
   id: string;
   communityId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ForumThreadParent {
@@ -24,6 +26,8 @@ export interface ForumThreadParent {
   isPinned: boolean;
   isLocked: boolean;
   postCount: number;
+  createdAt: Date;
+  updatedAt: Date;
   lastPostAt: Date;
   isDeleted?: boolean;
 }
@@ -34,6 +38,8 @@ export interface ForumPostParent {
   authorId: string;
   parentPostId: string | null;
   isDeleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -861,6 +867,9 @@ export const forumCategoryFieldResolvers = {
       orderBy: { lastPostAt: 'desc' },
     });
   },
+
+  createdAt: (parent: ForumCategoryParent) => parent.createdAt.toISOString(),
+  updatedAt: (parent: ForumCategoryParent) => parent.updatedAt.toISOString(),
 };
 
 export const forumThreadFieldResolvers = {
@@ -878,6 +887,10 @@ export const forumThreadFieldResolvers = {
       orderBy: { createdAt: 'asc' },
     });
   },
+
+  createdAt: (parent: ForumThreadParent) => parent.createdAt.toISOString(),
+  updatedAt: (parent: ForumThreadParent) => parent.updatedAt.toISOString(),
+  lastPostAt: (parent: ForumThreadParent) => parent.lastPostAt.toISOString(),
 };
 
 export const forumPostFieldResolvers = {
@@ -892,4 +905,7 @@ export const forumPostFieldResolvers = {
       take: 50,
     });
   },
+
+  createdAt: (parent: ForumPostParent) => parent.createdAt.toISOString(),
+  updatedAt: (parent: ForumPostParent) => parent.updatedAt.toISOString(),
 };

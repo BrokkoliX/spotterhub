@@ -57,7 +57,9 @@ function avatarStyle(author: PostAuthor): CSSProperties | undefined {
 }
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
