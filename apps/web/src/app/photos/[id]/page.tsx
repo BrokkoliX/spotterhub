@@ -13,6 +13,7 @@ import { CommentSection } from '@/components/CommentSection';
 import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { ReportButton } from '@/components/ReportButton';
+import { ShareButton } from '@/components/ShareButton';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
 import {
   GET_PHOTO,
@@ -420,6 +421,14 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 />
                 <span className={styles.stat}>💬 {photo.commentCount}</span>
                 <ReportButton targetType="photo" targetId={photo.id} />
+                <ShareButton
+                  photoId={photo.id}
+                  photoCaption={photo.caption}
+                  photographerName={
+                    photo.photographerName ?? photo.user.profile?.displayName ?? photo.user.username
+                  }
+                  aircraftLabel={photo.aircraft?.registration ?? null}
+                />
                 {canEdit && (
                   <Link
                     href={`/photos/${photo.id}/edit`}

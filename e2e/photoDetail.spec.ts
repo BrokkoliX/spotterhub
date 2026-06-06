@@ -33,6 +33,13 @@ test.describe('Photo Detail Page', () => {
     // Comment form should be present
     await expect(page.getByPlaceholder(/add a comment/i)).toBeVisible();
   });
+
+  test('share button is visible on photo detail page', async ({ page }) => {
+    const firstCardLink = page.locator('[class*="cardFront"] a').first();
+    await firstCardLink.click();
+
+    await expect(page.getByRole('button', { name: /share photo/i })).toBeVisible();
+  });
 });
 
 test.describe('Photo Detail Page — Authenticated Actions', () => {
