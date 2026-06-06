@@ -417,6 +417,9 @@ model Profile {
   lenses             String[] @default([]) @map("lenses")
   experienceLevel ExperienceLevel? @map("experience_level")
   gear            String?
+  instagramHandle String?          @map("instagram_handle")
+  facebookUrl     String?          @map("facebook_url")
+  xHandle         String?          @map("x_handle")
   interests       String[]         @default([])
   favoriteAircraft String[]        @default([]) @map("favorite_aircraft")
   favoriteAirports String[]        @default([]) @map("favorite_airports")

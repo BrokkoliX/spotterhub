@@ -34,6 +34,104 @@ function getBadgeCategoryIcon(category: string): string {
   }
 }
 
+// ─── Social Links ─────────────────────────────────────────────────────────
+
+interface ProfileSocialLinks {
+  instagramHandle?: string | null;
+  facebookUrl?: string | null;
+  xHandle?: string | null;
+}
+
+/**
+ * Render a compact icon-only row of social links beneath the profile header.
+ * Returns null when the user has not set any social link, so the row only
+ * occupies vertical space when there is something to show.
+ *
+ * Outbound links use rel="me noopener noreferrer" — `me` is the standard
+ * IndieWeb annotation for self-identifying profile links and is harmless on
+ * platforms that don't consume it; `noopener noreferrer` is required when
+ * opening user-supplied URLs in a new tab.
+ */
+function SocialLinks({ profile }: { profile: ProfileSocialLinks }) {
+  const items: Array<{ key: string; label: string; href: string; icon: React.ReactElement }> = [];
+
+  if (profile.instagramHandle) {
+    items.push({
+      key: 'instagram',
+      label: `Instagram: @${profile.instagramHandle}`,
+      href: `https://www.instagram.com/${encodeURIComponent(profile.instagramHandle)}/`,
+      icon: <InstagramIcon />,
+    });
+  }
+  if (profile.xHandle) {
+    items.push({
+      key: 'x',
+      label: `X: @${profile.xHandle}`,
+      href: `https://x.com/${encodeURIComponent(profile.xHandle)}`,
+      icon: <XIcon />,
+    });
+  }
+  if (profile.facebookUrl) {
+    items.push({
+      key: 'facebook',
+      label: 'Facebook',
+      href: profile.facebookUrl,
+      icon: <FacebookIcon />,
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className={styles.socialLinks} aria-label="Social media links">
+      {items.map((item) => (
+        <a
+          key={item.key}
+          href={item.href}
+          target="_blank"
+          rel="me noopener noreferrer"
+          className={styles.socialLink}
+          aria-label={item.label}
+          title={item.label}
+        >
+          {item.icon}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// Inline SVG icons keep the bundle small (no icon library) and inherit
+// `currentColor` so they restyle automatically with the surrounding text.
+
+function InstagramIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.53 3H20.5l-6.55 7.49L21.75 21h-6.03l-4.72-6.18L5.6 21H2.62l7.01-8.02L2.25 3h6.18l4.27 5.65L17.53 3Zm-1.06 16.2h1.66L7.6 4.7H5.84l10.63 14.5Z" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.87.24-1.46 1.49-1.46H17V4.45A21 21 0 0 0 14.86 4.3c-2.13 0-3.6 1.3-3.6 3.69V10.5H8.6v3h2.66V21h2.24Z" />
+    </svg>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────
+
 export default function UserPhotosPage({ params }: { params: Promise<{ username: string }> }) {
   return (
     <Suspense
@@ -178,6 +276,7 @@ function UserPhotosPageInner({ params }: { params: Promise<{ username: string }>
                 <span className={styles.profileStatValue}>{user.followingCount}</span> following
               </span>
             </div>
+            {user.profile && <SocialLinks profile={user.profile} />}
           </div>
         </div>
 

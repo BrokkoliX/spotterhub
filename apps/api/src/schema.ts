@@ -1903,6 +1903,18 @@ export const typeDefs = gql`
     """
     gear: String
     """
+    Instagram username (bare handle, no leading '@' or URL prefix).
+    """
+    instagramHandle: String
+    """
+    Full URL to the user's Facebook profile or page.
+    """
+    facebookUrl: String
+    """
+    X (formerly Twitter) username (bare handle, no leading '@' or URL prefix).
+    """
+    xHandle: String
+    """
     List of spotting interests (e.g., military, commercial, GA).
     """
     interests: [String!]!
@@ -1940,6 +1952,9 @@ export const typeDefs = gql`
     isPublic: Boolean
     cameraBodies: [String!]
     lenses: [String!]
+    instagramHandle: String
+    facebookUrl: String
+    xHandle: String
   }
 
   # ─── Photo Types ─────────────────────────────────────────────────────────

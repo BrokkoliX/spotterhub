@@ -453,6 +453,9 @@ export const GET_USER = gql`
         isPublic
         cameraBodies
         lenses
+        instagramHandle
+        facebookUrl
+        xHandle
       }
     }
   }
@@ -648,6 +651,9 @@ export const GET_ME = gql`
         isPublic
         cameraBodies
         lenses
+        instagramHandle
+        facebookUrl
+        xHandle
       }
       sellerProfile {
         id
@@ -676,6 +682,9 @@ export const UPDATE_PROFILE = gql`
       isPublic
       cameraBodies
       lenses
+      instagramHandle
+      facebookUrl
+      xHandle
     }
   }
 `;

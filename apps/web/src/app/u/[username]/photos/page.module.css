@@ -54,6 +54,41 @@
   color: var(--color-text);
 }
 
+/* ─── Social Links ────────────────────────────────────────────────────────── */
+
+.socialLinks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.socialLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.socialLink:hover,
+.socialLink:focus-visible {
+  color: var(--color-text);
+  background: var(--color-bg-card);
+  border-color: var(--color-border);
+  transform: translateY(-1px);
+}
+
+.socialLink:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 
 .tabs {

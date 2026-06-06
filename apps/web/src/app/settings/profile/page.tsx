@@ -6,12 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
 import { useAuth } from '@/lib/auth';
-import {
-  GET_ME,
-  GET_UPLOAD_URL,
-  UPDATE_AVATAR,
-  UPDATE_PROFILE,
-} from '@/lib/queries';
+import { GET_ME, GET_UPLOAD_URL, UPDATE_AVATAR, UPDATE_PROFILE } from '@/lib/queries';
 
 import styles from './page.module.css';
 
@@ -30,6 +25,9 @@ interface ProfileData {
   isPublic?: boolean;
   cameraBodies?: string[];
   lenses?: string[];
+  instagramHandle?: string | null;
+  facebookUrl?: string | null;
+  xHandle?: string | null;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -47,7 +45,8 @@ function inputToArray(str: string): string[] {
     .filter(Boolean);
 }
 
-const S3_IMAGES_HOST = process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
+const S3_IMAGES_HOST =
+  process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -70,6 +69,9 @@ export default function ProfileSettingsPage() {
   const [lenses, setLenses] = useState<string[]>([]);
   const [newCameraBody, setNewCameraBody] = useState('');
   const [newLens, setNewLens] = useState('');
+  const [instagramHandle, setInstagramHandle] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [xHandle, setXHandle] = useState('');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -108,6 +110,9 @@ export default function ProfileSettingsPage() {
       setAvatarUrl(p.avatarUrl ?? null);
       setCameraBodies(p.cameraBodies ?? []);
       setLenses(p.lenses ?? []);
+      setInstagramHandle(p.instagramHandle ?? '');
+      setFacebookUrl(p.facebookUrl ?? '');
+      setXHandle(p.xHandle ?? '');
       setFormInitialized(true);
     }
   }, [meResult.data, formInitialized]);
@@ -161,7 +166,9 @@ export default function ProfileSettingsPage() {
         const objectUrl = `${S3_IMAGES_HOST}/${key}`;
         const avatarResult = await executeUpdateAvatar({ avatarUrl: objectUrl });
         if (avatarResult.error) {
-          throw new Error(avatarResult.error.graphQLErrors?.[0]?.message ?? 'Failed to update avatar');
+          throw new Error(
+            avatarResult.error.graphQLErrors?.[0]?.message ?? 'Failed to update avatar',
+          );
         }
 
         setAvatarUrl(objectUrl);
@@ -200,23 +207,46 @@ export default function ProfileSettingsPage() {
           isPublic,
           cameraBodies,
           lenses,
+          // Social links: send raw user input (server normalizes/validates).
+          // An empty string clears the column on the server side.
+          instagramHandle: instagramHandle.trim() || null,
+          facebookUrl: facebookUrl.trim() || null,
+          xHandle: xHandle.trim() || null,
         },
       });
 
       setSaving(false);
 
       if (result.error) {
-        setErrorMsg(
-          result.error.graphQLErrors?.[0]?.message ?? 'Failed to save profile',
-        );
+        setErrorMsg(result.error.graphQLErrors?.[0]?.message ?? 'Failed to save profile');
       } else {
+        // Reflect server-side normalization (e.g. stripped '@', stripped URL
+        // prefix) back into the form so the user sees the canonical value.
+        const saved = result.data?.updateProfile as ProfileData | undefined;
+        if (saved) {
+          setInstagramHandle(saved.instagramHandle ?? '');
+          setFacebookUrl(saved.facebookUrl ?? '');
+          setXHandle(saved.xHandle ?? '');
+        }
         setSuccessMsg('Profile saved successfully!');
         setTimeout(() => setSuccessMsg(null), 3000);
       }
     },
     [
-      displayName, bio, locationRegion, experienceLevel, gear,
-      interests, favoriteAircraft, favoriteAirports, isPublic,
+      displayName,
+      bio,
+      locationRegion,
+      experienceLevel,
+      gear,
+      interests,
+      favoriteAircraft,
+      favoriteAirports,
+      isPublic,
+      cameraBodies,
+      lenses,
+      instagramHandle,
+      facebookUrl,
+      xHandle,
       executeUpdateProfile,
     ],
   );
@@ -257,11 +287,7 @@ export default function ProfileSettingsPage() {
         {/* Avatar */}
         <div className={styles.avatarCard}>
           <div className={styles.avatarPreview}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Your avatar" />
-            ) : (
-              '👤'
-            )}
+            {avatarUrl ? <img src={avatarUrl} alt="Your avatar" /> : '👤'}
           </div>
           <div className={styles.avatarActions}>
             <button
@@ -513,6 +539,68 @@ export default function ProfileSettingsPage() {
               </div>
             </div>
 
+            {/* Social Links */}
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="instagramHandle">
+                Instagram
+              </label>
+              <input
+                id="instagramHandle"
+                type="text"
+                className={styles.input}
+                value={instagramHandle}
+                onChange={(e) => setInstagramHandle(e.target.value)}
+                placeholder="@yourhandle or full profile URL"
+                maxLength={100}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <span className={styles.hint}>
+                Username only — paste the URL and we&apos;ll extract it.
+              </span>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="xHandle">
+                X (Twitter)
+              </label>
+              <input
+                id="xHandle"
+                type="text"
+                className={styles.input}
+                value={xHandle}
+                onChange={(e) => setXHandle(e.target.value)}
+                placeholder="@yourhandle or full profile URL"
+                maxLength={100}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <span className={styles.hint}>
+                Username only — paste the URL and we&apos;ll extract it.
+              </span>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="facebookUrl">
+                Facebook
+              </label>
+              <input
+                id="facebookUrl"
+                type="url"
+                className={styles.input}
+                value={facebookUrl}
+                onChange={(e) => setFacebookUrl(e.target.value)}
+                placeholder="https://www.facebook.com/yourname"
+                maxLength={200}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <span className={styles.hint}>Full Facebook profile or page URL.</span>
+            </div>
+
             <div className={styles.checkboxField}>
               <input
                 id="isPublic"
@@ -527,11 +615,7 @@ export default function ProfileSettingsPage() {
             </div>
 
             <div className={styles.actions}>
-              <button
-                type="submit"
-                className={styles.saveBtn}
-                disabled={saving}
-              >
+              <button type="submit" className={styles.saveBtn} disabled={saving}>
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>

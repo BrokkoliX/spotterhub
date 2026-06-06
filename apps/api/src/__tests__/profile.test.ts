@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-
 import {
   cleanDatabase,
   createTestContext,
@@ -12,7 +11,6 @@ import {
 // ─── Test helpers ───────────────────────────────────────────────────────────
 
 let server: Awaited<ReturnType<typeof setupTestServer>>;
-
 
 beforeAll(async () => {
   server = await setupTestServer();
@@ -39,6 +37,9 @@ const UPDATE_PROFILE = `
       favoriteAircraft
       favoriteAirports
       isPublic
+      instagramHandle
+      facebookUrl
+      xHandle
     }
   }
 `;
@@ -67,6 +68,9 @@ const ME_QUERY = `
         favoriteAircraft
         favoriteAirports
         isPublic
+        instagramHandle
+        facebookUrl
+        xHandle
       }
     }
   }
@@ -74,7 +78,9 @@ const ME_QUERY = `
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-async function createUser(overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {}) {
+async function createUser(
+  overrides: Partial<{ email: string; username: string; cognitoSub: string }> = {},
+) {
   return prisma.user.create({
     data: {
       email: overrides.email ?? 'profileuser@example.com',
@@ -89,7 +95,11 @@ async function createUser(overrides: Partial<{ email: string; username: string; 
 describe('Profile: updateProfile', () => {
   it('creates a profile if none exists', async () => {
     const user = await createUser();
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
       { query: UPDATE_PROFILE, variables: { input: { displayName: 'Test User' } } },
@@ -107,7 +117,11 @@ describe('Profile: updateProfile', () => {
     await prisma.profile.create({
       data: { userId: user.id, displayName: 'Old Name' },
     });
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
       {
@@ -146,7 +160,11 @@ describe('Profile: updateProfile', () => {
     await prisma.profile.create({
       data: { userId: user.id, displayName: 'Alice', bio: 'Hello world', gear: 'Nikon Z9' },
     });
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
       { query: UPDATE_PROFILE, variables: { input: { bio: 'Updated bio' } } },
@@ -162,7 +180,11 @@ describe('Profile: updateProfile', () => {
 
   it('rejects invalid experience level', async () => {
     const user = await createUser();
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
       { query: UPDATE_PROFILE, variables: { input: { experienceLevel: 'expert' } } },
@@ -193,7 +215,11 @@ describe('Profile: updateProfile', () => {
     await prisma.profile.create({
       data: { userId: user.id, interests: ['military'] },
     });
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
       { query: UPDATE_PROFILE, variables: { input: { interests: [] } } },
@@ -205,29 +231,236 @@ describe('Profile: updateProfile', () => {
   });
 });
 
+// ─── Social Links ───────────────────────────────────────────────────────────
+
+describe('Profile: updateProfile social links', () => {
+  it('persists bare handles and a Facebook URL round-trip', async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: UPDATE_PROFILE,
+        variables: {
+          input: {
+            instagramHandle: 'spotter.jane',
+            xHandle: 'spotter_jane',
+            facebookUrl: 'https://www.facebook.com/spotterjane',
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.updateProfile.instagramHandle).toBe('spotter.jane');
+    expect(data.updateProfile.xHandle).toBe('spotter_jane');
+    expect(data.updateProfile.facebookUrl).toBe('https://www.facebook.com/spotterjane');
+  });
+
+  it("strips a leading '@' from handle inputs", async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: UPDATE_PROFILE,
+        variables: { input: { instagramHandle: '@jane', xHandle: '@jane_x' } },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.updateProfile.instagramHandle).toBe('jane');
+    expect(data.updateProfile.xHandle).toBe('jane_x');
+  });
+
+  it('extracts the handle from a pasted profile URL', async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: UPDATE_PROFILE,
+        variables: {
+          input: {
+            instagramHandle: 'https://www.instagram.com/jane.doe/',
+            // Legacy twitter.com URLs are also accepted and normalized to the
+            // bare handle for storage.
+            xHandle: 'https://twitter.com/jane_x?lang=en',
+          },
+        },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.updateProfile.instagramHandle).toBe('jane.doe');
+    expect(data.updateProfile.xHandle).toBe('jane_x');
+  });
+
+  it('treats empty string and null as "clear this field"', async () => {
+    const user = await createUser();
+    await prisma.profile.create({
+      data: {
+        userId: user.id,
+        instagramHandle: 'old_ig',
+        xHandle: 'old_x',
+        facebookUrl: 'https://www.facebook.com/old',
+      },
+    });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: UPDATE_PROFILE,
+        variables: { input: { instagramHandle: '', xHandle: null, facebookUrl: '   ' } },
+      },
+      { contextValue: ctx },
+    );
+
+    const data = (res.body as any).singleResult.data;
+    expect(data.updateProfile.instagramHandle).toBeNull();
+    expect(data.updateProfile.xHandle).toBeNull();
+    expect(data.updateProfile.facebookUrl).toBeNull();
+  });
+
+  it('rejects handles with disallowed characters', async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      { query: UPDATE_PROFILE, variables: { input: { instagramHandle: 'bad name!' } } },
+      { contextValue: ctx },
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeDefined();
+    expect(errors[0].message).toMatch(/Instagram/i);
+    expect(errors[0].extensions?.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('rejects a Facebook URL that is not http(s)', async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: UPDATE_PROFILE,
+        variables: { input: { facebookUrl: 'javascript:alert(1)' } },
+      },
+      { contextValue: ctx },
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeDefined();
+    expect(errors[0].message).toMatch(/Facebook/i);
+    expect(errors[0].extensions?.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('rejects a Facebook URL that is not a parseable URL', async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      { query: UPDATE_PROFILE, variables: { input: { facebookUrl: 'not a url' } } },
+      { contextValue: ctx },
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeDefined();
+    expect(errors[0].extensions?.code).toBe('BAD_USER_INPUT');
+  });
+
+  it('rejects an over-long handle', async () => {
+    const user = await createUser();
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
+
+    const res = await server.executeOperation(
+      {
+        query: UPDATE_PROFILE,
+        variables: { input: { instagramHandle: 'a'.repeat(31) } },
+      },
+      { contextValue: ctx },
+    );
+
+    const errors = (res.body as any).singleResult.errors;
+    expect(errors).toBeDefined();
+    expect(errors[0].extensions?.code).toBe('BAD_USER_INPUT');
+  });
+});
+
 describe('Profile: updateAvatar', () => {
   it('sets avatar URL on existing profile', async () => {
     const user = await createUser();
     await prisma.profile.create({
       data: { userId: user.id, displayName: 'Test' },
     });
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
-      { query: UPDATE_AVATAR, variables: { avatarUrl: 'http://localhost:4566/spotterspace-photos/avatar.jpg' } },
+      {
+        query: UPDATE_AVATAR,
+        variables: { avatarUrl: 'http://localhost:4566/spotterspace-photos/avatar.jpg' },
+      },
       { contextValue: ctx },
     );
 
     const data = (res.body as any).singleResult.data;
-    expect(data.updateAvatar.avatarUrl).toBe('http://localhost:4566/spotterspace-photos/avatar.jpg');
+    expect(data.updateAvatar.avatarUrl).toBe(
+      'http://localhost:4566/spotterspace-photos/avatar.jpg',
+    );
   });
 
   it('creates profile if none exists and sets avatar', async () => {
     const user = await createUser();
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
     const res = await server.executeOperation(
-      { query: UPDATE_AVATAR, variables: { avatarUrl: 'http://localhost:4566/spotterspace-photos/new.jpg' } },
+      {
+        query: UPDATE_AVATAR,
+        variables: { avatarUrl: 'http://localhost:4566/spotterspace-photos/new.jpg' },
+      },
       { contextValue: ctx },
     );
 
@@ -265,14 +498,18 @@ describe('Profile: me query with profile', () => {
         favoriteAircraft: ['787'],
         favoriteAirports: ['EGLL'],
         isPublic: true,
+        instagramHandle: 'bob_spotter',
+        xHandle: 'bob_x',
+        facebookUrl: 'https://www.facebook.com/bobspotter',
       },
     });
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
-    const res = await server.executeOperation(
-      { query: ME_QUERY },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: ME_QUERY }, { contextValue: ctx });
 
     const data = (res.body as any).singleResult.data;
     expect(data.me.profile).toMatchObject({
@@ -286,17 +523,21 @@ describe('Profile: me query with profile', () => {
       favoriteAircraft: ['787'],
       favoriteAirports: ['EGLL'],
       isPublic: true,
+      instagramHandle: 'bob_spotter',
+      xHandle: 'bob_x',
+      facebookUrl: 'https://www.facebook.com/bobspotter',
     });
   });
 
   it('returns null profile when none exists', async () => {
     const user = await createUser();
-    const ctx = createTestContext({ sub: user.cognitoSub, email: user.email, username: user.username });
+    const ctx = createTestContext({
+      sub: user.cognitoSub,
+      email: user.email,
+      username: user.username,
+    });
 
-    const res = await server.executeOperation(
-      { query: ME_QUERY },
-      { contextValue: ctx },
-    );
+    const res = await server.executeOperation({ query: ME_QUERY }, { contextValue: ctx });
 
     const data = (res.body as any).singleResult.data;
     expect(data.me.profile).toBeNull();
