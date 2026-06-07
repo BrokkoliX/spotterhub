@@ -1,0 +1,96 @@
+/* SocialShareIcons — inline row of brand-colored share buttons rendered
+   directly under the photo. Each icon hover-fills with its brand color so
+   the affordance is unmistakable. */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.icon:hover {
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.icon:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.icon:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Brand colors on hover ───────────────────────────────────────────────── */
+
+.facebook:hover {
+  background: #1877f2;
+  border-color: #1877f2;
+}
+
+.x:hover {
+  background: #000;
+  border-color: #000;
+}
+
+.instagram:hover {
+  /* Instagram's signature radial gradient. */
+  background: radial-gradient(
+    circle at 30% 110%,
+    #fdf497 0%,
+    #fdf497 5%,
+    #fd5949 45%,
+    #d6249f 60%,
+    #285aeb 90%
+  );
+  border-color: transparent;
+}
+
+/* ─── Toast ──────────────────────────────────────────────────────────────── */
+
+.toast {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  animation: toastIn 0.18s ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

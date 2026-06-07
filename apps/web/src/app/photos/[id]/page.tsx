@@ -14,6 +14,7 @@ import { FollowButton } from '@/components/FollowButton';
 import { LikeButton } from '@/components/LikeButton';
 import { ReportButton } from '@/components/ReportButton';
 import { ShareButton } from '@/components/ShareButton';
+import { SocialShareIcons } from '@/components/SocialShareIcons';
 import { TopicFollowButton } from '@/components/TopicFollowButton';
 import {
   GET_PHOTO,
@@ -252,6 +253,18 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 <div className={styles.imagePlaceholder}>📷</div>
               )}
             </div>
+
+            {/* Inline social share icons — sit directly under the photo so a
+                visitor can post the page to FB/X (or copy the link for IG)
+                in one click without opening any menu. */}
+            <SocialShareIcons
+              photoId={photo.id}
+              photoCaption={photo.caption}
+              photographerName={
+                photo.photographerName ?? photo.user.profile?.displayName ?? photo.user.username
+              }
+              aircraftLabel={photo.aircraft?.registration ?? null}
+            />
 
             {/* Ad after image */}
             {adData?.adSettings?.slotPhotoDetail && (
