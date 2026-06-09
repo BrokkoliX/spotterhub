@@ -31,10 +31,24 @@ async function gqlFetch<T>(query: string, variables: Record<string, unknown>): P
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(3000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(
+        `[og] GraphQL non-2xx: ${res.status} ${res.statusText} url=${API_URL}/graphql vars=${JSON.stringify(variables)}`,
+      );
+      return null;
+    }
     const json = await res.json();
+    if (json.errors) {
+      console.error(
+        `[og] GraphQL errors: ${JSON.stringify(json.errors)} vars=${JSON.stringify(variables)}`,
+      );
+      return null;
+    }
     return json.data ?? null;
-  } catch {
+  } catch (err) {
+    console.error(
+      `[og] GraphQL fetch threw: ${err instanceof Error ? err.message : String(err)} url=${API_URL}/graphql`,
+    );
     return null;
   }
 }
