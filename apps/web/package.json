@@ -27,6 +27,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-leaflet": "^5.0.0",
+    "server-only": "^0.0.1",
     "supercluster": "^8.0.1",
     "urql": "^5.0.1"
   },

@@ -9,6 +9,7 @@ import { ImageUploader } from '@/components/ImageUploader';
 import { ReportButton } from '@/components/ReportButton';
 import { CommunityForumCategoryList } from '@/components/forum';
 import { useAuth, type User } from '@/lib/auth';
+import { CDN_BASE, fixLocalhostUrl } from '@/lib/image-url';
 import {
   BAN_COMMUNITY_MEMBER,
   CREATE_COMMUNITY_ALBUM,
@@ -35,19 +36,6 @@ import {
 } from '@/lib/generated/graphql';
 
 import styles from './page.module.css';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const CLOUDFRONT_HOST =
-  process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
-
-function fixLocalhostUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  // Replace localhost URLs with the configured CDN host, stripping the bucket name
-  // LocalStack URLs look like: http://localhost:4566/bucket-name/key
-  // CloudFront URLs look like: https://host/key (no bucket name)
-  return url.replace(/^http:\/\/localhost:4566\/[^/]+\//, `${CLOUDFRONT_HOST}/`);
-}
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -154,7 +142,7 @@ export default function CommunityPage() {
         return;
       }
       // Save the S3 object URL as the banner (CloudFront URL, no bucket name in path)
-      const bannerUrl = `${CLOUDFRONT_HOST}/${key}`;
+      const bannerUrl = `${CDN_BASE}/${key}`;
       await updateCommunity({
         id: community.id,
         input: { bannerUrl, avatarUrl: community.avatarUrl ?? null },
@@ -283,7 +271,7 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              return `${CLOUDFRONT_HOST}/${key}`;
+              return `${CDN_BASE}/${key}`;
             }}
             onAvatarUpload={async (file: File) => {
               const urlResult = await getUploadUrl({
@@ -301,7 +289,7 @@ export default function CommunityPage() {
                 headers: { 'Content-Type': file.type },
               });
               if (!uploadRes.ok) throw new Error('Upload failed');
-              return `${CLOUDFRONT_HOST}/${key}`;
+              return `${CDN_BASE}/${key}`;
             }}
             onDelete={async () => {
               if (

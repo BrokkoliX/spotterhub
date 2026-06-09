@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { Analytics } from '@/components/Analytics';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { WEB_BASE } from '@/lib/og';
 import { Providers, type ServerAuthState } from '@/lib/providers';
 
 import './globals.css';
@@ -14,10 +15,27 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'SpotterSpace — Aviation Photography Community',
+  metadataBase: new URL(WEB_BASE),
+  // Per-page generateMetadata returns just the leaf title; this template
+  // appends the brand suffix automatically.
+  title: {
+    default: 'SpotterSpace — Aviation Photography Community',
+    template: '%s — SpotterSpace',
+  },
   description: 'The premier platform for aviation photographers to share, discover, and connect.',
   icons: {
     icon: '/logo.png',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'SpotterSpace',
+    title: 'SpotterSpace — Aviation Photography Community',
+    description: 'The premier platform for aviation photographers to share, discover, and connect.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SpotterSpace — Aviation Photography Community',
+    description: 'The premier platform for aviation photographers to share, discover, and connect.',
   },
 };
 
