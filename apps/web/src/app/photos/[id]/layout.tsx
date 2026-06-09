@@ -18,9 +18,13 @@ interface Props {
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  // Temporary debug log: confirm this function is being called at request
+  // time. Grep CloudWatch logs for "[photo-og]" to verify.
+  console.log('[photo-og] generateMetadata called for id:', id, 'WEB_BASE:', WEB_BASE);
   const data = await fetchPhotoForOG(id);
+  console.log('[photo-og] fetchPhotoForOG result:', data?.photo ? 'found' : 'null');
   if (!data?.photo) {
-    return { title: 'Photo' };
+    return { title: 'Photo', openGraph: { type: 'article' } };
   }
 
   const p = data.photo;

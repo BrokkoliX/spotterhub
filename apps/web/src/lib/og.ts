@@ -1,15 +1,27 @@
 import 'server-only';
 
-import { fixLocalhostUrl, WEB_BASE } from '@/lib/image-url';
+import { fixLocalhostUrl } from '@/lib/image-url';
 
-// Re-export for layouts that import both helpers and fetchers from one place.
-export { fixLocalhostUrl, WEB_BASE };
+// Re-export for layouts that import helpers and fetchers from one place.
+export { fixLocalhostUrl };
 
 // Centralized env-derived constants for Open Graph / Twitter Card metadata.
 // Server-only: the API fetch is server-side and we don't want to leak this
 // module into client bundles.
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+/**
+ * Public base URL of the web app. Used to build absolute canonical URLs in
+ * metadata (og:url, canonical, default OG image fallback).
+ *
+ * Reads `WEB_BASE_URL` first because the production CDK sets that name and
+ * intentionally keeps it off the client bundle (no NEXT_PUBLIC_ prefix).
+ * `NEXT_PUBLIC_WEB_URL` is a client-safe fallback for share buttons; localhost
+ * is the dev fallback.
+ */
+export const WEB_BASE =
+  process.env.WEB_BASE_URL ?? process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000';
 
 async function gqlFetch<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
   try {

@@ -11,13 +11,6 @@ export const CDN_BASE =
   process.env.NEXT_PUBLIC_S3_IMAGES_HOST ?? 'https://d2ur47prd8ljwz.cloudfront.net';
 
 /**
- * Public base URL of the web app. Used to build absolute canonical URLs in
- * metadata (og:url, canonical, default OG image fallback) and to share buttons
- * on the client. Falls back to localhost in dev.
- */
-export const WEB_BASE = process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000';
-
-/**
  * Rewrite LocalStack S3 URLs (http://localhost:4566/bucket/key) to the
  * configured CDN host. In dev, photos come back pointing at LocalStack; for
  * OG metadata (which is fetched by Facebook/Twitter crawlers, not the
