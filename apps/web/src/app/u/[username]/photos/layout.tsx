@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { WEB_BASE, fetchUserForOG } from '@/lib/og';
+import { fetchUserForOG, getWebBase } from '@/lib/og';
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -16,6 +16,7 @@ interface Props {
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
+  const webBase = await getWebBase();
   const data = await fetchUserForOG(username);
   if (!data?.user) {
     return { title: username };
@@ -25,8 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const display = u.profile?.displayName ?? u.username;
   const title = display;
   const description = (u.profile?.bio ?? `Photos by @${u.username} on SpotterSpace`).slice(0, 200);
-  const url = `${WEB_BASE}/u/${encodeURIComponent(u.username)}/photos`;
-  const image = `${WEB_BASE}/opengraph-image`;
+  const url = `${webBase}/u/${encodeURIComponent(u.username)}/photos`;
+  const image = `${webBase}/opengraph-image`;
 
   return {
     title,

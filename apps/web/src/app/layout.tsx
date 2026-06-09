@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { Analytics } from '@/components/Analytics';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
-import { WEB_BASE } from '@/lib/og';
+import { getWebBase } from '@/lib/og';
 import { Providers, type ServerAuthState } from '@/lib/providers';
 
 import './globals.css';
@@ -14,30 +14,40 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 // Always render fresh auth state server-side (no stale data)
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  metadataBase: new URL(WEB_BASE),
-  // Per-page generateMetadata returns just the leaf title; this template
-  // appends the brand suffix automatically.
-  title: {
-    default: 'SpotterSpace — Aviation Photography Community',
-    template: '%s — SpotterSpace',
-  },
-  description: 'The premier platform for aviation photographers to share, discover, and connect.',
-  icons: {
-    icon: '/logo.png',
-  },
-  openGraph: {
-    type: 'website',
-    siteName: 'SpotterSpace',
-    title: 'SpotterSpace — Aviation Photography Community',
+// Request-aware metadata. Using generateMetadata (not a static const) so that
+// metadataBase is derived from the request's host headers in production.
+// The `WEB_BASE_URL` env var is supposed to be set by CDK, but the live task
+// def doesn't include it (CDK/deploy split-brain), so we can't rely on a
+// build-time constant — we have to read the host at request time.
+export async function generateMetadata(): Promise<Metadata> {
+  const webBase = await getWebBase();
+  return {
+    metadataBase: new URL(webBase),
+    // Per-page generateMetadata returns just the leaf title; this template
+    // appends the brand suffix automatically.
+    title: {
+      default: 'SpotterSpace — Aviation Photography Community',
+      template: '%s — SpotterSpace',
+    },
     description: 'The premier platform for aviation photographers to share, discover, and connect.',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'SpotterSpace — Aviation Photography Community',
-    description: 'The premier platform for aviation photographers to share, discover, and connect.',
-  },
-};
+    icons: {
+      icon: '/logo.png',
+    },
+    openGraph: {
+      type: 'website',
+      siteName: 'SpotterSpace',
+      title: 'SpotterSpace — Aviation Photography Community',
+      description:
+        'The premier platform for aviation photographers to share, discover, and connect.',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'SpotterSpace — Aviation Photography Community',
+      description:
+        'The premier platform for aviation photographers to share, discover, and connect.',
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',

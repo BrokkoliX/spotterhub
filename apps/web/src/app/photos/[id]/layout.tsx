@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { WEB_BASE, fetchPhotoForOG, fixLocalhostUrl } from '@/lib/og';
+import { fetchPhotoForOG, fixLocalhostUrl, getWebBase } from '@/lib/og';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -18,9 +18,10 @@ interface Props {
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const webBase = await getWebBase();
   // Temporary debug log: confirm this function is being called at request
   // time. Grep CloudWatch logs for "[photo-og]" to verify.
-  console.log('[photo-og] generateMetadata called for id:', id, 'WEB_BASE:', WEB_BASE);
+  console.log('[photo-og] generateMetadata called for id:', id, 'webBase:', webBase);
   const data = await fetchPhotoForOG(id);
   console.log('[photo-og] fetchPhotoForOG result:', data?.photo ? 'found' : 'null');
   if (!data?.photo) {
@@ -28,8 +29,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // GraphQL error). Include the default site image explicitly — the
     // file-convention auto-injection in app/opengraph-image.tsx is suppressed
     // when a child route's generateMetadata sets its own openGraph block.
-    const url = `${WEB_BASE}/photos/${id}`;
-    const fallbackImage = `${WEB_BASE}/opengraph-image`;
+    const url = `${webBase}/photos/${id}`;
+    const fallbackImage = `${webBase}/opengraph-image`;
     return {
       title: 'Photo',
       description: 'View this photo on SpotterSpace',
@@ -52,14 +53,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const p = data.photo;
   const display = p.variants?.find((v) => v.variantType === 'display') ?? p.variants?.[0];
-  const image = fixLocalhostUrl(display?.url) ?? `${WEB_BASE}/opengraph-image`;
+  const image = fixLocalhostUrl(display?.url) ?? `${webBase}/opengraph-image`;
 
   const photographer = p.user?.username ? `@${p.user.username}` : p.photographerName;
   const title = p.caption ? p.caption : photographer ? `Photo by ${photographer}` : 'Photo';
   const description = p.aircraft?.registration
     ? `${p.aircraft.registration}${p.airline ? ` · ${p.airline}` : ''}${p.user?.username ? ` · @${p.user.username}` : ''}`
     : (p.caption ?? 'Aviation photo on SpotterSpace');
-  const url = `${WEB_BASE}/photos/${id}`;
+  const url = `${webBase}/photos/${id}`;
 
   return {
     title,
