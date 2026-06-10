@@ -19,11 +19,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const webBase = await getWebBase();
-  // Temporary debug log: confirm this function is being called at request
-  // time. Grep CloudWatch logs for "[photo-og]" to verify.
-  console.log('[photo-og] generateMetadata called for id:', id, 'webBase:', webBase);
   const data = await fetchPhotoForOG(id);
-  console.log('[photo-og] fetchPhotoForOG result:', data?.photo ? 'found' : 'null');
   if (!data?.photo) {
     // Fallback when the photo can't be fetched (API down, photo deleted, or
     // GraphQL error). Include the default site image explicitly — the
