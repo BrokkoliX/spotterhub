@@ -4,6 +4,23 @@ import { requireRole } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
 import { buildPaginationArgs } from '../utils/resolverHelpers.js';
 
+/**
+ * Look up an airline for the upsert path. IATA/ICAO codes are not unique,
+ * so a CSV row that reuses a code with a new name should create a fresh
+ * airline rather than overwriting an unrelated operator. Match on the
+ * (icaoCode, name) pair when an icaoCode is provided, otherwise on name.
+ */
+async function findAirlineForUpsert(ctx: Context, icaoCode: string | null, name: string) {
+  if (icaoCode) {
+    return ctx.prisma.airline.findFirst({
+      where: { icaoCode, name: { equals: name, mode: 'insensitive' } },
+    });
+  }
+  return ctx.prisma.airline.findFirst({
+    where: { name: { equals: name, mode: 'insensitive' } },
+  });
+}
+
 // ─── Query Resolvers ──────────────────────────────────────────────────────────
 
 export const airlineQueryResolvers = {
@@ -173,12 +190,10 @@ export const airlineMutationResolvers = {
     const icaoCode = args.input.icaoCode?.toUpperCase() ?? null;
     const iataCode = args.input.iataCode?.toUpperCase() ?? null;
 
-    // Try to find by icaoCode (preferred), then by name
-    const existing = icaoCode
-      ? await ctx.prisma.airline.findUnique({ where: { icaoCode } })
-      : await ctx.prisma.airline.findFirst({
-          where: { name: { equals: args.input.name, mode: 'insensitive' } },
-        });
+    // IATA/ICAO codes are not unique, so look up by (icaoCode, name) —
+    // re-importing the same operator updates its row, but a CSV row that
+    // reuses a code with a new name becomes a fresh airline.
+    const existing = await findAirlineForUpsert(ctx, icaoCode, args.input.name);
 
     if (existing) {
       return ctx.prisma.airline.update({

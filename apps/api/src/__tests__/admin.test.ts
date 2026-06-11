@@ -134,6 +134,38 @@ const UPDATE_PHOTO_MODERATION = `
   }
 `;
 
+const CREATE_AIRLINE = `
+  mutation CreateAirline($input: CreateAirlineInput!) {
+    createAirline(input: $input) {
+      id
+      name
+      icaoCode
+      iataCode
+    }
+  }
+`;
+
+const UPSERT_AIRLINE = `
+  mutation UpsertAirline($input: CreateAirlineInput!) {
+    upsertAirline(input: $input) {
+      id
+      name
+      icaoCode
+      iataCode
+    }
+  }
+`;
+
+const AIRLINE_BY_ICAO = `
+  query AirlineByIcao($icaoCode: String!) {
+    airline(icaoCode: $icaoCode) {
+      id
+      name
+      icaoCode
+    }
+  }
+`;
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 async function createUsers() {
@@ -725,5 +757,120 @@ describe('adminPhotos', () => {
     const data = (res.body as any).singleResult.data;
     expect(data.adminPhotos.totalCount).toBe(1);
     expect(data.adminPhotos.edges[0].node.moderationStatus).toBe('pending');
+  });
+});
+
+describe('airlines (duplicate IATA/ICAO)', () => {
+  it('allows two airlines with the same ICAO code but different names', async () => {
+    await createUsers();
+
+    const a = await server.executeOperation(
+      {
+        query: CREATE_AIRLINE,
+        variables: { input: { name: 'Alpha Air', icaoCode: 'AAA', iataCode: '1A' } },
+      },
+      ctx(ADMIN_USER),
+    );
+    const b = await server.executeOperation(
+      {
+        query: CREATE_AIRLINE,
+        variables: { input: { name: 'Bravo Air', icaoCode: 'AAA', iataCode: '1B' } },
+      },
+      ctx(ADMIN_USER),
+    );
+
+    expect((a.body as any).singleResult.errors).toBeUndefined();
+    expect((b.body as any).singleResult.errors).toBeUndefined();
+
+    const aId = (a.body as any).singleResult.data.createAirline.id;
+    const bId = (b.body as any).singleResult.data.createAirline.id;
+    expect(aId).not.toBe(bId);
+
+    const rows = await prisma.airline.findMany({ where: { icaoCode: 'AAA' } });
+    expect(rows).toHaveLength(2);
+  });
+
+  it('allows two airlines with the same IATA code but different names', async () => {
+    await createUsers();
+
+    const a = await server.executeOperation(
+      {
+        query: CREATE_AIRLINE,
+        variables: { input: { name: 'Alpha IATA', icaoCode: 'XYZ', iataCode: 'ZZ' } },
+      },
+      ctx(ADMIN_USER),
+    );
+    const b = await server.executeOperation(
+      {
+        query: CREATE_AIRLINE,
+        variables: { input: { name: 'Bravo IATA', icaoCode: 'XYW', iataCode: 'ZZ' } },
+      },
+      ctx(ADMIN_USER),
+    );
+
+    expect((a.body as any).singleResult.errors).toBeUndefined();
+    expect((b.body as any).singleResult.errors).toBeUndefined();
+
+    const rows = await prisma.airline.findMany({ where: { iataCode: 'ZZ' } });
+    expect(rows).toHaveLength(2);
+  });
+
+  it('upsertAirline matches on (icaoCode, name) and updates the existing row when both match', async () => {
+    await createUsers();
+
+    const created = await server.executeOperation(
+      {
+        query: UPSERT_AIRLINE,
+        variables: { input: { name: 'Gamma Air', icaoCode: 'GAM', iataCode: 'G1' } },
+      },
+      ctx(ADMIN_USER),
+    );
+    const createdId = (created.body as any).singleResult.data.upsertAirline.id;
+
+    // Same ICAO + same name → update, not a new row.
+    const updated = await server.executeOperation(
+      {
+        query: UPSERT_AIRLINE,
+        variables: { input: { name: 'Gamma Air', icaoCode: 'GAM', iataCode: 'G2' } },
+      },
+      ctx(ADMIN_USER),
+    );
+    expect((updated.body as any).singleResult.data.upsertAirline.id).toBe(createdId);
+    expect((updated.body as any).singleResult.data.upsertAirline.iataCode).toBe('G2');
+
+    // Same ICAO, different name → a new row.
+    const created2 = await server.executeOperation(
+      {
+        query: UPSERT_AIRLINE,
+        variables: { input: { name: 'Gamma Express', icaoCode: 'GAM', iataCode: 'G3' } },
+      },
+      ctx(ADMIN_USER),
+    );
+    expect((created2.body as any).singleResult.data.upsertAirline.id).not.toBe(createdId);
+
+    const rows = await prisma.airline.findMany({ where: { icaoCode: 'GAM' } });
+    expect(rows).toHaveLength(2);
+  });
+
+  it('airline(icaoCode) returns the first match when codes are shared', async () => {
+    await createUsers();
+    await server.executeOperation(
+      { query: CREATE_AIRLINE, variables: { input: { name: 'First', icaoCode: 'DUP' } } },
+      ctx(ADMIN_USER),
+    );
+    await server.executeOperation(
+      { query: CREATE_AIRLINE, variables: { input: { name: 'Second', icaoCode: 'DUP' } } },
+      ctx(ADMIN_USER),
+    );
+
+    const res = await server.executeOperation(
+      { query: AIRLINE_BY_ICAO, variables: { icaoCode: 'DUP' } },
+      ctx(ADMIN_USER),
+    );
+    const data = (res.body as any).singleResult.data;
+    expect(data.airline).not.toBeNull();
+    expect(data.airline.icaoCode).toBe('DUP');
+    // Whichever row comes back, it must be one of the two we created.
+    expect(['First', 'Second']).toContain(data.airline.name);
   });
 });

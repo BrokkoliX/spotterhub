@@ -531,22 +531,37 @@ export const adminMutationResolvers = {
       }
 
       try {
-        await ctx.prisma.airline.upsert({
-          where: { icaoCode: cleanIcao },
-          create: {
-            name: name || 'Unknown',
+        // ICAO codes are not unique — match on (icaoCode, name) so we
+        // update the matching row when re-importing, and create a new
+        // airline when the same code appears with a new name.
+        const existing = await ctx.prisma.airline.findFirst({
+          where: {
             icaoCode: cleanIcao,
-            iataCode: cleanIata || null,
-            country: country || null,
-            callsign: callsign || null,
-          },
-          update: {
-            name: name || 'Unknown',
-            iataCode: cleanIata || null,
-            country: country || null,
-            callsign: callsign || null,
+            name: { equals: name || 'Unknown', mode: 'insensitive' },
           },
         });
+
+        if (existing) {
+          await ctx.prisma.airline.update({
+            where: { id: existing.id },
+            data: {
+              name: name || 'Unknown',
+              iataCode: cleanIata || null,
+              country: country || null,
+              callsign: callsign || null,
+            },
+          });
+        } else {
+          await ctx.prisma.airline.create({
+            data: {
+              name: name || 'Unknown',
+              icaoCode: cleanIcao,
+              iataCode: cleanIata || null,
+              country: country || null,
+              callsign: callsign || null,
+            },
+          });
+        }
         imported++;
       } catch (e) {
         errors.push(`Failed to import ${cleanIcao}: ${e instanceof Error ? e.message : String(e)}`);

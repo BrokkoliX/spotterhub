@@ -708,7 +708,10 @@ export const typeDefs = gql`
     airlines(search: String, first: Int = 20, after: String, page: Int): AirlineConnection!
 
     """
-    Fetch a single airline by ICAO code for auto-fill.
+    Fetch the first airline matching the given ICAO code. Codes are not
+    unique — multiple airlines may share an ICAO — so this returns the
+    first match in insertion order. For uniqueness use the (id) field;
+    for typeahead use the 'airlines' connection instead.
     """
     airline(icaoCode: String!): Airline
 

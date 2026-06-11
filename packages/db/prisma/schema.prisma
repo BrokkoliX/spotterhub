@@ -270,14 +270,19 @@ model AircraftVariant {
 model Airline {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
-  icaoCode  String?  @unique @map("icao_code")
-  iataCode  String?  @unique @map("iata_code")
+  // IATA/ICAO codes are not unique: codes are reused across operators
+  // (shared marketing brands, codeshare parents, military units, etc.).
+  // The upsert resolver matches on (icaoCode, name) instead.
+  icaoCode  String?  @map("icao_code")
+  iataCode  String?  @map("iata_code")
   country   String?
   callsign  String?  @map("callsign")
   createdAt DateTime @default(now()) @map("created_at")
 
   aircraft Aircraft[] @relation("RegisteredAirline")
 
+  @@index([icaoCode])
+  @@index([iataCode])
   @@map("airlines")
 }
 
