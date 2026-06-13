@@ -609,12 +609,20 @@ export const adminMutationResolvers = {
           update: {},
         });
 
-        // Upsert family
-        const fam = await ctx.prisma.aircraftFamily.upsert({
-          where: { name: family },
-          create: { name: family, manufacturerId: mfr.id },
-          update: { manufacturerId: mfr.id },
+        // Upsert family — family name is unique per manufacturer, so look up
+        // by (name, manufacturerId). Use findFirst + create/update to avoid
+        // relying on a globally-unique `name` constraint.
+        const existingFam = await ctx.prisma.aircraftFamily.findFirst({
+          where: { name: family, manufacturerId: mfr.id },
         });
+        const fam = existingFam
+          ? await ctx.prisma.aircraftFamily.update({
+              where: { id: existingFam.id },
+              data: { manufacturerId: mfr.id },
+            })
+          : await ctx.prisma.aircraftFamily.create({
+              data: { name: family, manufacturerId: mfr.id },
+            });
 
         // Upsert variant with codes
         const cleanIata = iataCode?.replace(/\W/g, '').toUpperCase() || null;

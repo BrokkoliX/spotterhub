@@ -5,7 +5,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
-  binaryTargets    = ["native", "linux-arm64-openssl-3.0.x", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  binaryTargets   = ["native", "linux-arm64-openssl-3.0.x", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -235,34 +235,39 @@ model AircraftManufacturer {
   createdAt DateTime @default(now()) @map("created_at")
 
   families AircraftFamily[]
-  aircraft Aircraft[] @relation("RegisteredAircraftManufacturer")
+  aircraft Aircraft[]       @relation("RegisteredAircraftManufacturer")
 
   @@map("aircraft_manufacturers")
 }
 
 model AircraftFamily {
-  id            String   @id @default(uuid()) @db.Uuid
-  name          String   @unique
-  manufacturerId String  @map("manufacturer_id") @db.Uuid
-  createdAt     DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  manufacturerId String   @map("manufacturer_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
 
   manufacturer AircraftManufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
   variants     AircraftVariant[]
-  aircraft     Aircraft[] @relation("RegisteredAircraftFamily")
+  aircraft     Aircraft[]           @relation("RegisteredAircraftFamily")
 
+  // Family name is unique per manufacturer (e.g. "A320" by Airbus and a
+  // license-built "A320" by another manufacturer are distinct families).
+  // The original global @unique on `name` was dropped to allow this.
+  @@unique([name, manufacturerId])
+  @@index([name])
   @@map("aircraft_families")
 }
 
 model AircraftVariant {
-  id         String   @id @default(uuid()) @db.Uuid
-  name       String   @unique
-  familyId   String   @map("family_id") @db.Uuid
-  iataCode   String?  @map("iata_code")
-  icaoCode   String?  @map("icao_code")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  familyId  String   @map("family_id") @db.Uuid
+  iataCode  String?  @map("iata_code")
+  icaoCode  String?  @map("icao_code")
+  createdAt DateTime @default(now()) @map("created_at")
 
   family   AircraftFamily @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  aircraft Aircraft[] @relation("RegisteredAircraftVariant")
+  aircraft Aircraft[]     @relation("RegisteredAircraftVariant")
 
   @@map("aircraft_variants")
 }
@@ -346,10 +351,10 @@ model User {
   updatedAt              DateTime   @updatedAt @map("updated_at")
 
   // Account lockout: increment on failed password, reset on successful sign-in
-  failedAttempts    Int       @default(0) @map("failed_attempts")
-  lockoutUntil      DateTime? @map("lockout_until")
+  failedAttempts Int       @default(0) @map("failed_attempts")
+  lockoutUntil   DateTime? @map("lockout_until")
   // Last successful sign-in timestamp (updated on each login)
-  lastLoginAt       DateTime? @map("last_login_at")
+  lastLoginAt    DateTime? @map("last_login_at")
 
   // Per-user list of in-feed widget surfaces the user has permanently
   // dismissed (e.g. "home_community_block"). Persists across devices and
@@ -359,43 +364,43 @@ model User {
 
   // Subscription tier. Nullable so the column can be added before the seed
   // runs; resolvers fall back to the tier with slug 'free' when null.
-  tierId            String?   @map("tier_id") @db.Uuid
+  tierId String? @map("tier_id") @db.Uuid
 
-  profile            Profile?
-  tier               UserTier?         @relation(fields: [tierId], references: [id], onDelete: SetNull)
-  photos             Photo[]
-  albums             Album[]
-  comments           Comment[]
-  likes              Like[]
-  followers          Follow[]           @relation("Following")
-  following          Follow[]           @relation("Follower")
-  reports            Report[]           @relation("Reporter")
-  reviewedReports    Report[]           @relation("Reviewer")
-  notifications      Notification[]
-  spottingLocations  SpottingLocation[]
-  communityMembers   CommunityMember[]
-  ownedCommunities   Community[]        @relation("CommunityOwner")
-  forumThreads       ForumThread[]
-  forumPosts         ForumPost[]
-  organizedEvents    CommunityEvent[]  @relation("EventOrganizer")
-  eventAttendances   EventAttendee[]
-  moderationLogs     CommunityModerationLog[] @relation("Moderator")
-  moderatedActions   CommunityModerationLog[] @relation("TargetUser")
-  photographedPhotos  Photo[]           @relation("PhotoPhotographer")
-  passwordResetTokens PasswordResetToken[]
-  submittedPendingItems PendingListItem[] @relation("PendingListItemSubmitter")
-  reviewedPendingItems PendingListItem[]  @relation("PendingListItemReviewer")
-  refreshTokens     RefreshToken[]
-  sellerProfile   SellerProfile?
-  purchases       Order[]         @relation("BuyerOrders")
-  sellerSales     Order[]         @relation("SellerSales")
-  sellerListings  PhotoListing[]
-  marketplaceItems MarketplaceItem[] @relation("SellerItems")
-  sellerFeedback  SellerFeedback[] @relation("SellerReceivedFeedback")
-  contactMessages ContactMessage[]
-  reviewedContactMessages ContactMessage[] @relation("ContactMessageReviewer")
-  badges           UserBadge[]
-  awardedBadges    UserBadge[]    @relation("BadgeAwarder")
+  profile                 Profile?
+  tier                    UserTier?                @relation(fields: [tierId], references: [id], onDelete: SetNull)
+  photos                  Photo[]
+  albums                  Album[]
+  comments                Comment[]
+  likes                   Like[]
+  followers               Follow[]                 @relation("Following")
+  following               Follow[]                 @relation("Follower")
+  reports                 Report[]                 @relation("Reporter")
+  reviewedReports         Report[]                 @relation("Reviewer")
+  notifications           Notification[]
+  spottingLocations       SpottingLocation[]
+  communityMembers        CommunityMember[]
+  ownedCommunities        Community[]              @relation("CommunityOwner")
+  forumThreads            ForumThread[]
+  forumPosts              ForumPost[]
+  organizedEvents         CommunityEvent[]         @relation("EventOrganizer")
+  eventAttendances        EventAttendee[]
+  moderationLogs          CommunityModerationLog[] @relation("Moderator")
+  moderatedActions        CommunityModerationLog[] @relation("TargetUser")
+  photographedPhotos      Photo[]                  @relation("PhotoPhotographer")
+  passwordResetTokens     PasswordResetToken[]
+  submittedPendingItems   PendingListItem[]        @relation("PendingListItemSubmitter")
+  reviewedPendingItems    PendingListItem[]        @relation("PendingListItemReviewer")
+  refreshTokens           RefreshToken[]
+  sellerProfile           SellerProfile?
+  purchases               Order[]                  @relation("BuyerOrders")
+  sellerSales             Order[]                  @relation("SellerSales")
+  sellerListings          PhotoListing[]
+  marketplaceItems        MarketplaceItem[]        @relation("SellerItems")
+  sellerFeedback          SellerFeedback[]         @relation("SellerReceivedFeedback")
+  contactMessages         ContactMessage[]
+  reviewedContactMessages ContactMessage[]         @relation("ContactMessageReviewer")
+  badges                  UserBadge[]
+  awardedBadges           UserBadge[]              @relation("BadgeAwarder")
 
   @@map("users")
 }
@@ -412,25 +417,25 @@ model RefreshToken {
 }
 
 model Profile {
-  id              String           @id @default(uuid()) @db.Uuid
-  userId          String           @unique @map("user_id") @db.Uuid
-  displayName     String?          @map("display_name")
-  bio             String?
-  avatarUrl       String?          @map("avatar_url")
-  locationRegion  String?          @map("location_region")
-  cameraBodies       String[] @default([]) @map("camera_bodies")
-  lenses             String[] @default([]) @map("lenses")
-  experienceLevel ExperienceLevel? @map("experience_level")
-  gear            String?
-  instagramHandle String?          @map("instagram_handle")
-  facebookUrl     String?          @map("facebook_url")
-  xHandle         String?          @map("x_handle")
-  interests       String[]         @default([])
-  favoriteAircraft String[]        @default([]) @map("favorite_aircraft")
-  favoriteAirports String[]        @default([]) @map("favorite_airports")
-  isPublic        Boolean          @default(true) @map("is_public")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @unique @map("user_id") @db.Uuid
+  displayName      String?          @map("display_name")
+  bio              String?
+  avatarUrl        String?          @map("avatar_url")
+  locationRegion   String?          @map("location_region")
+  cameraBodies     String[]         @default([]) @map("camera_bodies")
+  lenses           String[]         @default([]) @map("lenses")
+  experienceLevel  ExperienceLevel? @map("experience_level")
+  gear             String?
+  instagramHandle  String?          @map("instagram_handle")
+  facebookUrl      String?          @map("facebook_url")
+  xHandle          String?          @map("x_handle")
+  interests        String[]         @default([])
+  favoriteAircraft String[]         @default([]) @map("favorite_aircraft")
+  favoriteAirports String[]         @default([]) @map("favorite_airports")
+  isPublic         Boolean          @default(true) @map("is_public")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -471,75 +476,75 @@ model Album {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  community  Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
-  coverPhoto Photo?     @relation("AlbumCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
-  photos     Photo[]    @relation("AlbumPhotos")
-  albumPhotos AlbumPhoto[]  @relation("AlbumPhotoAlbums")
-  comments   Comment[]
-  likes      Like[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   Community?   @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  coverPhoto  Photo?       @relation("AlbumCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
+  photos      Photo[]      @relation("AlbumPhotos")
+  albumPhotos AlbumPhoto[] @relation("AlbumPhotoAlbums")
+  comments    Comment[]
+  likes       Like[]
 
   @@map("albums")
 }
 
 model Photo {
-  id                   String           @id @default(uuid()) @db.Uuid
-  userId               String           @map("user_id") @db.Uuid
-  albumId              String?          @map("album_id") @db.Uuid
-  caption              String?
-  airline              String?
-  airportCode          String?          @map("airport_code")
-  takenAt              DateTime?        @map("taken_at")
-  originalUrl          String           @map("original_url")
-  originalWidth        Int?             @map("original_width")
-  originalHeight       Int?             @map("original_height")
-  fileSizeBytes        Int?             @map("file_size_bytes")
-  mimeType             String?          @map("mime_type")
-  moderationStatus     ModerationStatus @default(pending) @map("moderation_status")
-  moderationLabels     Json?            @map("moderation_labels")
-  moderationConfidence Float?           @map("moderation_confidence")
-  likeCount            Int              @default(0) @map("like_count")
-  hasActiveListing     Boolean          @default(false) @map("has_active_listing")
-  license              PhotoLicense     @default(ALL_RIGHTS_RESERVED)
-  watermarkEnabled     Boolean          @default(false) @map("watermark_enabled")
-  watermarkPosition    WatermarkPosition? @map("watermark_position")
-  watermarkSize        Int?             @map("watermark_size")
-  watermarkOpacity     Int?             @map("watermark_opacity")
-  aircraftId           String?          @map("aircraft_id") @db.Uuid
-  photographerId       String?          @map("photographer_id") @db.Uuid
-  photographerName     String?          @map("photographer_name")
-  gearBody             String?          @map("gear_body")
-  gearLens             String?          @map("gear_lens")
-  exifData             Json?            @map("exif_data")
-  photoCategoryId      String?          @map("photo_category_id") @db.Uuid
-  aircraftSpecificCategoryId String?    @map("aircraft_specific_category_id") @db.Uuid
-  operatorIcao         String?          @map("operator_icao")
-  operatorType         OperatorType?    @map("operator_type")
-  msn                  String?          @map("msn")
-  manufacturingDate    String?          @map("manufacturing_date")
-  kind                 PhotoKind        @default(AIRCRAFT)
-  communityCategory    CommunityPhotoCategory? @map("community_category")
-  isDeleted            Boolean          @default(false) @map("is_deleted")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
+  id                         String                  @id @default(uuid()) @db.Uuid
+  userId                     String                  @map("user_id") @db.Uuid
+  albumId                    String?                 @map("album_id") @db.Uuid
+  caption                    String?
+  airline                    String?
+  airportCode                String?                 @map("airport_code")
+  takenAt                    DateTime?               @map("taken_at")
+  originalUrl                String                  @map("original_url")
+  originalWidth              Int?                    @map("original_width")
+  originalHeight             Int?                    @map("original_height")
+  fileSizeBytes              Int?                    @map("file_size_bytes")
+  mimeType                   String?                 @map("mime_type")
+  moderationStatus           ModerationStatus        @default(pending) @map("moderation_status")
+  moderationLabels           Json?                   @map("moderation_labels")
+  moderationConfidence       Float?                  @map("moderation_confidence")
+  likeCount                  Int                     @default(0) @map("like_count")
+  hasActiveListing           Boolean                 @default(false) @map("has_active_listing")
+  license                    PhotoLicense            @default(ALL_RIGHTS_RESERVED)
+  watermarkEnabled           Boolean                 @default(false) @map("watermark_enabled")
+  watermarkPosition          WatermarkPosition?      @map("watermark_position")
+  watermarkSize              Int?                    @map("watermark_size")
+  watermarkOpacity           Int?                    @map("watermark_opacity")
+  aircraftId                 String?                 @map("aircraft_id") @db.Uuid
+  photographerId             String?                 @map("photographer_id") @db.Uuid
+  photographerName           String?                 @map("photographer_name")
+  gearBody                   String?                 @map("gear_body")
+  gearLens                   String?                 @map("gear_lens")
+  exifData                   Json?                   @map("exif_data")
+  photoCategoryId            String?                 @map("photo_category_id") @db.Uuid
+  aircraftSpecificCategoryId String?                 @map("aircraft_specific_category_id") @db.Uuid
+  operatorIcao               String?                 @map("operator_icao")
+  operatorType               OperatorType?           @map("operator_type")
+  msn                        String?                 @map("msn")
+  manufacturingDate          String?                 @map("manufacturing_date")
+  kind                       PhotoKind               @default(AIRCRAFT)
+  communityCategory          CommunityPhotoCategory? @map("community_category")
+  isDeleted                  Boolean                 @default(false) @map("is_deleted")
+  createdAt                  DateTime                @default(now()) @map("created_at")
+  updatedAt                  DateTime                @updatedAt @map("updated_at")
 
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  album        Album?         @relation("AlbumPhotos", fields: [albumId], references: [id], onDelete: SetNull)
-  albumPhotos  AlbumPhoto[]   @relation("AlbumPhotoPhotos")
-  variants     PhotoVariant[]
-  tags         PhotoTag[]
-  location     PhotoLocation?
-  comments     Comment[]
-  likes        Like[]
-  coverOfAlbum Album[]        @relation("AlbumCover")
-  aircraft     Aircraft?      @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
-  photographer User?          @relation("PhotoPhotographer", fields: [photographerId], references: [id], onDelete: SetNull)
-  photoCategory PhotoCategory? @relation(fields: [photoCategoryId], references: [id], onDelete: SetNull)
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album                    Album?                    @relation("AlbumPhotos", fields: [albumId], references: [id], onDelete: SetNull)
+  albumPhotos              AlbumPhoto[]              @relation("AlbumPhotoPhotos")
+  variants                 PhotoVariant[]
+  tags                     PhotoTag[]
+  location                 PhotoLocation?
+  comments                 Comment[]
+  likes                    Like[]
+  coverOfAlbum             Album[]                   @relation("AlbumCover")
+  aircraft                 Aircraft?                 @relation(fields: [aircraftId], references: [id], onDelete: SetNull)
+  photographer             User?                     @relation("PhotoPhotographer", fields: [photographerId], references: [id], onDelete: SetNull)
+  photoCategory            PhotoCategory?            @relation(fields: [photoCategoryId], references: [id], onDelete: SetNull)
   aircraftSpecificCategory AircraftSpecificCategory? @relation(fields: [aircraftSpecificCategoryId], references: [id], onDelete: SetNull)
-  listing             PhotoListing?
-  orders             Order[]
-  photoAwards     PhotoAward[]
-  awardedBadges   UserBadge[]
+  listing                  PhotoListing?
+  orders                   Order[]
+  photoAwards              PhotoAward[]
+  awardedBadges            UserBadge[]
 
   @@index([photoCategoryId])
   @@index([aircraftSpecificCategoryId])
@@ -582,25 +587,25 @@ model PhotoTag {
 }
 
 model Aircraft {
-  id                 String       @id @default(uuid()) @db.Uuid
-  registration       String       @unique @map("registration")
-  airline            String?      @map("airline")
-  msn                String?      @map("msn")
-  manufacturingDate  DateTime?   @map("manufacturing_date")
-  manufacturerId     String?      @map("manufacturer_id") @db.Uuid
-  familyId           String?      @map("family_id") @db.Uuid
-  variantId          String?      @map("variant_id") @db.Uuid
-  operatorType       OperatorType? @map("operator_type")
-  airlineId          String?      @map("airline_id") @db.Uuid
-  status             AircraftStatus @default(active) @map("status")
-  createdAt          DateTime    @default(now()) @map("created_at")
-  updatedAt          DateTime    @updatedAt @map("updated_at")
+  id                String         @id @default(uuid()) @db.Uuid
+  registration      String         @unique @map("registration")
+  airline           String?        @map("airline")
+  msn               String?        @map("msn")
+  manufacturingDate DateTime?      @map("manufacturing_date")
+  manufacturerId    String?        @map("manufacturer_id") @db.Uuid
+  familyId          String?        @map("family_id") @db.Uuid
+  variantId         String?        @map("variant_id") @db.Uuid
+  operatorType      OperatorType?  @map("operator_type")
+  airlineId         String?        @map("airline_id") @db.Uuid
+  status            AircraftStatus @default(active) @map("status")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  manufacturer    AircraftManufacturer? @relation("RegisteredAircraftManufacturer", fields: [manufacturerId], references: [id], onDelete: SetNull)
-  family         AircraftFamily?       @relation("RegisteredAircraftFamily", fields: [familyId], references: [id], onDelete: SetNull)
-  variant        AircraftVariant?      @relation("RegisteredAircraftVariant", fields: [variantId], references: [id], onDelete: SetNull)
-  airlineRef     Airline?              @relation("RegisteredAirline", fields: [airlineId], references: [id], onDelete: SetNull)
-  photos         Photo[]
+  manufacturer AircraftManufacturer? @relation("RegisteredAircraftManufacturer", fields: [manufacturerId], references: [id], onDelete: SetNull)
+  family       AircraftFamily?       @relation("RegisteredAircraftFamily", fields: [familyId], references: [id], onDelete: SetNull)
+  variant      AircraftVariant?      @relation("RegisteredAircraftVariant", fields: [variantId], references: [id], onDelete: SetNull)
+  airlineRef   Airline?              @relation("RegisteredAirline", fields: [airlineId], references: [id], onDelete: SetNull)
+  photos       Photo[]
 
   @@index([manufacturerId])
   @@index([familyId])
@@ -617,7 +622,7 @@ model PhotoLocation {
   rawLatitude        Float?              @map("raw_latitude")
   rawLongitude       Float?              @map("raw_longitude")
   displayLatitude    Float               @map("display_latitude")
-  displayLongitude  Float               @map("display_longitude")
+  displayLongitude   Float               @map("display_longitude")
   privacyMode        LocationPrivacyMode @default(exact) @map("privacy_mode")
   airportId          String?             @map("airport_id") @db.Uuid
   spottingLocationId String?             @map("spotting_location_id") @db.Uuid
@@ -681,7 +686,7 @@ model Comment {
   albumId         String?  @map("album_id") @db.Uuid
   parentCommentId String?  @map("parent_comment_id") @db.Uuid
   body            String
-  isDeleted       Boolean   @default(false) @map("is_deleted")
+  isDeleted       Boolean  @default(false) @map("is_deleted")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -733,18 +738,18 @@ model Report {
 }
 
 model ContactMessage {
-  id         String              @id @default(uuid()) @db.Uuid
-  userId     String?             @map("user_id") @db.Uuid
+  id         String               @id @default(uuid()) @db.Uuid
+  userId     String?              @map("user_id") @db.Uuid
   email      String?
   subject    String
   body       String
   status     ContactMessageStatus @default(unread)
-  reviewedBy String?             @map("reviewed_by") @db.Uuid
-  reviewedAt DateTime?           @map("reviewed_at")
-  createdAt  DateTime            @default(now()) @map("created_at")
+  reviewedBy String?              @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime?            @map("reviewed_at")
+  createdAt  DateTime             @default(now()) @map("created_at")
 
-  user     User?     @relation(fields: [userId], references: [id])
-  reviewer User?     @relation("ContactMessageReviewer", fields: [reviewedBy], references: [id])
+  user     User? @relation(fields: [userId], references: [id])
+  reviewer User? @relation("ContactMessageReviewer", fields: [reviewedBy], references: [id])
 
   @@map("contact_message")
 }
@@ -782,13 +787,13 @@ model Community {
   createdAt   DateTime            @default(now()) @map("created_at")
   updatedAt   DateTime            @updatedAt @map("updated_at")
 
-  owner        User                    @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members      CommunityMember[]
-  subscription CommunitySubscription?
-  albums       Album[]
+  owner           User                     @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         CommunityMember[]
+  subscription    CommunitySubscription?
+  albums          Album[]
   forumCategories ForumCategory[]
-  events       CommunityEvent[]
-  moderationLogs CommunityModerationLog[]
+  events          CommunityEvent[]
+  moderationLogs  CommunityModerationLog[]
 
   @@map("communities")
 }
@@ -809,13 +814,13 @@ model CommunityMember {
 }
 
 model CommunitySubscription {
-  id               String        @id @default(uuid()) @db.Uuid
-  communityId      String        @unique @map("community_id") @db.Uuid
-  stripeSubId      String?       @map("stripe_sub_id")
-  tier             CommunityTier @default(free)
-  billingStatus    String?       @map("billing_status")
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  id            String        @id @default(uuid()) @db.Uuid
+  communityId   String        @unique @map("community_id") @db.Uuid
+  stripeSubId   String?       @map("stripe_sub_id")
+  tier          CommunityTier @default(free)
+  billingStatus String?       @map("billing_status")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
 
@@ -823,14 +828,14 @@ model CommunitySubscription {
 }
 
 model ForumCategory {
-  id          String    @id @default(uuid()) @db.Uuid
-  communityId String?   @map("community_id") @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String?  @map("community_id") @db.Uuid
   name        String
   description String?
   slug        String
-  position    Int       @default(0)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   community Community?    @relation(fields: [communityId], references: [id], onDelete: Cascade)
   threads   ForumThread[]
@@ -840,17 +845,17 @@ model ForumCategory {
 }
 
 model ForumThread {
-  id         String    @id @default(uuid()) @db.Uuid
-  categoryId String    @map("category_id") @db.Uuid
-  authorId   String    @map("author_id") @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @map("category_id") @db.Uuid
+  authorId   String   @map("author_id") @db.Uuid
   title      String
-  isPinned   Boolean   @default(false) @map("is_pinned")
-  isLocked   Boolean   @default(false) @map("is_locked")
-  postCount  Int       @default(0) @map("post_count")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  lastPostAt DateTime  @default(now()) @map("last_post_at")
-  isDeleted  Boolean   @default(false) @map("is_deleted")
+  isPinned   Boolean  @default(false) @map("is_pinned")
+  isLocked   Boolean  @default(false) @map("is_locked")
+  postCount  Int      @default(0) @map("post_count")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  lastPostAt DateTime @default(now()) @map("last_post_at")
+  isDeleted  Boolean  @default(false) @map("is_deleted")
 
   category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -861,14 +866,14 @@ model ForumThread {
 }
 
 model ForumPost {
-  id             String    @id @default(uuid()) @db.Uuid
-  threadId       String    @map("thread_id") @db.Uuid
-  authorId       String    @map("author_id") @db.Uuid
-  parentPostId   String?   @map("parent_post_id") @db.Uuid
-  body           String
-  isDeleted      Boolean   @default(false) @map("is_deleted")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  threadId     String   @map("thread_id") @db.Uuid
+  authorId     String   @map("author_id") @db.Uuid
+  parentPostId String?  @map("parent_post_id") @db.Uuid
+  body         String
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   thread     ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   author     User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -880,33 +885,33 @@ model ForumPost {
 }
 
 model CommunityEvent {
-  id          String    @id @default(uuid()) @db.Uuid
-  communityId String    @map("community_id") @db.Uuid
-  organizerId String    @map("organizer_id") @db.Uuid
-  title       String
-  description String?
-  location    String?
-  startsAt    DateTime  @map("starts_at")
-  endsAt      DateTime? @map("ends_at")
-  maxAttendees Int?     @map("max_attendees")
-  coverUrl    String?   @map("cover_url")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  communityId  String    @map("community_id") @db.Uuid
+  organizerId  String    @map("organizer_id") @db.Uuid
+  title        String
+  description  String?
+  location     String?
+  startsAt     DateTime  @map("starts_at")
+  endsAt       DateTime? @map("ends_at")
+  maxAttendees Int?      @map("max_attendees")
+  coverUrl     String?   @map("cover_url")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  community  Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  organizer  User             @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
-  attendees  EventAttendee[]
+  community Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  organizer User            @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  attendees EventAttendee[]
 
   @@index([communityId, startsAt])
   @@map("community_events")
 }
 
 model EventAttendee {
-  id      String            @id @default(uuid()) @db.Uuid
-  eventId String            @map("event_id") @db.Uuid
-  userId  String            @map("user_id") @db.Uuid
-  status  EventRsvpStatus   @default(going)
-  joinedAt DateTime         @default(now()) @map("joined_at")
+  id       String          @id @default(uuid()) @db.Uuid
+  eventId  String          @map("event_id") @db.Uuid
+  userId   String          @map("user_id") @db.Uuid
+  status   EventRsvpStatus @default(going)
+  joinedAt DateTime        @default(now()) @map("joined_at")
 
   event CommunityEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -922,12 +927,12 @@ enum EventRsvpStatus {
 }
 
 model AlbumPhoto {
-  albumId  String   @map("album_id") @db.Uuid
-  photoId  String   @map("photo_id") @db.Uuid
-  addedAt  DateTime @default(now()) @map("added_at")
+  albumId String   @map("album_id") @db.Uuid
+  photoId String   @map("photo_id") @db.Uuid
+  addedAt DateTime @default(now()) @map("added_at")
 
-  album  Album @relation("AlbumPhotoAlbums", fields: [albumId], references: [id], onDelete: Cascade)
-  photo  Photo @relation("AlbumPhotoPhotos", fields: [photoId], references: [id], onDelete: Cascade)
+  album Album @relation("AlbumPhotoAlbums", fields: [albumId], references: [id], onDelete: Cascade)
+  photo Photo @relation("AlbumPhotoPhotos", fields: [photoId], references: [id], onDelete: Cascade)
 
   @@id([albumId, photoId])
   @@index([photoId])
@@ -949,14 +954,14 @@ enum CommunityModerationAction {
 }
 
 model CommunityModerationLog {
-  id           String                     @id @default(uuid()) @db.Uuid
-  communityId  String                     @map("community_id") @db.Uuid
-  moderatorId  String                     @map("moderator_id") @db.Uuid
-  targetUserId String                     @map("target_user_id") @db.Uuid
+  id           String                    @id @default(uuid()) @db.Uuid
+  communityId  String                    @map("community_id") @db.Uuid
+  moderatorId  String                    @map("moderator_id") @db.Uuid
+  targetUserId String                    @map("target_user_id") @db.Uuid
   action       CommunityModerationAction
   reason       String?
   metadata     Json?
-  createdAt    DateTime                   @default(now()) @map("created_at")
+  createdAt    DateTime                  @default(now()) @map("created_at")
 
   community  Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
   moderator  User      @relation("Moderator", fields: [moderatorId], references: [id], onDelete: Cascade)
@@ -970,26 +975,26 @@ model CommunityModerationLog {
 // ─── Site Settings ─────────────────────────────────────────────────────────────
 
 model SiteSettings {
-  id                       String   @id @default("site_settings") @map("id")
-  bannerUrl                String?  @map("banner_url")
-  tagline                  String?  @map("tagline")
-  minPhotoLongEdge         Int      @default(800) @map("min_photo_long_edge")
-  maxPhotoLongEdge         Int      @default(4096) @map("max_photo_long_edge")
-  photoUploadTimeoutSeconds Int     @default(300) @map("photo_upload_timeout_seconds")
+  id                        String   @id @default("site_settings") @map("id")
+  bannerUrl                 String?  @map("banner_url")
+  tagline                   String?  @map("tagline")
+  minPhotoLongEdge          Int      @default(800) @map("min_photo_long_edge")
+  maxPhotoLongEdge          Int      @default(4096) @map("max_photo_long_edge")
+  photoUploadTimeoutSeconds Int      @default(300) @map("photo_upload_timeout_seconds")
   /// Lifetime of issued JWT access tokens, in seconds. Default 3600 (1 hour).
   /// Used by the auth resolver when minting tokens and by the web BFF when
   /// setting cookie Max-Age. Validated 60–86400 in the resolver.
-  accessTokenSeconds       Int      @default(3600) @map("access_token_seconds")
+  accessTokenSeconds        Int      @default(3600) @map("access_token_seconds")
   /// Lifetime of issued refresh tokens, in seconds. Default 604800 (7 days).
   /// Validated 3600–2592000 (1h–30d) in the resolver.
-  refreshTokenSeconds      Int      @default(604800) @map("refresh_token_seconds")
+  refreshTokenSeconds       Int      @default(604800) @map("refresh_token_seconds")
   /// Debounce window applied on the world map between the last `moveend`
   /// event and the next bounds-based refetch of airports/photos. Lower values
   /// feel snappier but cause more queries while the user is still panning;
   /// higher values are gentler on the API. Default 300 ms preserves the
   /// previously-hardcoded behaviour. Validated 0–10000 in the resolver.
-  mapRefreshDebounceMs     Int      @default(300) @map("map_refresh_debounce_ms")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  mapRefreshDebounceMs      Int      @default(300) @map("map_refresh_debounce_ms")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")
 }
@@ -1019,30 +1024,30 @@ model AdSettings {
 /// looks up the user's tier and reads `uploadsPerDay`). UUID `id` is the
 /// foreign-key target on User.
 model UserTier {
-  id                  String   @id @default(uuid()) @db.Uuid
+  id                 String   @id @default(uuid()) @db.Uuid
   /// Stable lowercase identifier (e.g. 'free', 'premium'). Used by code.
-  slug                String   @unique
+  slug               String   @unique
   /// Display name shown to admins and (eventually) users.
-  name                String
+  name               String
   /// Price in minor units of the configured currency. 0 = free.
-  priceCents          Int      @default(0) @map("price_cents")
+  priceCents         Int      @default(0) @map("price_cents")
   /// ISO-4217 currency code. Default USD.
-  currency            String   @default("USD")
+  currency           String   @default("USD")
   /// Maximum photos a user on this tier can upload in any rolling 24-hour
   /// window. `null` means unlimited.
-  uploadsPerDay       Int?     @map("uploads_per_day")
+  uploadsPerDay      Int?     @map("uploads_per_day")
   /// Maximum photos a user on this tier can upload in any rolling 7-day
   /// window. `null` means unlimited.
-  uploadsPerWeek      Int?     @map("uploads_per_week")
+  uploadsPerWeek     Int?     @map("uploads_per_week")
   /// Whether members of this tier are allowed to create new communities.
-  canCreateCommunity  Boolean  @default(false) @map("can_create_community")
+  canCreateCommunity Boolean  @default(false) @map("can_create_community")
   /// Sort order for the admin UI and any future user-facing pricing page.
-  displayOrder        Int      @default(0) @map("display_order")
+  displayOrder       Int      @default(0) @map("display_order")
   /// Soft-disable a tier without deleting it. Inactive tiers are hidden
   /// from new assignments but existing users keep their assignment.
-  isActive            Boolean  @default(true) @map("is_active")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   users User[]
 
@@ -1052,20 +1057,20 @@ model UserTier {
 // ─── Marketplace ─────────────────────────────────────────────────────────────
 
 model SellerProfile {
-  id                       String   @id @default(uuid()) @db.Uuid
-  userId                   String   @unique @map("user_id") @db.Uuid
-  stripeAccountId          String?  @unique @map("stripe_account_id")
-  stripeOnboardingComplete Boolean  @default(false) @map("stripe_onboarding_complete")
-  approved                 Boolean  @default(false)
+  id                       String       @id @default(uuid()) @db.Uuid
+  userId                   String       @unique @map("user_id") @db.Uuid
+  stripeAccountId          String?      @unique @map("stripe_account_id")
+  stripeOnboardingComplete Boolean      @default(false) @map("stripe_onboarding_complete")
+  approved                 Boolean      @default(false)
   status                   SellerStatus @default(pending)
   bio                      String?
   website                  String?
-  createdAt                DateTime @default(now()) @map("created_at")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
 
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   marketplaceItems MarketplaceItem[]
-  feedback        SellerFeedback[]
+  feedback         SellerFeedback[]
 
   @@map("seller_profiles")
 }
@@ -1079,9 +1084,9 @@ model PhotoListing {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  photo    Photo     @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  seller   User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  orders   Order[]
+  photo  Photo   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  seller User    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders Order[]
 
   @@index([sellerId])
   @@index([active, createdAt(sort: Desc)])
@@ -1089,22 +1094,22 @@ model PhotoListing {
 }
 
 model Order {
-  id                   String      @id @default(uuid()) @db.Uuid
-  buyerId              String      @map("buyer_id") @db.Uuid
-  sellerId             String      @map("seller_id") @db.Uuid
-  photoId              String      @map("photo_id") @db.Uuid
-  listingId            String      @map("listing_id") @db.Uuid
-  amountUsd            Decimal     @map("amount_usd") @db.Decimal(10, 2)
-  platformFeeUsd      Decimal     @map("platform_fee_usd") @db.Decimal(10, 2)
-  stripePaymentIntentId String?  @unique @map("stripe_payment_intent_id")
-  stripeTransferId     String?    @map("stripe_transfer_id")
-  status               OrderStatus @default(pending)
-  createdAt            DateTime   @default(now()) @map("created_at")
+  id                    String      @id @default(uuid()) @db.Uuid
+  buyerId               String      @map("buyer_id") @db.Uuid
+  sellerId              String      @map("seller_id") @db.Uuid
+  photoId               String      @map("photo_id") @db.Uuid
+  listingId             String      @map("listing_id") @db.Uuid
+  amountUsd             Decimal     @map("amount_usd") @db.Decimal(10, 2)
+  platformFeeUsd        Decimal     @map("platform_fee_usd") @db.Decimal(10, 2)
+  stripePaymentIntentId String?     @unique @map("stripe_payment_intent_id")
+  stripeTransferId      String?     @map("stripe_transfer_id")
+  status                OrderStatus @default(pending)
+  createdAt             DateTime    @default(now()) @map("created_at")
 
-  buyer    User         @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
-  seller   User         @relation("SellerSales", fields: [sellerId], references: [id], onDelete: Cascade)
-  photo    Photo       @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  listing  PhotoListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer   User         @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller  User         @relation("SellerSales", fields: [sellerId], references: [id], onDelete: Cascade)
+  photo   Photo        @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  listing PhotoListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([buyerId])
   @@index([sellerId])
@@ -1127,26 +1132,26 @@ model MarketplaceCategory {
 }
 
 model MarketplaceItem {
-  id                 String           @id @default(uuid()) @db.Uuid
-  sellerId           String           @map("seller_id") @db.Uuid
-  userId             String           @map("user_id") @db.Uuid
-  categoryId         String           @map("category_id") @db.Uuid
-  title              String
-  description        String?
-  priceUsd           Decimal          @map("price_usd") @db.Decimal(10, 2)
-  condition          String
-  location           String?
-  contactEmail       String?          @map("contact_email")
-  contactPhone       String?          @map("contact_phone")
-  active             Boolean          @default(false)
-  moderationStatus   ModerationStatus @default(pending) @map("moderation_status")
-  moderationReason   String?          @map("moderation_reason")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
+  id               String           @id @default(uuid()) @db.Uuid
+  sellerId         String           @map("seller_id") @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  categoryId       String           @map("category_id") @db.Uuid
+  title            String
+  description      String?
+  priceUsd         Decimal          @map("price_usd") @db.Decimal(10, 2)
+  condition        String
+  location         String?
+  contactEmail     String?          @map("contact_email")
+  contactPhone     String?          @map("contact_phone")
+  active           Boolean          @default(false)
+  moderationStatus ModerationStatus @default(pending) @map("moderation_status")
+  moderationReason String?          @map("moderation_reason")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  seller   SellerProfile       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  user     User               @relation("SellerItems", fields: [userId], references: [id], onDelete: Cascade)
-  category MarketplaceCategory @relation(fields: [categoryId], references: [id])
+  seller   SellerProfile          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  user     User                   @relation("SellerItems", fields: [userId], references: [id], onDelete: Cascade)
+  category MarketplaceCategory    @relation(fields: [categoryId], references: [id])
   images   MarketplaceItemImage[]
   feedback SellerFeedback[]
 
@@ -1183,8 +1188,8 @@ model SellerFeedback {
   itemId    String?  @map("item_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
-  seller SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  buyer  User          @relation("SellerReceivedFeedback", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller SellerProfile    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User             @relation("SellerReceivedFeedback", fields: [buyerId], references: [id], onDelete: Cascade)
   item   MarketplaceItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
 
   @@unique([buyerId, sellerId])
@@ -1215,7 +1220,7 @@ model BadgeDefinition {
   iconUrl          String?          @map("icon_url")
   category         BadgeCategory
   tier             BadgeTier
-  triggerType       BadgeTriggerType @map("trigger_type")
+  triggerType      BadgeTriggerType @map("trigger_type")
   triggerMetric    String?          @map("trigger_metric")
   triggerThreshold Int?             @map("trigger_threshold")
   isActive         Boolean          @default(true) @map("is_active")

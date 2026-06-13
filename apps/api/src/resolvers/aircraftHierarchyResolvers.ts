@@ -261,6 +261,18 @@ export const aircraftHierarchyMutationResolvers = {
       });
     }
 
+    // Family name is unique per manufacturer. The Prisma error P2002 would
+    // be opaque; check first and surface a clear message.
+    const existing = await ctx.prisma.aircraftFamily.findFirst({
+      where: { name: args.input.name, manufacturerId: args.input.manufacturerId },
+    });
+    if (existing) {
+      throw new GraphQLError(
+        `A family named "${args.input.name}" already exists for ${manufacturer.name}`,
+        { extensions: { code: 'CONFLICT' } },
+      );
+    }
+
     return ctx.prisma.aircraftFamily.create({
       data: {
         name: args.input.name,
@@ -434,10 +446,21 @@ export const aircraftHierarchyMutationResolvers = {
       });
     }
 
-    return ctx.prisma.aircraftFamily.upsert({
-      where: { name: args.input.name },
-      create: { name: args.input.name, manufacturerId: args.input.manufacturerId },
-      update: { manufacturerId: args.input.manufacturerId },
+    // Family name is unique only per manufacturer (since the 2026-06-13 schema
+    // change), so the lookup must match both. Use findFirst + create/update
+    // rather than `upsert({ where: { name } })` which would now be ambiguous.
+    const existing = await ctx.prisma.aircraftFamily.findFirst({
+      where: { name: args.input.name, manufacturerId: args.input.manufacturerId },
+    });
+    if (existing) {
+      return ctx.prisma.aircraftFamily.update({
+        where: { id: existing.id },
+        data: { manufacturerId: args.input.manufacturerId },
+        include: { manufacturer: true, variants: true },
+      });
+    }
+    return ctx.prisma.aircraftFamily.create({
+      data: { name: args.input.name, manufacturerId: args.input.manufacturerId },
       include: { manufacturer: true, variants: true },
     });
   },
