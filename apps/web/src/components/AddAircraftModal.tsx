@@ -159,6 +159,14 @@ export default function AddAircraftModal({
       setError('Manufacturer, Family, and Variant are required');
       return;
     }
+    if (!operatorType) {
+      setError('Operator Type is required');
+      return;
+    }
+    if (!airlineId) {
+      setError('Airline is required');
+      return;
+    }
 
     setSubmitting(true);
     const values: AddAircraftFormValues = {
@@ -338,12 +346,13 @@ export default function AddAircraftModal({
           >
             <div>
               <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
-                Operator Type {OPTIONAL_LABEL}
+                Operator Type {REQUIRED_MARK}
               </label>
               <select
                 className="input"
                 value={operatorType}
                 onChange={(e) => setOperatorType(e.target.value)}
+                required
                 style={{ width: '100%' }}
               >
                 <option value="">Select operator type…</option>
@@ -356,7 +365,7 @@ export default function AddAircraftModal({
             </div>
             <div>
               <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: 4 }}>
-                Airline {OPTIONAL_LABEL}
+                Airline {REQUIRED_MARK}
               </label>
               <SearchableSelect
                 options={airlines.map((a) => ({
