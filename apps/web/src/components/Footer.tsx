@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { CookieSettingsTrigger } from './CookieSettingsTrigger';
 import styles from './Footer.module.css';
 
 export function Footer() {
@@ -23,6 +24,7 @@ export function Footer() {
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/terms">Terms of Service</Link>
           <Link href="/accessibility">Accessibility</Link>
+          <CookieSettingsTrigger />
         </nav>
 
         <p className={styles.copyright}>

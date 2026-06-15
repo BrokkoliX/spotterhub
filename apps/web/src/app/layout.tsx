@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 
+import { AdSenseLoader } from '@/components/AdSenseLoader';
 import { Analytics } from '@/components/Analytics';
+import { CookieConsent } from '@/components/CookieConsent';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { getWebBase } from '@/lib/og';
@@ -113,16 +115,26 @@ export default async function RootLayout({
           }}
         />
         {/*
-          Google AdSense: set NEXT_PUBLIC_ADSENSE_CLIENT_ID env var to your ca-pub-XXXXXXXX
-          in your AWS container environment (SSM Parameter Store or task definition).
-          This loads the AdSense script globally. Slot-specific ads are rendered by
-          the AdBanner component using per-slot IDs from the DB.
+          Google Consent Mode v2 bootstrap. Must run BEFORE the AdSense/GA
+          scripts so the consent signals are honored on first hit. Reads the
+          stored choice (or falls back to deny-all) and sets the `default`
+          consent state. The `wait_for_update` window lets ConsentProvider's
+          post-mount `update` call apply if the stored value changed between
+          SSR and hydration (rare, but defensive). Mirrors the logic in
+          apps/web/src/lib/consent.ts (parseStoredConsent + toGtagConsent).
         */}
         <script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? ''}`}
-          crossOrigin="anonymous"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments);};var stored=null;try{stored=localStorage.getItem('spotter_consent_v1');}catch(e){}var c={analytics:false,advertising:false};try{if(stored){var p=JSON.parse(stored);if(p&&p.v===1&&p.choices&&p.choices.necessary===true){c.analytics=p.choices.analytics===true;c.advertising=p.choices.advertising===true;}}}catch(e){}window.gtag('consent','default',{analytics_storage:c.analytics?'granted':'denied',ad_storage:c.advertising?'granted':'denied',ad_user_data:c.advertising?'granted':'denied',ad_personalization:c.advertising?'granted':'denied',ads_data_redaction:!c.advertising,wait_for_update:500});})();`,
+          }}
         />
+        {/*
+          AdSense publisher script is now injected by <AdSenseLoader /> in the
+          body, gated on advertising consent. The global <script> tag that
+          used to live here would load AdSense for every visitor, including
+          those who rejected advertising — which is the exact GDPR/ePrivacy
+          violation this consent system exists to prevent.
+        */}
       </head>
       <body>
         <Analytics />
@@ -131,6 +143,8 @@ export default async function RootLayout({
           <main style={{ flex: 1 }}>{children}</main>
           <Footer />
         </Providers>
+        <AdSenseLoader />
+        <CookieConsent />
       </body>
     </html>
   );

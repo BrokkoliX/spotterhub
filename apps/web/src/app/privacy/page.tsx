@@ -9,13 +9,18 @@ export default function PrivacyPage() {
   return (
     <div style={{ padding: '48px 0' }}>
       <div className="container-narrow">
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: 24 }}>
-          Privacy Policy
-        </h1>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: 24 }}>Privacy Policy</h1>
 
         <div style={{ color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               1. Data We Collect
             </h2>
             <p style={{ marginBottom: 8 }}>
@@ -24,23 +29,31 @@ export default function PrivacyPage() {
             <ul style={{ paddingLeft: 20, marginBottom: 12 }}>
               <li>Account information (email address, username, password hash)</li>
               <li>Profile information (display name, bio, avatar, location, camera gear)</li>
-              <li>Photos you upload, including metadata (aircraft type, airline, airport, location, tags)</li>
+              <li>
+                Photos you upload, including metadata (aircraft type, airline, airport, location,
+                tags)
+              </li>
               <li>Community memberships and forum activity</li>
               <li>Notification preferences</li>
             </ul>
             <p>
-              When you sign in via third-party providers (e.g., Google), we receive the
-              information provided by that provider.
+              When you sign in via third-party providers (e.g., Google), we receive the information
+              provided by that provider.
             </p>
           </section>
 
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               2. How We Use Your Data
             </h2>
-            <p style={{ marginBottom: 8 }}>
-              We use collected information to:
-            </p>
+            <p style={{ marginBottom: 8 }}>We use collected information to:</p>
             <ul style={{ paddingLeft: 20, marginBottom: 12 }}>
               <li>Provide and maintain the SpotterSpace service</li>
               <li>Process photo uploads and generate image variants</li>
@@ -52,24 +65,36 @@ export default function PrivacyPage() {
           </section>
 
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               3. Photo Location Data
             </h2>
             <p>
               Photos may include GPS coordinates. You can set a privacy level for each photo:
               <strong> Exact</strong> (visible to all), <strong>Approximate</strong>
-              (offset by ~1 km), or <strong>Hidden</strong> (coordinates not shown).
-              Even when hidden, approximate location may still be inferred from airport codes.
+              (offset by ~1 km), or <strong>Hidden</strong> (coordinates not shown). Even when
+              hidden, approximate location may still be inferred from airport codes.
             </p>
           </section>
 
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               4. Data Sharing
             </h2>
-            <p>
-              We do not sell your personal data. We share data only in these circumstances:
-            </p>
+            <p>We do not sell your personal data. We share data only in these circumstances:</p>
             <ul style={{ paddingLeft: 20, marginTop: 8 }}>
               <li>With service providers who help us operate (AWS, email delivery via Resend)</li>
               <li>When required by law or valid legal request</li>
@@ -78,30 +103,104 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+          <section style={{ marginBottom: 32 }} id="cookies">
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               5. Cookies
             </h2>
-            <p>
-              We use session cookies for authentication and preferences (theme selection).
-              These are essential for the service to function. We do not use advertising or
-              tracking cookies.
+            <p style={{ marginBottom: 12 }}>
+              SpotterSpace uses cookies and similar storage technologies. We group them into three
+              categories, and you can choose which categories to allow via the cookie banner (first
+              visit) or the <strong>Cookie settings</strong> link in the page footer. Your
+              preferences are stored locally in your browser and can be changed at any time.
+            </p>
+
+            <h3
+              style={{
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                marginTop: 12,
+                marginBottom: 4,
+                color: 'var(--color-text)',
+              }}
+            >
+              Strictly necessary
+            </h3>
+            <p style={{ marginBottom: 12 }}>
+              Authentication and session cookies (e.g. <code>access_token</code>,{' '}
+              <code>refresh_token</code>) that keep you signed in and protect against cross-site
+              request forgery. These are always on because the service cannot function without them.
+            </p>
+
+            <h3
+              style={{
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                marginTop: 12,
+                marginBottom: 4,
+                color: 'var(--color-text)',
+              }}
+            >
+              Analytics
+            </h3>
+            <p style={{ marginBottom: 12 }}>
+              Google Analytics cookies (<code>_ga</code>, <code>_gid</code>) that help us understand
+              how the site is used so we can improve it. We use Google Consent Mode v2: if you opt
+              out, Analytics still loads but in cookieless mode and does not identify you.
+            </p>
+
+            <h3
+              style={{
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                marginTop: 12,
+                marginBottom: 4,
+                color: 'var(--color-text)',
+              }}
+            >
+              Advertising
+            </h3>
+            <p style={{ marginBottom: 12 }}>
+              Google AdSense cookies used to deliver and measure ads shown on SpotterSpace. If you
+              opt out, the AdSense script is not loaded and no advertising cookies are set. When
+              advertising is enabled, Google may use the data for personalized ads in line with
+              their own policies.
             </p>
           </section>
 
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               6. Your Rights
             </h2>
             <p>
-              You have the right to access, correct, or delete your personal data.
-              You can update your profile and privacy settings within the app,
-              or contact us at legal@spotterspace.com to exercise your rights.
+              You have the right to access, correct, or delete your personal data. You can update
+              your profile and privacy settings within the app, or contact us at
+              legal@spotterspace.com to exercise your rights.
             </p>
           </section>
 
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               7. Data Retention
             </h2>
             <p>
@@ -112,17 +211,25 @@ export default function PrivacyPage() {
           </section>
 
           <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8, color: 'var(--color-text)' }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                marginBottom: 8,
+                color: 'var(--color-text)',
+              }}
+            >
               8. Contact
             </h2>
             <p>
-              For privacy-related questions, contact us at:<br />
+              For privacy-related questions, contact us at:
+              <br />
               <strong>legal@spotterspace.com</strong>
             </p>
           </section>
 
           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-            Last updated: April 2026
+            Last updated: June 2026
           </p>
         </div>
       </div>

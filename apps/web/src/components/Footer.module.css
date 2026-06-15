@@ -36,14 +36,16 @@
   gap: 8px 20px;
 }
 
-.links a {
+.links a,
+.links button {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
   text-decoration: none;
   transition: color 0.15s;
 }
 
-.links a:hover {
+.links a:hover,
+.links button:hover {
   color: var(--color-accent);
 }
 

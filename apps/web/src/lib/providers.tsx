@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { Provider as UrqlProvider } from 'urql';
 
 import { AuthProvider } from './auth';
+import { ConsentProvider } from './consent';
 import { makeClient } from './graphql';
 import { ThemeProvider } from './theme';
 
@@ -39,11 +40,13 @@ export function Providers({
 
   return (
     <ServerAuthContext.Provider value={serverAuth ?? { user: null }}>
-      <ThemeProvider>
-        <UrqlProvider value={client}>
-          <AuthProvider serverAuth={serverAuth}>{children}</AuthProvider>
-        </UrqlProvider>
-      </ThemeProvider>
+      <ConsentProvider>
+        <ThemeProvider>
+          <UrqlProvider value={client}>
+            <AuthProvider serverAuth={serverAuth}>{children}</AuthProvider>
+          </UrqlProvider>
+        </ThemeProvider>
+      </ConsentProvider>
     </ServerAuthContext.Provider>
   );
 }
