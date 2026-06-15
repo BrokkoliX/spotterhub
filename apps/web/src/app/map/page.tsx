@@ -37,6 +37,11 @@ export default function MapPage() {
   const photoClusterRef = useRef<Supercluster<PhotoPointProps> | null>(null);
   const photoMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
+  // True once the first batch of photos has arrived. We use this to keep the
+  // full-page loading overlay visible only during the initial load — once we
+  // have any photos on screen, steady-state refetches (e.g. while panning
+  // or zooming) should not flash a "Loading…" overlay over the map.
+  const [hasReceivedData, setHasReceivedData] = useState(false);
   const [bounds, setBounds] = useState<{
     swLat: number;
     swLng: number;
@@ -49,6 +54,15 @@ export default function MapPage() {
     variables: bounds ? { ...bounds, first: 200 } : undefined,
     pause: !bounds,
   });
+
+  // Mark the first batch of photos as received. We don't reset this to false
+  // on subsequent refetches — once any data has loaded, the loading overlay
+  // is permanently hidden and steady-state refetches stay overlay-free.
+  useEffect(() => {
+    if (photosResult.data?.photosInBounds !== undefined) {
+      setHasReceivedData(true);
+    }
+  }, [photosResult.data]);
 
   // Admin-configurable debounce between the user finishing a pan/zoom and the
   // next bounds-based refetch. Defaults to 300 ms (matching the API default
@@ -272,12 +286,16 @@ export default function MapPage() {
   }
 
   // Surface loading state. mapReady is intentionally referenced in JSX so it
-  // is not flagged as unused — it gates the loading indicator below.
+  // is not flagged as unused — it gates the loading indicator below. The
+  // overlay only shows during the initial load: once the first batch of
+  // photos has arrived, hasReceivedData stays true and the overlay is
+  // permanently hidden, so steady-state refetches (pan/zoom) never flash
+  // a "Loading…" overlay over the map.
   return (
     <div className={styles.page}>
       <div className={styles.mapContainer}>
-        {(!mapReady || photosResult.fetching) && (
-          <div className={styles.loading}>{!mapReady ? 'Loading map…' : 'Loading markers…'}</div>
+        {(!mapReady || (!hasReceivedData && photosResult.fetching)) && (
+          <div className={styles.loading}>Loading map…</div>
         )}
         <div ref={mapContainerRef} className={styles.map} />
       </div>
