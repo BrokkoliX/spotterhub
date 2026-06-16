@@ -14,6 +14,13 @@ import styles from './FollowButton.module.css';
 interface FollowButtonProps {
   userId: string;
   initialIsFollowing: boolean;
+  /**
+   * Called after the follow state changes (after the mutation completes,
+   * with no error). Used by `ManageFollowsSection` to refetch the list of
+   * follows and the Following feed so the row and any related photos
+   * update without a page reload.
+   */
+  onChange?: () => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -23,7 +30,7 @@ interface FollowButtonProps {
  * Hidden when viewing your own profile.
  * Redirects to sign-in if not authenticated.
  */
-export function FollowButton({ userId, initialIsFollowing }: FollowButtonProps) {
+export function FollowButton({ userId, initialIsFollowing, onChange }: FollowButtonProps) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -50,14 +57,12 @@ export function FollowButton({ userId, initialIsFollowing }: FollowButtonProps) 
     // Revert on error
     if (result.error) {
       setIsFollowing(wasFollowing);
+      return;
     }
-  }, [user, isFollowing, userId, router, executeFollow, executeUnfollow]);
+    onChange?.();
+  }, [user, isFollowing, userId, router, executeFollow, executeUnfollow, onChange]);
 
-  const label = isFollowing
-    ? isHovering
-      ? 'Unfollow'
-      : 'Following'
-    : 'Follow';
+  const label = isFollowing ? (isHovering ? 'Unfollow' : 'Following') : 'Follow';
 
   return (
     <button

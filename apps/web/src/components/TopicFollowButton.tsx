@@ -12,9 +12,21 @@ import styles from './FollowButton.module.css';
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface TopicFollowButtonProps {
-  targetType: 'aircraft_type' | 'airport' | 'manufacturer' | 'family' | 'variant' | 'airline' | 'registration';
+  targetType:
+    | 'aircraft_type'
+    | 'airport'
+    | 'manufacturer'
+    | 'family'
+    | 'variant'
+    | 'airline'
+    | 'registration';
   value: string;
   initialIsFollowing: boolean;
+  /**
+   * Called after the follow state changes (after the mutation completes,
+   * with no error). See `FollowButton` for context.
+   */
+  onChange?: () => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -27,6 +39,7 @@ export function TopicFollowButton({
   targetType,
   value,
   initialIsFollowing,
+  onChange,
 }: TopicFollowButtonProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -52,8 +65,10 @@ export function TopicFollowButton({
 
     if (result.error) {
       setIsFollowing(wasFollowing);
+      return;
     }
-  }, [user, isFollowing, targetType, value, router, executeFollow, executeUnfollow]);
+    onChange?.();
+  }, [user, isFollowing, targetType, value, router, executeFollow, executeUnfollow, onChange]);
 
   const label = isFollowing ? (isHovering ? 'Unfollow' : 'Following') : 'Follow';
 

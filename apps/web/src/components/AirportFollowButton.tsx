@@ -14,6 +14,11 @@ import styles from './FollowButton.module.css';
 interface AirportFollowButtonProps {
   airportId: string;
   initialIsFollowing: boolean;
+  /**
+   * Called after the follow state changes (after the mutation completes,
+   * with no error). See `FollowButton` for context.
+   */
+  onChange?: () => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -22,7 +27,11 @@ interface AirportFollowButtonProps {
  * Follow/Unfollow button for airports.
  * Uses the same styling as the user FollowButton.
  */
-export function AirportFollowButton({ airportId, initialIsFollowing }: AirportFollowButtonProps) {
+export function AirportFollowButton({
+  airportId,
+  initialIsFollowing,
+  onChange,
+}: AirportFollowButtonProps) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -47,14 +56,12 @@ export function AirportFollowButton({ airportId, initialIsFollowing }: AirportFo
 
     if (result.error) {
       setIsFollowing(wasFollowing);
+      return;
     }
-  }, [user, isFollowing, airportId, router, executeFollow, executeUnfollow]);
+    onChange?.();
+  }, [user, isFollowing, airportId, router, executeFollow, executeUnfollow, onChange]);
 
-  const label = isFollowing
-    ? isHovering
-      ? 'Unfollow'
-      : 'Following'
-    : 'Follow';
+  const label = isFollowing ? (isHovering ? 'Unfollow' : 'Following') : 'Follow';
 
   return (
     <button

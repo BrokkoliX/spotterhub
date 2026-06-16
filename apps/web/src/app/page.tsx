@@ -11,13 +11,17 @@ import { AdBanner } from '@/components/AdBanner';
 import { CommunityFeedBlock } from '@/components/CommunityFeedBlock';
 import { FilterDrawer } from '@/components/FilterDrawer';
 import { InfinitePhotoGrid } from '@/components/InfinitePhotoGrid';
+import { ManageFollowsSection } from '@/components/ManageFollowsSection';
 import { useAuth } from '@/lib/auth';
+import type { FollowEntry } from '@/lib/followReasons';
+import { getFollowReasons } from '@/lib/followReasons';
 import { useResponsiveSplitIndex } from '@/lib/useResponsiveSplitIndex';
 import {
   GET_AIRCRAFT_FAMILIES,
   GET_AIRCRAFT_MANUFACTURERS,
   GET_AIRCRAFT_VARIANTS,
   GET_FOLLOWING_FEED,
+  GET_MY_FOLLOWING,
   GET_PHOTOS,
   GET_RANDOM_PHOTO,
   GET_SITE_SETTINGS,
@@ -341,11 +345,30 @@ export default function HomePage() {
     pause: feedTab !== 'recent',
   });
 
-  const [{ data: followingData, fetching: followingFetching }] = useQuery({
+  const [{ data: followingData, fetching: followingFetching }, reexecuteFollowingFeed] = useQuery({
     query: GET_FOLLOWING_FEED,
     variables: followingVars,
     pause: feedTab !== 'following' || !user,
   });
+
+  // Fetched only when on the Following tab and signed in. Used by
+  // ManageFollowsSection (rendered below the grid) to list every followed
+  // entity with an inline unfollow button, and to compute the "via X"
+  // chip shown on each photo card in the feed.
+  const [{ data: myFollowingData }, reexecuteMyFollowing] = useQuery<{
+    myFollowing: FollowEntry[];
+  }>({
+    query: GET_MY_FOLLOWING,
+    pause: feedTab !== 'following' || !user,
+  });
+
+  // Stable callback fired by ManageFollowsSection after a successful
+  // (un)follow. Refetches both the myFollowing list (so the row drops out)
+  // and the Following feed (so the grid reflects the new match set).
+  const handleFollowsChanged = useCallback(() => {
+    reexecuteMyFollowing({ requestPolicy: 'network-only' });
+    reexecuteFollowingFeed({ requestPolicy: 'network-only' });
+  }, [reexecuteMyFollowing, reexecuteFollowingFeed]);
 
   const [{ data: mineData, fetching: mineFetching }] = useQuery({
     query: GET_PHOTOS,
@@ -549,6 +572,24 @@ export default function HomePage() {
         : feedTab === 'admin_choice'
           ? adminChoiceFetching
           : mineFetching;
+
+  // Per-photo "via X" reasons, computed client-side from the follows list.
+  // Only used on the Following tab — the chip and the management section
+  // are both contextual to that feed. `undefined` is passed to
+  // InfinitePhotoGrid otherwise so other tabs render unchanged.
+  const reasonsByPhotoId = useMemo<
+    Record<string, ReturnType<typeof getFollowReasons>> | undefined
+  >(() => {
+    if (feedTab !== 'following') return undefined;
+    const follows = myFollowingData?.myFollowing ?? [];
+    if (follows.length === 0) return undefined;
+    const out: Record<string, ReturnType<typeof getFollowReasons>> = {};
+    for (const photo of activeState.photos) {
+      const reasons = getFollowReasons(photo, follows);
+      if (reasons.length > 0) out[photo.id] = reasons;
+    }
+    return out;
+  }, [feedTab, myFollowingData?.myFollowing, activeState.photos]);
 
   // ─── Filter configs ─────────────────────────────────────────────────────────
 
@@ -1106,17 +1147,26 @@ export default function HomePage() {
 
             if (!showCommunityBlock) {
               return (
-                <InfinitePhotoGrid
-                  key={`${feedTab}`}
-                  photos={activeState.photos}
-                  endCursor={activeState.endCursor}
-                  hasNextPage={activeState.hasNextPage}
-                  onLoadMore={handleLoadMore}
-                  loading={activeFetching}
-                  viewMode={viewMode}
-                  adSlotId={feedAdSlot ?? undefined}
-                  emptyMessage={emptyMessage ?? 'No photos yet'}
-                />
+                <>
+                  <InfinitePhotoGrid
+                    key={`${feedTab}`}
+                    photos={activeState.photos}
+                    endCursor={activeState.endCursor}
+                    hasNextPage={activeState.hasNextPage}
+                    onLoadMore={handleLoadMore}
+                    loading={activeFetching}
+                    viewMode={viewMode}
+                    adSlotId={feedAdSlot ?? undefined}
+                    emptyMessage={emptyMessage ?? 'No photos yet'}
+                    reasonsByPhotoId={reasonsByPhotoId}
+                  />
+                  {feedTab === 'following' && (myFollowingData?.myFollowing?.length ?? 0) > 0 && (
+                    <ManageFollowsSection
+                      myFollowing={myFollowingData?.myFollowing ?? []}
+                      onAfterUnfollow={handleFollowsChanged}
+                    />
+                  )}
+                </>
               );
             }
 

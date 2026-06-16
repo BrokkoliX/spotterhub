@@ -6,6 +6,7 @@ import { PhotoCard, type PhotoData } from './PhotoCard';
 export type { PhotoData };
 import { AdBanner } from './AdBanner';
 import { Pagination } from './Pagination';
+import type { FollowReason } from '@/lib/followReasons';
 import styles from './PhotoGrid.module.css';
 
 interface PhotoGridProps {
@@ -23,6 +24,14 @@ interface PhotoGridProps {
   adSlotId?: string;
   /** Insert an ad every N photos (default: 12). */
   adInterval?: number;
+  /**
+   * Optional per-photo "via X" reasons. When present, each PhotoCard in the
+   * grid view shows a chip indicating which follow caused the photo to
+   * appear. Omit on lists/grids where the reason is irrelevant (e.g. the
+   * Recent feed). Only used in grid view — the list view renders each row
+   * as a single Link and adding a chip inline would be more invasive.
+   */
+  reasonsByPhotoId?: Record<string, FollowReason[]>;
 }
 
 /**
@@ -41,15 +50,14 @@ export function PhotoGrid({
   onToggleSelect,
   adSlotId,
   adInterval = 12,
+  reasonsByPhotoId,
 }: PhotoGridProps) {
   if (!loading && photos.length === 0) {
     return (
       <div className={styles.empty}>
         <div className={styles.emptyIcon}>📷</div>
         <p className={styles.emptyText}>{emptyMessage}</p>
-        <p className={styles.emptySub}>
-          Be the first to share an aviation photo!
-        </p>
+        <p className={styles.emptySub}>Be the first to share an aviation photo!</p>
       </div>
     );
   }
@@ -63,9 +71,7 @@ export function PhotoGrid({
               photo.variants?.find(
                 (v: { variantType: string }) => v.variantType === 'thumbnail_16x9',
               ) ??
-              photo.variants?.find(
-                (v: { variantType: string }) => v.variantType === 'thumbnail',
-              );
+              photo.variants?.find((v: { variantType: string }) => v.variantType === 'thumbnail');
             const imgUrl = thumb?.url ?? photo.originalUrl;
             const isSelected = selectedIds.has(photo.id);
 
@@ -84,8 +90,7 @@ export function PhotoGrid({
                 })
               : null;
 
-            const displayName =
-              photo.user.profile?.displayName ?? photo.user.username;
+            const displayName = photo.user.profile?.displayName ?? photo.user.username;
 
             return (
               <Link
@@ -119,9 +124,7 @@ export function PhotoGrid({
                   {/* Aircraft registration + type */}
                   {(photo.aircraft?.registration || aircraftLabel) && (
                     <div className={styles.listAircraftRow}>
-                      {photo.aircraft?.registration && (
-                        <span>{photo.aircraft.registration}</span>
-                      )}
+                      {photo.aircraft?.registration && <span>{photo.aircraft.registration}</span>}
                       {photo.aircraft?.registration && aircraftLabel && (
                         <span className={styles.listDetailSep}>·</span>
                       )}
@@ -165,20 +168,22 @@ export function PhotoGrid({
   return (
     <>
       <div className={styles.grid}>
-        {photos.map((photo, index) => {
-          const items = [
-            <PhotoCard key={photo.id} photo={photo} />,
-          ];
-          // Inject ad after every adInterval photos (not after the last batch)
-          if (adSlotId && (index + 1) % adInterval === 0 && index < photos.length - 1) {
-            items.push(
-              <div key={`ad-${photo.id}`} className={styles.adSlot}>
-                <AdBanner slotId={adSlotId} />
-              </div>,
-            );
-          }
-          return items;
-        }).flat()}
+        {photos
+          .map((photo, index) => {
+            const items = [
+              <PhotoCard key={photo.id} photo={photo} reasons={reasonsByPhotoId?.[photo.id]} />,
+            ];
+            // Inject ad after every adInterval photos (not after the last batch)
+            if (adSlotId && (index + 1) % adInterval === 0 && index < photos.length - 1) {
+              items.push(
+                <div key={`ad-${photo.id}`} className={styles.adSlot}>
+                  <AdBanner slotId={adSlotId} />
+                </div>,
+              );
+            }
+            return items;
+          })
+          .flat()}
       </div>
 
       {totalPages > 1 && (

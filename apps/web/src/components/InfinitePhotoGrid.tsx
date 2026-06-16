@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { type PhotoData } from './PhotoCard';
 import { PhotoGrid } from './PhotoGrid';
+import type { FollowReason } from '@/lib/followReasons';
 import { useInfiniteScroll } from '@/lib/useInfiniteScroll';
 import styles from './InfinitePhotoGrid.module.css';
 
@@ -28,6 +29,8 @@ interface InfinitePhotoGridProps {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  /** Optional per-photo "via X" reasons, forwarded to PhotoGrid. */
+  reasonsByPhotoId?: Record<string, FollowReason[]>;
 }
 
 /**
@@ -55,6 +58,7 @@ export function InfinitePhotoGrid({
   selectable,
   selectedIds,
   onToggleSelect,
+  reasonsByPhotoId,
 }: InfinitePhotoGridProps) {
   // Keep the latest endCursor + onLoadMore reachable from a stable trigger.
   const latestRef = useRef({ endCursor, onLoadMore });
@@ -91,6 +95,7 @@ export function InfinitePhotoGrid({
         selectable={selectable}
         selectedIds={selectedIds}
         onToggleSelect={onToggleSelect}
+        reasonsByPhotoId={reasonsByPhotoId}
       />
 
       {/* Sentinel + loading indicator */}

@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import type { FollowReason } from '@/lib/followReasons';
+import { reasonLabel } from '@/lib/followReasons';
+
 import { LikeButton } from './LikeButton';
 import styles from './PhotoCard.module.css';
 
@@ -71,8 +74,14 @@ export interface PhotoData {
 /**
  * Displays a photo in a card format for use in grids and feeds.
  * Shows thumbnail variant if available, falls back to original URL.
+ *
+ * When `reasons` is provided and non-empty, a small "via X" chip is
+ * rendered in the footer so the viewer knows why the photo appears in
+ * a context where the photo is included based on a follow (e.g. the
+ * Following feed on the home page). Omit the prop in contexts where
+ * the follow is irrelevant.
  */
-export function PhotoCard({ photo }: { photo: PhotoData }) {
+export function PhotoCard({ photo, reasons }: { photo: PhotoData; reasons?: FollowReason[] }) {
   const [imgError, setImgError] = useState(false);
 
   const thumbnail16x9Variant = photo.variants.find((v) => v.variantType === 'thumbnail_16x9');
@@ -83,6 +92,10 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
   const imageUrl =
     thumbnail16x9Variant?.url ?? displayVariant?.url ?? thumbnailVariant?.url ?? photo.originalUrl;
   const displayName = photo.user.profile?.displayName ?? photo.user.username;
+  // Only show the chip for the top-priority reason (getFollowReasons
+  // already returns them in priority order). Skip silently if no reasons
+  // were passed (non-Following contexts) or none matched (defensive).
+  const topReason = reasons?.[0];
 
   // JetPhotos-style info
   const isCommunity = photo.kind === 'COMMUNITY';
@@ -196,6 +209,17 @@ export function PhotoCard({ photo }: { photo: PhotoData }) {
           <Link href={`/u/${photo.user.username}/photos`} className={styles.user}>
             {displayName}
           </Link>
+          {topReason && (
+            <span
+              className={styles.reason}
+              title={`In your feed because you follow ${reasonLabel(topReason)}`}
+            >
+              · via{' '}
+              {topReason.kind === 'airport'
+                ? `📍 ${reasonLabel(topReason)}`
+                : reasonLabel(topReason)}
+            </span>
+          )}
         </div>
         <div className={styles.stats}>
           <LikeButton
