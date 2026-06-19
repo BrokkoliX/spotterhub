@@ -12,6 +12,7 @@ import {
   CREATE_BADGE_DEFINITION,
   DELETE_BADGE_DEFINITION,
   GET_BADGE_DEFINITIONS,
+  GET_UPLOAD_URL,
   GET_USER_BADGES,
   REVOKE_BADGE,
   UPDATE_BADGE_DEFINITION,
@@ -383,6 +384,14 @@ export default function AdminBadgesPage() {
   const [formDisplayOrder, setFormDisplayOrder] = useState('0');
   const [formIsRepeatable, setFormIsRepeatable] = useState(false);
 
+  // Icon upload state
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
+  const [iconS3Key, setIconS3Key] = useState<string | null>(null);
+  const [iconUploading, setIconUploading] = useState(false);
+  const [iconUploadError, setIconUploadError] = useState<string | null>(null);
+  const iconInputRef = useRef<HTMLInputElement | null>(null);
+
   // Award form state
   const [awardBadgeId, setAwardBadgeId] = useState('');
   const [awardUser, setAwardUser] = useState<UserSearchResult | null>(null);
@@ -404,6 +413,7 @@ export default function AdminBadgesPage() {
   const [, updateBadge] = useMutation(UPDATE_BADGE_DEFINITION);
   const [, deleteBadge] = useMutation(DELETE_BADGE_DEFINITION);
   const [, awardBadgeMutation] = useMutation(AWARD_BADGE);
+  const [, getUploadUrl] = useMutation(GET_UPLOAD_URL);
 
   if (!ready) return <div className={styles.loading}>Loading…</div>;
   if (!isAdmin) return <div className={styles.denied}>Access denied</div>;
@@ -421,15 +431,72 @@ export default function AdminBadgesPage() {
     setFormTriggerThreshold('');
     setFormDisplayOrder('0');
     setFormIsRepeatable(false);
+    setIconFile(null);
+    setIconPreview(null);
+    setIconS3Key(null);
+    setIconUploadError(null);
+    if (iconInputRef.current) iconInputRef.current.value = '';
+  };
+
+  const handleIconFile = async (file: File | null) => {
+    setIconUploadError(null);
+    if (!file) {
+      setIconFile(null);
+      setIconPreview(null);
+      setIconS3Key(null);
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setIconUploadError('Icon must be an image file (JPEG, PNG, WebP).');
+      return;
+    }
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
+    setIconS3Key(null);
+
+    setIconUploading(true);
+    const urlResult = await getUploadUrl({
+      input: { mimeType: file.type, fileSizeBytes: file.size },
+    });
+    if (urlResult.error || !urlResult.data?.getUploadUrl) {
+      setIconUploadError(
+        urlResult.error?.graphQLErrors?.[0]?.message ?? 'Failed to get upload URL',
+      );
+      setIconUploading(false);
+      return;
+    }
+    const { url, key } = urlResult.data.getUploadUrl;
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+      setIconS3Key(key);
+    } catch (err) {
+      setIconUploadError(err instanceof Error ? err.message : 'Icon upload failed');
+      setIconFile(null);
+      setIconPreview(null);
+    } finally {
+      setIconUploading(false);
+    }
   };
 
   const handleCreate = async () => {
     if (!formName || !formSlug) return;
+    if (iconFile && !iconS3Key) {
+      // Icon still uploading — wait for it to finish before submitting.
+      return;
+    }
     await createBadge({
       input: {
         name: formName,
         slug: formSlug,
         description: formDescription,
+        iconUrl: iconS3Key || undefined,
         category: formCategory,
         tier: formTier,
         triggerType: formTriggerType,
@@ -721,6 +788,72 @@ export default function AdminBadgesPage() {
                 placeholder="Upload your first photo"
               />
             </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-muted)',
+                  display: 'block',
+                  marginBottom: 4,
+                }}
+              >
+                Icon (optional)
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <input
+                  ref={iconInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => handleIconFile(e.target.files?.[0] ?? null)}
+                  disabled={iconUploading}
+                />
+                {iconPreview && (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin preview, small icon
+                  <img
+                    src={iconPreview}
+                    alt="Badge icon preview"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      objectFit: 'cover',
+                      borderRadius: 4,
+                      border: '1px solid var(--color-border)',
+                    }}
+                  />
+                )}
+                {iconUploading && (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                    Uploading…
+                  </span>
+                )}
+                {iconS3Key && !iconUploading && (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-success, #2a7)' }}>
+                    ✓ Uploaded
+                  </span>
+                )}
+                {(iconFile || iconS3Key) && !iconUploading && (
+                  <button
+                    type="button"
+                    className={styles.actionBtnDanger}
+                    onClick={() => handleIconFile(null)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {iconUploadError && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontSize: '0.8125rem',
+                    color: 'var(--color-danger, #c33)',
+                  }}
+                >
+                  {iconUploadError}
+                </div>
+              )}
+            </div>
             <div>
               <label
                 style={{
@@ -895,6 +1028,7 @@ export default function AdminBadgesPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Icon</th>
                 <th>Name</th>
                 <th>Slug</th>
                 <th>Category</th>
@@ -911,6 +1045,23 @@ export default function AdminBadgesPage() {
             <tbody>
               {badges.map((badge) => (
                 <tr key={badge.id}>
+                  <td>
+                    {badge.iconUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- admin tool, tiny preview
+                      <img
+                        src={badge.iconUrl}
+                        alt=""
+                        style={{
+                          width: 28,
+                          height: 28,
+                          objectFit: 'cover',
+                          borderRadius: 4,
+                        }}
+                      />
+                    ) : (
+                      <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+                    )}
+                  </td>
                   <td>{badge.name}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{badge.slug}</td>
                   <td>

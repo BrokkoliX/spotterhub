@@ -3984,6 +3984,7 @@ export const CREATE_BADGE_DEFINITION = gql`
       slug
       name
       description
+      iconUrl
       category
       tier
       triggerType
@@ -4003,6 +4004,7 @@ export const UPDATE_BADGE_DEFINITION = gql`
       slug
       name
       description
+      iconUrl
       category
       tier
       triggerType

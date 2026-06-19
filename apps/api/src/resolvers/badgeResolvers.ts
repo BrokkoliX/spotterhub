@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql';
 
 import { requireAuth } from '../auth/requireAuth.js';
 import type { Context } from '../context.js';
+import { getObjectUrl } from '../services/s3.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,11 @@ export const badgeMutationResolvers = {
 
     const { slug, name, description, category, tier, triggerType, ...rest } = args.input;
 
+    // iconUrl arrives as an S3 key from the client (returned by getUploadUrl);
+    // convert it to a public URL so the stored value is renderable as-is.
+    const iconKey = rest.iconUrl as string | undefined;
+    const iconUrl = iconKey ? getObjectUrl(iconKey) : null;
+
     return ctx.prisma.badgeDefinition.create({
       data: {
         slug: slug as string,
@@ -92,7 +98,7 @@ export const badgeMutationResolvers = {
           | 'AWARD',
         tier: tier as 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM',
         triggerType: triggerType as 'AUTOMATIC' | 'AWARDED',
-        iconUrl: (rest.iconUrl as string) ?? null,
+        iconUrl,
         triggerMetric: (rest.triggerMetric as string) ?? null,
         triggerThreshold: (rest.triggerThreshold as number) ?? null,
         isActive: (rest.isActive as boolean) ?? true,
@@ -116,9 +122,20 @@ export const badgeMutationResolvers = {
       });
     }
 
+    // Same key→URL conversion as create. Only touch iconUrl when the caller
+    // actually provided it, so partial updates don't clobber the existing value.
+    const data: Record<string, unknown> = { ...args.input };
+    if (typeof data.iconUrl === 'string' && data.iconUrl.length > 0) {
+      data.iconUrl = getObjectUrl(data.iconUrl);
+    } else if (data.iconUrl === null) {
+      data.iconUrl = null;
+    } else {
+      delete data.iconUrl;
+    }
+
     return ctx.prisma.badgeDefinition.update({
       where: { id: args.id },
-      data: args.input,
+      data,
     });
   },
 
