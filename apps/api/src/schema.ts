@@ -483,7 +483,7 @@ export const typeDefs = gql`
     """
     Paginated list of users for admin management.
     Optionally filter by role or status, and search by username/email.
-    Requires superuser role.
+    Requires admin or superuser role.
     """
     adminUsers(
       role: String
@@ -497,7 +497,7 @@ export const typeDefs = gql`
     """
     Fetch a single user by id with full administrative detail (email,
     cognitoSub, lockout state, tier, etc.) for the admin user-detail
-    drawer. Requires superuser role.
+    drawer. Requires admin or superuser role.
     """
     adminUserById(id: ID!): User
 

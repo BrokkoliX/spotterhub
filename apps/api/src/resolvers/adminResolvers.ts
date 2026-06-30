@@ -110,8 +110,8 @@ export const adminQueryResolvers = {
     ctx: Context,
   ) => {
     const caller = await getDbUser(ctx);
-    if (caller.role !== 'superuser') {
-      throw new GraphQLError('Only superusers can list users', {
+    if (caller.role !== 'superuser' && caller.role !== 'admin') {
+      throw new GraphQLError('Only admins or superusers can list users', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
@@ -168,8 +168,8 @@ export const adminQueryResolvers = {
 
   adminUserById: async (_parent: unknown, args: { id: string }, ctx: Context) => {
     const caller = await getDbUser(ctx);
-    if (caller.role !== 'superuser') {
-      throw new GraphQLError('Only superusers can view user detail', {
+    if (caller.role !== 'superuser' && caller.role !== 'admin') {
+      throw new GraphQLError('Only admins or superusers can view user detail', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
