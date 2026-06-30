@@ -226,16 +226,18 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
               </div>
             )}
 
-            {/* Admin tools — superuser-only, on approved photos.
+            {/* Admin tools — admins and superusers, on approved photos.
                 The component itself hides if the admin-choice-week badge
                 is missing or inactive, so it's safe to mount here. */}
-            {ready && user?.role === 'superuser' && photo.moderationStatus === 'approved' && (
-              <AdminChoiceButton
-                photoId={photo.id}
-                uploaderId={photo.user.id}
-                uploaderUsername={photo.user.username}
-              />
-            )}
+            {ready &&
+              (user?.role === 'admin' || user?.role === 'superuser') &&
+              photo.moderationStatus === 'approved' && (
+                <AdminChoiceButton
+                  photoId={photo.id}
+                  uploaderId={photo.user.id}
+                  uploaderUsername={photo.user.username}
+                />
+              )}
             {/* Image */}
             <div
               className={`${styles.imageContainer} ${isFullscreen ? styles.fullscreenImageContainer : ''}`}

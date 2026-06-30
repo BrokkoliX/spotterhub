@@ -366,7 +366,9 @@ export default function AdminBadgesPage() {
   const isAdmin =
     user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'superuser');
   const canManage = user?.role === 'admin' || user?.role === 'superuser';
-  const canAward = user?.role === 'superuser'; // awardBadge mutation requires superuser
+  // Admins can hand out and revoke badges just like superusers — full CRUD
+  // parity with superuser for badge management.
+  const canAward = canManage;
 
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);

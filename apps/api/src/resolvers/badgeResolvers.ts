@@ -6,7 +6,7 @@ import { getObjectUrl } from '../services/s3.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-async function requireSuperuser(ctx: Context) {
+async function requireAdminOrSuperuser(ctx: Context) {
   const authUser = requireAuth(ctx);
   const dbUser = await ctx.prisma.user.findUnique({
     where: { cognitoSub: authUser.sub },
@@ -15,8 +15,8 @@ async function requireSuperuser(ctx: Context) {
   if (!dbUser) {
     throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
   }
-  if (dbUser.role !== 'superuser') {
-    throw new GraphQLError('Only superusers can manage badges', {
+  if (dbUser.role !== 'admin' && dbUser.role !== 'superuser') {
+    throw new GraphQLError('Only admins or superusers can manage badges', {
       extensions: { code: 'FORBIDDEN' },
     });
   }
@@ -75,7 +75,7 @@ export const badgeMutationResolvers = {
     args: { input: Record<string, unknown> },
     ctx: Context,
   ) => {
-    await requireSuperuser(ctx);
+    await requireAdminOrSuperuser(ctx);
 
     const { slug, name, description, category, tier, triggerType, ...rest } = args.input;
 
@@ -113,7 +113,7 @@ export const badgeMutationResolvers = {
     args: { id: string; input: Record<string, unknown> },
     ctx: Context,
   ) => {
-    await requireSuperuser(ctx);
+    await requireAdminOrSuperuser(ctx);
 
     const existing = await ctx.prisma.badgeDefinition.findUnique({ where: { id: args.id } });
     if (!existing) {
@@ -140,7 +140,7 @@ export const badgeMutationResolvers = {
   },
 
   deleteBadgeDefinition: async (_parent: unknown, args: { id: string }, ctx: Context) => {
-    await requireSuperuser(ctx);
+    await requireAdminOrSuperuser(ctx);
 
     const existing = await ctx.prisma.badgeDefinition.findUnique({ where: { id: args.id } });
     if (!existing) {
@@ -158,7 +158,7 @@ export const badgeMutationResolvers = {
     args: { userId: string; badgeDefinitionId: string; photoId?: string },
     ctx: Context,
   ) => {
-    const superuser = await requireSuperuser(ctx);
+    const actor = await requireAdminOrSuperuser(ctx);
 
     const badge = await ctx.prisma.badgeDefinition.findUnique({
       where: { id: args.badgeDefinitionId },
@@ -207,7 +207,7 @@ export const badgeMutationResolvers = {
         userId: args.userId,
         badgeDefinitionId: args.badgeDefinitionId,
         awardedPhotoId: args.photoId ?? null,
-        awardedBy: superuser.id,
+        awardedBy: actor.id,
       },
       include: {
         badgeDefinition: true,
@@ -238,7 +238,7 @@ export const badgeMutationResolvers = {
     args: { userId: string; badgeDefinitionId: string; userBadgeId?: string },
     ctx: Context,
   ) => {
-    await requireSuperuser(ctx);
+    await requireAdminOrSuperuser(ctx);
 
     // When userBadgeId is supplied, revoke that specific row — required
     // for repeatable badges where multiple rows can exist for the same
