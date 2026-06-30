@@ -227,9 +227,12 @@ export default function HomePage() {
   const [{ data: siteData }] = useQuery({ query: GET_SITE_SETTINGS });
   const [{ data: adData }] = useQuery({ query: GET_AD_SETTINGS });
 
-  // Hero photo
+  // Hero photo: random pick from photos awarded the "Admin's Choice" badge.
+  // Server-side random; falls back to site banner when no Admin's Choice
+  // photos exist yet.
   const [{ data: randomPhotoData }] = useQuery({
     query: GET_RANDOM_PHOTO,
+    variables: { awardSlug: ADMIN_CHOICE_BADGE_SLUG },
     requestPolicy: 'network-only',
   });
   const heroPhoto = randomPhotoData?.randomPhoto as PhotoData | null | undefined;

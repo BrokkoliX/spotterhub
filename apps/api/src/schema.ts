@@ -320,8 +320,10 @@ export const typeDefs = gql`
     A single random approved, non-deleted photo. Used by the home-page
     hero to surface a different community photo on every reload.
     Returns null only when there are no approved photos at all.
+    When 'awardSlug' is provided, restricts the pool to photos carrying
+    that badge (used by the home-page hero to spotlight Admin's Choice).
     """
-    randomPhoto: Photo
+    randomPhoto(awardSlug: String): Photo
 
     """
     Search photos by free text. Matches against caption, aircraft type,

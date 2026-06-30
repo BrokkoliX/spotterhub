@@ -356,8 +356,8 @@ export const GET_PHOTO = gql`
 `;
 
 export const GET_RANDOM_PHOTO = gql`
-  query RandomPhoto {
-    randomPhoto {
+  query RandomPhoto($awardSlug: String) {
+    randomPhoto(awardSlug: $awardSlug) {
       ...PhotoCardFields
     }
   }

@@ -385,7 +385,7 @@ export const photoQueryResolvers = {
    * added in migration 20260527190620), one Math.random() in JS, then
    * one indexed lookup with OFFSET. Total cost: two index-only scans.
    */
-  randomPhoto: async (_parent: unknown, _args: unknown, ctx: Context) => {
+  randomPhoto: async (_parent: unknown, args: { awardSlug?: string }, ctx: Context) => {
     // Restrict to AIRCRAFT photos: the hero banner is a general-feed
     // surface, and community photos belong inside their community
     // context (mirrors the default applied in the `photos` resolver
@@ -394,6 +394,13 @@ export const photoQueryResolvers = {
       moderationStatus: 'approved' as const,
       isDeleted: false,
       kind: 'AIRCRAFT' as const,
+      ...(args.awardSlug
+        ? {
+            awardedBadges: {
+              some: { badgeDefinition: { slug: args.awardSlug, isActive: true } },
+            },
+          }
+        : {}),
     };
     const total = await ctx.prisma.photo.count({ where });
     if (total === 0) return null;
