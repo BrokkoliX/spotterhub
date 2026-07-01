@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from 'urql';
 
-import { AWARD_BADGE, GET_BADGE_DEFINITIONS } from '@/lib/queries';
+import { AWARD_BADGE, GET_BADGE_DEFINITIONS, REVOKE_BADGE } from '@/lib/queries';
 
 const ADMIN_CHOICE_SLUG = 'AChoice';
 
@@ -16,38 +16,79 @@ interface BadgeDef {
   isRepeatable: boolean;
 }
 
+interface AwardedBadgeRef {
+  id: string;
+  badgeDefinition?: { slug?: string } | null;
+}
+
 /**
- * Admin-or-superuser one-click button that awards the `AChoice` badge
- * to a photo's uploader, recording the photo as the basis for the award.
+ * Admin-or-superuser one-click button that awards or revokes the
+ * `AChoice` badge for a specific photo. The button toggles state
+ * based on whether the photo already carries the badge.
  *
  * The button is intentionally hidden (rather than disabled) when the badge
- * definition is missing or inactive, since this action would never succeed.
+ * definition is missing or inactive, since neither action would succeed.
  */
 export function AdminChoiceButton({
   photoId,
   uploaderId,
   uploaderUsername,
+  awardedBadges,
 }: {
   photoId: string;
   uploaderId: string;
   uploaderUsername: string;
+  awardedBadges?: AwardedBadgeRef[] | null;
 }) {
   const [{ data, fetching: loadingDefs }] = useQuery({
     query: GET_BADGE_DEFINITIONS,
     variables: { isActive: true },
   });
   const [{ fetching: awarding }, awardBadge] = useMutation(AWARD_BADGE);
+  const [{ fetching: revoking }, revokeBadge] = useMutation(REVOKE_BADGE);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
 
   const adminChoice: BadgeDef | undefined = data?.badgeDefinitions?.find(
     (b: BadgeDef) => b.slug === ADMIN_CHOICE_SLUG && b.isActive,
   );
 
+  // Find an existing AChoice row for THIS photo. repeatable badges like
+  // Admin's Choice have one row per photo, so we need the userBadgeId to
+  // revoke precisely (a non-specific revoke would nuke the user's other
+  // Admin's Choice awards on different photos).
+  const existing = awardedBadges?.find((b) => b.badgeDefinition?.slug === ADMIN_CHOICE_SLUG);
+  const isAwarded = !!existing;
+  const busy = awarding || revoking;
+
   if (loadingDefs) return null;
   if (!adminChoice) return null;
 
   const handleClick = async () => {
     setFeedback(null);
+
+    if (isAwarded) {
+      if (!confirm(`Remove "${adminChoice.name}" from @${uploaderUsername} for this photo?`)) {
+        return;
+      }
+      const result = await revokeBadge({
+        userId: uploaderId,
+        badgeDefinitionId: adminChoice.id,
+        userBadgeId: existing!.id,
+      });
+      if (result.error) {
+        setFeedback({
+          kind: 'err',
+          message: result.error.graphQLErrors?.[0]?.message ?? result.error.message,
+        });
+        return;
+      }
+      setFeedback({
+        kind: 'ok',
+        message: `Removed "${adminChoice.name}" from @${uploaderUsername}.`,
+      });
+      return;
+    }
+
     const repeatableNote = adminChoice.isRepeatable
       ? '\n\nThis user can earn this badge again on a future photo.'
       : '';
@@ -98,15 +139,21 @@ export function AdminChoiceButton({
         type="button"
         className="btn"
         onClick={handleClick}
-        disabled={awarding}
+        disabled={busy}
         style={{
-          background: 'var(--color-accent, #2a7)',
+          background: isAwarded ? 'var(--color-danger, #c33)' : 'var(--color-accent, #2a7)',
           color: '#fff',
           padding: '6px 12px',
           fontSize: '0.875rem',
         }}
       >
-        {awarding ? 'Awarding…' : `Award "${adminChoice.name}"`}
+        {busy
+          ? isAwarded
+            ? 'Removing…'
+            : 'Awarding…'
+          : isAwarded
+            ? `Remove "${adminChoice.name}"`
+            : `Award "${adminChoice.name}"`}
       </button>
       {feedback && (
         <span

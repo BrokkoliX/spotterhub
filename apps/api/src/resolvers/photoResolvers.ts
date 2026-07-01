@@ -1227,6 +1227,29 @@ export const photoFieldResolvers = {
     return ctx.prisma.photoVariant.findMany({ where: { photoId: parent.id } });
   },
 
+  /**
+   * UserBadge rows awarded specifically against this photo (via
+   * UserBadge.awardedPhotoId). Reverse relation of UserBadge.awardedPhoto.
+   * Includes the badgeDefinition so the AdminChoiceButton can match by slug
+   * on the client without a second round trip.
+   */
+  awardedBadges: (
+    parent: PhotoParent & { awardedBadges?: unknown },
+    _args: unknown,
+    ctx: Context,
+  ) => {
+    if (parent.awardedBadges) return parent.awardedBadges;
+    return ctx.prisma.userBadge.findMany({
+      where: { awardedPhotoId: parent.id },
+      include: {
+        badgeDefinition: true,
+        user: true,
+        awardedPhoto: true,
+        awarder: true,
+      },
+    });
+  },
+
   tags: async (
     parent: PhotoParent & { tags?: Array<{ tag: string }> | string[] },
     _args: unknown,

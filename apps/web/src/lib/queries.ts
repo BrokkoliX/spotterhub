@@ -283,6 +283,12 @@ export const PHOTO_DETAIL_FIELDS = gql`
         endCursor
       }
     }
+    awardedBadges {
+      id
+      badgeDefinition {
+        slug
+      }
+    }
   }
   ${PHOTO_CARD_FIELDS}
 `;

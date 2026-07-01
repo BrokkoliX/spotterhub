@@ -236,6 +236,7 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
                   photoId={photo.id}
                   uploaderId={photo.user.id}
                   uploaderUsername={photo.user.username}
+                  awardedBadges={photo.awardedBadges}
                 />
               )}
             {/* Image */}

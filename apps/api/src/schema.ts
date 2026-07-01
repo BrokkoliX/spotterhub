@@ -2146,6 +2146,14 @@ export const typeDefs = gql`
     Other photos of the same aircraft (matched by serial number or linked aircraft record).
     """
     similarAircraftPhotos(first: Int = 12, after: String, page: Int): PhotoConnection!
+
+    """
+    Badges awarded specifically for this photo (UserBadge rows where
+    awardedPhotoId points back to this photo). Reverse relation of
+    UserBadge.awardedPhoto. Used by the per-photo Admin's Choice flow
+    to detect and revoke an already-awarded Admin's Choice row.
+    """
+    awardedBadges: [UserBadge!]!
   }
 
   """
