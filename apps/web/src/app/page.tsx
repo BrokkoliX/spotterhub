@@ -40,7 +40,7 @@ const PAGE_SIZE = 24;
  * sync with apps/web/src/components/AdminChoiceButton.tsx — keep the two
  * in lockstep if the slug ever changes.
  */
-const ADMIN_CHOICE_BADGE_SLUG = 'admin-choice-week';
+const ADMIN_CHOICE_BADGE_SLUG = 'AChoice';
 
 type FeedTab = 'recent' | 'following' | 'mine' | 'admin_choice';
 type SortOption =

@@ -76,7 +76,7 @@ export interface PhotosArgs {
   /**
    * Filter to photos that have been awarded a badge with this slug
    * (via UserBadge.awardedPhotoId). Used by the "Admin's Choice" feed
-   * tab on the home page (slug = 'admin-choice-week').
+   * tab on the home page (slug = 'AChoice').
    */
   awardSlug?: string;
 }

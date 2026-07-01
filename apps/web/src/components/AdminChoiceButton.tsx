@@ -5,7 +5,7 @@ import { useMutation, useQuery } from 'urql';
 
 import { AWARD_BADGE, GET_BADGE_DEFINITIONS } from '@/lib/queries';
 
-const ADMIN_CHOICE_SLUG = 'admin-choice-week';
+const ADMIN_CHOICE_SLUG = 'AChoice';
 
 interface BadgeDef {
   id: string;
@@ -17,7 +17,7 @@ interface BadgeDef {
 }
 
 /**
- * Superuser-only one-click button that awards the `admin-choice-week` badge
+ * Admin-or-superuser one-click button that awards the `AChoice` badge
  * to a photo's uploader, recording the photo as the basis for the award.
  *
  * The button is intentionally hidden (rather than disabled) when the badge

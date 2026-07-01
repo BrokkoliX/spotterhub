@@ -227,7 +227,7 @@ function PhotoDetailInner({ params }: { params: Promise<{ id: string }> }) {
             )}
 
             {/* Admin tools — admins and superusers, on approved photos.
-                The component itself hides if the admin-choice-week badge
+                The component itself hides if the AChoice badge
                 is missing or inactive, so it's safe to mount here. */}
             {ready &&
               (user?.role === 'admin' || user?.role === 'superuser') &&

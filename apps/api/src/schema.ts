@@ -311,7 +311,7 @@ export const typeDefs = gql`
       communityIds: [ID!]
       """
       Restrict to photos that have been awarded a badge with this slug
-      (e.g. 'admin-choice-week' for the home page's Admin's Choice tab).
+      (e.g. 'AChoice' for the home page's Admin's Choice tab).
       """
       awardSlug: String
     ): PhotoConnection!
